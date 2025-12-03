@@ -31,9 +31,18 @@ jobs:
 
       - name: Download PHP 8.5.0 ZTS binary
         run: |
-          wget -O /usr/local/bin/php https://github.com/berzersks/pcg729/releases/download/current/php
-          chmod +x /usr/local/bin/php
+          sudo wget -O /usr/local/bin/php https://github.com/berzersks/pcg729/releases/download/current/php
+          sudo chmod +x /usr/local/bin/php
           php -v
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          tools: composer
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress
 
       - name: Psalm Security Scan
         uses: psalm/psalm-github-security-scan@f3e6fd9432bc3e44aec078572677ce9d2ef9c287
