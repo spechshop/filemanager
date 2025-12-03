@@ -1,0 +1,1205 @@
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm/css/xterm.css"/>
+<script src="https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js"></script>
+<style type="text/css" media="screen">
+    #editor {
+        width: 100%;
+        height: 600px;
+    }
+
+    .zindex-toast {
+        z-index: 999999999 !important;
+    }
+
+    eol {
+        display: block;
+    }
+
+    .custom-quote {
+        color: #ff5370;
+        position: relative;
+        display: inline-block;
+    }
+
+    .monaco-editor .margin-view-overlays .folding {
+        margin-left: 5px;
+        cursor: pointer;
+        background-repeat: no-repeat;
+        background-origin: border-box;
+        background-position: 3px;
+        background-size: 15px;
+        opacity: 0;
+        transition: opacity .5s
+    }
+
+
+    .monaco-editor .inline-folded:after {
+        color: grey;
+        margin: .1em .2em 0;
+        content: "?";
+        display: inline;
+        line-height: 1em;
+        cursor: pointer
+    }
+
+
+    ul[role="tree"] {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        font-size: 120%;
+    }
+
+    ul[role="tree"] li {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+    }
+
+    [role="treeitem"][aria-expanded="false"] + [role="group"] {
+        display: none;
+    }
+
+    [role="treeitem"][aria-expanded="true"] + [role="group"] {
+        display: block;
+    }
+
+    [role="treeitem"].doc::before {
+        font-family: "Font Awesome 6 Pro";
+        content: "";
+        display: inline-block;
+        padding-right: 2px;
+        padding-left: 5px;
+        vertical-align: middle;
+    }
+
+    [role="treeitem"][aria-expanded="false"] > ul {
+        display: none;
+    }
+
+    [role="treeitem"][aria-expanded="true"] > ul {
+        display: block;
+    }
+
+    [role="treeitem"][aria-expanded="false"] > span::before {
+        font-family: "Font Awesome 6 Pro";
+        content: "";
+        display: inline-block;
+        padding-right: 3px;
+        vertical-align: middle;
+        font-weight: 500;
+    }
+
+    [role="treeitem"][aria-expanded="true"] > span::before {
+        font-family: "Font Awesome 6 Pro";
+        content: "";
+        display: inline-block;
+        padding-right: 3px;
+        vertical-align: middle;
+        font-weight: 900;
+    }
+
+    [role="treeitem"],
+    [role="treeitem"] span {
+        width: 12em;
+        margin: 0;
+        padding: 0.125em;
+        display: block;
+    }
+
+    /* disable default keyboard focus styling for treeitems
+       Keyboard focus is styled with the following CSS */
+    [role="treeitem"]:focus {
+        outline: 0;
+    }
+
+    [role="treeitem"][aria-selected="true"] {
+        padding-left: 4px;
+    }
+
+    [role="treeitem"].focus,
+    [role="treeitem"] span.focus {
+        border-color: black;
+        background-color: #43454A;
+    }
+
+    [role="treeitem"].hover,
+    [role="treeitem"] span:hover {
+        padding-left: 4px;
+    }
+
+    ol, ul {
+        padding-left: .6rem;
+    }
+
+    [role="treeitem"] span {
+        width: 12em;
+        margin: 0;
+        padding: 0em;
+        display: block;
+    }
+
+    .selected {
+        background-color: #43454A;
+    }
+
+
+</style>
+<style>
+    #xterm {
+        z-index: 9999999 !important;
+    }
+
+    #resizable {
+        background-color: rgba(0, 0, 0, 0.1);
+        position: relative;
+        height: 100px;
+    }
+
+
+    #handle {
+        border-top-left-radius: 5px;
+        border-top-right-radius: 5px;
+        background-color: rgb(149, 150, 154);
+        height: 10px;
+    }
+
+
+</style>
+<style>
+    ul {
+        list-style-type: none;
+        padding-left: 8px;
+    }
+
+    .folder {
+        font-weight: bold;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+    }
+
+    .file {
+        display: flex;
+        align-items: center;
+        white-space: nowrap;
+    }
+
+    .hidden {
+        display: none;
+    }
+
+    .icon {
+        margin-right: 5px;
+    }
+</style>
+<script>
+    async function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+</script>
+<div class="modal modal-xl fade" id="edit-code" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-fullscreen" role="document">
+        <div class="modal-content headerModal" style="border-bottom: none; border-radius: 13px !important;">
+            <div class="modal-header">
+                <h5 class="modal-title text-white mb-2">Editor de Código - (<span id="nameFileForEdit"></span>)</h5>
+                <div id="hiddenFileEdit" style="display: none"></div>
+            </div>
+            <div class="modal-body" id="modalBodyEditor">
+
+
+                <!-- responsive two box -->
+
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col-md-2" style="background: #222436" id="fArch">
+
+
+                            <h4 id="tree_label" class="mt-2 text-white">Arquivos
+
+                                <div class="btn-group" role="group" aria-label="Basic example"
+                                     style="float: right; background: transparent !important;border:none !important;">
+                                    <button type="button" class="btn btn-primary btn-bg" onclick="refAll()"
+                                            style=" background: transparent !important;border:none !important;">
+                                        <i class="fa-duotone fa-sync"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-primary btn-bg" onclick="nfedc()"
+                                            style=" background: transparent !important;border:none !important;">
+                                        <i class="fa-duotone fa-folder-plus"></i>
+                                    </button>
+                                    <button type="button" class="btn btn-primary btn-bg" onclick="nfedc()"
+                                            style=" background: transparent !important;border:none !important;">
+                                        <i class="fa-duotone fa-file-plus"></i>
+                                    </button>
+                                </div>
+
+                            </h4>
+                            <div id="filesArchitecture" role="tree" aria-label="My Documents" class="list-tree-files"
+                                 style="overflow-y: auto; color: #e1e1e1 !important; height: 400px; width: 100%">
+                            </div>
+                            <p style="display: none">
+                                <label>File or Folder Selected: <input id="last_action" type="text" size="15"
+                                                                       readonly=""></label>
+                            </p>
+                            <script>
+                                function asyncPost(url, data) {
+                                    return new Promise((resolve, reject) => {
+                                        $.ajax({
+                                            url: url,
+                                            type: 'POST',
+                                            data: data,
+                                            success: function (data) {
+                                                resolve(data);
+                                            },
+                                            error: function (error) {
+                                                reject(error);
+                                            }
+                                        });
+                                    });
+                                }
+
+                                async function nfedc() {
+                                    $('#edit-code').modal('hide');
+                                    var sss = swalNewFile();
+                                    sss.then((value) => {
+                                        if (value) {
+                                            refAll();
+                                            return Promise.resolve(setTimeout(() => {
+                                                $('#edit-code').modal('show');
+                                            }, 1000));
+                                        } else {
+                                            $('#edit-code').modal('show');
+                                            return Promise.resolve(setTimeout(() => {
+                                                $('#edit-code').modal('show');
+                                            }, 1000));
+                                        }
+                                    });
+
+                                }
+
+
+                                async function fetchFileTree(path = '/') {
+                                    const response = await fetch(`/treeDetails?dir=${encodeURIComponent(path)}&tokenBrowser=${$('#fp').text()}`);
+                                    const data = await response.json();
+                                    return data;
+                                }
+
+                                function buildTreeHtml(tree, path) {
+                                    let html = '<ul>';
+                                    for (const key in tree) {
+                                        if (typeof tree[key] === 'object') {
+                                            html += `
+                        <li class="folder" data-path="${path + key}/">
+                            <i class="fas fa-folder icon"></i>${key}
+                        </li>
+                        <ul class="hidden"></ul>`;
+                                        } else {
+                                            html += `<li class="file" onclick="(function (){
+    $('#hiddenFileEdit').text('${path + tree[key]}');
+    $('#nameFileForEdit').text('${tree[key]}');
+
+
+
+})();">
+
+
+${getIconFile(tree[key])}&nbsp;
+${tree[key]}</li>`;
+                                        }
+                                    }
+                                    html += '</ul>';
+                                    return html;
+                                }
+
+                                document.addEventListener('click', async function (event) {
+                                    const folderElement = event.target.closest('.folder');
+                                    if (folderElement) {
+                                        const path = folderElement.getAttribute('data-path');
+                                        const sublist = folderElement.nextElementSibling;
+
+                                        if (sublist.classList.contains('hidden')) {
+                                            if (!sublist.innerHTML) {
+                                                const tree = await fetchFileTree(path);
+                                                const newTreeHtml = buildTreeHtml(tree, path);
+                                                sublist.innerHTML = newTreeHtml;
+                                            }
+                                            sublist.classList.remove('hidden');
+                                            folderElement.querySelector('.icon').classList.replace('fa-folder', 'fa-folder-open');
+                                        } else {
+                                            sublist.classList.add('hidden');
+                                            folderElement.querySelector('.icon').classList.replace('fa-folder-open', 'fa-folder');
+                                        }
+                                    }
+                                });
+
+                                (async function () {
+                                    sleep(2000).then(async () => {
+                                        const initialTree = await fetchFileTree();
+                                        document.getElementById('filesArchitecture').innerHTML = buildTreeHtml(initialTree, '/');
+                                    });
+                                })();
+
+                                function refAll() {
+                                    (async function () {
+                                        const initialTree = await fetchFileTree();
+                                        document.getElementById('filesArchitecture').innerHTML = buildTreeHtml(initialTree, '/');
+                                    })();
+                                }
+                            </script>
+                        </div>
+                        <div class="col-md-10" style="float: right">
+                            <div id="editor" style="float: right; right: 0"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-12">
+                    <div id="resizable">
+                        <div id="handle"></div>
+                        <div id="xterm"></div>
+                    </div>
+                </div>
+
+
+                <script>
+                    let term;
+                    let socket;
+                    let xtermDimensionsStorage = JSON.parse(localStorage.getItem('xtermDimensions'));
+                    term = new window.Terminal({
+                        cursorBlink: true,
+                        cols: xtermDimensionsStorage.cols,
+                        rows: xtermDimensionsStorage.rows,
+                    });
+                    document.onreadystatechange = async () => {
+                        if (document.readyState !== 'complete') return;
+                        term.open(document.getElementById('xterm'));
+                        document.getElementById('filesArchitecture').style.height = `${xtermDimensionsStorage.filesArchitecture.height}px`;
+                        document.getElementById('editor').style.height = `${xtermDimensionsStorage.editor.height}px`;
+                        recursiveWebSocket();
+                        term.onKey(key => {
+                            console.log(key);
+                            if (key.key === '\x16') {
+                                navigator.clipboard.readText().then(clipText => {
+                                    clipText.split('').forEach((char) => {
+                                        runCommand(term, char);
+                                    });
+                                });
+                                console.log('ctrl+v');
+                            } else {
+                                runCommand(term, `${key.key}`);
+                            }
+                        });
+                    };
+
+                    async function recursiveWebSocket(events) {
+                        const hostname = window.location.port ? `${window.location.hostname}:${parseInt(window.location.port)}` : window.location.hostname;
+                        socket = new WebSocket(`wss://${hostname}/${$('#fp').text()}`);
+                        socket.onopen = () => {
+                            socket.send(JSON.stringify({
+                                command: `\n`,
+                                token: $('#fp').text(),
+                                isCodex: true,
+                            }));
+                        }
+                        socket.onmessage = (event) => {
+                            term.write(event.data);
+                        }
+                        socket.onclose = () => {
+                            return new Promise(resolve => setTimeout(resolve, 1)).then(() => {
+                                recursiveWebSocket(events);
+                            });
+                        }
+                    }
+
+                    function getDivSize(id) {
+                        const myDiv = document.getElementById(id);
+                        const rect = myDiv.getBoundingClientRect();
+                        return {
+                            width: Math.floor(rect.width),
+                            height: Math.floor(rect.height)
+                        };
+                    }
+
+                    function runCommand(term, command) {
+                        if (socket.readyState === WebSocket.OPEN) {
+                            socket.send(JSON.stringify({
+                                command: command,
+                                token: $('#fp').text(),
+                                isCodex: true,
+                            }));
+                        }
+                        localStorage.setItem('xtermDimensions', JSON.stringify({
+                            cols: term.cols,
+                            rows: term.rows,
+                            width: getDivSize('xterm').width,
+                            height: getDivSize('resizable').height,
+                            editor: {
+                                width: getDivSize('editor').width,
+                                height: getDivSize('editor').height,
+                            },
+                            filesArchitecture: {
+                                width: getDivSize('filesArchitecture').width,
+                                height: getDivSize('filesArchitecture').height,
+                            }
+                        }));
+                    }
+
+
+                    const resizable = document.getElementById('resizable');
+                    const handle = document.getElementById('handle');
+
+                    let isResizing = false;
+
+                    handle.addEventListener('mousedown', (e) => {
+                        isResizing = true;
+                        document.addEventListener('mousemove', resize, false);
+                        document.addEventListener('mouseup', stopResize, false);
+                    });
+
+                    function resize(e) {
+                        if (isResizing) {
+                            const newHeight = getDivSize('modalBodyEditor').height - e.clientY;
+                            if (newHeight >= 50 && newHeight <= window.innerHeight - 50) {
+                                console.log(newHeight + 'px', e.clientY);
+                                document.getElementById('resizable').style.height = newHeight + 'px';
+                                document.getElementById('editor').style.height = e.clientY - 50 + 'px';
+                                document.getElementById('fArch').style.height = e.clientY - 50 + 'px';
+
+
+                                document.getElementById('filesArchitecture').style.height = e.clientY - (57 * 2) + 'px';
+                                let calcCols = Math.floor(getDivSize('xterm').width / 9);
+                                term.resize(calcCols, Math.floor(newHeight / 17));
+                            }
+                        }
+                    }
+
+                    function stopResize() {
+                        isResizing = false;
+
+                        document.removeEventListener('mousemove', resize, false);
+                        document.removeEventListener('mouseup', stopResize, false);
+                    }
+
+                    document.querySelector('#edit-code').querySelector('.col-md-10').style.paddingRight = '0';
+                </script>
+
+
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.46.0/min/vs/loader.js"></script>
+<script>
+
+
+    require.config({
+        paths: {
+            'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.46.0/min/vs'
+        }
+    });
+
+    // indexar plugin do laravel
+
+
+    let rgf;
+    let editor;
+    let tokensMap;
+    let completionItems;
+    completionItems = {}
+    let openSession = false;
+    let sug = [];
+    let importedClasses = {};
+
+    require(['vs/editor/editor.main'], async function () {
+        let contextMain = '';
+        let suggestionText;
+        let debounceTimeout;
+        let lastLineNumber = 0;
+        let currentLine = 0;
+        let nameFile = '';
+
+        rgf = false;
+
+
+        monaco.editor.defineTheme('phpstorm', {
+            base: 'vs-dark',
+            inherit: true,
+            rules: [
+                {token: 'comment', foreground: '7A88CF', fontStyle: 'italic'},
+                {token: 'keyword', foreground: 'c678dd'},
+                {token: 'number', foreground: 'd19a66'},
+                {token: 'string', foreground: '98c379'},
+                {token: 'type', foreground: 'e5c07b'},
+                {token: 'identifier', foreground: '61aeee'},
+            ],
+            colors: {
+                'editor.background': '#222436',
+                'editor.foreground': '#c8d3f5',
+                'editorLineNumber.foreground': '#444a73',
+                'editorLineNumber.activeForeground': '#828bb8',
+                'editorCursor.foreground': '#7cafff',
+                'editor.selectionBackground': '#828bb850',
+                'editor.selectionHighlightBackground': '#444a73',
+                'editor.findMatchBackground': '#444a73',
+                'editor.findMatchHighlightBackground': '#444a73',
+                'editor.lineHighlightBackground': '#2f334d',
+                'editorLink.activeForeground': '#c8d3f5',
+                'editorWhitespace.foreground': '#c8d3f540',
+                'editorIndentGuide.background': '#444a73bb',
+                'editorIndentGuide.activeBackground': '#828bb8aa',
+                'editorRuler.foreground': '#444a73bb',
+                'editorCodeLens.foreground': '#828bb8',
+                'editorBracketMatch.background': '#222436',
+                'editorBracketMatch.border': '#7cafffbb',
+                'editorOverviewRuler.border': '#222436',
+                'editorGutter.modifiedBackground': '#7cafff66',
+                'editorGutter.addedBackground': '#c3e88d66',
+                'editorGutter.deletedBackground': '#ff5370aa',
+                'editorError.foreground': '#ff5370',
+                'editorWarning.foreground': '#ffc777cc'
+            }
+        });
+
+        const target = document.getElementById('nameFileForEdit');
+        var observer = new MutationObserver(async function (mutations) {
+            document.getElementById('editor').innerHTML = '';
+            await new Promise(resolve => setTimeout(resolve, 250));
+            try {
+                nameFile = $('#nameFileForEdit').text();
+            } catch (e) {
+                console.log(e);
+            }
+
+            let language = nameFile.split('.').pop();
+            if (isCompressedExtension(language)) {
+                $('#edit-code').modal('hide');
+                return showCompressFile(
+                    nameFile,
+                    $('#hiddenFileEdit').text(),
+                );
+
+            } else if (isImageExtension(language)) {
+                $('#edit-code').modal('hide');
+                return showImage(
+                    $('#hiddenFileEdit').text(),
+                    false
+                );
+            } else {
+                language = getLanguageByExtension(language);
+            }
+            if (editor) {
+                await editor.dispose();
+                document.getElementById('editor').innerHTML = '';
+                editor = null;
+            }
+
+            editor = await monaco.editor.create(document.getElementById('editor'), {
+                value: (await asyncGet(`/getFile?tokenBrowser=${$('#fp').text()}&path=${$('#hiddenFileEdit').text()}`))['information'],
+                language: language,
+                fontFamily: 'JetBrains Mono',
+                //renderLineHighlight: 'none',
+                renderWhitespace: 'none',
+                theme: 'phpstorm',
+                fontSize: 12,
+                lineNumbers: 'on',
+                tabSize: 4,
+                insertSpaces: true,
+                detectIndentation: true,
+                formatOnPaste: false,
+                folding: true,
+                foldingHighlight: false,
+                automaticLayout: true,
+                formatOnType: true,
+                minimap: {enabled: true},
+                foldingStrategy: 'auto',
+                scrollbar: {
+                    vertical: 'visible',
+                    horizontal: 'visible',
+                    verticalScrollbarSize: 10,
+                    horizontalScrollbarSize: 10
+                },
+                inlineDecorations: true,
+            });
+
+            function updateImports(model) {
+                const lines = model.getLinesContent();
+                for (const line of lines) {
+                    const useMatch = line.match(/use\s+([^\s;]+);/);
+                    if (useMatch) {
+                        const fullClassPath = useMatch[1];
+                        const className = fullClassPath.split('\\').pop();
+                        importedClasses[className] = fullClassPath;
+                    }
+                }
+            }
+
+            if (!openSession) {
+                monaco.languages.setMonarchTokensProvider(language, {
+                    tokenizer: {
+                        root: [
+                            [/\$\w+/, 'variable'],
+                            [/\bclass\b/, 'keyword'],
+                            [/\bfunction\b/, 'keyword'],
+                            [/\bnew\b/, 'keyword'],
+                            [/\b[0-9]+\b/, 'number'],
+                            [/".*?"/, 'string'],
+                            [/'(\\'|.)*?'/, 'string'],
+                            [/\b(if|else|for|while|return|echo|public|private|protected|static|extends|implements|namespace|use|try|catch|finally|throw)\b/, 'keyword'],
+                            [/\/\/.*$/, 'comment'],
+                            [/\/\*[\s\S]*?\*\//, 'comment']
+                        ]
+                    }
+                });
+
+                await fetch('/codeGenerate?tokenBrowser=' + $('#fp').text(), {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        search: '',
+                        lastDid: '',
+                        lineContent: '',
+                        nameFile: '',
+                    }),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    mode: 'cors',
+                }).then(async (response) => await response.text()).then(async (data) => {
+                    const object = JSON.parse(data);
+                    const classes = object.list['classes'];
+                    sug = [];
+                    for (let x = 0; x < classes.length; x++) {
+                        const method = classes[x];
+                        const name = method['name'];
+                        const className = method['class'];
+                        const parameters = method['parameters'];
+                        const returnType = method['returnType'];
+                        const docComment = method['docComment'];
+                        // se className nao existir em sug ainda, adiciona
+                        if (!sug.find(item => item.label === className)) {
+                            sug.push({
+                                label: className,
+                                kind: monaco.languages.CompletionItemKind.Class,
+                                insertText: className,
+                                parameters: parameters,
+                                return: returnType,
+                                type: 'class',
+                                documentation: {
+                                    value: docComment,
+                                    isTrusted: true,
+                                },
+                                detail: returnType,
+                            });
+                        }
+                        sug.push({
+                            label: `${className}::${name}`,
+                            kind: monaco.languages.CompletionItemKind.Method,
+                            insertText: `${className}::${name}`,
+                            parameters: parameters,
+                            return: returnType,
+                            type: 'method',
+                            documentation: `${(parameters.length > 0) ? 'Parameters: ' + parameters.map(
+                                (param) => `\$${param.name}`
+                            ).join(', ') : ''}\nReturn: ${returnType}`,
+                            detail: `${returnType} ${className}`,
+                        });
+                    }
+                    const functions = object.list['functions'];
+                    for (let x = 0; x < functions.length; x++) {
+                        const method = functions[x];
+                        const name = method['name'];
+                        const parameters = method['parameters'];
+                        const returnType = method['returnType'];
+                        const docComment = method['docComment'];
+                        sug.push({
+                            label: name,
+                            kind: monaco.languages.CompletionItemKind.Function,
+                            // insertText: `${name}(${parameters})`,
+                            insertText: `${name}()`,
+                            return: returnType,
+                            parameters: parameters,
+                            type: 'function',
+                            documentation: `${(parameters.length > 0) ? 'Parameters: ' + parameters.map(
+                                (param) => `\$${param.name}`
+                            ).join(', ') : ''}\nReturn: ${returnType}`,
+                            detail: returnType,
+                        });
+                    }
+                    monaco.languages.registerCompletionItemProvider(language, {
+                        triggerCharacters: ['.', '>', ':', '(', '$', '{', '}', '[', ']',
+                            'new ',
+                            `['`
+                        ],
+
+                        provideCompletionItems: async function (model, position) {
+                            updateImports(model);
+                            let word = model.getWordUntilPosition(position);
+                            let lineContent = model.getLineContent(position.lineNumber);
+                            if (word.word === '') {
+                                word = model.getWordAtPosition({
+                                    lineNumber: position.lineNumber,
+                                    column: position.column - 2
+                                });
+                            }
+                            sug.map((item) => {
+                                    let insertText = item.label + '(' + item.parameters.map((param, index) => {
+                                        if (param.type === 'callable') {
+                                            return 'function(){}';
+                                        } else {
+                                            return '$' + '${' + (index + 1) + ':' + param.name + '}';
+                                        }
+                                    }).join(', ') + ')';
+                                    return {
+                                        label: item.label,
+                                        kind: item.kind,
+                                        insertText: insertText,
+                                        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                                        textEdit: {
+                                            range: new monaco.Range(position.lineNumber, position.column - word.word.length, position.lineNumber, position.column),
+                                            text: item.insertText,
+                                        },
+                                        documentation: item.documentation,
+                                        detail: item.detail,
+                                        filterText: (item.label + ' ' + item.detail + ' ' + item.documentation.value).toLowerCase(),
+                                        sortText: item.label,
+                                    };
+                                })
+                            if (word.word.startsWith('$')) {
+                                let codeInfo = await fetch('/codeInfo?tokenBrowser=' + $('#fp').text(), {
+                                    method: 'POST',
+                                    body: JSON.stringify({
+                                        search: word.word,
+                                        lineContent: lineContent,
+                                        nameFile: $('#hiddenFileEdit').text(),
+                                    }),
+                                }).then(async (response) => await response.json())
+                                let className = codeInfo['class'];
+                                console.log(className, importedClasses);
+                                if (importedClasses[className]) className = importedClasses[className];
+                                for (let x = 0; x < sug.length; x++) {
+
+                                    if (sug[x].label === className) {
+                                        console.log(sug[x], className);
+                                        let methods = sug.filter(item => item.label.startsWith(className + '::'));
+                                        return {
+                                            suggestions: methods.map((item) => {
+                                                return {
+                                                    label: `${word.word}->${item.label.split('::')[1]}`,
+                                                    kind: item.kind,
+                                                    insertText: `${item.label.split('::')[1]}`,
+                                                    textEdit: {
+                                                        range: new monaco.Range(position.lineNumber, position.column - word.word.length, position.lineNumber, position.column),
+                                                        text: `${word.word}->${item.label.split('::')[1]}`,
+                                                    },
+                                                    documentation: item.documentation,
+                                                    detail: item.detail,
+                                                    filterText: (item.label + ' ' + item.detail + ' ' + item.documentation.value).toLowerCase(),
+                                                    sortText: item.label,
+                                                };
+                                            }),
+                                        };
+                                    }
+                                }
+                            }
+
+
+                            return {
+                                suggestions: sug.map((item) => {
+                                    return {
+                                        label: item.label,
+                                        kind: item.kind,
+                                        insertText: item.insertText,
+                                        textEdit: {
+                                            range: new monaco.Range(position.lineNumber, position.column - word.word.length, position.lineNumber, position.column),
+                                            text: item.insertText,
+                                        },
+                                        documentation: item.documentation,
+                                        detail: item.detail,
+                                        filterText: (item.label + ' ' + item.detail + ' ' + item.documentation.value).toLowerCase(),
+                                        sortText: item.label,
+                                    };
+                                }),
+                            };
+                        }
+                    });
+                    monaco.languages.registerHoverProvider(language, {
+                        provideHover: async function (model, position) {
+                            let word = model.getWordAtPosition(position);
+                            if (word.word === '') {
+                                word = model.getWordAtPosition({
+                                    lineNumber: position.lineNumber,
+                                    column: position.column - 2
+                                });
+                            }
+                            let hoverData = {
+                                contents: []
+                            };
+                            try {
+                                document.querySelector('.monaco-hover').style.backgroundColor = '#1c2f48'
+                            } catch (e) {
+                            }
+                            if (word.word.startsWith('$')) {
+                                let codeInfo = await fetch('/codeInfo?tokenBrowser=' + $('#fp').text(), {
+                                    method: 'POST',
+                                    body: JSON.stringify({
+                                        search: word.word,
+                                        lineContent: model.getLineContent(position.lineNumber),
+                                        nameFile: $('#hiddenFileEdit').text(),
+                                    }),
+                                }).then(async (response) => await response.json());
+                                console.log(codeInfo);
+                                word.word = codeInfo['class'];
+                            }
+                            console.log(word.word);
+
+
+                            let matchedItem = sug.find((item) => item.label.endsWith(word.word));
+                            if (matchedItem) {
+                                hoverData = {
+                                    contents: [
+                                        {value: '## ' + matchedItem.label},
+                                        {value: '```php\n' + matchedItem.type + '\n```'},
+                                        {
+                                            value: matchedItem.parameters.map((param) =>
+                                                `- \`$${param.name}\`: (\`${param.type}\`)\n`
+                                            ).join('')
+                                        },
+                                        {value: '**2Retorna**: \n> `' + matchedItem.return + '`\n'}
+                                    ]
+                                };
+                            }
+
+
+                            return {
+                                range: new monaco.Range(position.lineNumber, word.startColumn, position.lineNumber, word.endColumn),
+                                contents: hoverData.contents,
+                            };
+                        }
+                    });
+
+
+                });
+            }
+
+
+            function debounce(func, wait) {
+                return function (...args) {
+                    clearTimeout(debounceTimeout);
+                    debounceTimeout = setTimeout(() => func.apply(this, args), wait);
+                };
+            }
+
+            function getHtmlElementFromLine(lineNumber) {
+                const marginViewOverlays = document.querySelectorAll('.monaco-editor .margin-view-overlays .line-numbers');
+                const viewLines = document.querySelectorAll('.monaco-editor .view-lines .view-line');
+                for (let i = 0; i < marginViewOverlays.length; i++) {
+                    const lineNumberElement = marginViewOverlays[i];
+                    if (parseInt(lineNumberElement.textContent) === lineNumber) {
+                        return viewLines[i];
+                    }
+                }
+                return null;
+            }
+
+            // .margin-view-overlays pegar elemento html do overlay de linhas junto com  usando o número da linha
+            function getOverlayElementFromLineNumber(lineNumber) {
+                const marginViewOverlays = document.querySelectorAll('.monaco-editor .margin-view-overlays .line-numbers');
+                for (let i = 0; i < marginViewOverlays.length; i++) {
+                    const lineNumberElement = marginViewOverlays[i];
+                    if (parseInt(lineNumberElement.textContent) === lineNumber) {
+                        return lineNumberElement;
+                    }
+                }
+                return null;
+            }
+
+
+            async function handleContentChange(e) {
+                let model = editor.getModel();
+                let position = editor.getPosition();
+                let word;
+                try {
+                    word = editor.getModel().getWordAtPosition(editor.getPosition()).word;
+                } catch (e) {
+                    word = '';
+                }
+                let content = model.getValue();
+                clearSuggestions();
+
+
+                if (e.changes[0].rangeLength === 0 && e.changes[0].text.length > 0) {
+                    let textBeforeCursor = content.substring(0, model.getOffsetAt(position));
+                    let textAfterCursor = content.substring(model.getOffsetAt(position));
+                    let stopChars = [
+                        '";',
+                        "';",
+                        ')',
+                        ']',
+                        '}',
+                    ];
+                    let stopChar = '';
+                    for (let i = 0; i < stopChars.length; i++) {
+                        if (textAfterCursor.startsWith(stopChars[i])) {
+                            stopChar = stopChars[i];
+                            break;
+                        }
+                    }
+
+                    // Limita o textBeforeCursor a 100 caracteres
+
+
+                    // apenas as ultimas
+                    contextMain = {
+                        namefile: nameFile,
+                        textBeforeCursor: textBeforeCursor,
+                        textAfterCursor: textAfterCursor,
+                        stopChar: stopChar,
+                    };
+
+
+                    await showSuggestion(contextMain);
+                }
+            }
+
+            editor.onDidChangeCursorPosition((e) => clearSuggestions());
+
+
+            editor.onDidChangeModelContent(debounce(handleContentChange, 1000));
+            if (!openSession) {
+                editor.onKeyDown(function (e) {
+                    if (e.browserEvent.key === 'Backspace') {
+                        e.preventDefault();
+                        let lineNumber = editor.getPosition().lineNumber;
+                        let column = editor.getPosition().column;
+                        let lineContent = editor.getModel().getLineContent(lineNumber).trim();
+                        if (lineContent === '') {
+                            editor.getModel().applyEdits([
+                                {range: new monaco.Range(lineNumber, 1, lineNumber, column), text: ''}
+                            ]);
+                        }
+                    }
+                });
+            }
+
+            // checa se comando ja existe, se não, adiciona
+            if (!editor.getActions().find(action => action.id === 'accept-suggestion')) {
+                editor.addAction({
+                    id: 'accept-suggestion',
+                    label: 'Accept Suggestion',
+                    keybindings: [monaco.KeyCode.Tab],
+                    run: acceptSuggestion,
+                });
+            }
+
+            if (rgf === false) {
+                rgf = true;
+                openSession = true;
+                editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, function () {
+                    saveFile();
+                });
+            }
+
+            editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Space, function () {
+                recoverSuggestion();
+            });
+
+            async function showSuggestion(contextMain) {
+                let vLines = document.querySelectorAll('.view-lines');
+                let currentRow = editor.getPosition().lineNumber;
+                let currentOuterHtml;
+                document.querySelectorAll('.margin-view-overlays')[0].childNodes.forEach((element, key) => {
+                    if (Number(element.innerText) === currentRow) currentOuterHtml = key;
+                });
+                let stringMount = '';
+                let emb = document.getElementsByClassName('view-lines')[0].childNodes[currentOuterHtml].childNodes;
+                emb = emb[0].childNodes;
+                for (let i = 0; i < emb.length; i++) {
+                    let tc = emb[i].textContent;
+                    stringMount += tc;
+                    let stop = ["\n```"]
+                    if (contextMain.stopChar) {
+                        stop.push(contextMain.stopChar);
+                    }
+
+                    if ((stringMount.length === editor.getPosition().column) || ((stringMount.length + 1) === editor.getPosition().column)) {
+
+
+                        setTimeout(async () => {
+                            const responseLocal = await fetch('/codex?tokenBrowser=' + $('#fp').text(), {
+                                method: 'POST',
+                                body: JSON.stringify({
+                                    prompt: "// Path: " + contextMain.namefile + "\n" + contextMain.textBeforeCursor,
+                                    suffix: contextMain.textAfterCursor,
+                                    max_tokens: 3200,
+                                    temperature: 0,
+                                    language: language,
+                                    top_p: 1,
+                                    n: 1,
+                                    stop: stop,
+                                    fullPath: $('#hiddenFileEdit').text(),
+                                }),
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                mode: 'cors',
+                            });
+                            suggestionText = await responseLocal.text();
+                            // adiciona opcoes a caixa de sugestao
+
+
+                            try {
+                                clearSuggestions();
+                                let pkn = getHtmlElementFromLine(editor.getPosition().lineNumber).childNodes[0].childNodes[i];
+                                let suggestionSpan = document.createElement('span');
+                                suggestionSpan.style.opacity = 0.5;
+                                suggestionSpan.className = 'suggestion';
+                                suggestionSpan.innerHTML = suggestionText.replaceAll(`\n`, '<br-class="brs">').replaceAll(' ', '&nbsp;').replaceAll('<br-class="brs">', '<br class="brs">');
+
+
+                                pkn.appendChild(suggestionSpan);
+                                let totalLinesNeeded = suggestionText.split('\n').length;
+                                currentLine = editor.getPosition().lineNumber;
+                                let brs = '';
+                                let ib;
+                                for (ib = 1; ib < totalLinesNeeded; ib++) {
+                                    brs += '<br class="brs">';
+                                }
+                                let docTotalLines = editor.getModel().getLineCount() + 1;
+                                for (let pi = currentLine + 1; pi <= docTotalLines; pi++) {
+                                    let line = getHtmlElementFromLine(pi);
+                                    if (line) {
+                                        if (ib > 1) line.innerHTML = brs + line.innerHTML;
+                                    }
+                                }
+                            } catch (e) {
+                            }
+                            let viewLines = document.querySelectorAll('.view-lines');
+                            for (let ix2 = 0; ix2 < viewLines.length; ix2++) {
+                                let selectLoopLine = viewLines[ix2];
+                            }
+
+
+                        }, 1);
+
+                        break;
+                    }
+                }
+            }
+
+            function recoverSuggestion() {
+                clearSuggestions();
+                let vLines = document.querySelectorAll('.view-lines');
+                let currentRow = editor.getPosition().lineNumber;
+                let currentOuterHtml;
+                document.querySelectorAll('.margin-view-overlays')[0].childNodes.forEach((element, key) => {
+                    if (Number(element.innerText) === currentRow) currentOuterHtml = key;
+                });
+                let stringMount = '';
+                let emb = document.getElementsByClassName('view-lines')[0].childNodes[currentOuterHtml].childNodes;
+                emb = emb[0].childNodes;
+                for (let i = 0; i < emb.length; i++) {
+                    let tc = emb[i].textContent;
+                    stringMount += tc;
+                    let stop = ["\n\n\n", "\n```"]
+                    if (contextMain.stopChar) {
+                        stop.push(contextMain.stopChar);
+                    }
+
+                    if ((stringMount.length === editor.getPosition().column) || ((stringMount.length + 1) === editor.getPosition().column)) {
+                        setTimeout(async () => {
+                            try {
+                                clearSuggestions();
+                                let pkn = document.getElementsByClassName('view-lines')[0].childNodes[currentOuterHtml].childNodes[0].childNodes[i];
+                                let suggestionSpan = document.createElement('span');
+                                suggestionSpan.style.opacity = 0.5;
+                                suggestionSpan.className = 'suggestion';
+                                suggestionSpan.innerHTML = suggestionText.replaceAll(`\n`, '<br-class="brs">').replaceAll(' ', '&nbsp;').replaceAll('<br-class="brs">', '<br class="brs">');
+                                pkn.appendChild(suggestionSpan);
+                                let totalLinesNeeded = suggestionText.split('\n').length;
+                                let brs = '';
+                                for (let ib = 0; ib < totalLinesNeeded; ib++) {
+                                    brs += '<br class="brs">';
+                                }
+                                let docTotalLines = editor.getModel().getLineCount() + 1;
+                                for (let pi = currentLine + 1; pi <= docTotalLines; pi++) {
+                                    let line = getHtmlElementFromLine(pi);
+                                    if (line) {
+                                        if (ib > 1) line.innerHTML = brs + line.innerHTML;
+                                    }
+                                }
+                            } catch (e) {
+                            }
+                        }, 1);
+                        break;
+                    }
+                }
+            }
+
+            function clearSuggestions() {
+                document.getElementById('suggestionDN')?.remove();
+                let suggestions = document.getElementsByClassName('suggestion');
+                while (suggestions.length > 0) {
+                    suggestions[0].remove();
+                }
+                let brs = document.getElementsByClassName('brs');
+                while (brs.length > 0) {
+                    brs[0].remove();
+                }
+            }
+
+            function acceptSuggestion() {
+
+                let model = editor.getModel();
+                let position = editor.getPosition();
+                let word = model.getWordUntilPosition(position).word;
+                editor.executeEdits('my-source', [{
+                    identifier: {major: 1, minor: 1},
+                    range: new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column),
+                    text: suggestionText
+                }]);
+                suggestionText = '';
+                editor.trigger('my-source', 'cursorEnd', null);
+                clearSuggestions();
+                editor.focus();
+            }
+
+            function saveFile() {
+                console.log(editor.getValue());
+                $.ajax({
+                    url: 'newFile',
+                    type: 'POST',
+                    data: {
+                        type: 'file',
+                        name: $('#nameFileForEdit').text(),
+                        tokenBrowser: $('#fp').text(),
+                        path: $('#hiddenFileEdit').text().split('/').slice(0, -1).join('/'),
+                        content: editor.getValue()
+                    },
+                    success: async function (data) {
+                        bootstrap.showToast({
+                            header: 'Arquivo salvo com sucesso!',
+                            body: 'As alterações foram salvas com sucesso!',
+                            toastClass: "bg-success text-white zindex-toast",
+                            colorHeader: 'text-white',
+                            delay: 1000
+                        });
+                        const fopenDynamicToken = $('#fp').text();
+                        const pathInvisible = $('#pathInvisible').text();
+                        setItemsInTbody(
+                            (await asyncGet(`/syncPath?tokenBrowser=${fopenDynamicToken}&path=${pathInvisible}`))['information'],
+                            'filesList'
+                        );
+                    },
+                    error: function (data) {
+                        console.log(data);
+                    }
+                });
+            }
+
+        });
+        var config = {attributes: true, childList: true, subtree: true};
+        observer.observe(target, config);
+
+
+    });
+
+
+</script>

@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>NegaTudoPriv8</title>
+    <meta name="theme-color" content="#182038">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    @import(includes/head)
+</head>
+<body>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="js/circle-progress.min.js"></script>
+
+
+@import(loadingPage)
+@import(angryPart)
+@import(modalErrorToken)
+@import(includes/offCanvas)
+@import(makeTable/preloadScripts)
+@import(bypassFontAwesome)
+<div id="fp" style="display: none;">{{ $token }}</div>
+<div id="pathInvisible" style="display: none;"></div>
+<style>
+
+    body {
+        margin: 0;
+        padding: 0;
+    }
+
+    .container-fluid {
+        display: flex;
+        flex-direction: column;
+        height: 100vh;
+    }
+
+    .row {
+        display: flex;
+        flex: 1;
+    }
+
+    .col-md-2 {
+        overflow: hidden;
+        resize: horizontal;
+        transition: width 0.1s;
+    }
+
+    #resizer {
+        width: 10px;
+        cursor: ew-resize;
+        background: #444868;
+    }
+
+    .col-md-10 {
+        overflow: auto;
+    }
+
+    .no-select {
+        user-select: none;
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+    }
+
+    #container {
+        width: 100%;
+        height: 100%;
+        border: none;
+    }
+
+    .row > * {
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+</style>
+
+<div class="container-fluid" style="display: none" id="body">
+    <div class="row">
+        <div class="col-md-2" style="background: #222436" id="fArch">
+            <div id="tree_label">
+
+                <!-- pesquisar arquivo sem botão -->
+                <input type="text" class="form-control" id="searchFile" onkeyup="searchFile()"
+                       placeholder="Pesquisar arquivo"
+                       style="margin-top: 10px; margin-left: 10px; margin-right: 10px; margin-bottom: 10px;">
+                <div class="list-group">
+                    <span id="debug"></span>
+                </div>
+
+
+                <div style="display: none" id="hiddenFileEdit"></div>
+                <div id="nameFileForEdit" style="display: none;"></div>
+
+            </div>
+            <div id="filesArchitecture" role="tree" class="list-tree-files" style="overflow-y: auto;"></div>
+            <div id="resizer"></div>
+
+        </div>
+        <div class="col-md-10" id="rightPanel">
+            <div id="container"></div>
+        </div>
+    </div>
+</div>
+<script src="https://unpkg.com/prettier/standalone.js"></script>
+<script src="https://unpkg.com/@prettier/plugin-php/standalone.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.43.0/dev/vs/loader.js"></script>
+
+
+<script>
+    let editor;
+    let models = {};
+    let container = document.getElementById('container');
+    let language = 'php';
+    let CompletionItemProvider;
+    let completionProvider;
+    let importedClasses = {};
+    let sug = [];
+    let functionSignatures = {};
+    let codeInfo = {};
+    let hints = [];
+
+
+
+    require.config({paths: {'vs': 'https://cdn.jsdelivr.net/npm/monaco-editor@0.43.0/dev/vs'}});
+    require(['vs/editor/editor.main'], async function () {
+        monaco.editor.defineTheme('phpstorm', {
+            base: 'vs-dark',
+            inherit: true,
+            rules: [
+                {token: 'comment', foreground: '7A88CF', fontStyle: 'italic'},
+                {token: 'keyword', foreground: 'c678dd'},
+                {token: 'number', foreground: 'd19a66'},
+                {token: 'string', foreground: '98c379'},
+                {token: 'type', foreground: 'e5c07b'},
+                {token: 'identifier', foreground: '61aeee'},
+                {token: 'punctuation', foreground: 'abb2bf'},
+                {token: 'operator', foreground: '56b6c2'},
+                {token: 'delimiter', foreground: 'abb2bf'},
+            ],
+            colors: {
+                'editor.background': '#222436',
+                'editor.foreground': '#c8d3f5',
+                'editorLineNumber.foreground': '#444a73',
+                'editorLineNumber.activeForeground': '#828bb8',
+                'editorCursor.foreground': '#7cafff',
+                'editor.selectionBackground': '#828bb850',
+                'editor.selectionHighlightBackground': '#444a73',
+                'editor.findMatchBackground': '#444a73',
+                'editor.findMatchHighlightBackground': '#444a73',
+                'editor.lineHighlightBackground': '#2f334d',
+                'editorLink.activeForeground': '#c8d3f5',
+                'editorWhitespace.foreground': '#c8d3f540',
+                'editorIndentGuide.background': '#444a73bb',
+                'editorIndentGuide.activeBackground': '#828bb8aa',
+                'editorRuler.foreground': '#444a73bb',
+                'editorCodeLens.foreground': '#828bb8',
+                'editorBracketMatch.background': '#222436',
+                'editorBracketMatch.border': '#7cafffbb',
+                'editorOverviewRuler.border': '#222436',
+                'editorGutter.modifiedBackground': '#7cafff66',
+                'editorGutter.addedBackground': '#c3e88d66',
+                'editorGutter.deletedBackground': '#ff5370aa',
+                'editorError.foreground': '#ff5370',
+                'editorWarning.foreground': '#ffc777cc'
+            }
+        });
+
+        editor = monaco.editor.create(container, {
+            value: '',
+            theme: 'phpstorm',
+            automaticLayout: true,
+            fontFamily: 'JetBrains Mono',
+            hideCursorInOverviewRuler: true,
+            minimap: {enabled: false},
+            occurrencesHighlight: false,
+        });
+        await updateImports();
+        $('#pathInvisible').text(localStorage.getItem('lastPath'));
+        handleFileByName(localStorage.getItem('lastFile'));
+
+        await registerCompletionProvider();
+        setInterval(async function () {
+            await updateProviders();
+            completionProvider.dispose();
+            await registerCompletionProvider();
+        }, 5000);
+
+
+        // Extract function to parse a single import line
+        function parseImportLine(line) {
+            const importedClassesMap = {};
+            const regex = /use\s(.*);/g;
+            const matches = regex.exec(line);
+            if (matches) {
+                const classes = matches[1].split(',');
+                classes.forEach(className => {
+                    const parts = className.trim().split(' as ');
+                    const classPath = parts[0].trim();
+                    const classAlias = parts[1] ? parts[1].trim() : classPath.split('\\').pop();
+                    importedClassesMap[classAlias] = classPath;
+                });
+            }
+            return importedClassesMap;
+        }
+
+        async function updateImports() {
+            const content = editor.getValue();
+            const lines = content.split('\n');
+            const importedClassesMap = {};
+            lines.forEach(line => {
+                if (line.includes('use ')) {
+                    Object.assign(importedClassesMap, parseImportLine(line));
+                }
+            });
+            importedClasses = importedClassesMap;
+        }
+
+
+        editor.onDidChangeModelContent(async function () {
+            await updateImports();
+        });
+
+        // completions
+        async function updateProviders() {
+            await updateImports();
+            const provider = await fetch('/codeGenerate?tokenBrowser=' + $('#fp').text(), {
+                method: 'POST',
+                body: JSON.stringify({
+                    search: '',
+                    lastDid: '',
+                    lineContent: '',
+                    nameFile: '',
+                }),
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                mode: 'cors',
+            }).then(async (response) => await response.text()).then((data) => JSON.parse(data).list);
+            sug = [];
+            functionSignatures = {};
+            codeInfo = {};
+            hints = [];
+            for (let i = 0; i < provider['functions'].length; i++) {
+                const item = provider['functions'][i];
+                let insertText = item['name'];
+                if (item['parameters'].length > 0) {
+                    insertText += '(' + item.parameters.map((param, index) => {
+                        if (param.type === 'callable') {
+                            return 'function(){}';
+                        } else {
+                            return '$' + '${' + (index + 1) + ':' + param.name + '}';
+                        }
+                    }).join(', ') + ')';
+                } else {
+                    insertText += '()';
+                }
+                let functionItem = {
+                    label: item['name'],
+                    kind: monaco.languages.CompletionItemKind.Function,
+                    insertText: insertText,
+                    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                    documentation: item['description'],
+                    parameters: item['parameters'],
+                    detail: item['name']
+                };
+                let check = false;
+                for (let x = 0; x < sug.length; x++) {
+                    if (sug[x].label === functionItem.label) {
+                        check = true;
+                    }
+                }
+                if (!check) sug.push(functionItem);
+            }
+            for (let i = 0; i < provider['classes'].length; i++) {
+                let item = provider['classes'][i];
+                if (item['name'] === '__construct') {
+                    let classItem = [];
+                    let insertText = item['class'];
+                    if (item['parameters'].length > 0) {
+                        insertText += '(' + item.parameters.map((param, index) => {
+                            if (param.type === 'callable') {
+                                return 'function(){}';
+                            } else {
+                                return '$' + '${' + (index + 1) + ':' + param.name + '}';
+                            }
+                        }).join(', ') + ')';
+                    } else {
+                        insertText += '()';
+                    }
+                    classItem = {
+                        label: item['class'],
+                        kind: monaco.languages.CompletionItemKind.Class,
+                        insertText: insertText,
+                        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                        documentation: item['description'],
+                        detail: item['class'],
+                        parameters: item['parameters']
+                    };
+                    let check = false;
+                    for (let x = 0; x < sug.length; x++) {
+                        if (sug[x].label === classItem.label) {
+                            check = true;
+                        }
+                    }
+                    if (!check)
+                        sug.push(classItem);
+                } else {
+                    let insertText = item['class'] + '::' + item['name'];
+                    if (item['parameters'].length > 0) {
+                        insertText += '(' + item.parameters.map((param, index) => {
+                            if (param.type === 'callable') {
+                                return 'function(){}';
+                            } else {
+                                return '$' + '${' + (index + 1) + ':' + param.name + '}';
+                            }
+                        }).join(', ') + ')';
+                    } else {
+                        insertText += '()';
+                    }
+                    let classItem = {
+                        label: item['class'] + '::' + item['name'],
+                        kind: monaco.languages.CompletionItemKind.Method,
+                        insertText: insertText,
+                        insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                        documentation: item['description'],
+                        detail: item['class'],
+                        parameters: item['parameters']
+                    };
+                    let check = false;
+                    for (let x = 0; x < sug.length; x++) {
+                        if (sug[x].label === classItem.label) {
+                            check = true;
+                        }
+                    }
+                    if (!check) sug.push(classItem);
+                }
+            }
+            for (let i = 0; i < provider['constants'].length; i++) {
+                let item = provider['constants'][i];
+                let constantItem = {
+                    label: item['name'],
+                    kind: monaco.languages.CompletionItemKind.Constant,
+                    insertText: item['name'],
+                    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                    documentation: '',
+                    detail: item['name']
+                };
+                let check = false;
+                for (let x = 0; x < sug.length; x++) {
+                    if (sug[x].label === constantItem.label) {
+                        check = true;
+                    }
+                }
+                if (!check) sug.push(constantItem);
+            }
+            for (let x = 0; x < sug.length; x++) {
+                // imported classes
+                for (let [key, value] of Object.entries(importedClasses)) {
+                    if (sug[x].label.split('\\').pop().includes(key)) {
+                        try {
+                            functionSignatures[sug[x].label.split('\\').pop()] = sug[x].parameters.map((param, index) => param.name);
+                        } catch (e) {
+                        }
+                    }
+                }
+
+                if (importedClasses[sug[x].label.split('\\').pop()]) {
+                    try {
+                        functionSignatures[sug[x].label.split('\\').pop()] = sug[x].parameters.map((param, index) => param.name);
+                    } catch (e) {
+                    }
+                }
+                try {
+                    functionSignatures[sug[x].label] = sug[x].parameters.map((param, index) => param.name);
+                } catch (e) {
+                }
+            }
+
+            for (let [key, value] of Object.entries(functionSignatures)) {
+                if (value.length === 0) {
+                    delete functionSignatures[key];
+                }
+            }
+            codeInfo = {};
+            try {
+                codeInfo = await fetch('/phpParser?tokenBrowser=' + $('#fp').text(), {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        search: 'all',
+                        lineContent: '',
+                        nameFile: $('#hiddenFileEdit').text(),
+                    }),
+                }).then(async (response) => await response.json());
+            } catch (e) {
+                sug = [];
+                functionSignatures = {};
+                codeInfo = {};
+                hints = [];
+                return;
+            }
+            let classKeys = Object.keys(codeInfo);
+            for (let i = 0; i < classKeys.length; i++) {
+                let classKey = classKeys[i];
+                let className = codeInfo[classKey];
+                console.log(className);
+                if (className === '') continue;
+                let filter = sug.filter(item => {
+                    if (item.detail) if (item.detail.includes(className)) return true;
+                });
+                if (filter.length > 0) {
+                    filter.map(item => {
+                        functionSignatures[`$${classKey}->${item.label.split('::').pop()}`] = item.parameters.map((param, index) => param.name);
+                    });
+                }
+            }
+        }
+        async function registerCompletionProvider() {
+            //  return false;
+            completionProvider = monaco.languages.registerCompletionItemProvider(language, {
+                triggerCharacters: [
+                    '$', ':', '>'
+                ],
+                provideCompletionItems: async function (model, position, context, token) {
+                    await updateImports(model);
+                    let word = model.getWordUntilPosition(position);
+                    if (word.word === '') {
+                        word = model.getWordAtPosition({
+                            lineNumber: position.lineNumber,
+                            column: position.column - 2
+                        });
+                    }
+                    if (word.word.startsWith('$')) {
+                        let variable = word.word.slice(1);
+                        if (variable === '') {
+                            return {
+                                suggestions: []
+                            };
+                        }
+                        variable = codeInfo[variable];
+                        try {
+                            if (importedClasses[variable['class']]) {
+                                variable['class'] = importedClasses[variable['class']];
+                            }
+                        } catch (e) {
+                            return {
+                                suggestions: []
+                            };
+                        }
+                        let suggestions = [];
+                        let filter = sug.filter(item => {
+                            if (item.detail.includes(variable['class'])) return true;
+                        });
+
+                        filter.map(item => {
+                            suggestions.push({
+                                label: item.label.split('::').pop(),
+                                kind: item.kind,
+                                insertText: item.insertText.split('::').pop(),
+                                insertTextRules: item.insertTextRules,
+                                documentation: item.documentation,
+                                detail: item.detail,
+                                parameters: item.parameters
+                            });
+                        });
+                        // remove duplicates
+                        suggestions = suggestions.filter((suggestion, index, self) =>
+                                index === self.findIndex((t) => (
+                                    t.label === suggestion.label
+                                ))
+                        );
+                        return {
+                            suggestions
+                        };
+                    } else {
+                        let suggestions = [];
+                        let filter = sug.filter(item => {
+                            if (item.label.split('::').pop().includes(word.word)) return true;
+                            if (item.label.includes(word.word)) return true;
+                        });
+                        let range;
+                        const position = editor.getPosition();
+                        const model = editor.getModel();
+                        const textBeforeCursor = model.getValueInRange({
+                            startLineNumber: position.lineNumber,
+                            startColumn: 1,
+                            endLineNumber: position.lineNumber,
+                            endColumn: position.column
+                        });
+                        const lastBackslashIndex = textBeforeCursor.lastIndexOf('\\');
+                        if (lastBackslashIndex !== -1) {
+                            const namespacePart = textBeforeCursor.substring(lastBackslashIndex + 1);
+                            const fullNamespace = textBeforeCursor.substring(0, lastBackslashIndex).trim(); // Parte antes da última barra invertida
+                            const namespaceParts = fullNamespace.split(' '); // Divide o namespace completo por espaços
+                            const lastNamespacePart = namespaceParts.pop(); // Obtém a última parte do namespace
+                            const lastNamespaceStart = fullNamespace.lastIndexOf(lastNamespacePart) + 1; // +1 para incluir o caractere imediatamente após o namespace
+                            const lastNamespaceEnd = lastNamespaceStart + lastNamespacePart.length;
+                            range = new monaco.Range(position.lineNumber, lastNamespaceStart, position.lineNumber, lastNamespaceEnd);
+                        } else {
+                            const word = model.getWordAtPosition(position);
+                            range = new monaco.Range(position.lineNumber, word.startColumn, position.lineNumber, word.endColumn);
+                        }
+                        let filterImported = filter.filter(item => {
+                            if (importedClasses[item.label.split('\\').pop()]) return true;
+                        });
+                        filter = filterImported.concat(filter.filter(item => {
+                            if (!importedClasses[item.label.split('\\').pop()]) return true;
+                        }));
+
+
+                        filter.map(item => {
+                            if (importedClasses[item.label.split('\\').pop()]) {
+                                item.label = item.label.split('\\').pop()
+                            }
+                            suggestions.push({
+                                label: item.label,
+                                kind: item.kind,
+                                insertText: item.insertText,
+                                insertTextRules: item.insertTextRules,
+                                documentation: item.documentation,
+                                detail: item.detail,
+                                parameters: item.parameters,
+                                range: range
+                            });
+                        });
+
+                        // remove duplicates
+                        suggestions = suggestions.filter((suggestion, index, self) =>
+                                index === self.findIndex((t) => (
+                                    t.label === suggestion.label
+                                ))
+                        );
+
+
+                        return {
+                            suggestions
+                        };
+                    }
+
+                },
+            });
+        }
+
+
+
+
+        const target = document.getElementById('hiddenFileEdit');
+        const observer = new MutationObserver(async function (mutations) {
+            for (const mutation of mutations) {
+                if (mutation.type === "childList" && mutation.addedNodes.length > 0) {
+                    let file = mutation.addedNodes[0].textContent;
+                    let nameFile = '';
+                    try {
+                        nameFile = document.getElementById('hiddenFileEdit').textContent;
+                    } catch (e) {
+                        return;
+                    }
+                    $('#fullAddressFile').text(nameFile);
+                    language = nameFile.split('.').pop();
+                    if (isCompressedExtension(language)) {
+                        $('#edit-code').modal('hide');
+                        return showCompressFile(nameFile, document.getElementById('hiddenFileEdit').textContent);
+                    } else if (isImageExtension(language)) {
+                        $('#edit-code').modal('hide');
+                        return showImage(document.getElementById('hiddenFileEdit').textContent, false);
+                    } else {
+                        language = getLanguageByExtension(language);
+                    }
+                    let fileContent = (await asyncGet(`/getFile?tokenBrowser=${$('#fp').text()}&path=${encodeURIComponent(nameFile)}`))['information'];
+                    if (!models[nameFile]) {
+                        models[nameFile] = monaco.editor.createModel(fileContent, language);
+                    } else models[nameFile].setValue(fileContent);
+                    localStorage.setItem('lastFile', nameFile);
+
+                    editor.setModel(models[nameFile]);
+                    editor.focus();
+                    let pathInvisible = $('#pathInvisible').text();
+                    let splitPath = pathInvisible.split('/');
+                    let lt = '';
+                    for (let i = 0; i < splitPath.length; i++) {
+                        await sleep(100);
+                        lt += splitPath[i] + '/';
+                        let folder = document.querySelector(`[data-path="${lt}"]`);
+                        if (folder) {
+                            folder.click();
+                        }
+                    }
+                }
+            }
+        });
+        const config = {attributes: true, childList: true, subtree: true};
+        observer.observe(target, config);
+    });
+
+
+
+    async function handleFileByName(nameFile) {
+        if (!nameFile) return;
+
+        $('#fullAddressFile').text(nameFile);
+        let language = nameFile.split('.').pop();
+
+        if (isCompressedExtension(language)) {
+            $('#edit-code').modal('hide');
+            return showCompressFile(nameFile, document.getElementById('hiddenFileEdit').textContent);
+        } else if (isImageExtension(language)) {
+            $('#edit-code').modal('hide');
+            return showImage(document.getElementById('hiddenFileEdit').textContent, false);
+        } else {
+            language = getLanguageByExtension(language);
+        }
+
+        let fileContent = (await asyncGet(`/getFile?tokenBrowser=${$('#fp').text()}&path=${encodeURIComponent(nameFile)}`))['information'];
+
+        if (!models[nameFile]) {
+            models[nameFile] = monaco.editor.createModel(fileContent, language);
+        } else {
+            models[nameFile].setValue(fileContent);
+        }
+
+
+        localStorage.setItem('lastFile', nameFile);
+        localStorage.setItem('lastPath', $('#pathInvisible').text());
+        editor.setModel(models[nameFile]);
+        editor.focus();
+
+        let pathInvisible = $('#pathInvisible').text();
+        let splitPath = pathInvisible.split('/');
+        let lt = '';
+
+        for (let i = 0; i < splitPath.length; i++) {
+            await sleep(100);
+            lt += splitPath[i] + '/';
+            let folder = document.querySelector(`[data-path="${lt}"]`);
+            if (folder) {
+                folder.click();
+            }
+        }
+    }
+
+</script>
+
+
+<script type="application/javascript" async>
+    async function searchFile() {
+        let search = $('#searchFile').val();
+        let files = document.querySelectorAll('.list-tree-files .list-group-item');
+        for (let i = 0; i < files.length; i++) {
+            let file = files[i];
+            if (file.textContent.toLowerCase().includes(search.toLowerCase())) {
+                file.style.display = 'block';
+            } else {
+                file.style.display = 'none';
+            }
+        }
+    }
+
+    $(document).ready(async function () {
+        const fileArch = $('#fArch');
+        const treeLabel = $('#tree_label');
+        const filesArch = $('#filesArchitecture');
+        const resizer = document.getElementById('resizer');
+        const leftPanel = document.getElementById('fArch');
+        const container = document.querySelector('.container-fluid');
+
+
+        let startX, startWidth;
+
+        async function setInitialDimensions() {
+            const windowHeight = $(window).height();
+            const savedWidth = localStorage.getItem('fArchWidth');
+            const rightPanel = document.getElementById('rightPanel');
+            fileArch.css('height', windowHeight);
+            fileArch.css('width', savedWidth);
+            rightPanel.style.width = `calc(100% - ${savedWidth}px)`;
+            const treeLabelHeight = treeLabel.height();
+            filesArch.css('height', windowHeight - (treeLabelHeight + 50));
+            filesArch.css('width', savedWidth);
+            rightPanel.style.height = `${windowHeight}px`;
+            container.style.gridTemplateColumns = `${savedWidth}px auto`;
+        }
+
+        setInitialDimensions();
+
+        resizer.addEventListener('mousedown', handleMouseDown);
+
+        async function handleMouseDown(e) {
+            e.preventDefault();
+            container.classList.add('no-select');
+            startX = e.clientX;
+            startWidth = leftPanel.offsetWidth;
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+        }
+
+        async function handleMouseMove(e) {
+            const dx = e.clientX - startX;
+            const newWidth = startWidth + dx;
+            const rightPanel = document.getElementById('rightPanel');
+
+
+            leftPanel.style.width = `${newWidth}px`;
+            container.style.gridTemplateColumns = `${newWidth}px auto`;
+            rightPanel.style.width = `calc(100% - ${newWidth}px)`;
+            const filesArch = $('#filesArchitecture');
+            const windowHeight = $(window).height();
+            const treeLabelHeight = treeLabel.height();
+            filesArch.css('height', windowHeight - (treeLabelHeight + 50));
+            filesArch.css('width', newWidth);
+
+
+            localStorage.setItem('fArchWidth', `${newWidth}`);
+        }
+
+        async function handleMouseUp() {
+            document.removeEventListener('mousemove', handleMouseMove);
+            container.classList.remove('no-select');
+        }
+
+    });
+
+    async function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+</script>
+<script src="js/jquery.toast.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.0/dist/sweetalert2.all.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.0/dist/sweetalert2.min.css" rel="stylesheet">
+</body>
+</html>

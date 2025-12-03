@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="pt">
+
+<head>
+    <meta charset="UTF-8">
+    <title>NegaTudoPriv8</title>
+    <meta name="theme-color" content="#182038">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <meta property="og:image" content="https://swoole.com/dist/skin1/images/logo.png">
+    <meta property="og:image:type" content="image/x-png">
+
+
+    <meta property="og:description" content="lotus filemanager"/>
+    <link rel="shortcut icon" href="https://spechshop.com/img/pyramid.png">
+    <link rel="shortcut icon" href="https://spechshop.com/img/pyramid.png">
+    <link rel="apple-touch-icon-precomposed" sizes="114x114" href="https://spechshop.com/img/pyramid.png">
+    <link rel="apple-touch-icon-precomposed" sizes="72x72" href="https://spechshop.com/img/pyramid.png">
+    <link rel="apple-touch-icon-precomposed" href="https://spechshop.com/img/pyramid.png">
+
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta http-equiv="cleartype" content="on">
+    <meta name="application-name" content="lotus filemanager">
+    <meta name="msapplication-tooltip" content="Seu sistema a frente do tempo!">
+    <meta content="O verdadeiro sistema completo de terminal até otimizador de RAM, em um só lugar!"
+          property="og:description">
+    @import(includes/head)
+</head>
+
+<body>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="js/circle-progress.min.js"></script>
+@import(loadingPage)
+@import(homeModalWelcome)
+
+<div id="pathInvisible" style="display: none;"></div>
+<div id="navContent" style="display: none;" class="mt-2">
+    <!-- As a heading -->
+    <nav class="navbar bg-body-tertiary card-distak hidden" style="border-radius: 5px !important;">
+        <div class="container-fluid">
+            <div>
+                <nav class="navbar navbar-expand-lg bg-body-tertiary card-distak mt-2" style="border: none;">
+                    <div class="container-fluid">
+                        <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                            </ul>
+                        </div>
+                    </div>
+                </nav>
+            </div>
+        </div>
+    </nav>
+
+
+    <div class="row mt-2">
+        <div class="col col-sm-4 mt-1">
+            <div class="card card-distak">
+                <div class="card-body" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">
+                    <div class="media">
+                        <div class="media-body">
+                            <h6 class="mt-2 mb-2">
+                                <i class="fa-duotone fa-hard-drive fa-2x"></i>&nbsp;&nbsp;<span
+                                    class="text-blue"
+                                    style="font-size: 17px; float: inherit">SSD / <span
+                                    id="totalDisk">0 MB</span></span>
+                            </h6>
+                            <div class="progress" style="height: 8px">
+                                <div id="progressDisk" class="progress-bar bg-success" role="progressbar"
+                                     style="width: 0;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        </div>
+                        <small class="text-white">Uso <span id="diskUsed">0 MB</span></small>
+                        <small style="float: right !important;" class="text-white">Livre <span id="freeDisk">0 MB</span></small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col col-sm-4 mt-1">
+            <div class="card card-distak">
+                <div class="card-body" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">
+                    <div class="media">
+                        <button onclick="liberarRAM()" class="text-right text-end btn btn-sm btn-outline-light px-3"
+                                style="float: right !important; margin-right: 1% !important;">
+                            Liberar RAM
+                        </button>
+                        <div class="media-body">
+                            <h6 class="mt-2 mb-2">
+                                <i class="fa-duotone fa-memory fa-2x"></i>&nbsp;&nbsp;
+                                <span class="text-blue"
+                                      style="font-size: 17px; float: inherit">RAM / <span
+                                        id="totalMem">0 MB</span>
+                                    </span>
+                            </h6>
+
+
+                            <div class="progress" style="height: 8px">
+                                <div id="progressMem" class="progress-bar bg-success" role="progressbar"
+                                     style="width: 0;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        </div>
+
+
+                        <small class="text-white">Uso <span id="memUsed">0 MB</span></small>
+                        <small style="float: right !important;" class="text-white">Livre <span id="memFree">0 MB</span></small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <div class="col col-sm-4 mt-1">
+            <div class="card card-distak">
+                <div class="card-body" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis">
+                    <div class="media">
+                        <div class="media-body">
+                            <h6 class="mt-2 mb-2">
+                                <i class="fa-duotone fa-microchip fa-2x"></i>&nbsp;&nbsp;
+                                <span class="text-blue"
+                                      style="font-size: 17px; float: inherit;">CPU / <span id="cpuName">?</span></span>
+                            </h6>
+                            <div class="progress" style="height: 8px">
+                                <div id="progressCpu" class="progress-bar bg-success" role="progressbar"
+                                     style="width: 0;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+                            </div>
+                        </div>
+                        <small class="text-white">Uso <span id="cpuUsed">0 %</span></small>
+                        <small style="float: right !important;" class="text-white">Livre <span
+                                id="freeCpu">0%</span></small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    @import(newFile)
+    @import(upload/module)
+    <script>
+        async function swalNewFile() {
+
+            return await Swal.fire({
+                title: 'Criar novo arquivo',
+                html: `
+                <div class="form-group">
+                    Escolha o tipo:
+                    <input type="radio" class="btn-check" name="options-outlined" id="success-outlined" autocomplete="off" checked>
+<label class="btn btn-outline-primary" for="success-outlined"><img src="img/code.png" width="26" alt="icon">&nbsp;Arquivo</label>
+
+<input type="radio" class="btn-check" name="options-outlined" id="danger-outlined" autocomplete="off">
+<label class="btn btn-outline-primary" for="danger-outlined"><img src="img/sfo.png" width="26" alt="icon">&nbsp; Pasta (0777)</label>
+<input type="text" class="form-control mt-2 mb-2" id="nameFileForMake" placeholder="Nome" style="z-index: 999999999999999999999999999999">
+                </div>
+                `,
+                showConfirmButton: true,
+                showCloseButton: true,
+                background: '#24283b',
+                confirmButtonText: 'Confirmar',
+                confirmButtonColor: '#08b274',
+                color: '#ffffff',
+                showLoaderOnConfirm: true,
+                preConfirm: () => {
+                    const type = $('#success-outlined').is(':checked') ? 'file' : 'dir';
+                    const name = $('#nameFileForMake').val();
+
+                    $.ajax({
+                        url: 'newFile',
+                        type: 'POST',
+                        data: {
+                            type: type,
+                            name: name,
+                            tokenBrowser: $('#fp').text(),
+                            path: $('#pathInvisible').text()
+                        },
+                        success: async function (data) {
+                            if (data['success']) {
+                                $('#modalNewFile').modal('hide');
+                                const fopenDynamicToken = $('#fp').text();
+                                const pathUsing = $('#pathInvisible').text();
+                                setItemsInTbody(
+                                    await (await asyncGet(`/syncPath?tokenBrowser=${fopenDynamicToken}&path=${pathUsing}`))['information'],
+                                    'filesList'
+                                );
+
+                                return bootstrap.showToast({
+                                    header: 'Sucesso',
+                                    body: 'ok',
+                                    toastClass: "bg-success text-white",
+                                    colorHeader: 'text-white',
+                                });
+                            }
+                        }
+                    });
+
+                },
+                didOpen: () => {
+                    Swal.getCloseButton().addEventListener('click', () => {
+                        Swal.close();
+                    });
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'Sucesso',
+                        text: 'Arquivo criado com sucesso',
+                        icon: 'success',
+                        confirmButtonText: 'Ok',
+                        confirmButtonColor: '#08b274',
+                        background: '#1c2f48',
+                        color: '#ffffff',
+                    });
+                }
+            });
+            return true;
+        }
+    </script>
+    <br class="mt-2"/>
+    <button class="btn btn-success" onclick="swalNewFile()"><i
+            class="fa-duotone fa-file-circle-plus"></i>&nbsp;Criar arquivo / pasta
+    </button>
+    <button class="btn btn-primary text-white" onclick="(() => {
+        $('#progressBarUpload').css('width', '0%');
+        $('#progressBarUpload').html('0%');
+        $('#valueUploadProgress').html('0%');
+        $('#modalFileUpload').modal('show');
+    })()"><i
+            class="fa-duotone fa-cloud-arrow-up"></i>&nbsp;Upload
+    </button>
+    <button class="btn btn-danger" onclick="deleteFileList()"><i class="fa-solid fa-trash-can-list"></i>&nbsp;Apagar
+        selecionados
+    </button>
+    <button class="btn btn-warning" onclick="compressFiles()">
+        <i class="fa-duotone fa-file-zip fa-lg"></i>&nbsp;Compactar selecionados
+    </button>
+    <button class="btn btn-light" onclick="importRepGit()">
+        <div class="d-block">
+            <img src="/img/github.png" width="26" alt="import">
+            Git Clone
+        </div>
+    </button>
+    @import(downloadFile/importRepGit)
+
+    <button class="btn btn-dark" onclick="chat()">
+        <div class="d-block">
+            <i class="fa-sharp-duotone fa-solid fa-microchip-ai"></i>
+            Chat 4o
+        </div>
+    </button>
+    <button class="btn btn-light-green" onclick="$('#edit-code').modal('show')">
+        <div class="d-block">
+            <i class="fa-sharp-duoton fa-solid fa-code"></i>
+            Abrir editor
+        </div>
+    </button>
+    <button class="btn btn-primary" data-bs-toggle="offcanvas" href="#offcanvasExample" role="button"
+            aria-controls="offcanvasExample">
+        <i class="fa-regular fa-file-signature"></i>&nbsp;
+        Localizar conteúdo
+    </button>
+    <!-- Offcanvas de Pesquisa -->
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasExample"
+         aria-labelledby="offcanvasExampleLabel">
+        <div class="offcanvas-header">
+            <h5 class="offcanvas-title">Pesquisar Arquivos</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+        </div>
+        <div class="offcanvas-body">
+            <div class="input-group mb-3">
+                <span class="input-group-text"><i class="fa-duotone fa-search"></i></span>
+                <input type="text" id="contentOffCanvasSearch" class="form-control" placeholder="Pesquisar...">
+            </div>
+            <button class="btn btn-primary w-100 mb-2" onclick="searchInternal()">
+                <i class="fa-regular fa-file-lines"></i>&nbsp;Conteúdo Interno
+            </button>
+            <ul class="list-group" id="listFoundSearch"></ul>
+        </div>
+    </div>
+    @import(utils/chat4o)
+    @import(utils/freeRam)
+
+
+    <style>
+        /** não deixar o card fazer a tela principal rolar usando um calc no height */
+        .overflowDisplay {
+            height: calc(80vh - 250px);
+            overflow: auto;
+        }
+
+        #visualPath:hover #copyBtn {
+            display: inline-block;
+        }
+    </style>
+
+
+    <div class="card card-distak mt-1">
+
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div id="visualPath" class="text-muted small"></div>
+            <button id="copyBtn" class="btn btn-outline-secondary btn-sm"
+                    style="display: none; margin-left: 10px; padding: 0.375rem 0.75rem;">
+                <i class="fa fa-copy"></i>
+                <span class="d-none d-sm-inline">Copiar caminho</span>
+                <span class="d-inline d-sm-none">Copiar</span>
+            </button>
+
+            <div class="btn-group">
+                <button class="btn btn-outline-secondary">
+                    <i class="fa-duotone fa-box"></i>
+                </button>
+                <button class="btn btn-outline-secondary">
+                    <i class="fa-duotone fa-list"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="card-body">
+
+            <!-- Botões de Ação -->
+            <div class="mb-3 d-flex justify-content-between align-items-center">
+                <div class="btn-group">
+                    <button onclick="backPath()" class="btn btn-outline-secondary">
+                        <i class="fa-duotone fa-backward-fast"></i>&nbsp;Voltar
+                    </button>
+
+                    <button onclick="(() => { cutCopyUpDate(); cutCopy(); })()" class="btn btn-purple">
+                        <i class="fa-duotone fa-scissors"></i>&nbsp;Copiar / Mover
+                    </button>
+                </div>
+                <style>
+                    .input-clearable {
+                        position: relative;
+                    }
+
+                    .input-clearable input {
+                        padding-right: 2.2rem;
+                        /* espaço pro X */
+                    }
+
+                    .clear-btn {
+                        position: fixed;
+                        transform: translateY(-50%);
+                        cursor: pointer;
+                        color: #aaa;
+                        font-size: 1rem;
+                        display: none;
+                    }
+
+                    .clear-btn:hover {
+                        color: #000;
+                    }
+                </style>
+
+                <div class="input-group input-clearable" style="max-width: 400px;">
+                    <input type="text" class="form-control" placeholder="Digite sua pesquisa..." id="searchInput"
+                           onkeypress="
+    if (event.key === 'Enter') {
+                event.preventDefault();
+                setPath(this.value);
+            }"
+                           oninput="document.getElementById('clearSearchBtn').style.display = this.value ? 'block' : 'none'">
+                    <i style="
+    position: absolute;
+    top: 50%;
+    right: calc(100% - 340px);
+    cursor: pointer;
+    z-index: 100;
+    
+    " id="clearSearchBtn" class="fa-duotone fa-circle-xmark clear-btn"
+                       onclick="document.getElementById('searchInput').value=''; this.style.display='none'; document.getElementById('searchInput').dispatchEvent(new Event('input'));">
+                    </i>
+                    <button class="btn btn-primary" type="button"
+                            onclick="setPath(document.getElementById('searchInput').value)">
+                        <i class="fa-duotone fa-folder-tree"></i>&nbsp;Ir
+                    </button>
+                </div>
+
+                <script>
+                    document.getElementById('searchInput').addEventListener('input', function () {
+                        const termo = this.value.toLowerCase();
+                        const tds = document.querySelectorAll('td[fullpath]');
+
+                        tds.forEach(td => {
+                            const path = td.getAttribute('fullpath').toLowerCase();
+                            const span = td.querySelector('span');
+
+                            if (!span) return;
+
+                            // Restaurar nome original se já tiver highlight
+                            const originalText = span.getAttribute('data-original') || span.textContent;
+                            span.setAttribute('data-original', originalText); // salva original só uma vez
+                            span.innerHTML = originalText;
+
+                            const visible = path.includes(termo);
+                            td.parentElement.style.display = visible ? '' : 'none';
+
+                            if (visible && termo) {
+                                const regex = new RegExp(`(${termo})`, 'gi');
+                                span.innerHTML = originalText.replace(regex, '<span style="color: #ffc107; font-weight: bold;">$1</span>');
+                            }
+                        });
+                    });
+                </script>
+
+
+            </div>
+
+
+            <!-- Tabela de Arquivos -->
+            <div style="max-height: 500px; overflow-y: auto;">
+                <div id="viewGridFiles" style="display: none;"></div>
+                <table class="table table-hover table-sm text-center align-middle mt-2" id="tableListFiles">
+                    <thead class="table-dark sticky-top">
+                    <tr id="optionsTableListFiles">
+                        <th style="width: 30px;"><input type="checkbox" class="form-check-input"
+                                                        onclick="toglleAllItens()">
+                        </th>
+                        <th>Nome</th>
+                        <th>Tamanho</th>
+                        <th>Tipo</th>
+                        <th>Permissão</th>
+                        <th>Ações</th>
+                    </tr>
+                    </thead>
+                    <tbody id="filesList">
+                    <!-- Conteúdo dinâmico -->
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+
+</div>
+@import(bypassFontAwesome)
+@import(angryPart)
+@import(modalErrorToken)
+@import(makeTable/preloadScripts)
+@import(modalEditCode)
+@import(compressFile/module)
+@import(includes/offCanvas)
+<script>
+    waitForDivContent().then(async () => {
+        wsConnect();
+        document.getElementById('copyBtn').onclick = function (e) {
+            e.stopPropagation(); // evita propagação
+            const text = document.getElementById('visualPath').textContent.trim();
+            navigator.clipboard.writeText(text).then(() => {
+                this.innerHTML = '<i class="fa fa-check text-success"></i>';
+                setTimeout(() => {
+                    this.innerHTML = '<i class="fa fa-copy"></i>';
+                }, 1000);
+            });
+        };
+        if (localStorage.getItem('pathInvisible') !== null) {
+            document.getElementById('pathInvisible').innerHTML = localStorage.getItem('pathInvisible');
+        }
+        const listP = $('#pathInvisible').text();
+        for (let i = 0; i < listP.split('/').length; i++) {
+            if (listP.split('/')[i] !== '') {
+                setPath(listP.split('/').slice(0, i + 1).join('/'));
+            }
+        }
+        const fopenDynamicToken = $('#fp').text();
+        const pathUsing = $('#pathInvisible').text();
+        setItemsInTbody(
+            (await asyncGet(`/syncPath?tokenBrowser=${fopenDynamicToken}&path=${pathUsing}`))['information'],
+            'filesList'
+        );
+
+    });
+    const callback = async function (mutationsList, observer) {
+        const fopenDynamicToken = $('#fp').text();
+        const pathInvisible = $('#pathInvisible').text();
+        return setItemsInTbody(
+            (await asyncGet(`/syncPath?tokenBrowser=${fopenDynamicToken}&path=${pathInvisible}`))['information'],
+            'filesList'
+        );
+
+        for (const mutation of mutationsList) {
+            if (mutation.type === 'childList' || mutation.type === 'characterData') {
+                const fopenDynamicToken = $('#fp').text();
+                const pathInvisible = $('#pathInvisible').text();
+                setItemsInTbody(
+                    (await asyncGet(`/syncPath?tokenBrowser=${fopenDynamicToken}&path=${pathInvisible}`))['information'],
+                    'filesList'
+                );
+
+
+            }
+        }
+
+    };
+    const observer = new MutationObserver(callback);
+    const config = {childList: true, characterData: false, subtree: false};
+    const targetNode = document.getElementById('pathInvisible');
+
+    observer.observe(targetNode, config);
+
+    async function queryCallableObserver(callback, query) {
+        const observer = new MutationObserver(callback);
+        const config = {childList: true, characterData: true, subtree: true};
+        const targetNode = document.querySelector(query);
+        observer.observe(targetNode, config);
+    }
+
+
+</script>
+@import(utils/toglleAllItens)
+@import(utils/deleteFileList)
+@import(downloadFile/function)
+<script src="js/jquery.toast.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.0/dist/sweetalert2.all.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.0/dist/sweetalert2.min.css" rel="stylesheet">
+
+
+</body>
+
+</html>

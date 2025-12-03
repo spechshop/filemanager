@@ -1,0 +1,349 @@
+<script>
+    function httpGetSynchronous(url) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url, false);
+        xhr.send(null);
+        if (xhr.status === 200) {
+            return xhr.responseText;
+        } else {
+            console.error('Erro na requisição GET:', xhr.status, xhr.statusText);
+        }
+    }
+
+    function httpPostSynchronous(url, data) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', url, false);
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(JSON.stringify(data));
+        if (xhr.status === 200) {
+            return xhr.responseText;
+        } else {
+            console.error('Erro na requisição POST:', xhr.status, xhr.statusText);
+        }
+    }
+
+
+</script>
+<code id="fp" style="display: none"></code>
+<center style="margin-top: 100px" id="loadingPage">
+    <div class="spinner-grow text-primary" role="status"></div>
+    <div class="spinner-grow text-primary" role="status"></div>
+    <div class="spinner-grow text-primary" role="status"></div>
+</center>
+
+
+<script>
+    let fileList = [];
+
+    async function nfedc() {
+        $('#edit-code').modal('hide');
+        var sss = swalNewFile();
+        sss.then((value) => {
+            if (value) {
+                refAll();
+                return Promise.resolve(setTimeout(() => {
+                    $('#edit-code').modal('show');
+                }, 1000));
+            } else {
+                $('#edit-code').modal('show');
+                return Promise.resolve(setTimeout(() => {
+                    $('#edit-code').modal('show');
+                }, 1000));
+            }
+        });
+
+    }
+
+
+    async function fetchFileTree(path = '/') {
+        const response = await fetch(`/treeDetails?dir=${encodeURIComponent(path)}&tokenBrowser=${$('#fp').text()}`);
+        return await response.json();
+    }
+
+    async function buildTreeHtml(tree, path) {
+        let html = '<ul>';
+        for (const key in tree) {
+            if (typeof tree[key] === 'object') {
+                html += `
+                        <li class="folder" data-path="${path + key}/">
+                            <i class="fas fa-folder icon"></i>${key}
+                        </li>
+                        <ul class="hidden"></ul>`;
+            } else {
+                html += `<li file-path="${path + tree[key]}" class="file" onclick="(function (){
+    $('#hiddenFileEdit').text('${path + tree[key]}');
+    $('#namefilemodaledit').text('${path + tree[key]}');
+    $('#nameFileForEdit').text('${tree[key]}');
+})();">
+    ${getIconFile(tree[key])}&nbsp;
+    ${tree[key]}
+</li>`;
+            }
+        }
+        html += '</ul>';
+        return html;
+    }
+
+    document.addEventListener('click', async function (event) {
+        const folderElement = event.target.closest('.folder');
+        if (folderElement) {
+            const path = folderElement.getAttribute('data-path');
+            const sublist = folderElement.nextElementSibling;
+
+            if (sublist.classList.contains('hidden')) {
+                if (!sublist.innerHTML) {
+                    const tree = await fetchFileTree(path);
+                    sublist.innerHTML = await buildTreeHtml(tree, path);
+                }
+                sublist.classList.remove('hidden');
+                folderElement.querySelector('.icon').classList.replace('fa-folder', 'fa-folder-open');
+            } else {
+                sublist.classList.add('hidden');
+                folderElement.querySelector('.icon').classList.replace('fa-folder-open', 'fa-folder');
+            }
+        }
+    });
+
+    async function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function refAll() {
+        await (async function () {
+            const initialTree = await fetchFileTree();
+            document.getElementById('filesArchitecture').innerHTML = await buildTreeHtml(initialTree, '/');
+        })();
+    }
+
+    let isContextMenuShown = false;
+
+    document.addEventListener('contextmenu', function (event) {
+        const folderElement = event.target.closest('.folder');
+        const fileElement = event.target.closest('.file');
+        const contextMenu = document.getElementById('context-menu');
+
+        if (folderElement || fileElement) {
+            event.preventDefault();
+            contextMenu.style.display = 'block';
+            contextMenu.style.left = event.clientX + 'px';
+            contextMenu.style.top = event.clientY + 'px';
+            contextMenu.classList.remove('hidden');
+            isContextMenuShown = true;
+            if (fileElement) {
+                if (!JSON.stringify(fileElement).includes('data-path')) {
+
+                    let optionNewFile = document.createElement('li');
+                    optionNewFile.innerHTML = `<i class="fa-light fa-file-circle-plus"></i> novo arquivo`;
+
+
+                    let optionCopy = document.createElement('li');
+                    optionCopy.innerHTML = `<i class="fas fa-copy"></i> copiar/cortar`;
+                    let optionDelete = document.createElement('li');
+                    optionDelete.innerHTML = `<i class="fas fa-trash"></i> deletar`;
+                    let optionRename = document.createElement('li');
+                    optionRename.innerHTML = `<i class="fas fa-edit"></i> renomear`;
+
+                    let optionDownload = document.createElement('li');
+                    optionDownload.innerHTML = `<i class="fas fa-download"></i> baixar`;
+                    let optionEdit = document.createElement('li');
+                    optionEdit.innerHTML = `<i class="fas fa-edit"></i> editar`;
+
+
+                    optionDelete.addEventListener('click', async function () {
+                        const fireSwalParams = {
+                            background: '#1c2f48',
+                            color: '#fff',
+                            title: 'Atenção!',
+                            text: 'Deletar ' + fileElement.textContent.trim() + '?',
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonText: 'Sim',
+                            cancelButtonText: 'Não',
+                            confirmButtonColor: '#d33',
+                            cancelButtonColor: '#3085d6',
+                            allowOutsideClick: false,
+                        };
+                        const {isConfirmed} = await Swal.fire(fireSwalParams);
+                        if (isConfirmed) {
+                            const response = await fetch(`/deleteFile?path=${encodeURIComponent(fileElement.getAttribute('file-path'))}&tokenBrowser=${$('#fp').text()}`);
+                            const data = await response.json();
+                            if (data.information === 'ok') {
+                                refAll();
+                                return bootstrap.showToast({
+                                    header: 'Sucesso',
+                                    body: 'Arquivo deletado com sucesso!',
+                                    toastClass: "bg-success text-white",
+                                    colorHeader: 'text-white',
+                                });
+                            } else {
+                                bootstrap.showToast({
+                                    header: 'Erro',
+                                    body: 'Não foi possível deletar o arquivo!',
+                                    toastClass: "bg-danger text-white",
+                                    colorHeader: 'text-white',
+                                });
+                            }
+                        } else {
+                            bootstrap.showToast({
+                                header: 'Cancelado',
+                                body: 'Operação cancelada!',
+                                toastClass: "bg-info text-white",
+                                colorHeader: 'text-white',
+                            });
+                        }
+
+                    });
+                    optionRename.addEventListener('click', async function () {
+                        $('#edit-code').modal('hide');
+                        let newName = await renameItem(fileElement.getAttribute('file-path'), fileElement.textContent.trim());
+                        $('#edit-code').modal('show');
+                        refAll();
+
+                        // troca o nome do arquivo
+                        $('#hiddenFileEdit').text(fileElement.getAttribute('file-path').replace(fileElement.textContent.trim(), newName).replaceAll('//', '/'));
+                        $('#nameFileForEdit').text(newName.replaceAll('//', '/'));
+
+
+                        let pathInvisible = $('#pathInvisible').text();
+                        let splitPath = pathInvisible.split('/');
+
+                        let lt = '';
+                        for (let i = 0; i < splitPath.length; i++) {
+                            // clica na pasta data-path
+                            await sleep(100);
+                            lt += splitPath[i] + '/';
+                            let folder = document.querySelector(`[data-path="${lt}"]`);
+                            if (folder) {
+                                folder.click();
+                            }
+
+                        }
+
+
+                    });
+
+                    optionDownload.addEventListener('click', async function () {
+                        downloadFile(fileElement.getAttribute('file-path'));
+                    });
+
+                    optionEdit.addEventListener('click', async function () {
+                        $('#hiddenFileEdit').text(fileElement.getAttribute('file-path'));
+                        $('#namefilemodaledit').text(fileElement.getAttribute('file-path'));
+                        $('#nameFileForEdit').text(fileElement.textContent.trim());
+                        $('#edit-code').modal('show');
+                    });
+
+                    optionNewFile.addEventListener('click', async function () {
+                        $('#hiddenFileEdit').text('');
+                        await swalNewFile();
+                        $('#nameFileForEdit').text('');
+                        $('#edit-code').modal('show');
+                    });
+
+
+                    // #ulContext
+                    let ulContext = document.getElementById('ulContext');
+                    ulContext.innerHTML = '';
+                    ulContext.appendChild(optionNewFile);
+                    ulContext.appendChild(optionCopy);
+                    ulContext.appendChild(optionDelete);
+                    ulContext.appendChild(optionRename);
+                    ulContext.appendChild(optionDownload);
+                    ulContext.appendChild(optionEdit);
+
+
+                    console.log('path', fileElement.getAttribute('file-path'));
+
+                }
+            } else {
+                let optionNewFolder = document.createElement('li');
+                optionNewFolder.innerHTML = `<i class="fa-light fa-folder-medical"></i> nova pasta`;
+                let optionNewFile = document.createElement('li');
+                optionNewFile.innerHTML = `<i class="fa-light fa-file-circle-plus"></i> novo arquivo`;
+                let optionDelete = document.createElement('li');
+                optionDelete.innerHTML = `<i class="fas fa-trash"></i> deletar`;
+                let trustPath = document.createElement('li');
+                trustPath.innerHTML = `<i class="fa-solid fa-sparkles"></i> add/remove stubs`;
+                trustPath.addEventListener('click', async function () {
+                    // url encode ex de uso:
+                    const response = await fetch(`/toggleStubsPath?path=${encodeURIComponent(folderElement.getAttribute('data-path'))}&tokenBrowser=${$('#fp').text()}`);
+                    const data = await response.json();
+                    if (data.action === 'added') {
+                        bootstrap.showToast({
+                            header: 'Sucesso',
+                            body: 'Path adicionado com sucesso!',
+                            toastClass: "bg-success text-white",
+                            colorHeader: 'text-white',
+                        });
+                    } else {
+                        bootstrap.showToast({
+                            header: 'Sucesso',
+                            body: 'Path removido com sucesso!',
+                            toastClass: "bg-success text-white",
+                            colorHeader: 'text-white',
+                        });
+                    }
+                });
+
+                optionNewFolder.addEventListener('click', async function () {
+                    $('#edit-code').modal('hide');
+                    let newName = await swalNewFolder();
+                    $('#edit-code').modal('show');
+                    refAll();
+                    // troca o nome do arquivo
+                    $('#hiddenFileEdit').text(folderElement.getAttribute('data-path') + newName);
+                    $('#nameFileForEdit').text(newName);
+
+                    let pathInvisible = $('#pathInvisible').text();
+                    let splitPath = pathInvisible.split('/');
+
+                    let lt = '';
+                    for (let i = 0; i < splitPath.length; i++) {
+                        // clica na pasta data-path
+                        await sleep(100);
+                        lt += splitPath[i] + '/';
+                        let folder = document.querySelector(`[data-path="${lt}"]`);
+                        if (folder) {
+                            folder.click();
+                        }
+
+                    }
+
+                });
+
+                optionDelete.addEventListener('click', async function () {
+                    await deleteFile(folderElement.getAttribute('data-path'));
+                    refAll();
+
+                });
+
+
+                let ulContext = document.getElementById('ulContext');
+                ulContext.innerHTML = '';
+                ulContext.appendChild(optionNewFolder);
+                ulContext.appendChild(optionNewFile);
+                ulContext.appendChild(trustPath);
+                ulContext.appendChild(optionDelete);
+
+
+            }
+
+
+        } else {
+            if (isContextMenuShown) {
+                contextMenu.style.display = 'none';
+                isContextMenuShown = false;
+            }
+        }
+    });
+    document.addEventListener('click', function (event) {
+        const contextMenu = document.getElementById('context-menu');
+        if (isContextMenuShown) {
+            contextMenu.style.display = 'none';
+            isContextMenuShown = false;
+        }
+    });
+
+
+
+</script>

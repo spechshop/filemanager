@@ -1,0 +1,60 @@
+{
+  "port": 8080,
+  "host": "0.0.0.0",
+  "ssl": ".",
+  "autoload": [
+    "Request/router",
+    "Request/views",
+    "Request/components",
+    "Request/template",
+    "Request/apps",
+    "Start/server",
+    "Start/console",
+    "Utils/cache/pages",
+    "Utils/cli",
+    "Database/call",
+    "Database/PDO",
+    "Database/lotus",
+    "Extension/plugins",
+    "OpenConnection/websocket",
+    "Message/server"
+  ],
+  "allowExtensions": {
+    "css": "text/css",
+    "js": "text/javascript",
+    "png": "image/png",
+    "ico": "image/ico",
+    "svg": "image/svg+xml",
+    "gif": "video/gif",
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "aep": "image/gif",
+    "json": "application/json"
+  },
+  "pages": [
+
+  ],
+  "allowObservable": [
+    "htxml",
+    "lotus",
+    "php"
+  ],
+  "serverSettings": {
+     "worker_num": 1,
+    "max_request": 20000000,
+    "max_coroutine": 20000000,
+    "enable_coroutine": true,
+    "enable_reuse_port": false,
+    "open_cpu_affinity": false,
+    "open_tcp_keepalive": true,
+    "open_tcp_nodelay": true,
+    "http_compression": true,
+    "http_compression_level": 9,
+    "compression_min_length": 1024,
+    "package_max_length": 2147483648,
+    "socket_buffer_size": 2147483648,
+    "open_http2_protocol": true,
+    "ssl_cert_file": "fullchain.pem",
+    "ssl_key_file": "privkey.pem"   
+  }
+}

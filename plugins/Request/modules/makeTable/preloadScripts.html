@@ -1,0 +1,837 @@
+<script src="js/script.js"></script>
+<script src="https://unpkg.com/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs" type="module"></script>
+
+<script>
+    window.allImagePaths = [];
+    bootstrap = !bootstrap ? {} : bootstrap;
+    bootstrap.showToast = !bootstrap.showToast ? function (parameters = {
+        header: '',
+        body: '',
+        toastClass: '',
+        colorHeader: '',
+    }) {return toast(
+        parameters.body,
+        parameters.header,
+        3000,
+        parameters.toastClass.includes(' ') ? 'info' : parameters.toastClass
+    )} : bootstrap.showToast;
+    $ = !$ ? {} : $;
+    $().modal = !$().modal ? {} : $().modal;
+    $().toast = !$().toast ? {} : $().toast;
+
+    async function asyncGet(url) {
+        try {
+            const response = await fetch(url);
+            if (!response.ok) {
+                throw new Error(`Request failed with status: ${response.status}`);
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Error during GET request:', error);
+            throw error;
+        }
+    }
+
+    function waitForDivContent() {
+        return new Promise((resolve, reject) => {
+            let intervalId = setInterval(() => {
+                let div = document.getElementById('fp');
+                if (div && div.innerHTML.trim() !== '') {
+                    clearInterval(intervalId);
+                    resolve();
+                }
+            }, 100);
+        });
+    }
+
+    function wsConnect() {
+        const hostname = window.location.port ? `${window.location.hostname}:${parseInt(window.location.port)}` : window.location.hostname;
+        const ws = new WebSocket(`wss://${hostname}`);
+        ws.onopen = function (event) {
+            toast('Conectado ao servidor', 'Bem vindo', 3000, 'success');
+
+            ws.send(JSON.stringify({
+                token: $('#fp').text()
+            }));
+        };
+        ws.onmessage = function (event) {
+            const data = JSON.parse(event.data);
+            if (data.success) {
+                ws.send(JSON.stringify({
+                    token: $('#fp').text()
+                }));
+                $('#totalDisk').html(`${data['disk']['total_space']} ${data['disk']['unit']}`);
+                $('#diskUsed').html(`${data['disk']['used_space']} ${data['disk']['unit']}`);
+                $('#freeDisk').html(`${data['disk']['free_space']} ${data['disk']['unit']}`);
+                $('#progressDisk').css('width', `${data['disk']['used_percentage']}%`);
+                $('#progressDisk').attr('class', `progress-bar ${data['disk']['background']}`);
+
+                $('#totalMem').html(`${data['memory']['total_mem']} ${data['memory']['unit']}`);
+                $('#memUsed').html(`${data['memory']['used_mem']} ${data['memory']['unit']}`);
+                $('#memFree').html(`${data['memory']['free_mem']} ${data['memory']['unit']}`);
+                $('#progressMem').css('width', `${data['memory']['used_percentage']}%`);
+                $('#progressMem').attr('class', `progress-bar ${data['memory']['background']}`);
+
+                $('#cpuName').html(data['cpu']['name']);
+                $('#cpuUsed').html(`${data['cpu']['usage']} %`);
+                $('#progressCpu').css('width', `${data['cpu']['usage']}%`);
+                $('#freeCpu').html(`${parseFloat(100 - data['cpu']['usage'])} %`);
+                $('#progressCpu').attr('class', `progress-bar ${data['cpu']['background']}`);
+            }
+        };
+        ws.onerror = function (error) {
+            setTimeout(wsConnect, 3000);
+            return bootstrap.showToast({
+                header: 'Erro',
+                body: 'Não foi possível conectar ao servidor',
+                toastClass: "bg-danger text-white",
+                colorHeader: 'text-white',
+            });
+        };
+    }
+
+    function getIconFile(namefile) {
+        let iconFileCompress = `<img src="img/desconhecido.png" width="26" alt="icon">`;
+        let extension = namefile.split('.').pop();
+        if (extension === 'folder') iconFileCompress = `<img src="img/pasta-aberta.png" width="26" alt="icon">`;
+        if (extension === 'py') iconFileCompress = `<img src="img/python.png" width="26" alt="icon">`;
+        if (extension === 'txt') iconFileCompress = `<img src="img/txt.png" width="26" alt="icon">`;
+        if (extension === 'php') iconFileCompress = `<i class="fa-brands fa-php"></i>`;
+        if (extension === 'json') iconFileCompress = `<img src="img/json.png" width="26" alt="icon">`;
+        if (extension === 'LICENSE') iconFileCompress = `<img src="img/diploma.png" width="26" alt="icon">`;
+        if (extension === 'yml') iconFileCompress = `<img src="img/yaml.png" width="26" alt="icon">`;
+        if (extension === 'dist') iconFileCompress = `<img src="img/dist.png" width="26" alt="icon">`;
+        if (extension === 'md') iconFileCompress = `<img src="img/olho.png" width="26" alt="icon">`;
+        if (extension === 'css') iconFileCompress = `<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Bootstrap_logo.svg/2560px-Bootstrap_logo.svg.png" width="26" alt="icon">`;
+        if (extension === 'scss') iconFileCompress = `<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Bootstrap_logo.svg/2560px-Bootstrap_logo.svg.png" width="26" alt="icon">`;
+        if (extension === 'lock') iconFileCompress = `<img src="img/trancar.png" width="26" alt="icon">`;
+        if (extension === 'sh') iconFileCompress = `<img src="img/cmd.png" width="26" alt="icon">`;
+        if (extension === 'log') iconFileCompress = `<img src="img/log.png" width="26" alt="icon">`;
+        if (extension === 'cfg') iconFileCompress = `<img src="img/cfg.png" width="26" alt="icon">`;
+        if (extension === 'conf') iconFileCompress = `<img src="img/conf.png" width="26" alt="icon">`;
+        if (extension === 'ttf') iconFileCompress = `<img src="img/font-file.png" width="26" alt="icon">`;
+        if (extension === 'woff') iconFileCompress = `<img src="img/font-file.png" width="26" alt="icon">`;
+        if (extension === 'eot') iconFileCompress = `<img src="img/trancar.png" width="26" alt="icon">`;
+        if (extension === 'xml') iconFileCompress = `<img src="img/xml-file.png" width="26" alt="icon">`;
+        if (extension === 'png') iconFileCompress = `<img src="img/image.png" width="26" alt="icon">`;
+        if (extension === 'jpg') iconFileCompress = `<img src="img/image.png" width="26" alt="icon">`;
+        if (extension === 'html') iconFileCompress = `<img src="img/html-5.png" width="26" alt="icon">`;
+        if (extension === 'js') iconFileCompress = `<img src="img/js.png" width="26" alt="icon">`;
+        if (extension === 'go') iconFileCompress = `<img src="img/go.png" width="26" alt="icon">`;
+        if (extension === 'exe') iconFileCompress = `<img src="img/windows.png" width="26" alt="icon">`;
+        if (extension === 'deb') iconFileCompress = `<img src="img/linux.png" width="26" alt="icon">`;
+        if (extension === 'pkg') iconFileCompress = `<img src="img/linux.png" width="26" alt="icon">`;
+        if (extension === 'so') iconFileCompress = `<img src="img/linux.png" width="26" alt="icon">`;
+        if (extension === 'jar') iconFileCompress = `<img src="img/java.png" width="26" alt="icon">`;
+        if (extension === 'cpp') iconFileCompress = `<img src="https://cdn-icons-png.flaticon.com/512/8304/8304381.png" width="26" alt="icon">`;
+        if (extension === 'zip') iconFileCompress = `<img src="img/zip.png" width="26" alt="icon">`;
+        if (extension === 'rar') iconFileCompress = `<img src="img/zip.png" width="26" alt="icon">`;
+        if (extension === '7z') iconFileCompress = `<img src="img/zip.png" width="26" alt="icon">`;
+        if (extension === 'tar') iconFileCompress = `<img src="img/zip.png" width="26" alt="icon">`;
+        if (extension === 'gz') iconFileCompress = `<img src="img/zip.png" width="26" alt="icon">`;
+        if (extension === 'bz2') iconFileCompress = `<img src="img/zip.png" width="26" alt="icon">`;
+        if (extension === 'xz') iconFileCompress = `<img src="img/zip.png" width="26" alt="icon">`;
+        if (extension === 'svg') iconFileCompress = `<img src="img/photoshop-lightroom.png" width="26" alt="icon">`;
+        if (extension === 'mp3') iconFileCompress = `<img src="img/music-player.png" width="26" alt="icon">`;
+        if (extension === 'mp4') iconFileCompress = `<img src="img/me.png" width="26" alt="icon">`;
+        if (extension === 'Gemfile') iconFileCompress = `<img src="img/diamond.png" width="26" alt="icon">`;
+        if (extension === 'Makefile') iconFileCompress = `<img src="img/letter-m.png" width="26" alt="icon">`;
+        if (extension === 'eps') iconFileCompress = `<img src="img/photoshop-camera.png" width="26" alt="icon">`;
+        if (extension === 'mkv') iconFileCompress = `<img src="img/me.png" width="26" alt="icon">`;
+        if (extension === 'pdf') iconFileCompress = `<img src="img/pdf.svg" width="26" alt="icon">`;
+        if (extension === 'gif') iconFileCompress = `<img src="img/gif.png" width="26" alt="icon">`;
+        if (extension === 'dll') iconFileCompress = `<img src="img/dll.png" width="26" alt="icon">`;
+        if (extension === 'wav') iconFileCompress = `<img src="img/wav-file.svg" width="26" alt="icon">`;
+        if (extension === 'swf') iconFileCompress = `<img src="img/swf.png" width="26" alt="icon">`;
+        iconFileCompress = iconFileCompress.replaceAll('width="26"', 'width="16"');
+        return iconFileCompress;
+    }
+
+    function isImageExtension(extension) {
+        const imageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'svg', 'webp'];
+        return imageExtensions.includes(extension.toLowerCase());
+    }
+
+    function setItemsInTbody(items, tbodyId) {
+        const iconMap = {
+            'cfg': 'cfg.png',
+            'folder': 'pasta-aberta.png',
+            'py': 'python.png',
+            'txt': 'txt.png',
+            'php': 'php.png',
+            'json': 'json.png',
+            'LICENSE': 'diploma.png',
+            'key': 'diploma.png',
+            'crt': 'diploma.png',
+            'sh': 'cmd.png',
+            'cmd': 'cmd.png',
+            'yml': 'yaml.png',
+            'dist': 'dist.png',
+            'md': 'olho.png',
+            'css': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Bootstrap_logo.svg/2560px-Bootstrap_logo.svg.png',
+            'scss': 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Bootstrap_logo.svg/2560px-Bootstrap_logo.svg.png',
+            'lock': 'trancar.png',
+            'ttf': 'font-file.png',
+            'woff': 'font-file.png',
+            'eot': 'trancar.png',
+            'xml': 'xml-file.png',
+            'png': 'image.png',
+            'jpg': 'image.png',
+            'html': 'html-5.png',
+            'js': 'js.png',
+            'go': 'go.png',
+            'exe': 'windows.png',
+            'deb': 'linux.png',
+            'pkg': 'linux.png',
+            'so': 'linux.png',
+            'jar': 'java.png',
+            'cpp': 'c-.png',
+            'zip': 'zip.png',
+            'rar': 'zip.png',
+            '7z': 'zip.png',
+            'tar': 'zip.png',
+            'gz': 'zip.png',
+            'bz2': 'zip.png',
+            'xz': 'zip.png',
+            'svg': 'photoshop-lightroom.png',
+            'mp3': 'music-player.png',
+            'mp4': 'me.png',
+            'Gemfile': 'diamond.png',
+            'Makefile': 'letter-m.png',
+            'eps': 'photoshop-camera.png',
+            'mkv': 'me.png',
+            'pdf': 'pdf.svg',
+            'gif': 'gif.png',
+            'dll': 'dll.png',
+            'wav': 'wav-file.svg',
+            'swf': 'swf.png',
+            'h': 'letter-c.svg',
+            'c': 'letter-c.svg',
+            'sln': 'sln-2272.png',
+            'lua': 'half-moon.png',
+        };
+
+        const tbody = document.getElementById(tbodyId);
+        tbody.innerHTML = '';
+        fileList = items.map(item => item.path); // Armazena os caminhos dos arquivos para navegação
+        // filtrar midia
+        fileList = fileList.filter(item => {
+            const ext = item.split('.').pop().toLowerCase();
+            return isImageExtension(ext) || ['mp4', 'webm', 'ogg', 'mp3', 'wav'].includes(ext);
+        });
+
+
+        items.forEach(item => {
+            const ext = item.typeFile;
+
+            const iconSrc = iconMap[item.name] || iconMap[ext] || 'desconhecido.png';
+            let iconFile = `<img src="${
+                !(iconSrc.includes('://')) ? 'img/' : ''
+
+            }${iconSrc}" width="26" alt="icon">`;
+            if (['png', 'jpg'].includes(ext)) iconFile = `<img src="imageBase64?tokenBrowser=${$('#fp').text()}&path=${item.path}" width="26" alt="icon">`;
+
+            const tr = document.createElement('tr');
+
+            const tdCheck = document.createElement('td');
+            tdCheck.classList.add('text-white');
+
+            tdCheck.innerHTML = `<input type="checkbox" class="form-check-input checkboxFileList" value="'${item.path}'">`;
+            tr.appendChild(tdCheck);
+
+            const tdName = document.createElement('td');
+            tdName.setAttribute('fullpath', item.path);
+            tdName.style = 'max-width: 100px; height: 10px !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
+            const nameHtml = `<span class="text-white" style="width: 20px;overflow: hidden;white-space: nowrap;text-overflow: ellipsis;flex-grow: 1;">${item.name}</span>`;
+
+            if (item.typeFile === 'folder') {
+                tdName.innerHTML = `<div onclick="setPath('${item.path}')">${iconFile} &nbsp;&nbsp; ${nameHtml}</div>`;
+            } else if (item.isImage || item.isMedia) {
+                allImagePaths.push(item.path); // acumula para navegação
+
+
+                tdName.innerHTML = `<div onclick="showImage('${item.path}')">${iconFile} &nbsp;&nbsp; ${nameHtml}</div>`;
+            } else {
+                tdName.innerHTML = `<div onclick="showEditor('${ext}', '${item.path}')">${iconFile} &nbsp;&nbsp; ${nameHtml}</div>`;
+            }
+            tr.appendChild(tdName);
+
+            const tdSize = document.createElement('td');
+            tdSize.classList.add('text-white');
+            tdSize.textContent = item.size;
+            tr.appendChild(tdSize);
+
+            const tdType = document.createElement('td');
+            tdType.classList.add('text-white');
+            tdType.textContent = ext === 'folder' ? 'Pasta' : (ext || 'Desconhecido').toUpperCase();
+            tr.appendChild(tdType);
+
+            const tdPerm = document.createElement('td');
+            tdPerm.classList.add('text-white');
+            tdPerm.textContent = item.permissions;
+            tdPerm.style = 'max-width: 50px;';
+            tr.appendChild(tdPerm);
+
+            const actions = document.createElement('td');
+            actions.classList.add('text-white');
+            actions.style = 'max-width: 50px;';
+            if (ext !== 'folder') {
+                actions.innerHTML = `<a class="btn btn-info" onclick="downloadFile('${item.path}')"><i class="fa-regular fa-download"></i></a>`;
+            }
+            actions.innerHTML += `&nbsp;<a class="btn btn-danger" onclick="deleteFile('${item.path}')"><i class="fa-regular fa-trash"></i></a>`;
+            actions.innerHTML += `&nbsp;<a class="btn btn-warning" onclick="renameItem('${item.path}')"><i class="fa-regular fa-edit"></i></a>`;
+            tr.appendChild(actions);
+
+            tbody.appendChild(tr);
+        });
+    }
+
+    async function renameItem(path) {
+        var splp = path;
+        let replacer;
+        const nameforRenamed = splp.split('/')[splp.split('/').length - 1];
+        return (await Swal.fire({
+            title: 'Renomear item',
+            input: 'text',
+            inputLabel: `Renomeando: (${nameforRenamed})`,
+            color: '#fff',
+            inputPlaceholder: 'Digite o novo nome',
+            inputValue: nameforRenamed,
+            showCancelButton: true,
+            confirmButtonText: 'Renomear',
+            cancelButtonText: 'Cancelar',
+            confirmButtonColor: '#7367f0',
+            cancelButtonColor: '#424659',
+            background: '#24283b',
+            inputValidator: (value) => {
+                if (!value) {
+                    return 'Você precisa digitar um nome';
+                }
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const renameStatusFunction = (path, newName) => {
+                    const toke = $('#fp').text();
+                    replacer = path.replace(nameforRenamed, newName);
+
+
+
+
+
+                    fetch(`renameItem?tokenBrowser=${toke}&path=${encodeURIComponent(path)}&newName=${encodeURIComponent(replacer)}`)
+                        .then(async response => await response.json())
+                        .then(async data => {
+                            if (data.success) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Sucesso!',
+                                    text: 'Seu arquivo foi renomeado com sucesso!',
+                                    showConfirmButton: false,
+                                    color: '#fff',
+                                    confirmButtonColor: '#7367f0',
+                                    cancelButtonColor: '#424659',
+                                    background: '#24283b',
+                                    timer: 2000
+                                });
+                            }
+                            console.log(data)
+                            const fopenDynamicToken = $('#fp').text();
+                            const pathUsing = $('#pathInvisible').text();
+                            setItemsInTbody(
+                                (await asyncGet(`/syncPath?tokenBrowser=${fopenDynamicToken}&path=${pathUsing}`))['information'],
+                                'filesList'
+                            );
+                        });
+                }
+                renameStatusFunction(path, result.value);
+            }
+            return replacer;
+        }));
+    }
+
+    async function deleteFile(path) {
+        return await Swal.fire({
+            title: 'Tem certeza?',
+            text: 'Você não poderá reverter esta ação!',
+            icon: 'warning',
+            color: '#fff',
+            confirmButtonColor: '#7367f0',
+            cancelButtonColor: '#424659',
+            background: '#24283b',
+            showCancelButton: true,
+            confirmButtonText: 'Sim, excluir!',
+            cancelButtonText: 'Cancelar'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const deleteStatusFunction = (path) => {
+                    var toke = $('#fp').text();
+                    fetch(`deleteFile?tokenBrowser=${toke}&path=${encodeURIComponent(path)}`
+                    )
+                        .then(response => response.text())
+                        .then(async data => {
+                            const fopenDynamicToken = $('#fp').text();
+                            const pathUsing = encodeURIComponent($('#pathInvisible').text());
+                            setItemsInTbody(
+                                (await asyncGet(`/syncPath?tokenBrowser=${fopenDynamicToken}&path=${pathUsing}`))['information'],
+                                'filesList'
+                            );
+                            return Swal.fire({
+                                icon: 'success',
+                                title: 'Sucesso!',
+                                text: 'Seu arquivo foi excluído com sucesso!',
+                                showConfirmButton: false,
+                                color: '#fff',
+                                confirmButtonColor: '#7367f0',
+                                cancelButtonColor: '#424659',
+                                background: '#24283b',
+                                timer: 2000
+                            });
+                        });
+                }
+                deleteStatusFunction(path);
+            }
+        })
+
+    }
+
+    function isCompressedExtension(extension) {
+        const compressedExtensions = ['zip', '7z', 'rar', 'tar', 'gz', 'bz2', 'xz'];
+        return compressedExtensions.includes(extension.toLowerCase());
+    }
+
+    var intervalsc;
+
+    async function showEditor(type, path) {
+
+
+        $('#edit-code').modal('hide');
+        let nameFile = path.split('/').pop();
+        $('#nameFileForEdit').text(nameFile);
+        $('#hiddenFileEdit').text(path);
+        $('#namefilemodaledit').text(path);
+        $('#edit-code').modal('show');
+    }
+
+    function adjustPath() {
+        if (document.getElementById('visualPath').offsetWidth > document.getElementById('path').offsetWidth) {
+            document.getElementById('visualPath').style.width = '100%';
+        } else {
+            document.getElementById('visualPath').style.width = 'auto';
+        }
+    }
+
+
+    function getLanguageByExtension(extension) {
+        const languages = {
+            'py': 'python',
+            'txt': 'text',
+            'php': 'php',
+            'json': 'json',
+            'md': 'markdown',
+            'css': 'css',
+            'scss': 'scss',
+            'yml': 'yaml',
+            'lock': 'lock',
+            'ttf': 'ttf',
+            'woff': 'woff',
+            'eot': 'eot',
+            'xml': 'xml',
+            'png': 'png',
+            'jpg': 'jpg',
+            'html': 'html',
+            'js': 'javascript',
+            'ts': 'typescript',
+            'go': 'go',
+            'java': 'java',
+            'deb': 'deb',
+            'cc': 'c',
+            'zip': 'zip',
+            'rar': 'rar',
+            '7z': '7z',
+            'tar': 'tar',
+            'gz': 'gz',
+            'bz2': 'bz2',
+            'xz': 'xz',
+            'svg': 'svg',
+            'mp3': 'mp3',
+            'mp4': 'mp4',
+            'Gemfile': 'ruby',
+            'h': 'c',
+            'c': 'c',
+            'sln': 'sln',
+            'lua': 'lua',
+            'cpp': 'cpp',
+            'sh': 'shell',
+            'conf': 'conf',
+            'sql': 'sql',
+            'rs': 'rust',
+            'ini': 'ini',
+            'cxx': 'c',
+            'cpp': 'c',
+            'profile': 'shell',
+
+        };
+        return languages[extension] || 'shell';
+    }
+
+    function setPath(path) {
+        localStorage.setItem('pathInvisible', path);
+        document.getElementById('pathInvisible').innerHTML = path;
+
+        const splitPath = path.split('/');
+        splitPath.forEach(function (item, index) {
+            if (index === 0) {
+                document.getElementById('visualPath').innerHTML = `<span class="text-white"></span> <a class="text-secondary" onclick="setPath('/')">${item}</a>`;
+            } else if (index === splitPath.length - 1) {
+                document.getElementById('visualPath').innerHTML += `<span class="text-white">&nbsp;/</span> <span class="text-blue">${item}</span>`;
+            } else {
+                document.getElementById('visualPath').innerHTML += `<span class="text-white">&nbsp;/</span> <a class="text-secondary" onclick="setPath('${splitPath.slice(0, index + 1).join('/')}')">${item}</a>`;
+            }
+        });
+        adjustPath()
+    }
+
+    function backPath() {
+        const path = document.getElementById('pathInvisible').innerHTML;
+        const splitPath = path.split('/');
+        if (splitPath.length > 1) {
+            splitPath.pop();
+            setPath(splitPath.join('/'));
+        }
+    }
+
+    async function showCompressFile(type, path) {
+        if (true) {
+            $('#modalFileCompress').modal('show');
+            const namefile = path.split('/').pop();
+            $('#nameFileUncompress').html(`(&nbsp;<img src="img/zip.png" width="26" alt="icon">&nbsp;${namefile}&nbsp;<span class="ml-2 badge bg-danger rounded-pill badge-notifications" id="totalFilesCompress">0</span>&nbsp;)`);
+            const realpath = path.split('/').slice(0, -1).join('/') + '/' + namefile;
+            const spinnerPulse = `<div class="spinner-grow" role="status"><span class="visually-hidden"></span></div>`;
+            const namePathToExtract = path.split('/').slice(0, -1).join('/') + '/' + namefile.split('.').slice(0, -1).join('.');
+            $('#addressPathToExtract').text(namePathToExtract.replace('/', ''));
+            $('#compressDetails').html(`<div class="text-center">${spinnerPulse}</div>`);
+            $.ajax({
+                url: `getArchiveDetails?tokenBrowser=${$('#fp').text()}&path=${realpath}`,
+                type: 'GET',
+                success: function (data) {
+                    const listElementBuffer = [];
+                    for (let i = 0; i < data['list'].length; i++) {
+                        let extension = data['list'][i].split('.').pop();
+                        if (extension.includes('/')) extension = extension.split('/').pop();
+                        let iconFileCompress = `<img src="img/linux.png" width="26" alt="icon">`;
+                        if (extension === 'py') iconFileCompress = `<img src="img/python.png" width="26" alt="icon">`;
+                        if (extension === 'txt') iconFileCompress = `<img src="img/txt.png" width="26" alt="icon">`;
+                        if (extension === 'php') iconFileCompress = `<img src="img/php.png" width="26" alt="icon">`;
+                        if (extension === 'json') iconFileCompress = `<img src="img/json.png" width="26" alt="icon">`;
+                        if (extension === 'mkv') iconFileCompress = `<img src="img/me.png" width="26" alt="icon">`;
+                        if (extension === 'LICENSE') iconFileCompress = `<img src="img/diploma.png" width="26" alt="icon">`;
+                        if (extension === 'yml') iconFileCompress = `<img src="img/yaml.png" width="26" alt="icon">`;
+                        if (extension === 'dist') iconFileCompress = `<img src="img/dist.png" width="26" alt="icon">`;
+                        if (extension === 'md') iconFileCompress = `<img src="img/olho.png" width="26" alt="icon">`;
+                        if (extension === 'css') iconFileCompress = `<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Bootstrap_logo.svg/2560px-Bootstrap_logo.svg.png" width="26" alt="icon">`;
+                        if (extension === 'scss') iconFileCompress = `<img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b2/Bootstrap_logo.svg/2560px-Bootstrap_logo.svg.png" width="26" alt="icon">`;
+                        if (extension === 'lock') iconFileCompress = `<img src="img/trancar.png" width="26" alt="icon">`;
+                        if (extension === 'ttf') iconFileCompress = `<img src="img/font-file.png" width="26" alt="icon">`;
+                        if (extension === 'woff') iconFileCompress = `<img src="img/font-file.png" width="26" alt="icon">`;
+                        if (extension === 'eot') iconFileCompress = `<img src="img/trancar.png" width="26" alt="icon">`;
+                        if (extension === 'xml') iconFileCompress = `<img src="img/xml-file.png" width="26" alt="icon">`;
+                        if (extension === 'png') iconFileCompress = `<img src="img/image.png" width="26" alt="icon">`;
+                        if (extension === 'jpg') iconFileCompress = `<img src="img/image.png" width="26" alt="icon">`;
+                        if (extension === 'html') iconFileCompress = `<img src="img/html-5.png" width="26" alt="icon">`;
+                        if (extension === 'js') iconFileCompress = `<img src="img/js.png" width="26" alt="icon">`;
+                        if (extension === 'go') iconFileCompress = `<img src="img/go.png" width="26" alt="icon">`;
+                        if (extension === 'exe') iconFileCompress = `<img src="img/windows.png" width="26" alt="icon">`;
+                        if (extension === 'deb') iconFileCompress = `<img src="img/linux.png" width="26" alt="icon">`;
+                        if (extension === 'cpp') iconFileCompress = `<img src="https://cdn-icons-png.flaticon.com/512/8304/8304381.png" width="26" alt="icon">`;
+                        if (extension === 'zip') iconFileCompress = `<img src="img/zip.png" width="26" alt="icon">`;
+                        if (extension === 'rar') iconFileCompress = `<img src="img/zip.png" width="26" alt="icon">`;
+                        if (extension === '7z') iconFileCompress = `<img src="img/zip.png" width="26" alt="icon">`;
+                        if (extension === 'tar') iconFileCompress = `<img src="img/zip.png" width="26" alt="icon">`;
+                        if (extension === 'gz') iconFileCompress = `<img src="img/zip.png" width="26" alt="icon">`;
+                        if (extension === 'bz2') iconFileCompress = `<img src="img/zip.png" width="26" alt="icon">`;
+                        if (extension === 'xz') iconFileCompress = `<img src="img/zip.png" width="26" alt="icon">`;
+                        if (extension === 'svg') iconFileCompress = `<img src="img/photoshop-lightroom.png" width="26" alt="icon">`;
+                        if (extension === 'mp3') iconFileCompress = `<img src="img/music-player.png" width="26" alt="icon">`;
+                        if (extension === 'mp4') iconFileCompress = `<img src="img/me.png" width="26" alt="icon">`;
+                        if (extension === 'Gemfile') iconFileCompress = `<img src="img/diamond.png" width="26" alt="icon">`;
+                        if (extension === 'Makefile') iconFileCompress = `<img src="img/letter-m.png" width="26" alt="icon">`;
+                        if (extension === 'eps') iconFileCompress = `<img src="img/photoshop-camera.png" width="26" alt="icon">`;
+                        listElementBuffer.push(`<li class="list-group-item">${iconFileCompress} &nbsp;&nbsp;${data['list'][i]}</li>`);
+                    }
+                    if (data['list'].length > 6) $('#scrollToEndButtonFather').css('display', 'block');
+                    else $('#scrollToEndButtonFather').css('display', 'none');
+                    $('#totalFilesCompress').text(data['list'].length);
+                    $('#compressDetails').html(listElementBuffer.join(''));
+                    $('#decompressRealFileName').text(namefile);
+                }
+            });
+        }
+    }
+
+
+    function resetBoxMedias() {
+        document.getElementById('customImageViewer').style.display = 'none';
+        document.getElementById('modalMedia').innerHTML = '';
+        document.getElementById('modalAudio').innerHTML = '';
+    }
+
+    function showImage(path) {
+        resetBoxMedias();
+        $('#nameFileModalMedia').text(path);
+        const token = $('#fp').text();
+        const ext = path.split('.').pop().toLowerCase();
+        const url = `imageBase64?tokenBrowser=${token}&path=${path}`;
+        const currentIndex = fileList.indexOf(path);
+
+        const viewer = document.getElementById('customImageViewer');
+        const modalMedia = document.getElementById('modalMedia');
+        const thumbNav = document.getElementById('thumbNav');
+
+        let media = '';
+        if (['mp4', 'webm', 'ogg'].includes(ext)) {
+            media = `<video src="${url}" controls autoplay style="max-width:75%;max-height:75%;border-radius:15px;box-shadow:0 20px 40px rgba(0,0,0,0.4);background:#000;outline:none;" onloadeddata="this.style.opacity='1'"></video>`;
+        } else if (['mp3', 'wav', 'ogg'].includes(ext)) {
+            // trocar o title da pagina
+            document.querySelector('title').innerText = getFilename(path)
+            media = `
+<div class="modern-audio-container" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;background:linear-gradient(135deg, rgba(147,51,234,0.1) 0%, rgba(79,70,229,0.1) 100%);border-radius:20px;border:1px solid rgba(255,255,255,0.1);">
+<dotlottie-player src="https://lottie.host/ca316c43-00ba-458e-9070-f94fb0a10c1a/yBA3TkFfHx.json" background="transparent" speed="1" style="width: 300px; height: 300px; filter: drop-shadow(0 10px 20px rgba(147,51,234,0.3))" loop autoplay></dotlottie-player>
+<div style="margin-top:20px;text-align:center;">
+<p style="color:rgba(255,255,255,0.7);margin:10px 0 0 0;">${getFilename(path)}</p>
+<audio controls style="width:100%;max-width:400px;margin-top:10px;border-radius:10px;box-shadow:0 5px 15px rgba(0,0,0,0.2);">
+<source src="imageBase64?tokenBrowser=${token}&path=${encodeURI(path)}" type="audio/${ext}">
+</audio>
+</div>
+</div>
+`;
+
+        } else if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(ext)) {
+            media = `<img src="${url}" style="max-width:90%;max-height:90%;border-radius:15px;object-fit:contain;box-shadow:0 20px 40px rgba(0,0,0,0.3);transition:transform 0.3s ease;" onload="this.style.opacity='1'" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">`;
+        } else {
+            media = `<div style="text-align:center;padding:40px;"><p style="font-size:18px;color:rgba(255,255,255,0.7);">Formato não suportado</p></div>`;
+        }
+
+        modalMedia.innerHTML = media;
+
+
+        if (['mp3', 'wav', 'ogg'].includes(ext)) {
+            //$('#modalAudio').html(media);s
+        }
+
+
+        const thumb = (idx) => {
+            const file = fileList[idx];
+            if (!file) return '';
+            let thumbUrl = `imageBase64?tokenBrowser=${token}&path=${file}`;
+            let fll = getFilename(file).split('.')[getFilename(file).split('.').length-1].toLowerCase();
+
+            if (fll === 'mp3' || fll === 'wav' || fll === 'ogg') {
+              return `<div style="width:50px;height:50px;border-radius:10px;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.3s ease;border:${file === path ? '3px solid #fff' : '2px solid rgba(255,255,255,0.3)'};box-shadow:0 5px 15px rgba(0,0,0,0.3);" onclick="showImage('${file}')" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"><dotlottie-player src="https://lottie.host/5c96eef4-376a-4d90-bb27-9af56f5e2c2e/8K1HJaNgmj.lottie" background="transparent" speed="1" style="width:30px;height:30px;" loop autoplay></dotlottie-player></div>`;
+
+            }
+
+
+
+
+            if (fll === 'mp4' || fll === 'webm' || fll === 'ogg') {
+                thumbUrl = `getPreview?tokenBrowser=${token}&path=${file}`;
+            } else if (fll === 'mp3' || fll === 'wav' || fll === 'ogg') {
+                let anim = `<div style="width:50px;height:50px;border-radius:10px;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.3s ease;border:${file === path ? '3px solid #fff' : '2px solid rgba(255,255,255,0.3)'};box-shadow:0 5px 15px rgba(0,0,0,0.3);" onclick="showImage('${file}')" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"><dotlottie-player src="https://lottie.host/5c96eef4-376a-4d90-bb27-9af56f5e2c2e/8K1HJaNgmj.lottie" background="transparent" speed="1" style="width:30px;height:30px;" loop autoplay></dotlottie-player></div>`;
+                return anim;
+            } else if (isImageExtension(fll)) {
+                thumbUrl = `imageBase64?tokenBrowser=${token}&path=${file}`;
+            } else {
+                thumbUrl = `img/desconhecido.png`;
+            }
+
+
+            return `<img src="${thumbUrl}" style="width:50px;height:50px;object-fit:cover;border-radius:10px;cursor:pointer;border:${file === path ? '3px solid #fff' : '2px solid rgba(255,255,255,0.3)'};transition:all 0.3s ease;box-shadow:0 5px 15px rgba(0,0,0,0.3);" onclick="showImage('${file}')" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">`;
+        };
+
+        thumbNav.innerHTML = `
+        ${thumb(currentIndex - 2)}${thumb(currentIndex - 1)}${thumb(currentIndex)}${thumb(currentIndex + 1)}${thumb(currentIndex + 2)}
+    `;
+
+        viewer.style.display = 'block';
+
+        window.__fileList = fileList;
+        window.__currentIndex = currentIndex;
+
+        toggleArrowButtons();
+
+        window.onkeydown = (e) => {
+            if (e.key === 'ArrowLeft') navPrev();
+            else if (e.key === 'ArrowRight') navNext();
+            else if (e.key === 'Escape') closeImageViewer();
+        };
+    }
+
+    function navPrev() {
+        if (window.__currentIndex > 0) {
+            showImage(window.__fileList[window.__currentIndex - 1]);
+        }
+    }
+
+    function navNext() {
+        if (window.__currentIndex < window.__fileList.length - 1) {
+            showImage(window.__fileList[window.__currentIndex + 1]);
+        }
+    }
+
+    function toggleArrowButtons() {
+        //document.getElementById('leftArrow').style.display = window.__currentIndex > 0 ? 'block' : 'none';
+        //document.getElementById('rightArrow').style.display = window.__currentIndex < window.__fileList.length - 1 ? 'block' : 'none';
+    }
+
+    function closeImageViewer() {
+        document.getElementById('customImageViewer').style.display = 'none';
+        window.onkeydown = null;
+        delete window.__fileList;
+        delete window.__currentIndex;
+    }
+
+
+</script>
+
+
+<div id="customImageViewer" style="display:none;">
+    <button id="leftArrow" onclick="navPrev()"
+            style="position:fixed;top:50%;left:30px;transform:translateY(-50%);width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);border:2px solid rgba(255,255,255,0.2);color:white;z-index:9999;cursor:pointer;font-size:24px;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(10px);transition:all 0.3s ease;box-shadow:0 8px 32px rgba(0,0,0,0.3);" onmouseover="this.style.transform='translateY(-50%) scale(1.1)'" onmouseout="this.style.transform='translateY(-50%) scale(1)'">
+        ❮
+    </button>
+    <button id="rightArrow" onclick="navNext()"
+            style="position:fixed;top:50%;right:30px;transform:translateY(-50%);width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);border:2px solid rgba(255,255,255,0.2);color:white;z-index:9999;cursor:pointer;font-size:24px;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(10px);transition:all 0.3s ease;box-shadow:0 8px 32px rgba(0,0,0,0.3);" onmouseover="this.style.transform='translateY(-50%) scale(1.1)'" onmouseout="this.style.transform='translateY(-50%) scale(1)'">
+        ❯
+    </button>
+    <div id="modalBackdrop"
+         style="position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg, rgba(0,0,0,0.9) 0%, rgba(30,41,59,0.9) 100%);backdrop-filter:blur(20px);z-index:9998;"></div>
+    <div id="modalContent" style="position:fixed;
+  top:50%;
+  left:50%;
+  height: 90%;
+  width: 90%;
+  max-width: 1200px;
+  max-height: 800px;
+  transform:translate(-50%,-50%);
+  background:linear-gradient(135deg, rgba(28,47,72,0.95) 0%, rgba(44,62,80,0.95) 100%);
+  backdrop-filter:blur(20px);
+  border:1px solid rgba(255,255,255,0.1);
+  padding:30px;
+  border-radius:20px;
+  z-index:9999;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  color:white;
+  box-shadow:0 25px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05);
+  animation:fadeInScale 0.3s ease;">
+
+
+        <div id="modalHeader" style="
+        width: 100%;
+             display: flex;
+             align-items: center;
+             justify-content: space-between;
+             position: absolute;
+             top: 0;
+             left: 0;
+             padding: 20px 30px;
+             background: linear-gradient(90deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+             border-radius: 20px 20px 0 0;
+             border-bottom: 1px solid rgba(255,255,255,0.1);
+        ">
+            <span id="nameFileModalMedia" style="font-size: 18px; font-weight: 600; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">Arquivo</span>
+        </div>
+
+        <div id="modalMedia" style="
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        height: 100%;
+        margin-top: 40px;
+        margin-bottom: 20px;
+        "></div>
+        <div id="modalAudio" style="display:flex;align-items:center;justify-content:center;width:100%;"></div>
+
+        <div id="thumbNav"
+             style="position:absolute;bottom:20px;left:50%;transform:translateX(-50%);display:flex;align-items:center;justify-content:center;gap:15px;padding:15px 25px;background:rgba(0,0,0,0.4);backdrop-filter:blur(10px);border-radius:50px;border:1px solid rgba(255,255,255,0.1);"></div>
+        <button onclick="closeImageViewer()"
+                style="position:absolute;top:20px;right:30px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);color:white;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.3s ease;" onmouseover="this.style.background='rgba(255,59,59,0.8)';this.style.transform='scale(1.1)'" onmouseout="this.style.background='rgba(255,255,255,0.1)';this.style.transform='scale(1)'">✕
+        </button>
+    </div>
+</div>
+
+
+<style>
+    .swal2-close {
+        border: none !important;
+    }
+
+    @keyframes fadeInScale {
+        from {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.9);
+        }
+        to {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+    }
+
+    .modern-audio-container {
+        animation: fadeInUp 0.5s ease;
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .modern-audio-player audio::-webkit-media-controls-panel {
+        background: linear-gradient(135deg, rgba(147,51,234,0.2) 0%, rgba(79,70,229,0.2) 100%);
+        border-radius: 25px;
+    }
+
+    .modern-audio-player audio::-webkit-media-controls-play-button,
+    .modern-audio-player audio::-webkit-media-controls-pause-button {
+        background: rgba(255,255,255,0.8);
+        border-radius: 50%;
+    }
+
+    #customImageViewer img {
+
+        transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    #customImageViewer video {
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    #thumbNav > * {
+        transition: all 0.3s ease;
+    }
+
+    #modalContent::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-radius: 20px;
+        padding: 1px;
+        background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+        mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        mask-composite: exclude;
+        pointer-events: none;
+    }
+</style>

@@ -1,0 +1,25 @@
+<div class="modal fade" id="modalErrorToken" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content headerModal" style="border-bottom: none; border-radius: 13px !important;">
+            <div class="modal-header" style="border: none !important;"></div>
+            <div class="modal-body text-center">
+                <center>
+                    <img src="img/confusion.png" style="width: 30%;"/>
+                </center>
+                <center class="mt-2">
+                    <h4><b class="text-white">Poxa, que confusão :(</b></h4>
+                </center>
+                <center>
+                    <p class="text-white">Atualize a página, se o erro persistir, clique no <b>código</b> abaixo para <b>copiar</b> e informe ao suporte.</p>
+                </center>
+                <center class="mb-2"><code id="uniqueId" onclick="copyDivToClipboard('uniqueId')"></code></center>
+                <center class="mt-4">
+                    <button onclick="$('#modalErrorToken').modal('hide')"  type="button" class="btn btn-block btn-secondary"
+                            style="background: #817CA8; border: none !important; width: 60%"
+                            data-dismiss="modal">Fechar
+                    </button>
+                </center>
+            </div>
+        </div>
+    </div>
+</div>

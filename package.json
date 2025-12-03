@@ -1,0 +1,11 @@
+{
+  "dependencies": {
+    "express": "^5.1.0",
+    "node-pty": "^1.0.0",
+    "puppeteer": "^24.10.0",
+    "puppeteer-core": "^24.10.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "ws": "^8.18.2"
+  }
+}

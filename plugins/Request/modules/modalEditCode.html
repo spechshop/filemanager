@@ -1,0 +1,3006 @@
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm/css/xterm.css"/>
+<script src="https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js"></script>
+<script src="https://unpkg.com/prettier/standalone.js"></script>
+<script src="https://unpkg.com/@prettier/plugin-php/standalone.js"></script>
+
+<script>
+    async function sleep(ms) {
+        return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+</script>
+
+<style>
+    #resizerVertical {
+        width: 5px;
+        cursor: ew-resize;
+        background: #303665;
+        position: absolute;
+        top: 0;
+        right: 0;
+        bottom: 0;
+    }
+
+    .col-md-2 {
+        overflow: hidden;
+        resize: horizontal;
+        transition: width 0.1s;
+    }
+
+    .col-md-10 {
+        overflow: auto;
+    }
+
+    .nav-tabs {
+        border-bottom: none;
+    }
+
+    .nav-tabs .nav-link {
+        border: none;
+        color: #fff;
+    }
+
+    .nav-tabs .nav-link.active,
+    .nav-tabs .nav-item.show .nav-link {
+        color: #00b1ff !important;
+        background-color: transparent !important;
+        border-top: none !important;
+        border-left: none !important;
+        border-right: none !important;
+        border-bottom-color: #00b1ff !important;
+    }
+
+    .selected {
+        border-bottom: 2px solid #00b1ff !important;
+        margin-bottom: 4px !important;
+    }
+
+    .nav {
+        --bs-nav-link-padding-x: 2rem !important;
+        --bs-nav-link-padding-y: 0.3rem !important;
+    }
+
+    .nav-item {
+        position: relative;
+    }
+
+    .close-tab {
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        cursor: pointer;
+        font-size: 1rem;
+        color: #ff0000;
+        /* Cor vermelha para destacar */
+        font-weight: bold;
+    }
+</style>
+
+
+<style>
+    .tab-header-item {
+        padding: 6px 12px;
+        background-color: #2d2f4a;
+        color: #fff;
+        border-top-left-radius: 4px;
+        border-top-right-radius: 4px;
+        font-size: 13px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        user-select: none;
+        margin-right: 2px;
+        border-bottom: 2px solid transparent;
+    }
+
+    .tab-header-item.active {
+        background-color: #1d2245;
+        font-weight: 600;
+        border-bottom: 2px solid #00bfff;
+    }
+
+    .close-tab {
+        color: #ccc;
+        font-weight: bold;
+        cursor: pointer;
+        font-size: 14px;
+    }
+
+    .close-tab:hover {
+        color: #fff;
+    }
+</style>
+<div class="modal modal-xl fade" id="edit-code" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-fullscreen" role="document">
+        <div class="modal-content headerModal" style="border-bottom: none; border-radius: 13px !important">
+            <div class="modal-header" style="background-color: #1d2245; border-bottom: 1px solid #333; height: 53px">
+
+                <div id="tab-bar" class="d-flex align-items-center ps-2" style="overflow-x: auto;">
+
+                </div>
+
+
+                <div class="nav nav-tabs" id="tabsFilesEditor">
+                    <div class="nav-item" id="newTabFileEditor">
+
+                    </div>
+                </div>
+
+
+                <div style="display: none" class="w-100">
+                    <div id="file-name" class="font-weight-bold">
+                        <h5 class="modal-title text-white">
+                            Editor de Código - (<span id="nameFileForEdit"></span>)
+                        </h5>
+                    </div>
+                    <!-- Nome da pasta -->
+                    <div id="folder-name" class="text-muted">
+                        <code id="fullAddressFile" style="display: none"></code>
+                    </div>
+                </div>
+                <!---h5 encima com nome do arquivo e embaixo elemento <code> com o caminho do arquivo-->
+
+                <code class="nav nav-tabs" id="namefilemodaledit" style="display: none">
+
+                </code>
+
+
+                <div id="context-menu" class="context-menu hidden">
+                    <ul id="ulContext">
+                        <!-- header com 3 ponto e nome do arquivo -->
+                        <li class="font-weight-bold">
+                            <i class="fa-light fa-grid-round-2"></i>&nbsp;opções
+                        </li>
+                        <li onclick="editFile()">Edit</li>
+                        <li onclick="deleteFile()">Delete</li>
+                    </ul>
+                </div>
+                <button
+                        type="button"
+                        class="btn-close text-white"
+                        data-bs-dismiss="modal"
+                        aria-label="Close"
+                        style="float: right; background-color: white"
+                ></button>
+                <div id="hiddenFileEdit" style="display: none"></div>
+            </div>
+            <div class="modal-body" id="modalBodyEditor">
+                <!-- responsive two box -->
+
+                <div class="container-fluid">
+                    <div class="row">
+                        <div class="col-md-2" style="background: #1c1e26" id="fArch">
+                            <h4 id="tree_label" class="mt-2 text-white">
+                                <code id="searchFiles" style="font-size: 13px !important"></code>
+
+
+                                <div class="btn-group" role="group" aria-label="Basic example" style="
+                                        float: right;
+                                        background: transparent !important;
+                                        border: none !important;
+                                    ">
+                                    <button
+                                            type="button"
+                                            class="btn btn-primary btn-bg"
+                                            onclick="refAll()"
+                                            style="
+                                            background: transparent !important;
+                                            border: none !important;
+                                        "
+                                    >
+                                        <i class="fa-duotone fa-sync"></i>
+                                    </button>
+                                    <button
+                                            type="button"
+                                            class="btn btn-primary btn-bg"
+                                            onclick="nfedc()"
+                                            style="
+                                            background: transparent !important;
+                                            border: none !important;
+                                        "
+                                    >
+                                        <i
+                                                class="fa-duotone fa-folder-plus"
+                                        ></i>
+                                    </button>
+                                    <button
+                                            type="button"
+                                            class="btn btn-primary btn-bg"
+                                            onclick="nfedc()"
+                                            style="
+                                            background: transparent !important;
+                                            border: none !important;
+                                        "
+                                    >
+                                        <i class="fa-duotone fa-file-plus"></i>
+                                    </button>
+                                    <button
+                                            type="button"
+                                            class="btn btn-primary btn-bg"
+                                            onclick="findLocationAddress(document.getElementById('searchFiles').textContent)"
+                                            style="background: transparent !important;border: none !important;"
+                                            title="Localizar arquivo ou pasta"
+                                    ><i class="fa-sharp-duotone fa-solid fa-crosshairs"></i></button>
+                                    <button
+                                            type="button"
+                                            class="btn btn-primary btn-bg"
+                                            onclick="closeAllTabs()"
+                                            style="
+                                            background: transparent !important;
+                                            border: none !important;
+                                        "
+                                            title="Fechar todas as abas">
+                                        <i class="fa-duotone fa-xmark"></i>
+                                    </button>
+
+
+                                    <script>
+                                        async function findLocationAddress(path) {
+                                            const timeout = 30000;
+                                            const interval = 300;
+                                            const start = Date.now();
+
+                                            const waitUntil = async (conditionFn) => {
+                                                return new Promise((resolve, reject) => {
+                                                    const timer = setInterval(() => {
+                                                        if (conditionFn()) {
+                                                            clearInterval(timer);
+                                                            resolve(true);
+                                                        } else if (Date.now() - start > timeout) {
+                                                            clearInterval(timer);
+                                                            reject("Tempo limite ao localizar: " + path);
+                                                        }
+                                                    }, interval);
+                                                });
+                                            };
+
+                                            // Caminhos intermediários (pastas)
+                                            const segments = path.split('/').filter(Boolean);
+                                            let current = '';
+
+                                            for (let i = 0; i < segments.length - 1; i++) {
+                                                current += '/' + segments[i];
+
+                                                const selector = `.folder[data-path="${current}/"]`;
+                                                const folderElement = document.querySelector(selector);
+
+                                                if (!folderElement) {
+                                                    console.log(`Aguardando pasta: ${current}/`);
+                                                    try {
+                                                        await waitUntil(() => document.querySelector(selector));
+                                                    } catch (e) {
+                                                        return console.warn(e);
+                                                    }
+                                                }
+
+                                                const folder = document.querySelector(selector);
+                                                const subUl = folder?.nextElementSibling;
+                                                const isHidden = subUl?.classList.contains('hidden');
+
+                                                if (isHidden) {
+                                                    folder.click(); // simula clique pra abrir a pasta
+                                                    await new Promise(r => setTimeout(r, 300)); // aguarda animação abrir
+                                                }
+                                            }
+
+                                            // Finalmente, tenta localizar o arquivo
+                                            const fileSelector = `.file[file-path="${path}"]`;
+
+                                            try {
+                                                await waitUntil(() => document.querySelector(fileSelector));
+                                                const fileElement = document.querySelector(fileSelector);
+                                                fileElement.scrollIntoView({behavior: "smooth", block: "center"});
+
+                                                // aplica um fundo amarelo temporário para destacar
+                                                fileElement.style.backgroundColor = "#ffe082";
+                                                fileElement.style.color = 'black';
+                                                setTimeout(() => {
+                                                    fileElement.style.transition = "background-color 1s";
+                                                    fileElement.style.backgroundColor = "";
+                                                    fileElement.style.color = '';
+                                                }, 2000);
+
+                                                // Opcional: clicar automaticamente
+                                                // fileElement.click();
+
+                                                console.log('Localizado:', path);
+                                            } catch (e) {
+                                                console.warn(e);
+                                            }
+                                        }
+
+                                        function closeAllTabs() {
+                                            const tabs = document.querySelectorAll('.tab-header-item');
+                                            tabs.forEach(tab => {
+                                                tab.remove();
+                                            });
+                                            models = {}; // Limpa os modelos
+                                            editor.setModel(null); // Limpa o modelo do editor
+                                            tabsCache = {}; // Limpa o cache de abas
+                                        }
+
+                                    </script>
+
+                                </div>
+                            </h4>
+                            <div id="filesArchitecture" role="tree" aria-label="My Documents" class="list-tree-files"
+                                 style="
+                                    overflow-y: auto;
+                                    color: #e1e1e1 !important;
+                                    height: 400px;
+                                    width: 100%;
+                                "></div>
+                            <p style="display: none">
+                                <label
+                                >File or Folder Selected:
+                                    <input
+                                            id="last_action"
+                                            type="text"
+                                            size="15"
+                                            readonly=""
+                                    /></label>
+                            </p>
+                            <div id="resizerVertical"></div>
+                        </div>
+                        <div class="col-md-10" id="rightPanel">
+
+
+                            <div id="editorContainer">
+                                <div id="editor" style="width:100%; height:100%"></div>
+                            </div>
+
+                            <!-- Estacionamento invisível -->
+                            <div id="editorGraveyard" style="display:none"></div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <style>
+                    #resizer {
+                        background: #1d2245;
+                        width: 100%;
+                        height: 5px;
+                        cursor: row-resize;
+                        position: relative;
+                        z-index: 100;
+                    }
+
+                    .footer-terminal {
+                        position: fixed;
+                        bottom: 0;
+                        left: 0;
+                        background: #000000;
+                        color: #fff;
+                        z-index: 1000;
+                        overflow: hidden;
+                    }
+                </style>
+                <div class="col-md-12 footer-terminal" id="footer-terminal">
+                    <div id="resizer"></div>
+
+                    <ul class="nav nav-tabs" id="tabsTerm">
+                        <li class="nav-item" id="new-terminal">
+                            <a class="nav-link active mt-1" href="#">
+                                <i class="fa-duotone fa-solid fa-circle-plus"></i>
+                            </a>
+                        </li>
+                    </ul>
+                    <div id="terms">
+                        <div id="xterm"></div>
+                    </div>
+                </div>
+                <script>
+                    let terminals = {};
+                    document.onreadystatechange = function () {
+                        if (document.readyState === "complete") {
+                            let xtermDimensionsStorage = !localStorage.getItem("xtermDimensions")
+                                ? {
+                                    cols: 100,
+                                    rows: 30,
+                                    width: 100,
+                                    height: 600,
+                                    editor: {
+                                        width: 100,
+                                        height: 100,
+                                    },
+                                    filesArchitecture: {
+                                        width: 100,
+                                        height: 100,
+                                    },
+                                }
+                                : JSON.parse(localStorage.getItem("xtermDimensions"));
+                            document.getElementById("filesArchitecture",).style.height = `${xtermDimensionsStorage.filesArchitecture.height}px`;
+                            document.getElementById("editor").style.height = `${xtermDimensionsStorage.editor.height}px`;
+                            if (localStorage.getItem("filesArchitectureSize")) {
+                                const filesArchitectureSize = JSON.parse(localStorage.getItem("filesArchitectureSize"),);
+                                document.getElementsByClassName("col-md-2")[0].style.width = `${filesArchitectureSize.width}px`;
+                                document.getElementsByClassName("col-md-10")[0].style.width = `calc(100% - ${filesArchitectureSize.width}px)`;
+                            }
+
+
+                            let terminalsClient = !localStorage.getItem('terminalsClient') ? 0 : localStorage.getItem('terminalsClient');
+                            for (let i = 0; i < terminalsClient; i++) {
+                                newTabTerminal();
+                            }
+                        }
+                    };
+
+
+                    let buttonNewTerminal = document.getElementById("new-terminal");
+                    buttonNewTerminal.addEventListener("click", function () {
+                        let terminalsClient = !localStorage.getItem('terminalsClient') ? 0 : localStorage.getItem('terminalsClient');
+                        terminalsClient++;
+                        localStorage.setItem('terminalsClient', terminalsClient);
+                        newTabTerminal();
+                    });
+
+                    const resizer = document.getElementById("resizer");
+                    resizer.addEventListener("mousedown", function (e) {
+                        e.preventDefault();
+                        window.addEventListener("mousemove", resizeTerminals);
+                        window.addEventListener("mouseup", () => window.removeEventListener("mousemove", resizeTerminals));
+                    });
+
+
+                    // Função para redimensionar todos os terminais
+                    function resizeTerminals(e) {
+                        const newHeight = window.innerHeight - e.clientY;
+                        const newWidth = document.getElementById("terms").clientWidth;
+                        const editorElement = document.getElementById("editor");
+                        const fArch = document.getElementById("fArch");
+                        const filesArchitecture = document.getElementById("filesArchitecture");
+                        const footerTerminal = document.getElementById("footer-terminal");
+
+                        // Ajustar o tamanho do editor e da árvore de arquivos
+
+                        const rect = footerTerminal.getBoundingClientRect();
+                        const y = e.clientY - rect.top;
+                        const editorHeight = rect.top;
+                        editorElement.style.height = `${editorHeight - 15}px`;
+                        fArch.style.height = `${editorHeight - 70}px`;
+                        filesArchitecture.style.height = `${editorHeight - 130}px`;
+
+
+                        // Calcular colunas e linhas a partir das novas dimensões
+                        let calcCols = Math.floor(newWidth / 9) - 2;
+                        let calcRows = Math.floor(document.getElementById('terms').getBoundingClientRect().height / 17);
+
+                        // Aplicar as novas dimensões e redimensionar todos os terminais
+                        Object.keys(terminals).forEach((terminalId) => {
+                            let terminalElement = document.getElementById(terminalId);
+                            if (terminalElement) {
+                                terminalElement.style.width = `${newWidth}px`;
+                                terminalElement.style.height = `${newHeight - 42}px`;
+
+                                let termInfo = terminals[terminalId];
+                                if (termInfo && termInfo.terminal) {
+                                    termInfo.terminal.resize(calcCols, calcRows);
+                                }
+                            }
+                        });
+
+                        localStorage.setItem(
+                            "xtermDimensions",
+                            JSON.stringify({
+                                cols: calcCols,
+                                rows: calcRows,
+                                width: newWidth,
+                                height: newHeight - 42,
+                                editor: {
+                                    width: editorElement.clientWidth,
+                                    height: editorElement.clientHeight,
+                                },
+                                filesArchitecture: {
+                                    width: filesArchitecture.clientWidth,
+                                    height: filesArchitecture.clientHeight,
+                                },
+                            })
+                        );
+                        const el = document.querySelector('.xterm');
+                        if (el) {
+                            el.style.height = `${el.offsetHeight + 42}px`;
+                        } else {
+                            console.warn('Elemento .xterm não encontrado.');
+                        }
+
+                    }
+
+                    function newTabTerminal() {
+                        let terminalsContainer = document.getElementById("terms");
+                        let terminalId = `terminal-${terminalsContainer.childElementCount + 1}`;
+                        let currentId = terminalId;
+                        let terminal = document.createElement("div");
+                        terminal.id = terminalId;
+                        terminal.className = 'xterm';
+                        terminal.style.display = "none"; // Inicialmente oculto, será exibido ao clicar na aba
+                        terminalsContainer.appendChild(terminal);
+                        let tokenFPP = $('#fp').text();
+
+                        // Criar um novo terminal utilizando a função existente
+                        createNewTerminal(terminalId, tokenFPP);
+
+                        // Ajustar o tamanho do terminal de acordo com o `localStorage` (dimensões globais)
+                        adjustTerminalSizeFromStorage(terminalId);
+
+                        // Criar uma nova aba para o terminal
+                        let newTab = document.createElement("li");
+                        newTab.classList.add("nav-item");
+
+                        let newLink = document.createElement("a");
+                        newLink.classList.add("nav-link");
+                        newLink.href = "#";
+                        newLink.innerHTML = `<i class="fa-duotone fa-solid fa-terminal"></i> Terminal ${terminalsContainer.childElementCount}`;
+                        let closeTab = document.createElement("span");
+                        closeTab.classList.add("close-tab");
+                        closeTab.innerHTML = "&times;";
+                        closeTab.addEventListener("click", function (e) {
+                            e.preventDefault();
+                            let tab = e.target.closest(".nav-item");
+                            let terminalId = tab.querySelector("a").getAttribute("href").replace("#", "");
+                            let terminalElement = document.getElementById(terminalId);
+                            if (terminalElement) {
+                                terminalElement.remove();
+                            }
+                            tab.remove();
+                            localStorage.setItem('terminalsClient', localStorage.getItem('terminalsClient') - 1);
+
+                            // enviar o comando para o servidor fechar o terminal
+                            console.log(terminals[currentId], terminalId, currentId);
+                            let socket = terminals[currentId].socket;
+                            if (socket && socket.readyState === WebSocket.OPEN) {
+                                try {
+                                    socket.send(
+                                        JSON.stringify({
+                                            command: "closeXtermHandlerCommand",
+                                            token: socket.url.split('/').pop(),
+                                            isCodex: true,
+                                        })
+                                    );
+                                } catch (e) {
+                                    console.error("Erro ao enviar mensagem ao WebSocket:", e);
+                                }
+                            }
+
+                            // clicar na primeira aba
+                            let getTabs = document.getElementById("tabsTerm").children;
+                            if (getTabs.length > 0) {
+                                setTimeout(() => {
+                                    for (let i = 0; i < getTabs.length; i++) {
+                                        let tabLink = getTabs[i].querySelector("a");
+                                        if (tabLink && tabLink.textContent.includes("Terminal ")) {
+                                            tabLink.click();
+                                            break; // Para o loop ao encontrar o primeiro
+                                        }
+                                    }
+                                }, 100);
+                            }
+
+
+                        });
+                        newLink.appendChild(closeTab);
+
+
+                        // Adicionar evento para selecionar a aba e exibir o terminal correspondente
+                        newLink.addEventListener("click", function () {
+                            selectTabAndTerminal(newLink, terminalId);
+                        });
+
+                        newTab.appendChild(newLink);
+                        buttonNewTerminal.before(newTab);
+                        newLink.click(); // Selecionar a nova aba automaticamente
+                    }
+
+                    function selectTabAndTerminal(selectedLink, terminalId) {
+                        // Remover a classe 'selected' de todas as abas
+                        let tabs = document.getElementsByClassName("nav-link");
+                        for (let i = 0; i < tabs.length; i++) {
+                            tabs[i].classList.remove("selected");
+                        }
+
+                        // Adicionar a classe 'selected' à aba clicada
+                        selectedLink.classList.add("selected");
+
+                        // Ocultar todos os terminais e exibir apenas o terminal correspondente à aba clicada
+                        let terminalsContainer = document.getElementById("terms");
+                        for (let i = 0; i < terminalsContainer.childElementCount; i++) {
+                            terminalsContainer.children[i].style.display = "none";
+                        }
+                        document.getElementById(terminalId).style.display = "block";
+
+                        // Ajustar o tamanho do terminal ao ser exibido (usando dimensões globais)
+                        adjustTerminalSizeFromStorage(terminalId);
+                    }
+
+                    // Função para ajustar o tamanho do terminal a partir do `localStorage` (dimensões globais)
+                    function adjustTerminalSizeFromStorage(terminalId) {
+                        let terminalElement = document.getElementById(terminalId);
+                        if (!terminalElement) {
+                            console.warn(`Elemento com ID "${terminalId}" não encontrado.`);
+                            return;
+                        }
+
+                        try {
+                            let storedDimensions = localStorage.getItem("xtermDimensions");
+                            let dimensions = storedDimensions ? JSON.parse(storedDimensions) : null;
+
+                            if (dimensions) {
+                                terminalElement.style.width = `${dimensions.width}px`;
+                                terminalElement.style.height = `${dimensions.height}px`;
+
+                                let termInfo = terminals[terminalId];
+                                if (termInfo && termInfo.terminal) {
+                                    let calcCols = Math.floor(dimensions.width / 9) - 2;
+                                    let calcRows = Math.floor(dimensions.height / 17);
+                                    termInfo.terminal.resize(calcCols, calcRows);
+                                }
+                            }
+                        } catch (e) {
+                            console.error(`Erro ao ajustar as dimensões do terminal "${terminalId}":`, e);
+                        }
+                    }
+
+                    // Função para criar um novo terminal
+                    function createNewTerminal(terminalId, token) {
+
+
+                        // Verificar se a `div` com o terminalId já existe no documento
+                        let terminalContainer = document.getElementById(terminalId);
+                        if (!terminalContainer) {
+                            console.error(`Elemento com ID "${terminalId}" não encontrado no documento.`);
+                            return;
+                        }
+
+                        // Recuperar dimensões do localStorage ou usar valores padrão
+                        let xtermDimensionsStorage = null;
+                        try {
+                            const storedDimensions = localStorage.getItem("xtermDimensions");
+                            xtermDimensionsStorage = storedDimensions ? JSON.parse(storedDimensions) : null;
+                        } catch (e) {
+                            console.warn(`Erro ao parsear xtermDimensionsStorage para "${terminalId}", usando valores padrão:`, e);
+                        }
+
+                        if (!xtermDimensionsStorage) {
+                            xtermDimensionsStorage = {
+                                cols: 100,
+                                rows: 30,
+                                width: 100,
+                                height: 600,
+                            };
+                        }
+
+                        // Criar uma nova instância do terminal
+                        let term = new window.Terminal({
+                            cursorBlink: true,
+                            cols: xtermDimensionsStorage.cols,
+                            rows: xtermDimensionsStorage.rows,
+                        });
+
+                        term.open(terminalContainer);
+                        terminals[terminalId] = {
+                            terminal: term,
+                            socket: null,
+                        };
+
+                        initWebSocket(term, terminalId, token);
+                        term.onKey((key) => {
+                            handleKeyInput(term, terminals[terminalId].socket, key);
+                        });
+                        term.onscroll = (e) => {
+                            if (terminals[terminalId].socket && terminals[terminalId].socket.readyState === WebSocket.OPEN) {
+                                try {
+                                    terminals[terminalId].socket.send(
+                                        JSON.stringify({
+                                            command: "scrollXtermHandlerCommand",
+                                            token: terminals[terminalId].socket.url.split('/').pop(),
+                                            scroll: e.scrollTop,
+                                            isCodex: true,
+                                        })
+                                    );
+                                } catch (e) {
+                                    console.error("Erro ao enviar mensagem de scroll ao WebSocket:", e);
+                                }
+                            }
+                        };
+
+                        term.onResize((size) => {
+                            if (terminals[terminalId].socket && terminals[terminalId].socket.readyState === WebSocket.OPEN) {
+                                try {
+                                    terminals[terminalId].socket.send(
+                                        JSON.stringify({
+                                            command: "resizeXtermHandlerCommand",
+                                            token: terminals[terminalId].socket.url.split('/').pop(),
+                                            cols: size.cols,
+                                            rows: size.rows,
+                                            isCodex: true,
+                                        })
+                                    );
+                                } catch (e) {
+                                    console.error("Erro ao enviar mensagem de resize ao WebSocket:", e);
+                                }
+                            }
+                        });
+
+                    }
+
+                    async function initWebSocket(terminal, terminalId, token) {
+                        if (token.length < 3) {
+                            while (token.length < 3) {
+                                token = $('#fp').text();
+                                await new Promise((r) => setTimeout(r, 1000));
+                            }
+                        }
+                        console.log(token, terminalId);
+
+
+                        const hostname = window.location.port
+                            ? `${window.location.hostname}:${parseInt(window.location.port)}`
+                            : window.location.hostname;
+
+                        const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+                        const socket = new WebSocket(`${protocol}://${hostname}/${token}-${terminalId}`);
+                        terminals[terminalId].socket = socket;
+                        let newToken = token + '-' + terminalId;
+                        socket.onopen = () => {
+                            try {
+                                socket.send(
+                                    JSON.stringify({
+                                        command: "startXtermHandlerCommand",
+                                        token: newToken,
+                                        isCodex: true,
+                                    })
+                                );
+                            } catch (e) {
+                                console.error("Erro ao enviar mensagem ao WebSocket:", e);
+                            }
+                        };
+
+                        socket.onmessage = (event) => {
+                            if (event.data) {
+                                if (event.data.includes("\x1b[H") && event.data.includes("\x1b[2J")) {
+                                    console.log("Comando 'clear' detectado!");
+                                    terminal.clear();
+                                }
+                                terminal.write(event.data);
+                            }
+                        };
+
+
+                        socket.onclose = () => {
+                            console.warn(`WebSocket para "${terminalId}" desconectado, tentando reconectar...`);
+                            setTimeout(() => {
+                                initWebSocket(terminal, terminalId, token);
+                            }, 3000);
+                        };
+                    }
+
+                    function handleKeyInput(term, socket, key) {
+                        try {
+                            // Ctrl + C
+                            if (key.key === "\x03") {
+                                let hasSelection = term.getSelection();
+                                if (hasSelection) {
+                                    navigator.clipboard.writeText(hasSelection).catch((e) => console.error("Erro ao copiar para a área de transferência:", e));
+                                    term.clearSelection();
+                                } else {
+                                    runCommand(socket, `${key.key}`);
+                                }
+                            }
+                            // Ctrl + V
+                            else if (key.key === "\x16") {
+                                navigator.clipboard.readText()
+                                    .then((clipText) => {
+                                        clipText.split("").forEach((char) => {
+                                            runCommand(socket, char);
+                                        });
+                                    })
+                                    .catch((e) => console.error("Erro ao colar da área de transferência:", e));
+                            }
+                            // Outros comandos
+                            else {
+                                console.log(key)
+                                runCommand(socket, `${key.key}`);
+                            }
+                        } catch (e) {
+                            console.error("Erro ao processar entrada do teclado:", e);
+                        }
+                    }
+
+                    window.runCommand = (socket, command) => {
+                        if (socket && socket.readyState === WebSocket.OPEN) {
+                            try {
+                                socket.send(
+                                    JSON.stringify({
+                                        command: command,
+                                        token: socket.url.split('/').pop(), // Obtém o token a partir da URL do WebSocket
+                                        isCodex: true,
+                                    })
+                                );
+                            } catch (e) {
+                                console.error("Erro ao enviar comando ao WebSocket:", e);
+                            }
+                        }
+                    }
+
+                </script>
+
+
+                <script>
+                    const filesArchitecture = document.getElementById("filesArchitecture");
+                    const resizerVertical = document.getElementById("resizerVertical");
+                    let colMd2 = document.getElementsByClassName("col-md-2")[0];
+                    let colMd10 = document.getElementsByClassName("col-md-10")[0];
+                    resizerVertical.addEventListener("mousedown", function (e) {
+                        e.preventDefault();
+                        window.addEventListener("mousemove", resizeVertical);
+                        window.addEventListener("mouseup", () => {
+                            window.removeEventListener(
+                                "mousemove",
+                                resizeVertical,
+                            );
+                        });
+                    });
+
+                    function resizeVertical(e) {
+                        const rect = colMd2.getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        colMd2.style.width = `${x}px`;
+                        colMd10.style.width = `calc(100% - ${x}px)`;
+                        localStorage.setItem(
+                            "filesArchitectureSize",
+                            JSON.stringify({
+                                width: colMd2.clientWidth,
+                                height: colMd2.clientHeight,
+                            }),
+                        );
+
+                    }
+                </script>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<style>
+    .myGlyphMarginClass {
+        background: red;
+    }
+
+    .myContentClass {
+        /* Make sure to use transparent colors for the selection to work */
+        background: rgba(173, 216, 230, 0.5);
+    }
+
+    #editor .suggest-details .rendered-markdown p {
+        margin-bottom: 0rem !important;
+    }
+
+    .monaco-editor .suggest-details > .monaco-scrollable-element > .body > .header > .type {
+        color: #0c80d8 !important;
+        opacity: 1 !important;
+    }
+
+    .suggest-details {
+        height: auto !important;
+        line-height: 1.00 !important;
+    }
+
+    .rendered-markdown ul {
+        list-style-type: circle !important;
+    }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.41.0/min/vs/loader.js"></script>
+<script>
+    let models = {}; // Para armazenar os modelos dos arquivos
+    let positions = {};
+    let historyZ = [];
+    let currentZ = 0;
+    let tabsForFiles = document.getElementById('newTabFileEditor');
+    let tabsCache = {}
+    require.config({
+        paths: {
+            vs: "https://cdn.jsdelivr.net/npm/monaco-editor@0.41.0/min/vs",
+        },
+    });
+    let rgf;
+    let tokensMap;
+    let completionItems;
+    completionItems = {};
+    let openSession = false;
+    let sug = [];
+    let importedClasses = {};
+    let functionSignatures = {};
+    let classSignatures = {};
+    let hints = [];
+    let language = "php";
+    let codeInfo = {};
+    let debounceTimeout = null;
+    let contextMain = {};
+    let nameFile = "";
+    let suggestionText = "";
+    let currentLine = 0;
+    let callFold = false;
+    let callInternalFunctions = false;
+    let inlayHintsProvider;
+    let codeActionsProvider;
+    let completionProvider;
+    let semaphores = [];
+
+    let editor = null;
+    let editorDiv = document.getElementById("editor");
+
+    require(["vs/editor/editor.main"], async function () {
+        monaco.editor.defineTheme("nightfall", {
+            base: "vs-dark",
+            inherit: true,
+            rules: [
+                {token: "comment", foreground: "7A88CF", fontStyle: "italic"},
+                {token: "keyword", foreground: "c678dd"},
+                {token: "number", foreground: "d19a66"},
+                {token: "string", foreground: "59C479"},
+                {token: "type", foreground: "e5c07b"},
+                {token: "identifier", foreground: "61aeee"},
+                {token: "punctuation", foreground: "abb2bf"},
+                {token: "operator", foreground: "F6CC83"},
+                {token: "delimiter", foreground: "abb2bf"},
+            ],
+            colors: {
+                "editor.background": "#1C1E26",
+                "editor.foreground": "#c8d3f5",
+                "editorLineNumber.foreground": "#444a73",
+                "editorLineNumber.activeForeground": "#828bb8",
+                "editorCursor.foreground": "#7cafff",
+                "editor.selectionBackground": "#828bb850",
+                "editor.selectionHighlightBackground": "#444a73",
+                "editor.findMatchBackground": "#444a73",
+                "editor.findMatchHighlightBackground": "#444a73",
+                "editor.lineHighlightBackground": "#2f334d",
+                "editorLink.activeForeground": "#c8d3f5",
+                "editorWhitespace.foreground": "#c8d3f540",
+                "editorIndentGuide.background": "#444a73bb",
+                "editorIndentGuide.activeBackground": "#828bb8aa",
+                "editorRuler.foreground": "#444a73bb",
+                "editorCodeLens.foreground": "#828bb8",
+                "editorBracketMatch.background": "#222436",
+                "editorBracketMatch.border": "#7cafffbb",
+                "editorOverviewRuler.border": "#222436",
+                "editorGutter.modifiedBackground": "#7cafff66",
+                "editorGutter.addedBackground": "#c3e88d66",
+                "editorGutter.deletedBackground": "#ff5370aa",
+                "editorError.foreground": "#ff5370",
+                "editorWarning.foreground": "#ffc777cc",
+            },
+        });
+        monaco.editor.defineTheme("phpstorm", {
+            base: "vs-dark",
+            inherit: true,
+            rules: [
+                {token: "comment", foreground: "7A88CF", fontStyle: "italic"},
+                {token: "keyword", foreground: "c678dd"},
+                {token: "number", foreground: "d19a66"},
+                {token: "string", foreground: "98c379"},
+                {token: "type", foreground: "e5c07b"},
+                {token: "identifier", foreground: "61aeee"},
+                {token: "punctuation", foreground: "abb2bf"},
+                {token: "operator", foreground: "56b6c2"},
+                {token: "delimiter", foreground: "abb2bf"},
+            ],
+            colors: {
+                "editor.background": "#222436",
+                "editor.foreground": "#c8d3f5",
+                "editorLineNumber.foreground": "#444a73",
+                "editorLineNumber.activeForeground": "#828bb8",
+                "editorCursor.foreground": "#7cafff",
+                "editor.selectionBackground": "#828bb850",
+                "editor.selectionHighlightBackground": "#444a73",
+                "editor.findMatchBackground": "#444a73",
+                "editor.findMatchHighlightBackground": "#444a73",
+                "editor.lineHighlightBackground": "#2f334d",
+                "editorLink.activeForeground": "#c8d3f5",
+                "editorWhitespace.foreground": "#c8d3f540",
+                "editorIndentGuide.background": "#444a73bb",
+                "editorIndentGuide.activeBackground": "#828bb8aa",
+                "editorRuler.foreground": "#444a73bb",
+                "editorCodeLens.foreground": "#828bb8",
+                "editorBracketMatch.background": "#222436",
+                "editorBracketMatch.border": "#7cafffbb",
+                "editorOverviewRuler.border": "#222436",
+                "editorGutter.modifiedBackground": "#7cafff66",
+                "editorGutter.addedBackground": "#c3e88d66",
+                "editorGutter.deletedBackground": "#ff5370aa",
+                "editorError.foreground": "#ff5370",
+                "editorWarning.foreground": "#ffc777cc",
+            },
+        });
+        editor = monaco.editor.create(editorDiv, {
+            value: "",
+            language: "php",
+            fontFamily: "JetBrains Mono",
+            renderWhitespace: 'none',
+            theme: 'nightfall',
+            fontSize: 12,
+            lineNumbers: 'on',
+            tabSize: 4,
+            insertSpaces: true,
+            detectIndentation: true,
+            formatOnPaste: false,
+            folding: true,
+            foldingHighlight: false,
+            automaticLayout: true,
+            formatOnType: true,
+            minimap: {enabled: false},
+            foldingStrategy: 'auto',
+            scrollbar: {
+                vertical: 'visible',
+                horizontal: 'visible',
+                verticalScrollbarSize: 10,
+                horizontalScrollbarSize: 10
+            },
+            inlineDecorations: true,
+        });
+
+        monaco.languages.setLanguageConfiguration("php", {
+            comments: {
+                lineComment: "//",
+                blockComment: ["/*", "*/"],
+            },
+            brackets: [
+                ["{", "}"],
+                ["[", "]"],
+                ["(", ")"],
+            ],
+            autoClosingPairs: [
+                {open: "{", close: "}"},
+                {open: "[", close: "]"},
+                {open: "(", close: ")"},
+                {open: '"', close: '"', notIn: ["string"]},
+                {open: "'", close: "'", notIn: ["string"]},
+                {open: "`", close: "`", notIn: ["string"]},
+            ],
+            surroundingPairs: [
+                {open: "{", close: "}"},
+                {open: "[", close: "]"},
+                {open: "(", close: ")"},
+                {open: '"', close: '"'},
+                {open: "'", close: "'"},
+                {open: "`", close: "`"},
+            ],
+            folding: {
+                offSide: true,
+                markers: {
+                    start: new RegExp("^\\s*//\\s*#?region\\b"),
+                    end: new RegExp("^\\s*//\\s*#?endregion\\b"),
+                },
+            },
+        });
+
+        registerInlayHints().then(async () => {
+            await updateImports(editor.getModel());
+            await registerCodeActions();
+            await registerCompletionProvider();
+            await updateProviders();
+            inlayHintsProvider.dispose();
+            await registerInlayHints();
+        });
+
+
+        async function registerInlayHints() {
+            inlayHintsProvider = await monaco.languages.registerInlayHintsProvider(language, {
+                async provideInlayHints(model, range) {
+                    let hints = [];
+                    const code = editor.getValue();
+
+                    for (let [functionName, args] of Object.entries(functionSignatures)) {
+                        const regex = new RegExp(
+                                `\\b${functionName.replaceAll("\\", "\\\\").replaceAll("$", "")}\\((.*?)\\)`,
+                            "gs"
+                        );
+                        let match;
+                        while ((match = regex.exec(code)) !== null) {
+                            let functionArgs = match[1]
+                                .split(",")
+                                .map((arg) => arg.trim());
+                            let startIndex = match.index + match[0].indexOf("(") + 1;
+
+                            functionArgs.forEach((arg, i) => {
+                                if (i < args.length) {
+                                    let argStartIndex = code.indexOf(arg, startIndex);
+                                    let argPosition = model.getPositionAt(argStartIndex);
+
+                                    // Verifica se o argumento está dentro do range visível
+                                    if (
+                                        argPosition.lineNumber >= range.startLineNumber &&
+                                        argPosition.lineNumber <= range.endLineNumber
+                                    ) {
+                                        if (
+                                            !hints.some(
+                                                (hint) =>
+                                                    hint.position.lineNumber === argPosition.lineNumber &&
+                                                    hint.position.column === argPosition.column
+                                            )
+                                        ) {
+                                            hints.push({
+                                                label: `${args[i]}: `,
+                                                position: argPosition,
+                                            });
+                                        }
+                                    }
+
+                                    startIndex = argStartIndex + arg.length;
+                                } else {
+                                    let argStartIndex = code.indexOf(arg, startIndex);
+                                    let argPosition = model.getPositionAt(argStartIndex);
+
+                                    // Remove dicas que não estão no range visível
+                                    hints = hints.filter(
+                                        (hint) =>
+                                            !(
+                                                hint.position.lineNumber === argPosition.lineNumber &&
+                                                hint.position.column === argPosition.column
+                                            )
+                                    );
+                                }
+                            });
+                        }
+                    }
+
+                    // Filtra duplicações
+                    hints = hints
+                        .filter(
+                            (hint, index, self) =>
+                                index ===
+                                self.findIndex(
+                                    (t) =>
+                                        t.position.lineNumber === hint.position.lineNumber &&
+                                        t.position.column === hint.position.column
+                                )
+                        )
+                        // Filtra linhas que começam com comentário "//"
+                        .filter(
+                            (hint) =>
+                                !model
+                                    .getLineContent(hint.position.lineNumber)
+                                    .trim()
+                                    .startsWith("//")
+                        );
+
+                    return {
+                        dispose: () => {
+                        },
+                        hints,
+                    };
+                },
+            });
+        }
+
+
+        async function registerCodeActions() {
+            codeActionsProvider = monaco.languages.registerCodeActionProvider(
+                language,
+                {
+                    provideCodeActions: (model, range, context, token) => {
+                        const code = model.getValue();
+                        const regex =
+                            /(?<!\w)(\\[a-zA-Z_][a-zA-Z0-9_]*(?:\\[a-zA-Z_][a-zA-Z0-9_]*)*)(?=::|\(|\s|$)/g;
+                        let match;
+                        const codeActions = [];
+
+                        while ((match = regex.exec(code)) !== null) {
+                            const importLine = match[0];
+                            const startIndex = match.index;
+                            const endIndex = startIndex + importLine.length;
+
+                            const startPosition =
+                                model.getPositionAt(startIndex);
+                            const endPosition = model.getPositionAt(endIndex);
+
+                            // Verifica se a posição do cursor está sobre a expressão detectada
+                            if (
+                                range.startLineNumber ===
+                                startPosition.lineNumber &&
+                                range.startColumn >= startPosition.column &&
+                                range.endColumn <= endPosition.column
+                            ) {
+                                // procura o topo do arquivo após a última declaração use ou <?php
+                                const startIndex = code.indexOf(importLine);
+                                const startPosition =
+                                    model.getPositionAt(startIndex);
+                                const endPosition = model.getPositionAt(
+                                    startIndex + importLine.length,
+                                );
+
+                                // Encontra a posição no topo do arquivo
+                                const afterPhpOrUse =
+                                    /(?<=<\?php\s*|use\s+.*?;)/g;
+                                const topMatches = [
+                                    ...code.matchAll(afterPhpOrUse),
+                                ];
+                                const topMatchIndex =
+                                    topMatches.length > 0
+                                        ? topMatches[topMatches.length - 1]
+                                            .index +
+                                        topMatches[topMatches.length - 1][0]
+                                            .length
+                                        : 0;
+
+                                let rangeTop = new monaco.Range(1, 1, 1, 1); // Default to the very top if nothing found
+                                if (topMatchIndex > 0) {
+                                    rangeTop = new monaco.Range(
+                                        model.getPositionAt(
+                                            topMatchIndex,
+                                        ).lineNumber,
+                                        model.getPositionAt(
+                                            topMatchIndex,
+                                        ).column,
+                                        model.getPositionAt(
+                                            topMatchIndex,
+                                        ).lineNumber,
+                                        model.getPositionAt(
+                                            topMatchIndex,
+                                        ).column,
+                                    );
+                                }
+                                let edits;
+
+                                edits = [
+                                    {
+                                        resource: model.uri,
+                                        textEdit: {
+                                            range: range,
+                                            text: importLine.split("\\").pop(),
+                                        },
+                                        versionId: model.getVersionId(),
+                                    },
+                                ];
+                                if (
+                                    !code.includes(
+                                        `use ${importLine.slice(1)};`,
+                                    )
+                                ) {
+                                    edits.push({
+                                        resource: model.uri,
+                                        textEdit: {
+                                            range: rangeTop,
+                                            text: `\nuse ${importLine.slice(1)};\n`,
+                                        },
+                                        versionId: model.getVersionId(),
+                                    });
+                                }
+
+                                codeActions.push({
+                                    title: `Add use statement for ${importLine.slice(1)}`,
+                                    kind: "quickfix",
+                                    diagnostics: [],
+                                    edit: {
+                                        edits: edits,
+                                    },
+                                });
+                            }
+                        }
+                        return {
+                            actions: codeActions,
+                            dispose: () => {
+                            },
+                        };
+                    },
+                },
+            );
+        }
+
+        async function registerCompletionProvider() {
+            completionProvider =
+                monaco.languages.registerCompletionItemProvider(language, {
+                    triggerCharacters: ["$:", '::', ">"],
+                    provideCompletionItems: async function (model, position) {
+                        await updateImports(model);
+                        let word = model.getWordUntilPosition(position);
+
+                        // checa se tem <?php na linha
+                        let lineContent = model.getLineContent(position.lineNumber);
+                        if (lineContent.includes("<?")) {
+                            return {suggestions: []};
+                        }
+
+
+                        if (!word.word) {
+                            word = model.getWordAtPosition({
+                                lineNumber: position.lineNumber,
+                                column: position.column - 2,
+                            });
+                        }
+                        if (!word) {
+                            let suggestions = [];
+                            let lineContent = model.getLineContent(
+                                position.lineNumber,
+                            );
+                            sug.forEach((item) => {
+                                let label = item.label.split("::")[1];
+                                if (
+                                    lineContent
+                                        .toUpperCase()
+                                        .includes(
+                                            item.label
+                                                .split("::")[0]
+                                                .toUpperCase(),
+                                        ) &&
+                                    label
+                                ) {
+                                    let insertText = item.insertText
+                                        .split("::")
+                                        .pop();
+                                    if (insertText) {
+                                        suggestions.push({
+                                            label: label,
+                                            kind: item.kind,
+                                            insertText: insertText,
+                                            insertTextRules:
+                                            item.insertTextRules,
+                                            documentation: item.documentation,
+                                            detail: item.detail,
+                                            parameters: item.parameters,
+                                        });
+                                        functionSignatures[label] =
+                                            item.parameters.map(
+                                                (param) => param.name,
+                                            );
+                                    }
+                                }
+                            });
+                            return {suggestions};
+                        }
+
+
+                        let variable = word.word.slice(1);
+                        if (word.word.startsWith("$")) {
+                            let variableNameBackup = word.word.slice(1);
+                            console.log('variavel devia disparar')
+
+                            if (!variableNameBackup) return {suggestions: []};
+
+
+                            if (variableNameBackup.includes('this')) {
+                                let codeContainer = model.getValue(); // código completo
+
+
+                                // Procurar a última declaração de classe antes do "this"
+                                const classRegex = /class\s+([A-Za-z0-9_]+)\s*/g;
+                                let match, lastMatch;
+                                while ((match = classRegex.exec(codeContainer)) !== null) {
+                                    lastMatch = match;
+                                }
+
+                                if (lastMatch) {
+                                    const className = lastMatch[1];
+                                    codeInfo[variableNameBackup] = {
+                                        variable: 'this',
+                                        class: className
+                                    };
+                                    importedClasses[className] = sug.find((item) => item.detail.endsWith(className)).detail;
+                                    variable = codeInfo[variableNameBackup];
+
+
+                                } else {
+                                    console.log('Nenhuma classe encontrada.');
+                                }
+                            } else {
+                                console.log('nao tem this');
+                                console.log(variable)
+                            }
+
+                            if (importedClasses[variable?.class]) variable.class = importedClasses[variable.class];
+
+                            if (Object.keys(codeInfo).includes(variableNameBackup)) {
+                                let nameClasse = codeInfo[variableNameBackup]['class'];
+                                if (Object.keys(importedClasses).includes(nameClasse)) nameClasse = importedClasses[nameClasse];
+                                variable = {
+                                    class: nameClasse,
+                                    variable: codeInfo[variableNameBackup]['variable']
+                                };
+                            }
+
+
+                            let suggestions = sug.filter((item) => item.detail.includes(variable.class)).map((item) => ({
+
+                                label: item.label.split("::").pop(),
+                                kind: item.kind,
+                                insertText: item.insertText
+                                    .split("::")
+                                    .pop(),
+                                insertTextRules: item.insertTextRules,
+                                documentation: item.documentation,
+                                detail: item.detail,
+                                parameters: item.parameters,
+                            }));
+                            return {
+                                suggestions: suggestions.filter(
+                                    (s, i, self) =>
+                                        i ===
+                                        self.findIndex(
+                                            (t) => t.label === s.label,
+                                        ),
+                                ),
+                            };
+                        } else if (word.word.startsWith('self')) {
+
+                            let variableNameBackup = word.word;
+
+
+                            if (!variableNameBackup) return {suggestions: []};
+                            let className;
+
+                            if (variableNameBackup.includes('self')) {
+                                let codeContainer = model.getValue(); // código completo
+
+
+                                let namespace = null;
+
+// Captura o último namespace (se houver)
+                                const nsRegex = /namespace\s+([A-Za-z0-9_\\]+)\s*;/g;
+                                let nsMatch, lastNsMatch;
+                                while ((nsMatch = nsRegex.exec(codeContainer)) !== null) {
+                                    lastNsMatch = nsMatch;
+                                }
+                                if (lastNsMatch) {
+                                    namespace = lastNsMatch[1];
+                                }
+
+// Captura a última classe antes de "this"
+                                const classRegex = /class\s+([A-Za-z0-9_]+)\s*/g;
+                                let match, lastMatch;
+                                while ((match = classRegex.exec(codeContainer)) !== null) {
+                                    lastMatch = match;
+                                }
+                                if (lastMatch) {
+                                    className = lastMatch[1];
+                                }
+
+                                if (className) {
+                                    const fullClassName = namespace ? `${namespace}\\${className}` : className;
+
+                                    variable = {
+                                        class: fullClassName,
+                                        variable: 'self'
+                                    };
+                                }
+
+
+                            }
+
+
+                            if (importedClasses[variable?.class]) variable.class = importedClasses[variable.class];
+
+
+                            let suggestions = sug.filter((item) => item.detail.includes(variable.class)).map((item) => {
+
+
+                                return {
+
+                                    label: item.label.split("::").pop(),
+                                    kind: item.kind,
+                                    insertText: item.insertText
+                                        .split("::")
+                                        .pop(),
+                                    insertTextRules: item.insertTextRules,
+                                    documentation: item.documentation,
+                                    detail: item.detail,
+                                    parameters: item.parameters,
+                                }
+                            });
+                            return {
+                                suggestions: suggestions.filter(
+                                    (s, i, self) =>
+                                        i ===
+                                        self.findIndex(
+                                            (t) => t.label === s.label,
+                                        ),
+                                ),
+                            };
+                        } else {
+                            console.log(word.word, 'else')
+                            let suggestions = [];
+                            let filter = sug.filter(
+                                (item) =>
+                                    item.label
+                                        .split("::")
+                                        .pop()
+                                        .includes(word.word) ||
+                                    item.label.includes(word.word),
+                            );
+
+                            let range;
+                            const textBeforeCursor = model.getValueInRange({
+                                startLineNumber: position.lineNumber,
+                                startColumn: 1,
+                                endLineNumber: position.lineNumber,
+                                endColumn: position.column,
+                            });
+                            const lastBackslashIndex =
+                                textBeforeCursor.lastIndexOf("\\");
+                            if (lastBackslashIndex !== -1) {
+                                const namespacePart =
+                                    textBeforeCursor.substring(
+                                        lastBackslashIndex + 1,
+                                    );
+                                const fullNamespace = textBeforeCursor
+                                    .substring(0, lastBackslashIndex)
+                                    .trim();
+                                const lastNamespacePart = fullNamespace
+                                    .split(" ")
+                                    .pop();
+
+                                const lastNamespaceStart =
+                                    fullNamespace.lastIndexOf(
+                                        lastNamespacePart,
+                                    ) + 1;
+                                const lastNamespaceEnd =
+                                    lastNamespaceStart +
+                                    lastNamespacePart.length;
+                                range = new monaco.Range(
+                                    position.lineNumber,
+                                    lastNamespaceStart,
+                                    position.lineNumber,
+                                    lastNamespaceEnd,
+                                );
+                            } else {
+
+                                const word = model.getWordAtPosition(position);
+
+
+                                range = new monaco.Range(
+                                    position.lineNumber,
+                                    word.startColumn,
+                                    position.lineNumber,
+                                    word.endColumn,
+                                );
+                            }
+                            let filterImported = filter.filter(
+                                (item) =>
+                                    importedClasses[
+                                        item.label.split("\\").pop()
+                                        ],
+                            );
+                            filter = filterImported.concat(
+                                filter.filter(
+                                    (item) =>
+                                        !importedClasses[
+                                            item.label.split("\\").pop()
+                                            ],
+                                ),
+                            );
+                            filter.forEach((item) => {
+                                if (
+                                    importedClasses[
+                                        item.label.split("\\").pop()
+                                        ]
+                                )
+                                    item.label = item.label.split("\\").pop();
+                                suggestions.push({
+                                    label: item.label,
+                                    kind: item.kind,
+                                    insertText: item.insertText,
+                                    insertTextRules: item.insertTextRules,
+                                    documentation: item.documentation,
+                                    detail: item.detail,
+                                    parameters: item.parameters,
+                                    range: range,
+                                    sortText: item.label,
+                                    filterText: item.label,
+                                });
+                            });
+
+
+                            return {
+                                suggestions: suggestions.filter(
+                                    (s, i, self) =>
+                                        i ===
+                                        self.findIndex(
+                                            (t) => t.label === s.label,
+                                        ),
+                                ),
+                            };
+                        }
+                    },
+                });
+        }
+
+        editor.onDidChangeCursorPosition(async (e) => clearSuggestions());
+        editor.onDidChangeModelContent(debounce(handleContentChange, 2000));
+        editor.onKeyDown(function (e) {
+            if (e.browserEvent.key === "Backspace") {
+                e.preventDefault();
+                let lineNumber = editor.getPosition().lineNumber;
+                let column = editor.getPosition().column;
+                let lineContent = editor
+                    .getModel()
+                    .getLineContent(lineNumber)
+                    .trim()
+                    .replaceAll(" ", "");
+                if (lineContent === "") {
+                    editor
+                        .getModel()
+                        .applyEdits([
+                            {
+                                range: new monaco.Range(
+                                    lineNumber,
+                                    1,
+                                    lineNumber,
+                                    column,
+                                ),
+                                text: "",
+                            },
+                        ]);
+                }
+            }
+            // caso a linha tenha '<?php' feche as sugestoes
+            currentLine = editor.getPosition().lineNumber;
+            const position = editor.getPosition();
+            const model = editor.getModel();
+            const offset = model.getOffsetAt(position);
+            const start = Math.max(0, offset - 30);
+            const range = {
+                startColumn: 1,
+                startLineNumber: 1,
+                endColumn: 1,
+                endLineNumber: 1,
+            };
+            const text = model.getValueInRange({
+                startLineNumber: model.getPositionAt(start).lineNumber,
+                startColumn: model.getPositionAt(start).column,
+                endLineNumber: position.lineNumber,
+                endColumn: position.column
+            }) + e.browserEvent.key;
+            // self::hhh
+            if (text.endsWith("self::")) {
+                let codeContainer = model.getValue(); // código completo
+
+
+                let className = null;
+                let namespace = null;
+
+// Captura o último namespace (se houver)
+                const nsRegex = /namespace\s+([A-Za-z0-9_\\]+)\s*;/g;
+                let nsMatch, lastNsMatch;
+                while ((nsMatch = nsRegex.exec(codeContainer)) !== null) {
+                    lastNsMatch = nsMatch;
+                }
+                if (lastNsMatch) {
+                    namespace = lastNsMatch[1];
+                }
+
+// Captura a última classe antes de "this"
+                const classRegex = /class\s+([A-Za-z0-9_]+)\s*/g;
+                let match, lastMatch;
+                while ((match = classRegex.exec(codeContainer)) !== null) {
+                    lastMatch = match;
+                }
+                if (lastMatch) {
+                    className = lastMatch[1];
+                }
+
+                if (className) {
+                    const fullClassName = namespace ? `${namespace}\\${className}` : className;
+                    console.log('Classe detectada:', fullClassName);
+                } else {
+                    console.log('Nenhuma classe encontrada.');
+                }
+                editor.getContribution('editor.contrib.suggestController').cancelSuggestWidget();
+                editor.trigger('manual-trigger', 'editor.action.triggerSuggest', {});
+                editor.getContribution('editor.contrib.suggestController').cancelSuggestWidget();
+                return sleep(100).then(() => editor.trigger('manual-trigger', 'editor.action.triggerSuggest', {}))
+
+
+            } else if (text.endsWith("::")) {
+
+                const code = text;
+                const regex = /(?:if\s*\(|[=,]\s*|return\s+)?\b([A-Za-z_][A-Za-z0-9_\\]*)::([A-Za-z_][A-Za-z0-9_]*)\b/g;
+
+                let matches = [];
+                let lastMatch = null;
+                while ((lastMatch = regex.exec(code)) !== null) {
+                    matches.push(lastMatch);
+                }
+                let className = null;
+                if (matches.length > 0) {
+                    lastMatch = matches[matches.length - 1];
+                } else {
+                    lastMatch = null;
+                }
+
+
+                if (lastMatch) {
+                    className = lastMatch[1];
+                }
+                console.log('classe stat', text, className)
+
+                editor.getContribution('editor.contrib.suggestController').cancelSuggestWidget();
+                editor.trigger('manual-trigger', 'editor.action.triggerSuggest', {});
+                editor.getContribution('editor.contrib.suggestController').cancelSuggestWidget();
+                return sleep(100).then(() => editor.trigger('manual-trigger', 'editor.action.triggerSuggest', {}))
+
+
+            }
+
+
+        });
+        editor.addAction({
+            id: "accept-suggestion",
+            label: "Accept Suggestion",
+            keybindings: [monaco.KeyCode.Tab],
+            run: acceptSuggestion,
+        });
+        editor.addAction({
+            id: "format-code",
+            label: "Format Code",
+            keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KEY_L],
+            run: formatCode,
+        });
+
+
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyZ, revertCode);
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, saveFile);
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.KeyL, formatCode);
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Space, recoverSuggestion);
+        editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.BracketRight, () => cycleSuggestion(1));
+        editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.BracketLeft, () => cycleSuggestion(-1));
+
+
+        async function formatCode() {
+            let model = editor.getModel();
+            let content = model.getValue();
+            let cursorPosition = editor.getPosition();
+            let response = await fetch('/refactorFile?tokenBrowser=' + $('#fp').text(), {
+                method: 'POST',
+                body: JSON.stringify({
+                    code: content,
+                    fullPath: $('#hiddenFileEdit').text(),
+                }),
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                mode: 'cors',
+            });
+            let dataObj = await response.json();
+            if (dataObj.error) {
+                toastLotus(dataObj.error, 'error', 1000, 'error');
+                return;
+            }
+            let data = dataObj.prettyCode;
+
+            console.log(data);
+            model.setValue(data);
+            inlayHintsProvider.dispose();
+            await registerInlayHints();
+            // posicionar o cursor na posição original
+            if (cursorPosition) {
+                editor.setPosition(cursorPosition);
+                editor.revealPosition(cursorPosition);
+            }
+        }
+
+        async function revertCode() {
+            let nameFile = $('#searchFiles').text();
+
+            if (!historyZ[nameFile] || historyZ[nameFile].length === 0) {
+                console.warn('Nenhum histórico disponível para desfazer');
+                return;
+            }
+
+            // Remove o estado atual (último) e pega o anterior
+            if (historyZ[nameFile].length > 1) {
+                historyZ[nameFile].pop(); // Remove o estado atual
+            }
+
+            let oldCode = historyZ[nameFile][historyZ[nameFile].length - 1];
+            let model = editor.getModel();
+            model.setValue(oldCode);
+            inlayHintsProvider.dispose();
+            await registerInlayHints();
+            editor.focus();
+            let oldPosition = positions[nameFile];
+            if (oldPosition) {
+                editor.setPosition(oldPosition);
+                editor.revealPosition(oldPosition);
+            }
+        }
+
+        monaco.languages.registerDocumentFormattingEditProvider(language, {
+            provideDocumentFormattingEdits: async function (
+                model,
+                options,
+                token,
+            ) {
+                let content = model.getValue();
+                var data = await prettier.format(content, {
+                    plugins: prettierPlugins,
+                    parser: "php",
+                    printWidth: 200,
+                    tabWidth: 4,
+                });
+                return [
+                    {
+                        range: model.getFullModelRange(),
+                        text: data,
+                    },
+                ];
+            },
+        });
+        editor.addAction({
+            id: "remove-comments",
+            label: "Remove Comments",
+            keybindings: [
+                monaco.KeyMod.CtrlCmd | monaco.KeyCode.F10,
+                monaco.KeyMod.chord(
+                    monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyK,
+                    monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyM,
+                ),
+            ],
+            precondition: null,
+            keybindingContext: null,
+            contextMenuGroupId: "navigation",
+            contextMenuOrder: 1.5,
+            run: clearComments,
+        });
+
+        // ação de refatorar codigo selecionado
+        editor.addAction({
+            id: "refactor-code",
+            label: "Refatorar Código (chat GPT-Web)",
+            keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.F2],
+            run: refactorCode,
+            contextMenuGroupId: "navigation",
+            contextMenuOrder: 1.5,
+        });
+
+
+        async function refactorCode() {
+            const loader = document.createElement("div");
+            loader.setAttribute("id", "loader");
+            Object.assign(loader.style, {
+                position: "fixed",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                zIndex: "5000",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+            });
+
+            const spinner = document.createElement("div");
+            spinner.classList.add("spinner");
+            Object.assign(spinner.style, {
+                border: "16px solid #f3f3f3",
+                borderTop: "16px solid #3498db",
+                borderRadius: "50%",
+                width: "60px",
+                height: "60px",
+                animation: "spin 2s linear infinite",
+            });
+
+            const styleSheet = document.createElement("style");
+            styleSheet.type = "text/css";
+            styleSheet.innerText = `
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    `;
+            document.head.appendChild(styleSheet);
+            loader.appendChild(spinner);
+            document.body.appendChild(loader);
+
+            let model = editor.getModel();
+            let selection = editor.getSelection();
+            let selectedText = model.getValueInRange(selection);
+
+            const promptRefactor = `
+    // Path: ${nameFile}
+    // refatorar o código abaixo para melhorar a legibilidade e manutenção
+    ${selectedText}
+    `;
+
+            // Salva o código original ANTES da requisição
+            localStorage.setItem("refactorCode", JSON.stringify({
+                selectedText,
+                selection
+            }));
+
+            try {
+                const responseLocal = await fetch(
+                    "/codex?tokenBrowser=" + $("#fp").text(),
+                    {
+                        method: "POST",
+                        body: JSON.stringify({
+                            type: "refactor",
+                            prompt: promptRefactor,
+                        }),
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        mode: "cors",
+                    }
+                );
+                let suggestionText = await responseLocal.text();
+
+                // Aplica o novo código refatorado
+                model.applyEdits([{range: selection, text: suggestionText}]);
+                // Obter a nova seleção da sugestão
+                let startSelection = model.getPositionAt()
+
+
+                // Exibe o toast para aceitar ou rejeitar
+                showToast(selectedText, suggestionText, selection, editor);
+
+            } catch (error) {
+                console.error('Erro ao tentar refatorar o código:', error);
+            } finally {
+                document.body.removeChild(loader);
+            }
+        }
+
+
+// Função para exibir o toast e permitir a escolha
+        function showToast(originalCode, newCode, selection, editor) {
+            const toast = document.createElement("div");
+            toast.setAttribute("id", "toast");
+            toast.innerHTML = `
+        <div style="
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 24px;
+            background-color: #1d2245;
+            color: white;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 5000;
+            width: 300px;
+            box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+        ">
+            <span style="display: block; margin-bottom: 20px;">Você aceita o novo código?</span>
+            <div>
+                <button id="acceptBtn" style="
+                    width: 100%;
+                    margin-bottom: 10px;
+                    padding: 12px 16px;
+                    background-color: #28a745;
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    font-size: 16px;
+                ">Sim</button>
+                <button id="rejectBtn" style="
+                    width: 100%;
+                    padding: 12px 16px;
+                    background-color: #dc3545;
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    font-size: 16px;
+                ">Não</button>
+            </div>
+        </div>
+    `;
+
+            document.body.appendChild(toast);
+
+            document.getElementById("acceptBtn").addEventListener("click", function () {
+                localStorage.removeItem("refactorCode");
+                document.body.removeChild(toast);
+            });
+
+            document.getElementById("rejectBtn").addEventListener("click", function () {
+                // Apenas remove o código novo e limpa o editor na seleção atual
+                let currentSelection = editor.getSelection();
+                editor.getModel().applyEdits([{range: currentSelection, text: originalCode}]);
+                document.body.removeChild(toast);
+            });
+
+        }
+
+
+        async function clearComments() {
+            let model = editor.getModel();
+            let content = model.getValue();
+            let lines = content.split("\n");
+            let newLines = [];
+            lines.forEach((line) => {
+                if (!line.trim().startsWith("//")) {
+                    newLines.push(line);
+                }
+            });
+            model.setValue(newLines.join("\n"));
+        }
+
+        let currentSuggestions = [];
+        let currentSuggestionIndex = 0;
+        let suggestionCache = new Map();
+        let lastSuggestionRequest = null;
+
+        // Funções auxiliares refatoradas
+        function getCurrentLineIndex() {
+            const currentRow = editor.getPosition().lineNumber;
+            const overlays = document.querySelectorAll(".margin-view-overlays")[0];
+            let index = null;
+            overlays?.childNodes.forEach((element, key) => {
+                if (Number(element.innerText) === currentRow) index = key;
+            });
+            return index;
+        }
+
+        function getLineChildNodes(lineIndex) {
+            const viewLines = document.getElementsByClassName("view-lines")[0];
+            if (!viewLines || !viewLines.childNodes[lineIndex]) return null;
+            return viewLines.childNodes[lineIndex]?.childNodes[0]?.childNodes;
+        }
+
+        function formatSuggestionHTML(text) {
+            return text
+                .replaceAll(`\n`, '<br-class="brs">')
+                .replaceAll(" ", "&nbsp;")
+                .replaceAll('<br-class="brs">', '<br class="brs">');
+        }
+
+        function createSuggestionElement(text) {
+            const span = document.createElement("span");
+            span.style.opacity = 0.5;
+            span.className = "suggestion";
+            span.innerHTML = formatSuggestionHTML(text);
+            return span;
+        }
+
+        function createIndicatorElement(current, total) {
+            const indicator = document.createElement("span");
+            indicator.className = "suggestion-indicator";
+            Object.assign(indicator.style, {
+                opacity: 0.7,
+                marginLeft: "10px",
+                color: "#00b1ff"
+            });
+            indicator.innerHTML = `[${current}/${total}]`;
+            return indicator;
+        }
+
+        function addLineBreaks(startLine, count) {
+            if (count <= 1) return;
+            const brs = '<br class="brs">'.repeat(count - 1);
+            const docTotalLines = editor.getModel().getLineCount() + 1;
+
+            for (let lineNum = startLine + 1; lineNum <= docTotalLines; lineNum++) {
+                const line = getHtmlElementFromLine(lineNum);
+                if (line) line.innerHTML = brs + line.innerHTML;
+            }
+        }
+
+        async function fetchSuggestions(contextMain, stopChars) {
+            // Gera chave de cache baseada no contexto
+            const cacheKey = `${contextMain.textBeforeCursor.slice(-100)}_${contextMain.textAfterCursor.slice(0, 50)}`;
+
+            // Verifica cache (válido por 5 minutos)
+            if (suggestionCache.has(cacheKey)) {
+                const cached = suggestionCache.get(cacheKey);
+                if (Date.now() - cached.timestamp < 300000) {
+                    return cached.suggestions;
+                }
+                suggestionCache.delete(cacheKey);
+            }
+
+            // Cancela requisição anterior se existir
+            if (lastSuggestionRequest) {
+                lastSuggestionRequest.abort?.();
+            }
+
+            const controller = new AbortController();
+            lastSuggestionRequest = controller;
+
+            try {
+                const response = await fetch(`/codex?tokenBrowser=${$("#fp").text()}`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    mode: "cors",
+                    signal: controller.signal,
+                    body: JSON.stringify({
+                        prompt: `// Path: ${contextMain.namefile}\n${contextMain.textBeforeCursor}`,
+                        suffix: contextMain.textAfterCursor,
+                        max_tokens: 1000,
+                        temperature: 0.2,
+                        language: language,
+                        top_p: 0.95,
+                        n: 3,
+                        stop: stopChars,
+                        fullPath: $("#hiddenFileEdit").text(),
+                    })
+                });
+
+                const contentType = response.headers.get("content-type");
+                let suggestions = [];
+
+                if (contentType?.includes("application/json")) {
+                    const data = await response.json();
+                    suggestions = data.suggestions || [];
+                } else {
+                    suggestions = [await response.text()];
+                }
+
+                // Salva no cache
+                suggestionCache.set(cacheKey, {
+                    suggestions,
+                    timestamp: Date.now()
+                });
+
+                // Limpa cache antigo (mantém apenas 50 entradas)
+                if (suggestionCache.size > 50) {
+                    const firstKey = suggestionCache.keys().next().value;
+                    suggestionCache.delete(firstKey);
+                }
+
+                return suggestions;
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    console.log('Requisição cancelada');
+                    return [];
+                }
+                throw error;
+            }
+        }
+
+        async function showSuggestion(contextMain) {
+            const lineIndex = getCurrentLineIndex();
+            if (lineIndex === null) return;
+
+            const childNodes = getLineChildNodes(lineIndex);
+            if (!childNodes) return;
+
+            let stringMount = "";
+            const position = editor.getPosition();
+            const stopChars = ["\n```", contextMain.stopChar].filter(Boolean);
+
+            for (let i = 0; i < childNodes.length; i++) {
+                stringMount += childNodes[i].textContent;
+
+                if (stringMount.length === position.column ||
+                    stringMount.length + 1 === position.column) {
+
+                    await sleep(100);
+                    const suggestions = await fetchSuggestions(contextMain, stopChars);
+
+                    if (suggestions.length === 0) break;
+
+                    suggestionText = suggestions[0];
+                    currentSuggestions = suggestions;
+                    currentSuggestionIndex = 0;
+
+                    try {
+                        clearSuggestions();
+                        const pkn = getHtmlElementFromLine(position.lineNumber)
+                            .childNodes[0].childNodes[i];
+
+                        pkn.appendChild(createSuggestionElement(suggestionText));
+
+                        if (suggestions.length > 1) {
+                            pkn.appendChild(createIndicatorElement(1, suggestions.length));
+                        }
+
+                        currentLine = position.lineNumber;
+                        addLineBreaks(currentLine, suggestionText.split("\n").length);
+                    } catch (e) {
+                        console.error("Erro ao exibir sugestão:", e);
+                    }
+                    break;
+                }
+            }
+        }
+
+        function cycleSuggestion(direction) {
+            if (!currentSuggestions || currentSuggestions.length <= 1) return;
+
+            currentSuggestionIndex += direction;
+            if (currentSuggestionIndex < 0) {
+                currentSuggestionIndex = currentSuggestions.length - 1;
+            } else if (currentSuggestionIndex >= currentSuggestions.length) {
+                currentSuggestionIndex = 0;
+            }
+
+            suggestionText = currentSuggestions[currentSuggestionIndex];
+            updateSuggestionDisplay();
+        }
+
+        function updateSuggestionDisplay() {
+            clearSuggestions();
+            const lineIndex = getCurrentLineIndex();
+            if (lineIndex === null) return;
+
+            const childNodes = getLineChildNodes(lineIndex);
+            if (!childNodes) return;
+
+            const position = editor.getPosition();
+
+            for (let i = 0; i < childNodes.length; i++) {
+                let stringMount = "";
+                for (let j = 0; j <= i; j++) {
+                    stringMount += childNodes[j].textContent;
+                }
+
+                if (stringMount.length === position.column ||
+                    stringMount.length + 1 === position.column) {
+                    try {
+                        const pkn = getHtmlElementFromLine(position.lineNumber)
+                            .childNodes[0].childNodes[i];
+
+                        pkn.appendChild(createSuggestionElement(suggestionText));
+
+                        if (currentSuggestions.length > 1) {
+                            pkn.appendChild(createIndicatorElement(
+                                currentSuggestionIndex + 1,
+                                currentSuggestions.length
+                            ));
+                        }
+
+                        addLineBreaks(currentLine, suggestionText.split("\n").length);
+                    } catch (e) {
+                        console.error("Erro ao atualizar sugestão:", e);
+                    }
+                    break;
+                }
+            }
+        }
+
+        function recoverSuggestion() {
+            clearSuggestions();
+            let vLines = document.querySelectorAll(".view-lines");
+            let currentRow = editor.getPosition().lineNumber;
+            let currentOuterHtml;
+            document
+                .querySelectorAll(".margin-view-overlays")[0]
+                .childNodes.forEach((element, key) => {
+                if (Number(element.innerText) === currentRow)
+                    currentOuterHtml = key;
+            });
+            let stringMount = "";
+            let emb =
+                document.getElementsByClassName("view-lines")[0].childNodes[
+                    currentOuterHtml
+                    ].childNodes;
+            emb = emb[0].childNodes;
+            for (let i = 0; i < emb.length; i++) {
+                let tc = emb[i].textContent;
+                stringMount += tc;
+                let stop = ["\n\n\n", "\n```"];
+                if (contextMain.stopChar) {
+                    stop.push(contextMain.stopChar);
+                }
+
+                if (
+                    stringMount.length === editor.getPosition().column ||
+                    stringMount.length + 1 === editor.getPosition().column
+                ) {
+                    setTimeout(async () => {
+                        try {
+                            clearSuggestions();
+                            let pkn =
+                                document.getElementsByClassName("view-lines")[0]
+                                    .childNodes[currentOuterHtml].childNodes[0]
+                                    .childNodes[i];
+                            let suggestionSpan = document.createElement("span");
+                            suggestionSpan.style.opacity = 0.5;
+                            suggestionSpan.className = "suggestion";
+                            suggestionSpan.innerHTML = suggestionText
+                                .replaceAll(`\n`, '<br-class="brs">')
+                                .replaceAll(" ", "&nbsp;")
+                                .replaceAll(
+                                    '<br-class="brs">',
+                                    '<br class="brs">',
+                                );
+                            pkn.appendChild(suggestionSpan);
+                            let totalLinesNeeded =
+                                suggestionText.split("\n").length;
+                            let brs = "";
+                            let ib;
+                            for (ib = 0; ib < totalLinesNeeded; ib++) {
+                                brs += '<br class="brs">';
+                            }
+                            let docTotalLines =
+                                editor.getModel().getLineCount() + 1;
+                            for (
+                                let pi = currentLine + 1;
+                                pi <= docTotalLines;
+                                pi++
+                            ) {
+                                let line = getHtmlElementFromLine(pi);
+                                if (line) {
+                                    if (ib > 1)
+                                        line.innerHTML = brs + line.innerHTML;
+                                }
+                            }
+                        } catch (e) {
+                        }
+                    }, 1);
+                    break;
+                }
+            }
+        }
+
+        function clearSuggestions() {
+            document.getElementById("suggestionDN")?.remove();
+            let suggestions = document.getElementsByClassName("suggestion");
+            while (suggestions.length > 0) {
+                suggestions[0].remove();
+            }
+            let brs = document.getElementsByClassName("brs");
+            while (brs.length > 0) {
+                brs[0].remove();
+            }
+
+            let position = editor.getPosition();
+            let namefi = $('#nameFileForEdit').text();
+            positions[namefi] = {
+                lineNumber: position.lineNumber,
+                column: position.column,
+            };
+            if (!historyZ[namefi]) {
+                historyZ[namefi] = [];
+            }
+            let currentCode = editor.getValue();
+            if (historyZ[namefi].length > 100) historyZ[namefi].shift();
+            historyZ[namefi].push(currentCode);
+        }
+
+        function acceptSuggestion() {
+            let model = editor.getModel();
+            let position = editor.getPosition();
+            let word = model.getWordUntilPosition(position).word;
+            editor.executeEdits("my-source", [
+                {
+                    identifier: {major: 1, minor: 1},
+                    range: new monaco.Range(
+                        position.lineNumber,
+                        position.column,
+                        position.lineNumber,
+                        position.column,
+                    ),
+                    text: suggestionText,
+                },
+            ]);
+            suggestionText = "";
+            editor.trigger("my-source", "cursorEnd", null);
+            clearSuggestions();
+            editor.focus();
+        }
+
+        async function updateMarkersImport() {
+            await updateImports(editor.getModel());
+            const code = editor.getModel().getValue();
+            const markers = [];
+            const regex =
+                /(?<!\w)(\\[a-zA-Z_][a-zA-Z0-9_]*(?:\\[a-zA-Z_][a-zA-Z0-9_]*)*)(?=::|\(|\s|$)/g;
+            let match;
+            while ((match = regex.exec(code)) !== null) {
+                const importLine = match[0];
+                const startIndex = match.index;
+                const endIndex = startIndex + importLine.length;
+
+                const startPosition = editor
+                    .getModel()
+                    .getPositionAt(startIndex);
+                const endPosition = editor.getModel().getPositionAt(endIndex);
+
+                markers.push({
+                    startLineNumber: startPosition.lineNumber,
+                    startColumn: startPosition.column,
+                    endLineNumber: endPosition.lineNumber,
+                    endColumn: endPosition.column,
+                    message: "Import " + importLine,
+                    severity: monaco.MarkerSeverity.Warning,
+                });
+            }
+            monaco.editor.setModelMarkers(editor.getModel(), "test", markers);
+            for (let x = 0; x < sug.length; x++) {
+                try {
+                    functionSignatures[sug[x].label] = sug[x].parameters.map(
+                        (param, index) => param.name,
+                    );
+                } catch (e) {
+                }
+            }
+            // filter empty signatures
+            for (let [key, value] of Object.entries(functionSignatures)) {
+                if (value.length === 0) {
+                    delete functionSignatures[key];
+                }
+            }
+        }
+
+        async function saveFile() {
+            $.ajax({
+                url: "newFile",
+                type: "POST",
+                data: {
+                    type: "file",
+                    name: $("#nameFileForEdit").text(),
+                    tokenBrowser: $("#fp").text(),
+                    path: $("#hiddenFileEdit")
+                        .text()
+                        .split("/")
+                        .slice(0, -1)
+                        .join("/"),
+                    content: editor.getValue(),
+                },
+                success: async function (data) {
+                    toastLotus('File saved successfully', 'success', 1000, 'success');
+
+                },
+                error: function (data) {
+                    console.log(data);
+                },
+            });
+            inlayHintsProvider.dispose();
+            codeActionsProvider.dispose();
+            completionProvider.dispose();
+            registerInlayHints().then(async () => {
+                updateImports(editor.getModel());
+                registerCodeActions();
+                registerCompletionProvider();
+                updateProviders();
+                inlayHintsProvider.dispose();
+                await registerInlayHints();
+            });
+        }
+
+        async function updateImports(model) {
+            const lines = model.getLinesContent();
+            for (const line of lines) {
+                const useMatch = line.match(/use\s+([^\s;]+);/);
+                if (useMatch) {
+                    const fullClassPath = useMatch[1];
+                    const className = fullClassPath.split("\\").pop();
+                    importedClasses[className] = fullClassPath;
+                }
+            }
+        }
+
+        function formatParameters(parameters) {
+            return parameters.map((param, index) => {
+                return param.type === "callable" ? "function(){}" : `$${"${" + (index + 1) + ":" + param.name + "}"}`;
+            }).join(", ");
+        }
+
+
+        function createCompletionItem(item, insertText, kind) {
+            const paramList = Array.isArray(item.parameters) ? item.parameters : [];
+            const returnType = item.returnType || "mixed";
+
+            const signature = `${item.name}(\n${paramList.map(param => {
+                const type = param.type || 'mixed';
+                const name = param.name || 'arg';
+                return `    ${type} $${name}, \n`;
+            }).join('')})`;
+
+            const markdownDoc = {
+                value:
+                    '```php\n' +
+                    `${item.static ? 'static ' : ''}function ${signature}\n` +
+                    '```\n' +
+                    (paramList.length > 0
+                        ? '\n**Parameters:**\n' +
+                        paramList
+                            .map(param => `- \`$${param.name}: ${param.type || 'mixed'}\``)
+                            .join('\n') +
+                        '\n'
+                        : '') +
+                    `\n**Returns:** \`${returnType}\``
+            };
+
+
+            return {
+                label: kind === "Class"
+                    ? item.class
+                    : `${item.class}::${item.name}`,
+                kind: kind === "Class"
+                    ? monaco.languages.CompletionItemKind.Class
+                    : monaco.languages.CompletionItemKind.Method,
+                insertText: insertText,
+                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                documentation: markdownDoc,
+                detail: item.class,
+                parameters: paramList,
+            };
+        }
+
+
+        async function updateProviders() {
+            await updateImports(editor.getModel());
+            await updateMarkersImport();
+
+            let provider = await fetch(
+                "/codeGenerate?tokenBrowser=" + $("#fp").text(),
+                {
+                    method: "POST",
+                    body: JSON.stringify({
+                        search: "",
+                        lastDid: "",
+                        lineContent: "",
+                        nameFile: "",
+                    }),
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    mode: "cors",
+                },
+            )
+                .then(async (response) => await response.text())
+                .then((data) => JSON.parse(data).list);
+            sug = [];
+            functionSignatures = {};
+            codeInfo = {};
+            hints = [];
+            if (!provider || !provider["functions"]) {
+                provider = {
+                    functions: [],
+                    classes: [],
+                    constants: [],
+                };
+            }
+
+            for (let i = 0; i < provider["functions"].length; i++) {
+                const item = provider["functions"][i];
+                const paramList = Array.isArray(item.parameters) ? item.parameters : [];
+                const returnType = item.returnType || "void";
+
+                let insertText = item.name;
+                let docParams = [];
+                let snippetParams = [];
+
+                if (paramList.length > 0) {
+                    paramList.forEach((param, index) => {
+                        if (param.type === "callable") {
+                            snippetParams.push("function(){}");
+                            docParams.push(`function`);
+                        } else {
+                            snippetParams.push('$${' + (index + 1) + `:${param.name}` + '}');
+                            docParams.push(`$${param.name}`);
+                        }
+                    });
+                }
+                let argsInsert = snippetParams.join(", ");
+                insertText = insertText + '(' + argsInsert + ')';
+                const functionItem = {
+                    label: item.name,
+                    kind: monaco.languages.CompletionItemKind.Function,
+                    insertText: insertText,
+                    insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                    parameters: item.parameters,
+                    return: returnType,
+                    type: "function",
+                    documentation: (docParams.length > 0 ? `Parameters: ${docParams.join(', ')}\n` : '') + `Return: ${returnType}`,
+                    detail: item.name,
+                };
+
+
+                if (!sug.some(s => s.label === functionItem.label)) {
+                    sug.push(functionItem);
+                }
+            }
+            updateImports(editor.getModel());
+            for (let x = 0; x < sug.length; x++) {
+                functionSignatures[sug[x].label] = sug[x].parameters.map((param, index) => param.name);
+            }
+            // filter empty signatures
+            for (let [key, value] of Object.entries(functionSignatures)) {
+                if (value.length === 0) {
+                    delete functionSignatures[key];
+                }
+            }
+
+            let classNamesSet = new Set();  // Usado para verificar duplicatas
+
+            for (let i = 0; i < provider["classes"].length; i++) {
+                let item = provider["classes"][i];
+                let insertText = item["class"];
+
+                if (item["name"] === "__construct") {
+                    if (item["parameters"].length > 0) {
+                        insertText += "(" + formatParameters(item.parameters) + ")";
+                    } else {
+                        insertText += "()";
+                    }
+
+                    if (!classNamesSet.has(insertText)) {
+                        sug.push(createCompletionItem(item, insertText, "Class"));
+                        classNamesSet.add(insertText);
+                    }
+                } else {
+
+                    if (item['type'] !== 'property') {
+
+                        insertText += "::" + item["name"];
+                        if (item["parameters"].length > 0) {
+                            insertText += "(" + formatParameters(item.parameters) + ")";
+                        } else {
+                            insertText += "()";
+                        }
+
+
+                        if (!classNamesSet.has(insertText)) {
+                            sug.push(createCompletionItem(item, insertText, "Method"));
+                            classNamesSet.add(insertText);
+                        }
+                    } else {
+
+
+                        let propertyItem = {
+                            label: item["class"] + "::" + item["name"],
+                            kind: monaco.languages.CompletionItemKind.Property,
+                            insertText: item["name"],
+                            insertTextRules:
+                            monaco.languages.CompletionItemInsertTextRule
+                                .InsertAsSnippet,
+                            documentation: '$' + item["name"] + ': ' + item['returnType'],
+
+                            detail: item["class"],
+                        };
+                        if (!sug.some(s => s.label === propertyItem.label)) {
+                            sug.push(propertyItem);
+                        }
+
+                    }
+                }
+            }
+
+
+            for (let i = 0; i < provider["constants"].length; i++) {
+                let item = provider["constants"][i];
+                let constantItem = {
+                    label: item["name"],
+                    kind: monaco.languages.CompletionItemKind.Constant,
+                    insertText: item["name"],
+                    insertTextRules:
+                    monaco.languages.CompletionItemInsertTextRule
+                        .InsertAsSnippet,
+                    documentation: "",
+                    detail: item["name"],
+                };
+                let check = false;
+                for (let x = 0; x < sug.length; x++) {
+                    if (sug[x].label === constantItem.label) {
+                        check = true;
+                    }
+                }
+                if (!check) sug.push(constantItem);
+            }
+
+
+            for (let x = 0; x < sug.length; x++) {
+                for (let [key, value] of Object.entries(importedClasses)) {
+                    if (sug[x].label.split("\\").pop().includes(key)) {
+                        try {
+                            functionSignatures[sug[x].label.split("\\").pop()] =
+                                sug[x].parameters.map(
+                                    (param, index) => param.name,
+                                );
+                        } catch (e) {
+                        }
+                    }
+                }
+
+                if (importedClasses[sug[x].label.split("\\").pop()]) {
+                    try {
+                        functionSignatures[sug[x].label.split("\\").pop()] =
+                            sug[x].parameters.map((param, index) => param.name);
+                    } catch (e) {
+                    }
+                }
+                try {
+                    functionSignatures[sug[x].label] = sug[x].parameters.map(
+                        (param, index) => param.name,
+                    );
+                } catch (e) {
+                }
+            }
+
+            for (let [key, value] of Object.entries(functionSignatures)) {
+                if (value.length === 0) {
+                    delete functionSignatures[key];
+                }
+            }
+            codeInfo = {};
+            try {
+                codeInfo = await fetch(
+                    "/phpParser?tokenBrowser=" + $("#fp").text(),
+                    {
+                        method: "POST",
+                        body: JSON.stringify({
+                            search: "all",
+                            lineContent: "",
+                            nameFile: $("#hiddenFileEdit").text(),
+                        }),
+                    },
+                ).then(async (response) => await response.json());
+            } catch (e) {
+                console.log(e);
+                sug = [];
+                functionSignatures = {};
+                codeInfo = {};
+                hints = [];
+                return;
+            }
+            let classKeys = Object.keys(codeInfo);
+            for (let i = 0; i < classKeys.length; i++) {
+                let classKey = classKeys[i];
+                let className = codeInfo[classKey]["class"];
+                if (className === "") continue;
+                let filter = sug.filter((item) => {
+                    if (item.detail)
+                        if (item.detail.includes(className)) return true;
+                });
+                if (filter.length > 0) {
+                    filter.map((item) => {
+                        functionSignatures[
+                            `$${classKey}->${item.label.split("::").pop()}`
+                            ] = item.parameters.map((param, index) => param.name);
+                    });
+                }
+            }
+        }
+
+        function debounce(func, wait) {
+            return function (...args) {
+                clearTimeout(debounceTimeout);
+                debounceTimeout = setTimeout(
+                    () => func.apply(this, args),
+                    wait,
+                );
+            };
+        }
+
+        function getHtmlElementFromLine(lineNumber) {
+            const marginViewOverlays = document.querySelectorAll(
+                ".monaco-editor .margin-view-overlays .line-numbers",
+            );
+            const viewLines = document.querySelectorAll(
+                ".monaco-editor .view-lines .view-line",
+            );
+            for (let i = 0; i < marginViewOverlays.length; i++) {
+                const lineNumberElement = marginViewOverlays[i];
+                if (parseInt(lineNumberElement.textContent) === lineNumber) {
+                    return viewLines[i];
+                }
+            }
+            return null;
+        }
+
+        async function handleContentChange(e) {
+            let model = editor.getModel();
+            let currentText = model.getValue();
+            let nameFile = $("#nameFileForEdit").text();
+            let currentCursorPosition = editor.getPosition();
+            positions[nameFile] = {lineNumber: currentCursorPosition.lineNumber, column: currentCursorPosition.column};
+
+
+            let position = editor.getPosition();
+            let word;
+            try {
+                word = editor
+                    .getModel()
+                    .getWordAtPosition(editor.getPosition()).word;
+            } catch (e) {
+                word = "";
+            }
+            let content = model.getValue();
+            clearSuggestions();
+
+            if (
+                e.changes[0].rangeLength === 0 &&
+                e.changes[0].text.length > 0
+            ) {
+                let textBeforeCursor = content.substring(
+                    0,
+                    model.getOffsetAt(position),
+                );
+                let textAfterCursor = content.substring(
+                    model.getOffsetAt(position),
+                );
+                let stopChars = ['";', "';", ")", "]", "}"];
+                let stopChar = "";
+                for (let i = 0; i < stopChars.length; i++) {
+                    if (textAfterCursor.startsWith(stopChars[i])) {
+                        stopChar = stopChars[i];
+                        break;
+                    }
+                }
+
+                // Limita o textBeforeCursor a 100 caracteres
+
+                // apenas as ultimas
+                contextMain = {
+                    namefile: nameFile,
+                    textBeforeCursor: textBeforeCursor,
+                    textAfterCursor: textAfterCursor,
+                    stopChar: stopChar,
+                };
+
+                await showSuggestion(contextMain);
+            }
+        }
+
+
+        const target = document.getElementById("namefilemodaledit");
+        const observer = new MutationObserver(async function (mutations) {
+            if (window.blockingMonitor) return; // Evita que o monitoramento seja acionado durante a abertura do modal
+            for (const mutation of mutations) {
+                if (
+                    mutation.type === "childList" &&
+                    mutation.addedNodes.length > 0
+                ) {
+                    let file = mutation.addedNodes[0].textContent;
+                    let nameFile = "";
+                    try {
+                        nameFile =
+                            document.getElementById(
+                                "hiddenFileEdit",
+                            ).textContent;
+                    } catch (e) {
+                        return;
+                    }
+                    $("#fullAddressFile").text(nameFile);
+                    let language = nameFile.split(".").pop();
+                    if (isCompressedExtension(language)) {
+                        $("#edit-code").modal("hide");
+                        return showCompressFile(
+                            nameFile,
+                            document.getElementById("hiddenFileEdit")
+                                .textContent,
+                        );
+                    } else if (isImageExtension(language)) {
+                        $("#edit-code").modal("hide");
+                        return showImage(
+                            document.getElementById("hiddenFileEdit")
+                                .textContent,
+                            false,
+                        );
+                    } else {
+                        language = getLanguageByExtension(language);
+                    }
+                    let fileContent = (
+                        await asyncGet(
+                            `/getFile?tokenBrowser=${$("#fp").text()}&path=${encodeURIComponent(nameFile)}`,
+                        )
+                    );
+                    if (fileContent['encoded']) fileContent = atob(fileContent["information"]);
+                    else fileContent = fileContent["information"];
+                    if (!models[nameFile]) {
+                        positions[nameFile] = {
+                            lineNumber: 1,
+                            column: 1,
+                        }; // Inicializa a posição do cursor
+
+
+                        models[nameFile] = monaco.editor.createModel(
+                            fileContent,
+                            language,
+                        );
+
+
+                        let newTab = document.createElement("div");
+                        newTab.classList.add("tab-header-item", "mt-2");
+
+// cria botão de fechar
+                        let closeBtn = document.createElement("span");
+                        closeBtn.innerHTML = "&times;";
+                        closeBtn.style.cssText = `
+    float: right;
+    margin-left: 10px;
+    cursor: pointer;
+    font-weight: bold;
+    color: red;
+`;
+
+                        closeBtn.onclick = function (e) {
+                            e.stopPropagation(); // impede o clique de ativar a aba
+                            newTab.remove(); // remove a aba
+                            // Aqui você pode adicionar lógica para fechar o conteúdo relacionado, se quiser
+                            if (models[nameFile]) {
+                                models[nameFile].dispose(); // libera o modelo do editor
+                                delete models[nameFile]; // remove o modelo do cache
+                            }
+                            if (tabsCache[nameFile]) {
+                                delete tabsCache[nameFile]; // remove a aba do cache
+                            }
+                            if (positions[nameFile]) {
+                                delete positions[nameFile]; // remove a posição do cursor do cache
+                            }
+                        };
+
+                        newTab.innerHTML = `${getFilename(nameFile)}`;
+                        newTab.appendChild(closeBtn);
+
+// ação ao clicar na aba
+                        newTab.onclick = function () {
+                            $('#nameFileForEdit').text(nameFile);
+                            $('#hiddenFileEdit').text(nameFile);
+                            $('#namefilemodaledit').text(nameFile);
+
+                            let tabs = document.getElementsByClassName("tab-header-item");
+                            for (let i = 0; i < tabs.length; i++) {
+                                tabs[i].classList.remove("active");
+                            }
+                            newTab.classList.add("active");
+                            $('#searchFiles').text(nameFile);
+                            if (positions[nameFile]) {
+                                editor.setPosition(positions[nameFile]);
+                                editor.revealPosition(positions[nameFile]);
+                            } else {
+                                editor.setPosition({lineNumber: 1, column: 1});
+                            }
+                        };
+
+                        document.getElementById('tabsFilesEditor').appendChild(newTab);
+
+                        let tabs = document.getElementsByClassName("tab-header-item");
+                        for (let i = 0; i < tabs.length; i++) {
+                            tabs[i].classList.remove("active");
+                        }
+
+                        tabsForFiles.before(newTab);
+                        tabsCache[nameFile] = newTab;
+                        window.blockingMonitor = true;
+                        newTab.click(); // Selecionar a nova aba automaticamente
+                        window.blockingMonitor = false;
+                        // posicionar o cursor na posição salva
+                        if (positions[nameFile]) {
+                            editor.setPosition(positions[nameFile]);
+                            editor.revealPosition(positions[nameFile]);
+                        } else {
+                            editor.setPosition({lineNumber: 1, column: 1});
+                        }
+
+                    }
+
+
+                    //else models[nameFile].setValue(fileContent);
+                    editor.setModel(models[nameFile]);
+                    editor.focus();
+                    if (positions[nameFile]) {
+                        editor.setPosition(positions[nameFile]);
+                        editor.revealPosition(positions[nameFile]);
+                    } else {
+                        editor.setPosition({lineNumber: 1, column: 1});
+                    }
+
+                    // tabsCache[nameFile].click();
+
+                    inlayHintsProvider.dispose();
+                    codeActionsProvider.dispose();
+                    completionProvider.dispose();
+                    registerInlayHints().then(async () => {
+                        await updateImports(editor.getModel());
+                        await registerCodeActions();
+                        await registerCompletionProvider();
+                        await updateProviders();
+                        inlayHintsProvider.dispose();
+                        await registerInlayHints();
+                    });
+
+
+                    /** <div class="tab-header-item active">
+                     utilsFunction.php
+                     <span class="close-tab" onclick="closeTab(this)">×</span>
+                     </div>
+                     <div class="tab-header-item">
+                     modalEditCode.html
+                     <span class="close-tab" onclick="closeTab(this)">×</span>
+                     </div>*/
+
+
+                }
+            }
+        });
+
+        const config = {attributes: false, childList: true, subtree: false};
+        observer.observe(target, config);
+    });
+</script>

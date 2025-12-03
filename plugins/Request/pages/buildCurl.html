@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>lotus</title>
+    <meta name="theme-color" content="#182038">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"
+            integrity="sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g=="
+            crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="js/curl-to-php.js"></script>
+
+    <link href="https://fonts.googleapis.com/css?family=Open+Sans&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Indie+Flower&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css?family=Courgette&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-4bw+/aepP/YC94hEpVNVgiZdgIC5+VKNBQNGCHeKRQN+PtmoHDEXuppvnDJzQIu9" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-HwwvtgBNo3bZJJLYd8oVXjrBZt8cqVSpeBNS5n7C8IVInixGAoxmnlMuBnhbgrkm"
+            crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="css/buildCurl.css">
+    <link href="css/prism.css" rel="stylesheet"/>
+    <script src="js/bootstrap-show-toast.js"></script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css"/>
+    <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+</head>
+<body>
+
+<script>
+    $(document).ready(function () {
+        $('#import-curl').removeClass('disabled');
+
+        $('#url-import').on('input', function () {
+            let url = $(this).text();
+            let method = $('#methodMakeCall').text();
+            let payload = $('#payloadMake').text();
+            let title = $('#title-request').val();
+            let headers = [];
+            let keyHeader = $('input[name^="keyHeader"]').map(function () { return this.value; }).get()
+            let valueHeader = $('input[name^="valueHeader"]').map(function () { return this.value; }).get()
+            keyHeader.forEach(function (key, id) {
+                headers.push({
+                    key: key,
+                    value: valueHeader[id]
+                })
+            })
+
+
+
+
+
+            console.log('swoole http client');
+
+
+
+        });
+    });
+</script>
+
+<div class="mt-4">
+    <div class="d-inline p-2 text-blue">
+        <i class="fa-regular fa-circle-plus"></i> <b>Adicionar</b>
+    </div>
+    <div class="d-inline p-2 text-blue">
+        <i class="fa-sharp fa-regular fa-circle-xmark"></i> <b>Remove</b>
+    </div>
+</div>
+<nav>
+    <div class="nav nav-tabs" id="nav-tab" role="tablist">
+        <button class="nav-link active" id="nav-make-request-tab" data-bs-toggle="tab"
+                data-bs-target="#nav-make-request" type="button"
+                role="tab" aria-controls="nav-home" aria-selected="true"><i class="fa-duotone fa-webhook"></i> Adicionar
+            requisições
+        </button>
+
+        <button class="nav-link" id="nav-profile-tab"
+                data-bs-toggle="tab" data-bs-target="#nav-profile" type="button"
+                role="tab" aria-controls="nav-profile" aria-selected="false"><i class="fa-duotone fa-sitemap"></i>
+            Organizar modelo
+        </button>
+
+        <button class="nav-link" id="nav-test-tab"
+                data-bs-toggle="tab" data-bs-target="#nav-test" type="button"
+                role="tab" aria-controls="nav-profile" aria-selected="false"><i class="fa-duotone fa-cubes"></i> tttt
+        </button>
+    </div>
+</nav>
+<div class="tab-content" id="nav-tabContent">
+    <div class="tab-pane fade show active" id="nav-make-request" role="tabpanel" tabindex="0">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12 mb-4 col-sm-6">
+                    <h5 class="mt-4">Adicione Requests e váriaveis</h5>
+                    <div class="input-group mb-3">
+                        <span class="input-group-text">Nome:</span>
+                        <input id="title-request" type="text" class="form-control" placeholder="Ex: pagina-de-login"
+                               value="req1">
+                    </div>
+                    <div class="form-group mb-2">
+                        <textarea class="form-control" rows="7" id="command-curl">curl -X POST 'https://auth-prd.pontoslivelo.com.br/oamfed/idp/samlv20' -H 'Host:auth-prd.pontoslivelo.com.br' -H 'pragma:no-cache' -H 'cache-control:no-cache' -H 'upgrade-insecure-requests:1' -H 'origin:null' -H 'Content-Type:application/json' -H 'user-agent:Mozilla/5.0 (Linux; Android 9; A5010 Build/PI; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/110.0.5481.153 Mobile Safari/537.36' -H 'accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7' -H 'x-requested-with:br.com.livelo.app' -H 'sec-fetch-site:cross-site' -H 'sec-fetch-mode:navigate' -H 'sec-fetch-dest:document' -H 'accept-language:pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7' -d 'SAMLRequest=PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiIHN0YW5kYWxvbmU9Im5vIj8%2BPHNhbWxwOkF1dGhuUmVxdWVzdCB4bWxuczpzYW1scD0idXJuOm9hc2lzOm5hbWVzOnRjOlNBTUw6Mi4wOnByb3RvY29sIiBEZXN0aW5hdGlvbj0iaHR0cHM6Ly9hdXRoLXByZC5wb250b3NsaXZlbG8uY29tLmJyL29hbWZlZC9pZHAvc2FtbHYyMCIgSUQ9Ik9DQ1NfMTc4ZjcyOTctZTJhYy00NjlhLTkzYzItMzlkZTZlNDc5ZDczIiBJc3N1ZUluc3RhbnQ9IjIwMjMtMDQtMDVUMTU6MDQ6MDJaIiBWZXJzaW9uPSIyLjAiPjxzYW1sOklzc3VlciB4bWxuczpzYW1sPSJ1cm46b2FzaXM6bmFtZXM6dGM6U0FNTDoyLjA6YXNzZXJ0aW9uIj5odHRwczovL3d3dy5saXZlbG8uY29tLmJyL2FwcDwvc2FtbDpJc3N1ZXI%2BPHNhbWxwOk5hbWVJRFBvbGljeSBBbGxvd0NyZWF0ZT0idHJ1ZSIgRm9ybWF0PSJ1cm46b2FzaXM6bmFtZXM6dGM6U0FNTDoyLjA6bmFtZWlkLWZvcm1hdDpwZXJzaXN0ZW50Ii8%2BPC9zYW1scDpBdXRoblJlcXVlc3Q%2B&RelayState=LIVPOINTSAPP' --insecure</textarea>
+                    </div>
+                    <div class="align-center text-center">
+                        <button id="import-curl" onclick="importCURL()" class="btn btn-primary disabled"><i
+                                class="fa-duotone fa-up-from-bracket"></i> Importar comando cURL
+                        </button>
+                    </div>
+
+
+                    <div class="input-group mt-3">
+                        <span class="input-group-text">Método:</span>
+                        <button type="button" class="btn btn-outline-light dropdown-toggle dropdown-toggle-split"
+                                data-bs-toggle="dropdown" aria-expanded="false">
+                            <span id="methodMakeCall">GET</span>&nbsp;&nbsp;
+                        </button>
+                        <ul class="dropdown-menu" style="background-color: #1b1d30 !important;">
+                            <li><a class="dropdown-item text-white" onclick="changeMethod(this)" href="#">POST</a></li>
+                            <li><a class="dropdown-item text-white" onclick="changeMethod(this)" href="#">GET</a></li>
+                        </ul>
+                        <div id="url-import" class="form-control" contenteditable="true" autocomplete="off"
+                             autocorrect="off" placeholder="Type code here..."
+                             autocapiatlise="off" spellcheck="false"></div>
+
+
+                    </div>
+                    <div id="http-headers">
+                        <div class="card-title mt-2 text-blue"><b>Headers:</b></div>
+                        <div id="httpHeadList"></div>
+                        <div class="input-group mb-1" id="headerInfoDefault">
+                            <input name="keyHeader[]" type="text" class="form-control" placeholder="Chave"
+                                   aria-label="Chave">
+                            <span class="input-group-text">:</span>
+                            <input name="valueHeader[]" type="text" class="form-control" placeholder="Valor"
+                                   aria-label="Valor">
+                            <button onclick="createRowHeader()" class="btn btn-blue-sky" type="button"><i
+                                    class="fa-solid fa-plus text-white"></i></button>
+                            <button class="btn btn-danger" type="button"
+                                    onclick="deleteRowHeader('headerInfoDefaultOff')"><i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="postfieldsCard" class="mt-2" style="display: none">
+                        <b class="text-blue">Payload/Data</b>
+                        <div class="form-group">
+                            <div class="form-control" id="payloadMake" contenteditable="true"
+                                 style="min-height: 100px"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 col-sm-6 mb-1 mt-4">
+                    <button class="btn btn-success text-white mt-2">
+                        <div class="d-none d-md-block">
+                            <i class="fa-duotone fa-router"></i>
+                            Executar conexão
+                        </div>
+                        <div class="d-block d-md-none">
+                            <i class="fa-duotone fa-router"></i>
+                        </div>
+                    </button>
+
+                    <a class="btn btn-midnight text-white mt-2" data-bs-toggle="collapse"
+                       data-bs-target="#boxMakeVariable">
+                        <div class="d-none d-md-block">
+                            <i class="fa-duotone fa-rectangle-terminal"></i>
+                            Gerenciar variáveis
+                        </div>
+                        <div class="d-block d-md-none">
+                            <i class="fa-duotone fa-rectangle-terminal"></i>
+                        </div>
+                    </a>
+
+                    <a class="btn btn-warning text-dark mt-2" data-bs-toggle="modal" data-bs-target="#createVariable">
+                        <div class="d-none d-md-block">
+                            <i class="fa-sharp fa-solid fa-dollar-sign"></i>
+                            Adicionar variável
+                        </div>
+                        <div class="d-block d-md-none">
+                            <i class="fa-duotone fa-rectangle-terminal"></i>
+                        </div>
+                    </a>
+
+                    <div class="modal fade" id="createVariable" tabindex="-1" aria-labelledby="createVariable"
+                         aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h1 class="modal-title fs-5">Criar variável global/local</h1>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                            aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body" style="margin-top: -20px !important;">
+                                    <div class="input-group mb-2">
+                                        <span class="input-group-text">Nome</span>
+                                        <input id="modalInputNameVariable" type="text" class="form-control"
+                                               placeholder="Ex: Response Login" value="token_name">
+                                    </div>
+
+                                    <div id="roundCircle" class="form-check">
+                                        <input class="form-check-input" type="radio" name="flexRadioDefault"
+                                               id="flexRadioDefault1" value="methods">
+                                        <label class="form-check-label" for="flexRadioDefault1">
+                                            Utilize um método dos plugins
+                                        </label>
+                                    </div>
+                                    <div id="roundNativeFunction" class="form-check">
+                                        <input class="form-check-input" type="radio" name="flexRadioDefault"
+                                               id="flexRadioDefault4" value="functions">
+                                        <label class="form-check-label" for="flexRadioDefault4">
+                                            Utilize uma função nativa
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="flexRadioDefault"
+                                               id="flexRadioDefault2" value="constantValue" checked>
+                                        <label class="form-check-label" for="flexRadioDefault2">
+                                            defina um valor constante
+                                        </label>
+                                    </div>
+                                    <br>
+
+
+                                    <!-- ===================== inputs Choices in make var ============================ -->
+
+                                    <!-- Value constant -->
+                                    <div id="elementInputMakeVariable" class="input-group">
+                                        <span class="input-group-text">Valor</span>
+                                        <input id="inputMakeVariable" type="text" class="form-control"
+                                               placeholder="Ex: tLmJyL2FwcDwvc2FtbDpJc3N1Z">
+                                    </div>
+                                    <!-- Extension Plugins Methods [SELECT WITH SEARCH - LOADING REMOTE] -->
+                                    <div id="methodSelect" style="display: none;">
+                                        <label class="mt-2" for="elementMethodSelect">Selecione um método</label>
+                                        <select class="form-select" id="elementMethodSelect"
+                                                aria-label="Selecione um método">
+                                        </select>
+                                    </div>
+
+
+                                    <!-- native functions [SELECT WITH SEARCH - LOADING REMOTE] -->
+                                    <div id="nativeFunctionSelect" style="display: none;">
+                                        <label class="mt-2" for="elementNativeFunctionSelect">Selecione uma
+                                            função</label>
+                                        <select class="form-select" id="elementNativeFunctionSelect"
+                                                aria-label="Selecione uma função nativa">
+                                        </select>
+                                    </div>
+
+
+                                    <div id="fieldValues" class="mt-2"></div>
+
+                                </div>
+
+                                <div id="modalMakeVarFooter" class="modal-footer" style="display: none !important;">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar
+                                    </button>
+                                    <button type="button" class="btn btn-primary" onclick="createVariable()">Adicionar
+                                        variável
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    @import(variablesBodyList)
+
+                    <!-- BoxRaw -->
+                    <div class="form-group mb-2 mt-1">
+                        <pre style="border-radius: 10px !important;"><code class="language-http" id="rawHTTPinterface"
+                                                                           style="border-radius: 10px !important;">GET</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="tab-pane fade" id="nav-profile" role="tabpanel" aria-labelledby="nav-profile-tab" tabindex="0">...</div>
+    <div class="tab-pane fade" id="nav-contact" role="tabpanel" aria-labelledby="nav-contact-tab" tabindex="0">...</div>
+    <div class="tab-pane fade" id="nav-test" role="tabpanel" aria-labelledby="nav-test-tab" tabindex="0">test
+    </div>
+</div>
+@import(scriptImportCURLScript)
+@import(bypassFontAwesome)
+@import(observerMethod)
+@import(toggleMakeVariable)
+@import(choiceScript)
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-http.min.js"></script>
+</body>
+</html>

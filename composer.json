@@ -1,0 +1,16 @@
+{
+  "require-dev": {
+    "php-stubs/generator": "^0.8.4",
+    "giauphan/puphpeteer": "^1.0",
+    "phpstan/phpstan": "^1.12",
+    "phpunit/phpunit": "^10.5",
+    "swoole/ide-helper": "^6.0"
+  },
+  "require": {
+    "symfony/translation-contracts": "^3.5",
+    "varunsridharan/php-classmap-generator": "^1.2",
+    "soyhuce/classmap-generator": "^1.0",
+    "ext-curl": "*",
+    "nikic/php-parser": "^5.4"
+  }
+}

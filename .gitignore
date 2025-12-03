@@ -1,0 +1,209 @@
+# ===================================
+# SWOOLE WEB IDE - .gitignore
+# ===================================
+
+# ---- OS files ----
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+stubs/*
+# ---- IDE / Editor ----
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+*.code-workspace
+*.iml
+*.swp
+*.swo
+*.swn
+*~
+
+# ---- Dependencies (managed by Composer / npm) ----
+/vendor/
+/node_modules/
+composer.phar
+package-lock.json.bak
+
+# ---- PHP tools / caches ----
+.phpunit.result.cache
+.php-cs-fixer.cache
+.phpstan.cache
+/.phpstan/
+/.php-cs-fixer.php
+/.php-cs-fixer.dist.php
+phpstan.neon.bak
+.psalm/
+
+# ---- Composer ----
+composer.lock.bak
+vendor-old/
+
+# ---- Node logs / caches ----
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+.npm
+.eslintcache
+.node_repl_history
+.cache/
+.tmp/
+tmp/
+temp/
+
+# ---- Puppeteer / Chromium assets ----
+.local-chromium/
+.cache/puppeteer/
+chrome-user-data*/
+puppeteer-data/
+
+# ---- Environment files ----
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# ---- Build artifacts / coverage ----
+dist/
+build/
+coverage/
+*.lcov
+.nyc_output/
+
+# ---- Logs ----
+logs/
+*.log
+log/
+*.log.*
+
+# ---- Runtime data / sessions ----
+files/*
+!files/.gitkeep
+!files/README.md
+terminals.json
+terminals.json.backup
+cookies.json
+4o.json
+stubs-generated.json
+stubs-paths.json
+
+# ---- Backup files ----
+backup/
+backups/
+*.backup
+*.bak
+*.old
+*.orig
+*_backup
+*_old
+
+# ---- Test files (temporary) ----
+a.php
+r.php
+s.php
+y.php
+z.php
+ss.php
+yy.php
+zz.php
+yyy.php
+xz.php
+zmount.php
+zzz.js
+f.js
+fffff.js
+novo.php
+
+# ---- Certificates / keys (SECURITY: do not commit real secrets) ----
+*.pem
+*.key
+*.crt
+*.csr
+*.cer
+*.der
+*.p12
+*.pfx
+fullchain.pem
+privkey.pem
+chain.pem
+cert.pem
+localhost.key
+localhost.crt
+localhost.csr
+server.key
+server.crt
+server.pem
+
+# ---- Database ----
+*.sqlite
+*.sqlite3
+*.db
+*.sql.bak
+
+# ---- Sensitive config (WARNING: Review before commit) ----
+plugins/configInterface.json.backup
+**/config/*local*
+**/config/*secret*
+
+# ---- Compression / Archives ----
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+*.gz
+*.bz2
+*.xz
+
+# ---- Media / Assets (optional - uncomment if needed) ----
+# *.mp4
+# *.avi
+# *.mov
+# *.mkv
+# *.mp3
+# *.wav
+
+# ---- Misc ----
+*.tmp
+~$*
+.fuse_hidden*
+*.pid
+*.seed
+*.lock
+*.swp
+.history/
+
+# ---- macOS specific ----
+.AppleDouble
+.LSOverride
+.DocumentRevisions-V100
+.fseventsd
+.TemporaryItems
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# ---- Windows specific ----
+$RECYCLE.BIN/
+*.lnk
+*.stackdump
+
+# ---- Linux specific ----
+.directory
+.Trash-*
+.nfs*
+
+# ---- Keep these example/template files ----
+!.gitkeep
+!README.md
+!LICENSE
+!CONTRIBUTING.md
+!.env.example
+/stubs/

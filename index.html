@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monaco Editor PHP Example</title>
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.46.0/min/vs/loader.js"></script>
+    <script>
+
+    require.config({
+        paths: {
+            'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.46.0/min/vs'
+        }
+    });
+        require(['vs/editor/editor.main'], function() {
+            monaco.languages.registerInlineCompletionsProvider("php", {
+                provideInlineCompletions: async function (model, position, context, token) {
+                    return {
+                        items: [
+                            {
+                                insertText: "ounce(",
+                                range: new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column)
+                            },
+                            {
+                                insertText: "cument.addEventListener('",
+                                range: new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column)
+                            },
+                        ]
+                    };
+                },
+                freeInlineCompletions: function(arg) {}
+            });
+
+            const myEditor = monaco.editor.create(document.getElementById("container"), {
+                value: `<?php print PHP_EOL;`,
+                language: "php",
+                wordBasedSuggestions: false,
+                inlineSuggest: {
+                    enabled: true
+                }
+            });
+
+            document.getElementById('triggerSuggestions').onclick = function() {
+                var position = myEditor.getPosition();
+
+                myEditor.setPosition({ lineNumber: position.lineNumber, column: position.column });
+
+                myEditor.trigger('anyString', 'editor.action.inlineSuggest.trigger', {});
+            };
+        });
+    </script>
+</head>
+<body>
+    <div id="container" style="height: 400px; width: 800px;"></div>
+    <button id="triggerSuggestions">Mostrar Sugestões</button>
+</body>
+</html>

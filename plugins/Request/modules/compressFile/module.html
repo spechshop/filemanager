@@ -1,0 +1,137 @@
+<div class="modal fade" id="modalFileCompress" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content headerModal">
+            <div onclick="$('#modalFileCompress').modal('hide')" style="min-width: 100% !important;">
+                <button onclick="$('#modalFileCompress').modal('hide')" class="close btn btn-blue-sky"
+                        data-bs-dismiss="modal" style="position: absolute; top: -10px; right: -10px;">
+                    <i class="fa-solid fa-xmark" style="color: #ffffff;"></i>
+                </button>
+            </div>
+            <div class="modal-body text-center text-white">
+                <h4 style="color: white !important;" id="nameFileUncompress"></h4>
+                <code>*Limite máximo de 500 itens para visualização</code>
+                <ul class="list-group mt-4"
+                    style=" max-height: 200px;white-space: nowrap; overflow-x: hidden; text-overflow: ellipsis; border-style: solid; border-color: #3c3091; border-radius: 5px; border-width: 1px;"
+                    id="compressDetails"></ul>
+                <div class="pre-scrollable"><p style="display: none"></p>
+                    <p style="float: right; margin-top: -55px; margin-right: 20px; display: none;"
+                       id="scrollToEndButtonFather" class="fa-2x"><i
+                            class="fa-duotone fa-circle-down" id="scrollToEndButton"
+                            style="--fa-primary-color: #ffffff; --fa-secondary-color: #3c3091; --fa-secondary-opacity: 1;"></i>
+                    </p>
+                </div>
+
+                <div class="alert alert-dark card-distak mt-2" style="display: none" role="alert">
+                    <i class="fa-duotone fa-folder-tree"></i> &nbsp;
+                    Será extraido em: &nbsp; [&nbsp;<i class="fa-solid fa-folder-open" style="color: #ffbb00;"></i>
+                    <span id="addressPathToExtract"></span> ]
+                    <span style="display: none;" id="decompressRealFileName"></span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="decompressFile('yes')" type="button" class="btn text-white"
+                        style="background-color: #1c2f48 !important;">
+                    <img src="img/nep.png" width="26" alt="">
+                    Gerar pasta e extrair
+                </button>
+                <button onclick="decompressFile('not')" type="button" class="btn btn-primary">
+                    <img src="img/bookmark.png" width="26" alt="">
+                    Extrair aqui
+                </button>
+
+            </div>
+        </div>
+        <style>
+            .list-group-item {
+                background-color: transparent !important;
+                border: none !important;
+                color: white !important;
+            }
+
+            .close {
+                position: absolute;
+                top: -10px;
+                right: -10px;
+                background: #fff;
+                padding: 0 12px;
+                line-height: 1.5;
+            }
+        </style>
+
+    </div>
+</div>
+<script>
+    document.getElementById('scrollToEndButton').addEventListener('click', function () {
+        var list = document.getElementById('compressDetails');
+        var icon = document.getElementById('scrollToEndButton');
+        if (icon.classList.contains('fa-circle-down')) {
+            list.scrollTop = list.scrollHeight;
+        } else {
+            list.scrollTop = 0;
+        }
+        icon.classList.toggle('fa-circle-down');
+        icon.classList.toggle('fa-circle-up');
+    });
+
+
+    async function decompressFile(type) {
+        var path = document.getElementById('pathInvisible').innerText;
+        var namefile = document.getElementById('decompressRealFileName').innerText;
+        var tokenBrowser = $('#fp').text();
+        var url = `decompressFile?tokenBrowser=${tokenBrowser}`;
+
+        var data = {
+            path: path,
+            namefile: namefile,
+            type: type
+        };
+
+        bootstrap.showToast({
+            header: 'Aguarde',
+            body: 'Descompactando arquivo...',
+            toastClass: "bg-primary text-white",
+            colorHeader: 'text-white',
+        });
+
+
+        $.ajax({
+            url: url,
+            type: 'POST',
+            data: data,
+            success: async function (data) {
+                if (data.success) {
+                    $('#modalFileCompress').modal('hide');
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Sucesso!',
+                        text: 'Arquivo descompactado com sucesso!',
+                        showConfirmButton: false,
+                        color: '#fff',
+                        confirmButtonColor: '#7367f0',
+                        cancelButtonColor: '#424659',
+                        background: '#1c2f48',
+                        timer: 2000
+                    });
+                    const fopenDynamicToken = $('#fp').text();
+                    const pathInvisible = $('#pathInvisible').text();
+                    setItemsInTbody(
+                        (await asyncGet(`/syncPath?tokenBrowser=${fopenDynamicToken}&path=${pathInvisible}`))['information'],
+                        'filesList'
+                    );
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Oops...',
+                        text: 'Ocorreu um erro ao descompactar o arquivo!',
+                        showConfirmButton: false,
+                        color: '#fff',
+                        confirmButtonColor: '#7367f0',
+                        cancelButtonColor: '#424659',
+                        background: '#1c2f48',
+                        timer: 2000
+                    });
+                }
+            }
+        });
+    }
+</script>

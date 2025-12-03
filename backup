@@ -1,0 +1,1630 @@
+#!/usr/bin/env php
+<?php
+/**
+ * Sistema Avançado de Backup e Gerenciamento de Serviços
+ * Uso: php backup.php [comando] [opções]
+ *
+ * Funcionalidades:
+ * - Backup versionado com timestamps
+ * - Gerenciamento de crons/serviços
+ * - Limpeza automática de backups antigos
+ * - Backup incremental
+ * - Logs detalhados
+ */
+
+class AdvancedBackupManager
+{
+    private string $currentDir;
+    private string $baseBackupDir;
+    private array $config;
+    private string $logFile;
+    public array $services;
+
+    public function __construct()
+    {
+        $this->currentDir = getcwd();
+
+        // Salvar backups em pasta externa ao projeto
+        $projectName = basename($this->currentDir);
+        $parentDir = dirname($this->currentDir);
+        $this->baseBackupDir = $parentDir . '/backups_' . $projectName;
+
+        // Log também fica fora do projeto
+        $this->logFile = $this->baseBackupDir . '/backup.log';
+
+        $this->loadConfig();
+        $this->initializeServices();
+
+        // Criar diretório de backup se não existir
+        $this->createBackupDirectory($this->baseBackupDir);
+    }
+
+    private function loadConfig(): void
+    {
+        // Config também fica fora do projeto para não ser perdido
+        $configFile = $this->baseBackupDir . '/backup-config.json';
+
+        $defaultConfig = [
+                'max_versions' => 10,
+                'backup_compression' => true,
+                'incremental_backup' => true,
+                'exclude_patterns' => ['.tmp', '.log', '.cache'],
+                'files_to_backup' => [
+                        'database.json',
+                        'trunks.json',
+                        'plugins/configInterface.json',
+                        'manage/plugins/configInterface.json',
+                        'manage/database/storage.sqlite3',
+                        'manage/database/storage.sqlite3-shm',
+                        'manage/database/storage.sqlite3-wal',
+                        'manage/database/schema.sql',
+                        'liga.php',
+                        'server.php',
+                        'runnerServer.php',
+                        'mediaServer.php',
+                        '*.json',
+                        '*.php'
+                ],
+                'auto_cleanup' => true,
+                'notifications' => [
+                        'enabled' => true,
+                        'email' => '',
+                        'webhook_url' => ''
+                ]
+        ];
+
+        if (file_exists($configFile)) {
+            $userConfig = json_decode(file_get_contents($configFile), true);
+            $this->config = array_merge($defaultConfig, $userConfig);
+        } else {
+            $this->config = $defaultConfig;
+            if (!is_dir($this->baseBackupDir)) {
+                mkdir($this->baseBackupDir, 0755, true);
+            }
+            file_put_contents($configFile, json_encode($defaultConfig, JSON_PRETTY_PRINT));
+            $this->log("✨ Arquivo de configuração criado em: {$configFile}");
+        }
+    }
+
+    private function initializeServices(): void
+    {
+        $this->services = [
+                'server' => [
+                        'name' => 'Servidor Principal',
+                        'script' => 'server.php',
+                        'port' => 5060,
+                        'pid_file' => '/tmp/server.pid',
+                        'enabled' => true
+                ],
+                'manage' => [
+                        'name' => 'Servidor WEB',
+                        'script' => 'manage/server.php',
+                        'pid_file' => '/tmp/manage.pid',
+                        'port' => 443,
+                        'enabled' => true
+                ],
+                'media' => [
+                        'name' => 'Servidor de Mídia',
+                        'script' => 'mediaServer.php',
+                        'port' => 9503,
+                        'pid_file' => '/tmp/media.pid',
+                        'enabled' => true
+                ]
+        ];
+    }
+
+    public function save( $version = null): bool
+    {
+        $timestamp = date('Y-m-d_H-i-s');
+        $version = $version ?? $timestamp;
+        $versionDir = $this->baseBackupDir . '/v_' . $version;
+
+        echo "🔄 Iniciando backup versionado (v_{$version})...\n";
+        $this->log("Iniciando backup versionado: v_{$version}");
+
+        if (!$this->createBackupDirectory($versionDir)) {
+            return false;
+        }
+
+        $backedUpFiles = 0;
+        $skippedFiles = 0;
+        $totalSize = 0;
+        $files = $this->resolveFilesToBackup();
+
+        foreach ($files as $file) {
+            $sourcePath = $this->currentDir . '/' . $file;
+
+            if (!file_exists($sourcePath)) {
+                echo "⚠️  Arquivo não encontrado: {$file}\n";
+                $skippedFiles++;
+                continue;
+            }
+
+            // Verificar se deve ser excluído
+            if ($this->shouldExcludeFile($file)) {
+                echo "🚫 Arquivo excluído por filtro: {$file}\n";
+                $skippedFiles++;
+                continue;
+            }
+
+            $backupPath = $versionDir . '/' . $file;
+            $backupFileDir = dirname($backupPath);
+
+            if (!is_dir($backupFileDir)) {
+                mkdir($backupFileDir, 0755, true);
+            }
+
+            // Backup incremental: verificar se mudou desde o último backup
+            if ($this->config['incremental_backup'] && $this->fileNotChanged($file)) {
+                echo "📄 Arquivo não alterado (incremental): {$file}\n";
+                $this->createSymlink($file, $backupPath);
+                $backedUpFiles++;
+                continue;
+            }
+
+            if (copy($sourcePath, $backupPath)) {
+                $fileSize = filesize($backupPath);
+                $totalSize += $fileSize;
+                $fileSizeKb = round($fileSize / 1024, 2);
+                echo "✅ Backup realizado: {$file} ({$fileSizeKb} KB)\n";
+                $backedUpFiles++;
+            } else {
+                echo "❌ Erro ao fazer backup de: {$file}\n";
+                $this->log("Erro ao fazer backup de: {$file}");
+            }
+        }
+
+        // Criar arquivo de informações da versão
+        $this->createVersionInfo($version, $backedUpFiles, count($files), $skippedFiles, $totalSize);
+
+        // Compressão opcional
+        if ($this->config['backup_compression']) {
+            $this->compressBackup($versionDir);
+        }
+
+        // Limpeza automática
+        if ($this->config['auto_cleanup']) {
+            $this->cleanupOldBackups();
+        }
+
+        $totalSizeMb = round($totalSize / (1024 * 1024), 2);
+        echo "\n🎉 Backup v_{$version} concluído!\n";
+        echo "   📊 {$backedUpFiles} arquivos salvos\n";
+        echo "   📁 {$skippedFiles} arquivos ignorados\n";
+        echo "   💾 Tamanho total: {$totalSizeMb} MB\n";
+        echo "   📂 Local (EXTERNO): {$versionDir}\n";
+        echo "   🛡️  Backup seguro fora do projeto!\n";
+
+        $this->log("Backup concluído: v_{$version} - {$backedUpFiles} arquivos - {$totalSizeMb} MB");
+        $this->sendNotification("Backup concluído", "Versão: v_{$version}\nArquivos: {$backedUpFiles}\nTamanho: {$totalSizeMb} MB");
+
+        return $backedUpFiles > 0;
+    }
+
+    public function restore( $version = null): bool
+    {
+        if ($version === null) {
+            $version = $this->getLatestVersion();
+            if (!$version) {
+                echo "❌ Nenhum backup encontrado!\n";
+                return false;
+            }
+        }
+
+        $versionDir = $this->baseBackupDir . '/v_' . $version;
+
+        if (!is_dir($versionDir)) {
+            echo "❌ Versão de backup não encontrada: v_{$version}\n";
+            return false;
+        }
+
+        echo "🔄 Iniciando restauração da versão v_{$version}...\n";
+        $this->log("Iniciando restauração: v_{$version}");
+
+        // Criar backup de segurança antes da restauração
+        $safetyBackup = 'safety_' . date('Y-m-d_H-i-s');
+        echo "🛡️  Criando backup de segurança: v_{$safetyBackup}...\n";
+        $this->save($safetyBackup);
+
+        $restoredFiles = 0;
+        $files = $this->getFilesFromVersion($versionDir);
+
+        foreach ($files as $file) {
+            $backupPath = $versionDir . '/' . $file;
+            $targetPath = $this->currentDir . '/' . $file;
+
+            if (!file_exists($backupPath)) {
+                continue;
+            }
+
+            $targetDir = dirname($targetPath);
+            if (!is_dir($targetDir)) {
+                mkdir($targetDir, 0755, true);
+            }
+
+            if (copy($backupPath, $targetPath)) {
+                echo "✅ Restaurado: {$file}\n";
+                $restoredFiles++;
+            } else {
+                echo "❌ Erro ao restaurar: {$file}\n";
+                $this->log("Erro ao restaurar: {$file}");
+            }
+        }
+
+        echo "\n🎉 Restauração da v_{$version} concluída!\n";
+        echo "   📊 {$restoredFiles} arquivos restaurados\n";
+        echo "   🛡️  Backup de segurança salvo como: v_{$safetyBackup}\n";
+
+        $this->log("Restauração concluída: v_{$version} - {$restoredFiles} arquivos");
+        $this->sendNotification("Restauração concluída", "Versão: v_{$version}\nArquivos: {$restoredFiles}");
+
+        return $restoredFiles > 0;
+    }
+
+    public function listVersions(): void
+    {
+        echo "📋 Versões de backup disponíveis:\n\n";
+
+        if (!is_dir($this->baseBackupDir)) {
+            echo "❌ Nenhum backup encontrado.\n";
+            return;
+        }
+
+        $versions = $this->getAllVersions();
+
+        if (empty($versions)) {
+            echo "❌ Nenhuma versão encontrada.\n";
+            return;
+        }
+
+        foreach ($versions as $version) {
+            $versionDir = $this->baseBackupDir . '/v_' . $version;
+            $infoFile = $versionDir . '/version_info.json';
+
+            if (file_exists($infoFile)) {
+                $info = json_decode(file_get_contents($infoFile), true);
+                $sizeMb = round($info['total_size'] / (1024 * 1024), 2);
+
+                echo "🔖 v_{$version}\n";
+                echo "   📅 Data: {$info['timestamp']}\n";
+                echo "   📊 Arquivos: {$info['files_backed_up']}\n";
+                echo "   💾 Tamanho: {$sizeMb} MB\n\n";
+            } else {
+                echo "🔖 v_{$version} (sem informações detalhadas)\n\n";
+            }
+        }
+    }
+
+    public function deleteVersion(string $version): bool
+    {
+        $versionDir = $this->baseBackupDir . '/v_' . $version;
+
+        if (!is_dir($versionDir)) {
+            echo "❌ Versão não encontrada: v_{$version}\n";
+            return false;
+        }
+
+        echo "🗑️  Removendo versão v_{$version}...\n";
+
+        if ($this->removeDirectory($versionDir)) {
+            echo "✅ Versão v_{$version} removida com sucesso!\n";
+            $this->log("Versão removida: v_{$version}");
+            return true;
+        } else {
+            echo "❌ Erro ao remover versão v_{$version}!\n";
+            $this->log("Erro ao remover versão: v_{$version}");
+            return false;
+        }
+    }
+
+    // Gerenciamento de serviços/crons
+    public function startService(string $serviceName): bool
+    {
+        if (!isset($this->services[$serviceName])) {
+            echo "❌ Serviço não encontrado: {$serviceName}\n";
+            return false;
+        }
+
+        $service = $this->services[$serviceName];
+
+        // Verificar se já está rodando
+        if ($this->isServiceReallyRunning($serviceName)) {
+            echo "⚠️  Serviço {$service['name']} já está executando!\n";
+
+            // Mostrar informações do processo
+            if (isset($service['port']) && $this->isPortInUse($service['port'])) {
+                echo "🔌 Porta {$service['port']} em uso\n";
+            }
+
+            $pids = $this->findProcessesByScript($service['script']);
+            if (!empty($pids)) {
+                echo "📍 PIDs encontrados: " . implode(', ', $pids) . "\n";
+            }
+
+            return true;
+        }
+
+        // Verificar se a porta está livre (se especificada)
+        if (isset($service['port']) && $this->isPortInUse($service['port'])) {
+            echo "❌ Porta {$service['port']} já está em uso!\n";
+            echo "💡 Use: php backup.php killport {$service['port']} para liberar\n";
+            return false;
+        }
+
+        // Verificar se o script existe
+        if (!file_exists($service['script'])) {
+            echo "❌ Script não encontrado: {$service['script']}\n";
+            return false;
+        }
+
+        echo "🚀 Iniciando serviço: {$service['name']}...\n";
+
+        // Criar diretório do PID se não existir
+        $pidDir = dirname($service['pid_file']);
+        if (!is_dir($pidDir)) {
+            mkdir($pidDir, 0755, true);
+        }
+
+        // Iniciar serviço em background usando screen
+        $logFile = "/tmp/{$serviceName}.log";
+        $sessionName = "service_{$serviceName}";
+        $command = sprintf(
+                'cd %s && screen -dmS %s bash -c "php %s > %s 2>&1; exec bash"',
+                escapeshellarg($this->currentDir),
+                escapeshellarg($sessionName),
+                escapeshellarg($service['script']),
+                escapeshellarg($logFile)
+        );
+
+        shell_exec($command);
+
+        // Obter PID da sessão screen e salvar
+        sleep(1); // Aguardar screen inicializar
+        $screenPidCommand = sprintf('screen -list | grep %s | awk \'{print $1}\' | cut -d. -f1', escapeshellarg($sessionName));
+        $screenPid = trim(shell_exec($screenPidCommand));
+
+        if ($screenPid && is_numeric($screenPid)) {
+            file_put_contents($service['pid_file'], $screenPid);
+        }
+
+        // Aguardar inicialização com timeout
+        $timeout = 10;
+        $started = false;
+
+        for ($i = 0; $i < $timeout; $i++) {
+            sleep(1);
+
+            // Verificar se o processo está rodando
+            if ($this->isServiceReallyRunning($serviceName)) {
+                $started = true;
+                break;
+            }
+
+            echo "⏳ Aguardando inicialização... ({$i}s)\n";
+        }
+
+        if ($started) {
+            echo "✅ Serviço {$service['name']} iniciado com sucesso!\n";
+
+            // Mostrar informações adicionais
+            $pid = $this->getServicePid($serviceName);
+            if ($pid) {
+                echo "📍 PID: {$pid}\n";
+            }
+
+            if (isset($service['port'])) {
+                echo "🔌 Porta: {$service['port']}\n";
+            }
+
+            echo "📋 Log: {$logFile}\n";
+
+            $this->log("Serviço iniciado: {$service['name']} (PID: {$pid})");
+            return true;
+        } else {
+            echo "❌ Falha ao iniciar serviço: {$service['name']}\n";
+
+            // Mostrar últimas linhas do log para diagnóstico
+            if (file_exists($logFile)) {
+                echo "📋 Últimas linhas do log:\n";
+                $logContent = shell_exec("tail -5 {$logFile}");
+                echo $logContent . "\n";
+            }
+
+            // Limpar arquivo PID se existir
+            if (file_exists($service['pid_file'])) {
+                unlink($service['pid_file']);
+            }
+
+            $this->log("Falha ao iniciar serviço: {$service['name']}");
+            return false;
+        }
+    }
+
+    public function stopService(string $serviceName): bool
+    {
+        if (!isset($this->services[$serviceName])) {
+            echo "❌ Serviço não encontrado: {$serviceName}\n";
+            return false;
+        }
+
+        $service = $this->services[$serviceName];
+
+        echo "🛑 Parando serviço: {$service['name']}...\n";
+
+        // Método 1: Tentar parar sessão screen se existir
+        $sessionName = "service_{$serviceName}";
+        $screenList = shell_exec('screen -list');
+        $stopped = false;
+
+        if ($screenList && str_contains($screenList, $sessionName)) {
+            echo "📺 Finalizando sessão screen: {$sessionName}\n";
+
+            // Finalizar sessão screen (isso mata todos os processos dentro dela)
+            $killScreenCommand = sprintf('screen -S %s -X quit', escapeshellarg($sessionName));
+            shell_exec($killScreenCommand);
+
+            // Aguardar finalização
+            for ($i = 0; $i < 5; $i++) {
+                sleep(1);
+                $screenList = shell_exec('screen -list');
+                if (!$screenList || !str_contains($screenList, $sessionName)) {
+                    echo "✅ Sessão screen finalizada\n";
+                    $stopped = true;
+                    break;
+                }
+                echo "⏳ Aguardando finalização da sessão... ({$i}s)\n";
+            }
+        }
+
+        // Método 2: Tentar parar via PID se existir
+        if (!$stopped) {
+            $pid = $this->getServicePid($serviceName);
+
+            if ($pid && posix_kill($pid, 0)) {
+                echo "📍 Encontrado PID: {$pid}\n";
+
+                // Tentar SIGTERM primeiro (graceful)
+                echo "⚠️  Enviando SIGTERM para {$pid}...\n";
+                posix_kill($pid, SIGTERM);
+
+                // Aguardar até 10 segundos para finalizar graciosamente
+                for ($i = 0; $i < 10; $i++) {
+                    sleep(1);
+                    if (!posix_kill($pid, 0)) {
+                        echo "✅ Processo finalizado graciosamente\n";
+                        $stopped = true;
+                        break;
+                    }
+                    echo "⏳ Aguardando finalização... ({$i}s)\n";
+                }
+
+                // Se não parou, usar SIGKILL
+                if (!$stopped && posix_kill($pid, 0)) {
+                    echo "💀 Forçando finalização com SIGKILL...\n";
+                    posix_kill($pid, SIGKILL);
+                    sleep(2);
+
+                    if (!posix_kill($pid, 0)) {
+                        echo "✅ Processo forçado a parar\n";
+                        $stopped = true;
+                    }
+                }
+            }
+        }
+
+        // Limpar arquivo PID
+        if (file_exists($service['pid_file'])) {
+            unlink($service['pid_file']);
+        }
+
+        // Método 2: Procurar processos pelo nome do script
+        if (!$stopped) {
+            echo "🔍 Procurando processos pelo nome do script...\n";
+            $pids = $this->findProcessesByScript($service['script']);
+
+            foreach ($pids as $foundPid) {
+                echo "📍 Processo encontrado: {$foundPid}\n";
+
+                // SIGTERM primeiro
+                posix_kill($foundPid, SIGTERM);
+                sleep(2);
+
+                // Verificar se parou
+                if (!posix_kill($foundPid, 0)) {
+                    echo "✅ Processo {$foundPid} finalizado\n";
+                    $stopped = true;
+                } else {
+                    // SIGKILL se necessário
+                    echo "💀 Forçando parada do processo {$foundPid}...\n";
+                    posix_kill($foundPid, SIGKILL);
+                    sleep(1);
+
+                    if (!posix_kill($foundPid, 0)) {
+                        echo "✅ Processo {$foundPid} forçado a parar\n";
+                        $stopped = true;
+                    }
+                }
+            }
+        }
+
+        // Método 3: Tentar liberar a porta se especificada
+        if (!$stopped && isset($service['port'])) {
+            echo "🔌 Tentando liberar porta {$service['port']}...\n";
+            $portStopped = $this->killPort($service['port']);
+            if ($portStopped) {
+                $stopped = true;
+            }
+        }
+
+        // Verificação final
+        sleep(1);
+        if (!$this->isServiceReallyRunning($serviceName)) {
+            echo "✅ Serviço {$service['name']} parado com sucesso!\n";
+            $this->log("Serviço parado: {$service['name']}");
+            return true;
+        } else {
+            echo "❌ Serviço {$service['name']} ainda está executando\n";
+            echo "💡 Tente usar: php backup.php killport {$service['port']} ou killall -9 php\n";
+            $this->log("Falha ao parar serviço: {$service['name']}");
+            return false;
+        }
+    }
+
+    public function restartService(string $serviceName): bool
+    {
+        echo "🔄 Reiniciando serviço: {$serviceName}...\n";
+        $this->stopService($serviceName);
+        sleep(1);
+        return $this->startService($serviceName);
+    }
+
+    public function showServicesStatus(): void
+    {
+        echo "🔧 Status dos Serviços:\n\n";
+
+        foreach ($this->services as $name => $service) {
+            $isRunning = $this->isServiceReallyRunning($name);
+            $status = $isRunning ? "✅ Executando" : "❌ Parado";
+
+            echo "🔹 {$service['name']}: {$status}\n";
+            echo "   Script: {$service['script']}\n";
+
+            if ($isRunning) {
+                // Informações detalhadas quando executando
+                $pid = $this->getServicePid($name);
+                if ($pid) {
+                    echo "   PID: {$pid}\n";
+
+                    // Mostrar uso de CPU/Memória se disponível
+                    $psInfo = shell_exec("ps -p {$pid} -o pid,ppid,pcpu,pmem,etime,cmd --no-headers 2>/dev/null");
+                    if ($psInfo) {
+                        $psInfo = trim($psInfo);
+                        $parts = preg_split('/\s+/', $psInfo, 6);
+                        if (count($parts) >= 5) {
+                            echo "   CPU: {$parts[2]}% | Memória: {$parts[3]}% | Tempo: {$parts[4]}\n";
+                        }
+                    }
+                }
+
+                // Verificar se está rodando em sessão screen
+                $sessionName = "service_{$name}";
+                $screenList = shell_exec('screen -list');
+                if ($screenList && str_contains($screenList, $sessionName)) {
+                    echo "   📺 Sessão screen: {$sessionName}\n";
+                }
+
+                // Verificar porta se especificada
+                if (isset($service['port']) && $service['port']) {
+                    $portInUse = $this->isPortInUse($service['port']);
+                    $portStatus = $portInUse ? "✅ Ativa" : "❌ Livre";
+                    echo "   Porta {$service['port']}: {$portStatus}\n";
+                }
+
+                // Mostrar PIDs encontrados por busca
+                $foundPids = $this->findProcessesByScript($service['script']);
+                if (count($foundPids) > 1) {
+                    echo "   ⚠️  Múltiplos processos encontrados: " . implode(', ', $foundPids) . "\n";
+                } elseif (count($foundPids) === 1 && $foundPids[0] !== $pid) {
+                    echo "   ⚠️  PID do arquivo difere do processo encontrado: {$foundPids[0]}\n";
+                }
+            } else {
+                // Verificar se existe arquivo PID órfão
+                if (file_exists($service['pid_file'])) {
+                    echo "   ⚠️  Arquivo PID órfão detectado\n";
+                }
+
+                // Verificar se a porta ainda está em uso
+                if (isset($service['port']) && $service['port'] && $this->isPortInUse($service['port'])) {
+                    echo "   ⚠️  Porta {$service['port']} ainda em uso por outro processo\n";
+                }
+            }
+
+            echo "\n";
+        }
+
+        // Mostrar processos PHP suspeitos que podem ser nossos serviços
+        echo "🔍 Verificação de Processos PHP:\n";
+        $phpProcesses = shell_exec("ps aux | grep 'php.*\\.php' | grep -v grep | wc -l");
+        echo "Total de processos PHP executando: " . trim($phpProcesses) . "\n\n";
+
+        // Listar processos PHP que podem ser relevantes
+        $relevantProcesses = shell_exec("ps aux | grep 'php.*\\.php' | grep -v grep | head -5");
+        if ($relevantProcesses) {
+            echo "Processos PHP ativos (primeiros 5):\n";
+            $lines = explode("\n", trim($relevantProcesses));
+            foreach ($lines as $line) {
+                if (trim($line)) {
+                    $parts = preg_split('/\s+/', trim($line));
+                    if (count($parts) >= 11) {
+                        $pid = $parts[1];
+                        $cmd = implode(' ', array_slice($parts, 10));
+                        echo "  PID {$pid}: " . substr($cmd, 0, 80) . "\n";
+                    }
+                }
+            }
+        }
+    }
+
+    public function startAllServices(): void
+    {
+        echo "🚀 Iniciando todos os serviços...\n\n";
+
+        foreach (array_keys($this->services) as $serviceName) {
+            $this->startService($serviceName);
+        }
+    }
+
+    public function stopAllServices(): void
+    {
+        echo "🛑 Parando todos os serviços...\n\n";
+
+        foreach (array_keys($this->services) as $serviceName) {
+            $this->stopService($serviceName);
+        }
+    }
+
+    // Métodos auxiliares
+    private function isServiceRunning(string $serviceName): bool
+    {
+        // Verificar via PID primeiro
+        $pid = $this->getServicePid($serviceName);
+        if ($pid && posix_kill($pid, 0)) {
+            return true;
+        }
+
+        // Verificar se realmente está rodando procurando pelo script
+        return $this->isServiceReallyRunning($serviceName);
+    }
+
+    private function isServiceReallyRunning(string $serviceName): bool
+    {
+        if (!isset($this->services[$serviceName])) {
+            return false;
+        }
+
+        $service = $this->services[$serviceName];
+
+        // Método 1: Verificar via arquivo PID primeiro (mais confiável)
+        $pid = $this->getServicePid($serviceName);
+        if ($pid && posix_kill($pid, 0)) {
+            // Processo existe, verificar se é realmente o nosso
+            if ($this->isOurProcess($pid, $service['script'])) {
+                return true;
+            } else {
+                // PID file inválido, limpar
+                if (file_exists($service['pid_file'])) {
+                    unlink($service['pid_file']);
+                }
+            }
+        }
+
+        // Método 2: Verificar sessão screen
+        $sessionName = "service_{$serviceName}";
+        $screenList = shell_exec('screen -list');
+        if ($screenList && str_contains($screenList, $sessionName)) {
+            // Extrair PID da sessão screen se não temos arquivo PID
+            if (!file_exists($service['pid_file'])) {
+                $screenPidCommand = sprintf('screen -list | grep %s | awk \'{print $1}\' | cut -d. -f1', escapeshellarg($sessionName));
+                $screenPid = trim(shell_exec($screenPidCommand));
+                if ($screenPid && is_numeric($screenPid)) {
+                    file_put_contents($service['pid_file'], $screenPid);
+                }
+            }
+            return true;
+        }
+
+        // Método 3: Procurar pelo nome do script (mais restritivo agora)
+        $pids = $this->findProcessesByScript($service['script']);
+        if (!empty($pids)) {
+            // Atualizar arquivo PID com o primeiro processo válido encontrado
+            if (!file_exists($service['pid_file'])) {
+                file_put_contents($service['pid_file'], $pids[0]);
+            }
+            return true;
+        }
+
+        // Método 3: Verificar se a porta está sendo usada (apenas se especificada)
+        if (isset($service['port']) && $service['port']) {
+            $portInUse = $this->isPortInUse($service['port']);
+            if ($portInUse) {
+                // Verificar se o processo que usa a porta é realmente nosso serviço
+                $processes = $this->getProcessesUsingPort($service['port']);
+                foreach ($processes as $pid) {
+                    if ($this->isOurProcess($pid, $service['script'])) {
+                        // Atualizar arquivo PID
+                        if (!file_exists($service['pid_file'])) {
+                            file_put_contents($service['pid_file'], $pid);
+                        }
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private function getServicePid(string $serviceName): ?int
+    {
+        $pidFile = $this->services[$serviceName]['pid_file'];
+        if (file_exists($pidFile)) {
+            $pid = (int)trim(file_get_contents($pidFile));
+            if ($pid > 0 && posix_kill($pid, 0)) {
+                return $pid;
+            }
+            // Arquivo PID inválido, remover
+            unlink($pidFile);
+        }
+        return null;
+    }
+
+    public function findProcessesByScript(string $scriptName): array
+    {
+        $validPids = [];
+        $scriptPath = $this->currentDir . '/' . $scriptName;
+
+        // Método 1: Buscar por processos PHP executando o script específico
+        $command = "ps aux | grep 'php.*" . escapeshellarg($scriptName) . "' | grep -v grep";
+        $output = shell_exec($command);
+
+        if ($output) {
+            $lines = array_filter(explode("\n", $output));
+            foreach ($lines as $line) {
+                if (preg_match('/\s+(\d+)\s+/', $line, $matches)) {
+                    $pid = (int)$matches[1];
+
+                    // Verificar se é realmente nosso processo
+                    if ($this->isOurProcess($pid, $scriptName)) {
+                        $validPids[] = $pid;
+                    }
+                }
+            }
+        }
+
+        // Método 2: Buscar especificamente por PHP + nome do arquivo
+        if (empty($validPids)) {
+            $scriptBasename = basename($scriptName);
+            $command = "pgrep -f 'php.*" . escapeshellarg($scriptBasename) . "'";
+            $pgrepOutput = shell_exec($command);
+
+            if ($pgrepOutput) {
+                $pids = array_filter(array_map('trim', explode("\n", $pgrepOutput)));
+                foreach ($pids as $pid) {
+                    $pid = (int)$pid;
+                    if ($pid > 0 && $this->isOurProcess($pid, $scriptName)) {
+                        $validPids[] = $pid;
+                    }
+                }
+            }
+        }
+
+        // Método 3: Buscar por sessões screen dos serviços
+        if (empty($validPids)) {
+            foreach ($this->services as $serviceName => $service) {
+                if ($service['script'] === $scriptName) {
+                    $sessionName = "service_{$serviceName}";
+                    $screenCommand = "screen -list | grep " . escapeshellarg($sessionName) . " | awk '{print $1}' | cut -d. -f1";
+                    $screenPid = trim(shell_exec($screenCommand)??'');
+
+                    if ($screenPid && is_numeric($screenPid)) {
+                        // Verificar se a sessão screen realmente existe e está rodando nosso script
+                        if ($this->isScreenSessionValid($screenPid, $sessionName, $scriptName)) {
+                            $validPids[] = (int)$screenPid;
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+
+        return array_unique($validPids);
+    }
+
+    public function isOurProcess(int $pid, string $scriptName): bool
+    {
+        if (!posix_kill($pid, 0)) {
+            return false; // Processo não existe
+        }
+
+        // Verificar a linha de comando do processo
+        $cmdlineFile = "/proc/{$pid}/cmdline";
+        if (file_exists($cmdlineFile)) {
+            $cmdline = file_get_contents($cmdlineFile);
+            $cmdline = str_replace("\0", " ", $cmdline); // Substituir null bytes por espaços
+
+            // Verificar se contém PHP e o nome do script
+            if (!stripos($cmdline, 'php')) {
+                return false;
+            }
+
+            $scriptBasename = basename($scriptName);
+            if (!stripos($cmdline, $scriptBasename)) {
+                return false;
+            }
+
+            // Verificar se não é um processo de busca (grep, ps, etc.)
+            if (stripos($cmdline, 'grep') !== false || 
+                stripos($cmdline, 'pgrep') !== false ||
+                stripos($cmdline, 'ps ') !== false) {
+                return false;
+            }
+        }
+
+        // Verificar o diretório de trabalho do processo (se possível)
+        $cwdFile = "/proc/{$pid}/cwd";
+        if (is_link($cwdFile)) {
+            $processCwd = readlink($cwdFile);
+            // Se o diretório de trabalho for diferente do nosso, pode não ser nosso processo
+            if ($processCwd && $processCwd !== $this->currentDir) {
+                // Permitir subdiretórios (como manage/)
+                if (!str_starts_with($processCwd, $this->currentDir)) {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private function isScreenSessionValid(int $pid, string $sessionName, string $scriptName): bool
+    {
+        if (!posix_kill($pid, 0)) {
+            return false; // Processo screen não existe
+        }
+
+        // Verificar se a sessão screen existe
+        $screenList = shell_exec('screen -list');
+        if (!$screenList || !str_contains($screenList, $sessionName)) {
+            return false;
+        }
+
+        // Verificar se dentro da sessão screen há o processo PHP rodando nosso script
+        $screenCommand = sprintf('screen -S %s -X hardcopy /tmp/screen_check_%s.tmp && sleep 0.1', 
+            escapeshellarg($sessionName), 
+            escapeshellarg($sessionName)
+        );
+        shell_exec($screenCommand);
+
+        $tempFile = "/tmp/screen_check_{$sessionName}.tmp";
+        if (file_exists($tempFile)) {
+            $content = file_get_contents($tempFile);
+            unlink($tempFile);
+
+            $scriptBasename = basename($scriptName);
+            return str_contains($content, $scriptBasename) || str_contains($content, 'php');
+        }
+
+        return true; // Se não conseguir verificar o conteúdo, assume que é válido
+    }
+
+    public function isPortInUse(int $port): bool
+    {
+        // Verificar TCP
+        $tcpCommand = "netstat -tlnp 2>/dev/null | grep :{$port}";
+        $tcpOutput = shell_exec($tcpCommand);
+
+        // Verificar UDP
+        $udpCommand = "netstat -ulnp 2>/dev/null | grep :{$port}";
+        $udpOutput = shell_exec($udpCommand);
+
+        return !empty(trim($tcpOutput??'')) || !empty(trim($udpOutput??''));
+    }
+
+    public function getProcessesUsingPort(int $port): array
+    {
+        $processes = [];
+
+        // Buscar processos TCP
+        $tcpCommand = "netstat -tlnp 2>/dev/null | grep :{$port}";
+        $tcpOutput = shell_exec($tcpCommand);
+        if ($tcpOutput) {
+            $processes = array_merge($processes, $this->parseNetstatOutput($tcpOutput));
+        }
+
+        // Buscar processos UDP
+        $udpCommand = "netstat -ulnp 2>/dev/null | grep :{$port}";
+        $udpOutput = shell_exec($udpCommand);
+        if ($udpOutput) {
+            $processes = array_merge($processes, $this->parseNetstatOutput($udpOutput));
+        }
+
+        // Usar lsof como alternativa se netstat não funcionar
+        if (empty($processes)) {
+            $lsofCommand = "lsof -ti:{$port} 2>/dev/null";
+            $lsofOutput = shell_exec($lsofCommand);
+            if ($lsofOutput) {
+                $pids = array_filter(array_map('trim', explode("\n", $lsofOutput)));
+                foreach ($pids as $pid) {
+                    if (is_numeric($pid)) {
+                        $processes[] = (int)$pid;
+                    }
+                }
+            }
+        }
+
+        return array_unique($processes);
+    }
+
+    private function parseNetstatOutput(string $output): array
+    {
+        $pids = [];
+        $lines = explode("\n", $output);
+
+        foreach ($lines as $line) {
+            if (preg_match('/(\d+)\//', $line, $matches)) {
+                $pids[] = (int)$matches[1];
+            }
+        }
+
+        return $pids;
+    }
+
+    public function killPort(int $port): bool
+    {
+        echo "🔌 Liberando porta {$port}...\n";
+
+        $processes = $this->getProcessesUsingPort($port);
+
+        if (empty($processes)) {
+            echo "⚠️  Nenhum processo encontrado usando a porta {$port}\n";
+            return true;
+        }
+
+        $killed = 0;
+        shell_exec("killport {$port}");
+        foreach ($processes as $pid) {
+            echo "💀 Matando processo {$pid} que usa a porta {$port}...\n";
+
+
+            // SIGTERM primeiro
+            if (posix_kill($pid, SIGTERM)) {
+                sleep(2);
+
+                // Verificar se parou
+                if (!posix_kill($pid, 0)) {
+                    echo "✅ Processo {$pid} finalizado graciosamente\n";
+                    $killed++;
+                    continue;
+                }
+            }
+
+            // SIGKILL se necessário
+            if (posix_kill($pid, SIGKILL)) {
+                sleep(1);
+
+                if (!posix_kill($pid, 0)) {
+                    echo "✅ Processo {$pid} forçado a parar\n";
+                    $killed++;
+                } else {
+                    echo "❌ Falha ao matar processo {$pid}\n";
+                }
+            }
+        }
+
+        // Verificar se a porta foi liberada
+        sleep(1);
+        if (!$this->isPortInUse($port)) {
+            echo "✅ Porta {$port} liberada com sucesso!\n";
+            return true;
+        } else {
+            echo "❌ Porta {$port} ainda está em uso\n";
+            return false;
+        }
+    }
+
+    private function resolveFilesToBackup(): array
+    {
+        $files = [];
+
+        foreach ($this->config['files_to_backup'] as $pattern) {
+            if (strpos($pattern, '*') !== false) {
+                $files = array_merge($files, glob($pattern));
+            } else {
+                $files[] = $pattern;
+            }
+        }
+
+        return array_unique($files);
+    }
+
+    private function shouldExcludeFile(string $file): bool
+    {
+        foreach ($this->config['exclude_patterns'] as $pattern) {
+            if (fnmatch($pattern, $file)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private function fileNotChanged(string $file): bool
+    {
+        $latestVersion = $this->getLatestVersion();
+        if (!$latestVersion) return false;
+
+        $currentPath = $this->currentDir . '/' . $file;
+        $lastBackupPath = $this->baseBackupDir . '/v_' . $latestVersion . '/' . $file;
+
+        if (!file_exists($lastBackupPath)) return false;
+
+        return filemtime($currentPath) === filemtime($lastBackupPath) &&
+                filesize($currentPath) === filesize($lastBackupPath);
+    }
+
+    private function createSymlink(string $file, string $backupPath): void
+    {
+        $latestVersion = $this->getLatestVersion();
+        $sourcePath = $this->baseBackupDir . '/v_' . $latestVersion . '/' . $file;
+
+        if (file_exists($sourcePath)) {
+            symlink($sourcePath, $backupPath);
+        }
+    }
+
+    private function compressBackup(string $versionDir): bool
+    {
+        $archivePath = $versionDir . '.tar.gz';
+        $command = "tar -czf {$archivePath} -C " . dirname($versionDir) . " " . basename($versionDir) . " 2>&1";
+
+        $output = shell_exec($command);
+
+        // Verificar se o arquivo foi criado com sucesso
+        if (file_exists($archivePath) && filesize($archivePath) > 0) {
+            $this->removeDirectory($versionDir);
+            echo "📦 Backup comprimido: " . basename($archivePath) . "\n";
+            return true;
+        } else {
+            if ($output) {
+                echo "❌ Erro na compressão: " . trim($output) . "\n";
+            }
+            return false;
+        }
+    }
+
+    private function getAllVersions(): array
+    {
+        if (!is_dir($this->baseBackupDir)) return [];
+
+        $versions = [];
+        $dirs = scandir($this->baseBackupDir);
+
+        foreach ($dirs as $dir) {
+            if (strpos($dir, 'v_') === 0) {
+                $versions[] = substr($dir, 2);
+            }
+        }
+
+        rsort($versions);
+        return $versions;
+    }
+
+    private function getLatestVersion(): ?string
+    {
+        $versions = $this->getAllVersions();
+        return $versions[0] ?? null;
+    }
+
+    private function getFilesFromVersion(string $versionDir): array
+    {
+        $files = [];
+        $iterator = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($versionDir)
+        );
+
+        foreach ($iterator as $file) {
+            if ($file->isFile()) {
+                $relativePath = str_replace($versionDir . '/', '', $file->getPathname());
+                if (!str_contains($relativePath, 'version_info.json')) {
+                    $files[] = $relativePath;
+                }
+            }
+        }
+
+        return $files;
+    }
+
+    private function cleanupOldBackups(): void
+    {
+        $versions = $this->getAllVersions();
+        $maxVersions = $this->config['max_versions'];
+
+        if (count($versions) > $maxVersions) {
+            $toDelete = array_slice($versions, $maxVersions);
+
+            echo "🧹 Limpando backups antigos...\n";
+            foreach ($toDelete as $version) {
+                $this->deleteVersion($version);
+            }
+        }
+    }
+
+    private function createBackupDirectory(string $dir): bool
+    {
+        if (!is_dir($dir)) {
+            $parentDir = dirname($dir);
+
+            // Verificar se o diretório pai existe e é acessível
+            if (!is_dir($parentDir)) {
+                echo "❌ Diretório pai não existe: {$parentDir}\n";
+                echo "💡 Certifique-se de que você tem permissões na pasta superior\n";
+                return false;
+            }
+
+            if (!is_writable($parentDir)) {
+                echo "❌ Sem permissão de escrita em: {$parentDir}\n";
+                echo "💡 Execute: sudo chown -R \$USER {$parentDir}\n";
+                return false;
+            }
+
+            if (!mkdir($dir, 0755, true)) {
+                echo "❌ Erro ao criar diretório de backup: {$dir}\n";
+                echo "💡 Verifique as permissões do sistema de arquivos\n";
+                return false;
+            }
+
+            echo "📁 Diretório de backup criado: {$dir}\n";
+        }
+
+        // Verificar se o diretório é acessível
+        if (!is_writable($dir)) {
+            echo "❌ Diretório de backup não é acessível para escrita: {$dir}\n";
+            echo "💡 Execute: sudo chown -R \$USER {$dir}\n";
+            return false;
+        }
+
+        return true;
+    }
+
+    private function createVersionInfo(string $version, int $backedUpFiles, int $totalFiles, int $skippedFiles, int $totalSize): void
+    {
+        $info = [
+                'version' => $version,
+                'timestamp' => date('Y-m-d H:i:s'),
+                'files_backed_up' => $backedUpFiles,
+                'total_files' => $totalFiles,
+                'skipped_files' => $skippedFiles,
+                'total_size' => $totalSize,
+                'source_directory' => $this->currentDir,
+                'config_snapshot' => $this->config
+        ];
+
+        $versionDir = $this->baseBackupDir . '/v_' . $version;
+        file_put_contents(
+                $versionDir . '/version_info.json',
+                json_encode($info, JSON_PRETTY_PRINT)
+        );
+    }
+
+    private function removeDirectory(string $dir): bool
+    {
+        if (!is_dir($dir)) return false;
+
+        $files = array_diff(scandir($dir), ['.', '..']);
+
+        foreach ($files as $file) {
+            $path = $dir . '/' . $file;
+            is_dir($path) ? $this->removeDirectory($path) : unlink($path);
+        }
+
+        return rmdir($dir);
+    }
+
+    private function log(string $message): void
+    {
+        $timestamp = date('Y-m-d H:i:s');
+        $logEntry = "[{$timestamp}] {$message}\n";
+        file_put_contents($this->logFile, $logEntry, FILE_APPEND);
+    }
+
+    private function sendNotification(string $title, string $message): void
+    {
+        if (!$this->config['notifications']['enabled']) return;
+
+        // Implementar notificações por email/webhook se configurado
+        $this->log("Notificação: {$title} - {$message}");
+    }
+
+    public function showHelp(): void
+    {
+        echo "🔧 Sistema Avançado de Backup e Gerenciamento de Serviços\n";
+        echo "Uso: php backup.php [comando] [opções]\n\n";
+
+        $projectName = basename($this->currentDir);
+        echo "📁 LOCALIZAÇÃO DOS BACKUPS:\n";
+        echo "   Projeto: {$this->currentDir}\n";
+        echo "   Backups: {$this->baseBackupDir}\n";
+        echo "   🛡️  Os backups ficam FORA do projeto para segurança!\n\n";
+
+        echo "📦 COMANDOS DE BACKUP:\n";
+        echo "  save [versão]          - Criar backup versionado\n";
+        echo "  restore [versão]       - Restaurar versão específica (última se não especificada)\n";
+        echo "  list                   - Listar todas as versões de backup\n";
+        echo "  delete <versão>        - Remover versão específica\n";
+        echo "  status                 - Status atual dos backups\n\n";
+
+        echo "🔧 COMANDOS DE SERVIÇOS:\n";
+        echo "  start <serviço>        - Iniciar serviço específico\n";
+        echo "  stop <serviço>         - Parar serviço (SIGTERM + SIGKILL se necessário)\n";
+        echo "  force-stop <serviço>   - Parar serviço forçadamente\n";
+        echo "  restart <serviço>      - Reiniciar serviço específico\n";
+        echo "  start-all              - Iniciar todos os serviços\n";
+        echo "  stop-all               - Parar todos os serviços\n";
+        echo "  services               - Status de todos os serviços\n";
+        echo "  killport <porta>       - Matar processos que usam a porta\n";
+        echo "  diagnose [serviço]     - Diagnosticar problemas de serviço\n";
+        echo "  killall                - Matar TODOS os processos PHP (cuidado!)\n\n";
+
+        echo "🔧 SERVIÇOS DISPONÍVEIS:\n";
+        foreach ($this->services as $name => $service) {
+            echo "  {$name}                - {$service['name']}\n";
+        }
+
+        echo "\n📋 OUTROS COMANDOS:\n";
+        echo "  help                   - Mostrar esta ajuda\n";
+        echo "  config                 - Mostrar configuração atual\n";
+        echo "  check                  - Verificar integridade do sistema\n\n";
+
+        echo "💡 EXEMPLOS:\n";
+        echo "  php backup.php save                    # Backup com timestamp automático\n";
+        echo "  php backup.php save producao_v1.0      # Backup com nome personalizado\n";
+        echo "  php backup.php restore 2024-01-15_10-30-45  # Restaurar versão específica\n";
+        echo "  php backup.php start liga              # Iniciar serviço de ligações\n";
+        echo "  php backup.php stop server             # Parar servidor (graceful + force)\n";
+        echo "  php backup.php killport 9501           # Liberar porta 9501\n";
+        echo "  php backup.php force-stop runner       # Forçar parada do runner\n";
+        echo "  php backup.php stop-all                # Parar todos os serviços\n";
+    }
+
+    public function showStatus(): void
+    {
+        echo "📊 STATUS GERAL DO SISTEMA\n\n";
+
+        // Status dos backups
+        echo "📦 BACKUPS:\n";
+        echo "Diretório base (EXTERNO): {$this->baseBackupDir}\n";
+        echo "Projeto de origem: {$this->currentDir}\n";
+
+        // Verificar se o diretório de backup existe e é acessível
+        if (!is_dir($this->baseBackupDir)) {
+            echo "⚠️  Diretório de backup não existe!\n";
+        } elseif (!is_writable($this->baseBackupDir)) {
+            echo "⚠️  Diretório de backup sem permissão de escrita!\n";
+        } else {
+            echo "✅ Diretório de backup acessível\n";
+        }
+
+        $versions = $this->getAllVersions();
+        $totalVersions = count($versions);
+        $latestVersion = $versions[0] ?? 'Nenhuma';
+
+        echo "Total de versões: {$totalVersions}\n";
+        echo "Versão mais recente: v_{$latestVersion}\n";
+        echo "Limite de versões: {$this->config['max_versions']}\n\n";
+
+        // Status dos serviços
+        echo "🔧 SERVIÇOS:\n";
+        $runningServices = 0;
+        foreach ($this->services as $name => $service) {
+            if ($this->isServiceRunning($name)) $runningServices++;
+        }
+
+        echo "Serviços executando: {$runningServices}/" . count($this->services) . "\n\n";
+
+        $this->showServicesStatus();
+
+        // Últimos logs
+        echo "📋 ÚLTIMOS LOGS:\n";
+        if (file_exists($this->logFile)) {
+            $logs = explode("\n", file_get_contents($this->logFile));
+            $recentLogs = array_slice($logs, -5, 5);
+            foreach ($recentLogs as $log) {
+                if (trim($log)) echo "  {$log}\n";
+            }
+        } else {
+            echo "  Nenhum log encontrado.\n";
+        }
+    }
+
+    public function showConfig(): void
+    {
+        echo "⚙️  CONFIGURAÇÃO ATUAL:\n\n";
+        echo json_encode($this->config, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) . "\n";
+    }
+
+    public function checkBackupIntegrity(): void
+    {
+        echo "🔍 Verificação de Integridade do Sistema de Backup\n\n";
+
+        $projectName = basename($this->currentDir);
+        $parentDir = dirname($this->currentDir);
+
+        echo "📊 INFORMAÇÕES DO SISTEMA:\n";
+        echo "Projeto atual: {$this->currentDir}\n";
+        echo "Pasta pai: {$parentDir}\n";
+        echo "Nome do projeto: {$projectName}\n";
+        echo "Diretório de backup: {$this->baseBackupDir}\n\n";
+
+        echo "🔒 VERIFICAÇÕES DE SEGURANÇA:\n";
+
+        // 1. Verificar se backup não está dentro do projeto
+        if (str_starts_with($this->baseBackupDir, $this->currentDir)) {
+            echo "❌ ERRO CRÍTICO: Backup dentro do projeto!\n";
+            echo "   Se o projeto for excluído, os backups serão perdidos!\n";
+        } else {
+            echo "✅ Backup fora do projeto (seguro)\n";
+        }
+
+        // 2. Verificar permissões
+        if (is_dir($this->baseBackupDir)) {
+            if (is_writable($this->baseBackupDir)) {
+                echo "✅ Diretório de backup acessível\n";
+            } else {
+                echo "❌ Sem permissão de escrita no diretório de backup\n";
+            }
+        } else {
+            echo "⚠️  Diretório de backup não existe (será criado no primeiro backup)\n";
+        }
+
+        // 3. Verificar espaço em disco
+        if (is_dir($parentDir)) {
+            $freeBytes = disk_free_space($parentDir);
+            $totalBytes = disk_total_space($parentDir);
+
+            if ($freeBytes !== false && $totalBytes !== false) {
+                $freeGB = round($freeBytes / (1024 * 1024 * 1024), 2);
+                $totalGB = round($totalBytes / (1024 * 1024 * 1024), 2);
+                $usedPercent = round((($totalBytes - $freeBytes) / $totalBytes) * 100, 1);
+
+                echo "💾 Espaço em disco:\n";
+                echo "   Livre: {$freeGB} GB\n";
+                echo "   Total: {$totalGB} GB\n";
+                echo "   Uso: {$usedPercent}%\n";
+
+                if ($freeGB < 1) {
+                    echo "⚠️  Pouco espaço livre (<1GB)\n";
+                } elseif ($usedPercent > 90) {
+                    echo "⚠️  Disco quase cheio (>{$usedPercent}%)\n";
+                } else {
+                    echo "✅ Espaço adequado\n";
+                }
+            }
+        }
+
+        // 4. Listar backups existentes
+        echo "\n📋 BACKUPS EXISTENTES:\n";
+        $versions = $this->getAllVersions();
+        if (!empty($versions)) {
+            echo "Total: " . count($versions) . " versões\n";
+            echo "Mais recente: v_" . $versions[0] . "\n";
+            echo "Mais antiga: v_" . end($versions) . "\n";
+        } else {
+            echo "Nenhum backup encontrado\n";
+        }
+
+        echo "\n💡 RECOMENDAÇÕES:\n";
+        echo "• Sempre mantenha os backups fora do projeto\n";
+        echo "• Faça backups regulares usando cron\n";
+        echo "• Verifique periodicamente o espaço em disco\n";
+        echo "• Teste a restauração ocasionalmente\n";
+    }
+}
+
+// Execução do script
+if ($argc < 2) {
+    echo "❌ Comando não especificado!\n\n";
+    $backup = new AdvancedBackupManager();
+    $backup->showHelp();
+    exit(1);
+}
+
+$command = $argv[1];
+$option = $argv[2] ?? null;
+
+$backup = new AdvancedBackupManager();
+
+switch ($command) {
+    case 'save':
+        $success = $backup->save($option);
+        exit($success ? 0 : 1);
+
+    case 'restore':
+        $success = $backup->restore($option);
+        exit($success ? 0 : 1);
+
+    case 'list':
+        $backup->listVersions();
+        exit(0);
+
+    case 'delete':
+        if (!$option) {
+            echo "❌ Especifique a versão a ser removida!\n";
+            exit(1);
+        }
+        $success = $backup->deleteVersion($option);
+        exit($success ? 0 : 1);
+
+    case 'start':
+        if (!$option) {
+            echo "❌ Especifique o serviço a ser iniciado!\n";
+            exit(1);
+        }
+        $success = $backup->startService($option);
+        exit($success ? 0 : 1);
+
+    case 'stop':
+        if (!$option) {
+            echo "❌ Especifique o serviço a ser parado!\n";
+            exit(1);
+        }
+        $success = $backup->stopService($option);
+        exit($success ? 0 : 1);
+
+    case 'restart':
+        if (!$option) {
+            echo "❌ Especifique o serviço a ser reiniciado!\n";
+            exit(1);
+        }
+        $success = $backup->restartService($option);
+        exit($success ? 0 : 1);
+
+    case 'start-all':
+        $backup->startAllServices();
+        exit(0);
+
+    case 'stop-all':
+        $backup->stopAllServices();
+        exit(0);
+
+    case 'services':
+        $backup->showServicesStatus();
+        exit(0);
+
+    case 'killport':
+        if (!$option || !is_numeric($option)) {
+            echo "❌ Especifique a porta a ser liberada!\n";
+            echo "💡 Uso: php backup.php killport 9501\n";
+            exit(1);
+        }
+        $success = $backup->killPort((int)$option);
+        exit($success ? 0 : 1);
+
+    case 'force-stop':
+        if (!$option) {
+            echo "❌ Especifique o serviço a ser parado forçadamente!\n";
+            exit(1);
+        }
+        echo "💀 Parando serviço forçadamente: {$option}\n";
+        $success = $backup->stopService($option);
+        exit($success ? 0 : 1);
+
+    case 'diagnose':
+        if ($option) {
+            // Diagnóstico de serviço específico
+            if (!isset($backup->services[$option])) {
+                echo "❌ Serviço não encontrado: {$option}\n";
+                exit(1);
+            }
+
+            $service = $backup->services[$option];
+            echo "🔍 Diagnóstico do serviço: {$service['name']}\n\n";
+
+            // Verificar script
+            echo "📄 Script: {$service['script']}\n";
+            echo "   Existe: " . (file_exists($service['script']) ? "✅" : "❌") . "\n";
+
+            // Verificar arquivo PID
+            echo "📍 Arquivo PID: {$service['pid_file']}\n";
+            if (file_exists($service['pid_file'])) {
+                $pidContent = trim(file_get_contents($service['pid_file']));
+                echo "   Conteúdo: {$pidContent}\n";
+                if (is_numeric($pidContent)) {
+                    $pid = (int)$pidContent;
+                    echo "   Processo existe: " . (posix_kill($pid, 0) ? "✅" : "❌") . "\n";
+                    if (posix_kill($pid, 0)) {
+                        echo "   É nosso processo: " . ($backup->isOurProcess($pid, $service['script']) ? "✅" : "❌") . "\n";
+                    }
+                }
+            } else {
+                echo "   Existe: ❌\n";
+            }
+
+            // Verificar porta
+            if (isset($service['port'])) {
+                echo "🔌 Porta: {$service['port']}\n";
+                echo "   Em uso: " . ($backup->isPortInUse($service['port']) ? "✅" : "❌") . "\n";
+                $processes = $backup->getProcessesUsingPort($service['port']);
+                if (!empty($processes)) {
+                    echo "   Processos usando a porta: " . implode(', ', $processes) . "\n";
+                }
+            }
+
+            // Buscar processos
+            echo "🔍 Busca de processos:\n";
+            $pids = $backup->findProcessesByScript($service['script']);
+            if (!empty($pids)) {
+                echo "   Processos encontrados: " . implode(', ', $pids) . "\n";
+                foreach ($pids as $pid) {
+                    echo "   PID {$pid} é nosso: " . ($backup->isOurProcess($pid, $service['script']) ? "✅" : "❌") . "\n";
+                }
+            } else {
+                echo "   Nenhum processo encontrado\n";
+            }
+
+        } else {
+            // Diagnóstico geral
+            echo "🔍 Diagnóstico Geral do Sistema\n\n";
+            echo "📊 Resumo de Processos PHP:\n";
+            $allPhpProcesses = shell_exec("ps aux | grep -v grep");
+            if ($allPhpProcesses) {
+                $lines = explode("\n", trim($allPhpProcesses));
+                echo "Total: " . count($lines) . " processos\n\n";
+                foreach ($lines as $line) {
+                    if (trim($line)) {
+                        echo "  " . substr($line, 0, 200) . "\n";
+                    }
+                }
+            }
+        }
+        exit(0);
+
+    case 'killall':
+        echo "💀 Matando todos os processos PHP...\n";
+        echo "⚠️  ATENÇÃO: Isso vai parar TODOS os processos PHP!\n";
+        echo "Digite 'sim' para confirmar: ";
+        $handle = fopen("php://stdin", "r");
+        $confirmation = trim(fgets($handle));
+        fclose($handle);
+
+        if (strtolower($confirmation) === 'sim') {
+            shell_exec('killall -9 php 2>/dev/null');
+            echo "✅ Todos os processos PHP foram finalizados\n";
+            exit(0);
+        } else {
+            echo "❌ Operação cancelada\n";
+            exit(1);
+        }
+
+    case 'status':
+        $backup->showStatus();
+        exit(0);
+
+    case 'config':
+        $backup->showConfig();
+        exit(0);
+
+    case 'check':
+    case 'integrity':
+        $backup->checkBackupIntegrity();
+        exit(0);
+
+    case 'help':
+    case '--help':
+    case '-h':
+        $backup->showHelp();
+        exit(0);
+
+    default:
+        echo "❌ Comando inválido: {$command}\n\n";
+        $backup->showHelp();
+        exit(1);
+}

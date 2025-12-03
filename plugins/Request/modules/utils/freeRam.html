@@ -1,0 +1,15 @@
+<script>
+    function liberarRAM() {
+        const tokenBrowser = $('#fp').text();
+        const url = '/freeRam';
+        fetch(`${url}?tokenBrowser=${tokenBrowser}`).then(response => response.json()).then(data => {
+            return bootstrap.showToast({
+                header: 'Sucesso',
+                body: 'ok',
+                toastClass: "bg-success text-white",
+                colorHeader: 'text-white',
+            });
+        });
+
+    }
+</script>
