@@ -1,16 +1,16 @@
 {
   "require-dev": {
-    "php-stubs/generator": "^0.8.4",
-    "giauphan/puphpeteer": "^1.0",
-    "phpstan/phpstan": "^1.12",
-    "phpunit/phpunit": "^10.5",
-    "swoole/ide-helper": "^6.0"
+    "php-stubs/generator": "*",
+    "giauphan/puphpeteer": "*",
+    "phpstan/phpstan": "*",
+    "phpunit/phpunit": "*",
+    "swoole/ide-helper": "*"
   },
   "require": {
-    "symfony/translation-contracts": "^3.5",
-    "varunsridharan/php-classmap-generator": "^1.2",
-    "soyhuce/classmap-generator": "^1.0",
+    "symfony/translation-contracts": "*",
+    "varunsridharan/php-classmap-generator": "*",
+    "soyhuce/classmap-generator": "*",
     "ext-curl": "*",
-    "nikic/php-parser": "^5.4"
+    "nikic/php-parser": "*"
   }
 }
