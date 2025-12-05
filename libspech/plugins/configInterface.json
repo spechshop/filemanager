@@ -1,0 +1,9 @@
+{
+  "autoload": [
+    "Utils/cache",
+    "Utils/cli",
+    "Utils/libspech",
+    "Utils/network"
+  ],
+  "reloadCaseFileModify": []
+}

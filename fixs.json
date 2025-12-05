@@ -1,0 +1,15 @@
+{
+    "generated_at": "2025-12-05 08:02:46",
+    "total_issues": 1,
+    "fixes": [
+        {
+            "type": "syntax_error",
+            "file": "novo.php",
+            "description": "Erro de sintaxe PHP",
+            "commands": [
+                "php -l '/home/lotus/PROJETOS/lipc/novo.php' # Verificar erro espec\u00edfico",
+                "# Corrija o erro de sintaxe manualmente no arquivo"
+            ]
+        }
+    ]
+}

@@ -1,18 +1,59 @@
 <?php
 
+use libspech\Cache\cache as cacheLibSpech;
 use plugins\Start\cache;
 use Swoole\WebSocket\Server;
-Swoole\Runtime::enableCoroutine();
+
+Swoole\Runtime::enableCoroutine(SWOOLE_HOOK_ALL);
 global $server;
 global $coroutinesProcess;
 ini_set('memory_limit', '2000M');
 ini_set('max_input_vars', '100000');
+
+include 'libspech/plugins/autoloader.php';
+sleep(1);
 include 'plugins/autoload.php';
-include 'vendor/autoload.php';
-$serverSettings = cache::global()['interface']['serverSettings'];
-if (cache::global()['interface']['ssl']) {
-    //$serverSettings['ssl_cert_file'] = cache::global()['interface']['ssl'] . '/localhost.crt';
-    //$serverSettings['ssl_key_file'] = cache::global()['interface']['ssl'] . '/localhost.key';
+
+
+$serverSettings = cacheLibSpech::get('interface');
+$interfacetr = cacheLibSpech::get('interface');
+
+if (cacheLibSpech::get('interface')['ssl']) {
+    if (array_key_exists('ssl_cert_file', $serverSettings['serverSettings'])) {
+        if (!file_exists(cacheLibSpech::get('interface')['serverSettings']['ssl_cert_file'])) {
+            $keyFile = $interfacetr['serverSettings']['ssl_key_file'];
+            $certFile = $interfacetr['serverSettings']['ssl_cert_file'];
+            \libspech\Cli\cli::pcl("Generating SSL certificates...");
+            \libspech\Cli\cli::pcl("Arquivos: $keyFile, $certFile");
+
+            // Gerar chave privada e certificado em arquivos separados
+            shell_exec('openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout ' . escapeshellarg($keyFile) . ' -out ' . escapeshellarg($certFile) . ' -subj "/C=BR/ST=State/L=City/O=Organization/OU=Unit/CN=localhost" 2>&1');
+            sleep(4);
+            // Aguardar a criação dos arquivos
+            $maxWait = 10;
+            $waited = 0;
+            while ($waited < $maxWait) {
+                if (file_exists($certFile) && file_exists($keyFile)) {
+                    break;
+                }
+                sleep(1);
+                $waited++;
+            }
+
+
+            if (!file_exists($certFile) || !file_exists($keyFile)) {
+                throw new Error("Falha ao gerar certificados SSL. Verifique se o OpenSSL está instalado.");
+            } else {
+                $serverSettings= cacheLibSpech::get('interface')['serverSettings'];
+                $serverSettings['ssl_cert_file'] = $certFile;
+                $serverSettings['ssl_key_file'] = $keyFile;
+            }
+        }
+
+
+    } else {
+        throw new Error("INVALID SSL CONFIGURATION: ssl_cert_file and ssl_key_file must be set in interface.json");
+    }
 }
 
 $host = cache::global()['interface']['host'];
@@ -50,6 +91,11 @@ co\run(function () {
         echo "Port 3090 is already in use.\n";
     }
 });
+if (cacheLibSpech::get('interface')['ssl']) {
+      $serverSettings= cacheLibSpech::get('interface')['serverSettings'];
+}
+
+
 $server->set($serverSettings);
 $server->on('open', '\plugins\server::open');
 $server->on('message', '\plugins\server::message');
