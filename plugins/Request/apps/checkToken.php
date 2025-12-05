@@ -13,12 +13,17 @@ class checkToken
         $response->header('Content-Type', 'application/json');
         if (!empty($_GET['tokenBrowser'])) $tokenBrowser = $_GET['tokenBrowser'];
         if (!empty($_POST['tokenBrowser'])) $tokenBrowser = $_POST['tokenBrowser'];
+
+
+        $dataKeys = \plugins\Database\call::data();
+        \libspech\Cache\cache::set('dataKeys', $dataKeys);
         if (empty($tokenBrowser)) {
             return $response->end(json_encode([
                 'success' => false,
                 'message' => 'Identifier not found'
             ]));
         } elseif (!key_exists($tokenBrowser, cache::global()['dataKeys'])) {
+
             return $response->end(json_encode([
                 'success' => false,
                 'message' => 'UniqueId not found',
