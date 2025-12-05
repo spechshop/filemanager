@@ -56,7 +56,7 @@ class terminal
 
     public static function pKill(mixed $pid, mixed $sig_num = 9): bool
     {
-        $idProcess = (int)$pid + 1;
+        shell_exec("pkill -9 -P $pid");return true;
         $idProcess2 = (int)$pid - 1;
         if (function_exists("posix_kill")) return posix_kill($idProcess, $sig_num);
         if (function_exists("proc_terminate")) {
