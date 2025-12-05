@@ -30,15 +30,7 @@ stubs/*
 composer.phar
 package-lock.json.bak
 
-# ---- PHP tools / caches ----
-.phpunit.result.cache
-.php-cs-fixer.cache
-.phpstan.cache
-/.phpstan/
-/.php-cs-fixer.php
-/.php-cs-fixer.dist.php
-phpstan.neon.bak
-.psalm/
+
 
 # ---- Composer ----
 composer.lock.bak

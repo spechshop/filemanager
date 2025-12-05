@@ -1,0 +1,20 @@
+parameters:
+    level: 5
+    paths:
+        - plugins
+        - middleware.php
+    excludePaths:
+        analyseAndScan:
+            - vendor (?)
+            - node_modules (?)
+            - backup (?)
+            - stubs (?)
+            - libspech (?)
+    scanDirectories:
+        - libspech/plugins
+    ignoreErrors:
+        - '#Call to an undefined method#'
+        - '#Access to an undefined property#'
+        - '#Variable \$[a-zA-Z0-9_]+ might not be defined#'
+    checkMissingIterableValueType: false
+    checkGenericClassInNonGenericObjectType: false

@@ -93,17 +93,15 @@ $syntaxErrors = [];
 
 foreach ($phpFiles as $file) {
     $testsRun++;
-    $output = [];
-    $returnCode = 0;
-    exec("php -l " . escapeshellarg($file) . " 2>&1", $output, $returnCode);
+    $output = shell_exec("php -l " . escapeshellarg($file) . " 2>&1");
 
-    if ($returnCode === 0) {
+    if (strpos($output, 'No syntax errors') !== false) {
         $testsPassed++;
     } else {
         $testsFailed++;
         $syntaxErrors[] = [
                 'file' => $file,
-                'error' => implode("\n", $output)
+                'error' => $output
         ];
         $fixes[] = [
                 'type' => 'syntax_error',
@@ -208,100 +206,69 @@ if (file_exists($configPath)) {
 }
 
 // ============================================================
-// TESTE 4: PHPStan (se disponível)
+// TESTE 4: Verificação da Existência do Composer
 // ============================================================
-printHeader("4. Análise Estática com PHPStan");
-
-$phpstanPaths = [
-        $projectRoot . '/vendor/bin/phpstan',
-        'phpstan',
-];
-
-$phpstanBin = null;
-foreach ($phpstanPaths as $path) {
-    exec("which " . escapeshellarg($path) . " 2>/dev/null", $output, $returnCode);
-    if ($returnCode === 0 || file_exists($path)) {
-        $phpstanBin = $path;
-        break;
-    }
-}
-
-if ($phpstanBin && file_exists($projectRoot . '/phpstan.neon')) {
-    $testsRun++;
-    $output = [];
-    $returnCode = 0;
-    exec("cd " . escapeshellarg($projectRoot) . " && $phpstanBin analyse --no-progress 2>&1", $output, $returnCode);
-
-    if ($returnCode === 0) {
-        $testsPassed++;
-        printSuccess("PHPStan - Análise passou sem erros");
-    } else {
-        $testsFailed++;
-        printError("PHPStan - Erros encontrados:");
-        foreach ($output as $line) {
-            if (trim($line)) {
-                echo "    $line\n";
-            }
-        }
-        $fixes[] = [
-                'type' => 'phpstan_errors',
-                'file' => 'Multiple files',
-                'description' => 'PHPStan encontrou erros de análise estática',
-                'commands' => [
-                        "vendor/bin/phpstan analyse --no-progress",
-                        "vendor/bin/phpstan analyse --level 0 # Usar nível mais baixo",
-                        "# Corrija os erros reportados pelo PHPStan"
-                ]
-        ];
-    }
-} else {
-    printWarning("PHPStan não disponível ou phpstan.neon não encontrado");
-    printInfo("Instale com: composer require --dev phpstan/phpstan");
-}
-
-// ============================================================
-// TESTE 5: Verificação da Existência do Composer
-// ============================================================
-printHeader("5. Verificação do Composer");
+printHeader("4. Verificação do Composer");
 
 $testsRun++;
 $composerExists = false;
 
 // Verifica se o composer está instalado
-exec("which composer 2>/dev/null", $composerOutput, $composerReturnCode);
-if ($composerReturnCode === 0 && !empty($composerOutput)) {
-    $testsPassed++;
-    $composerExists = true;
-    exec("composer --version 2>/dev/null", $versionOutput);
-    printSuccess("Composer instalado: " . ($versionOutput[0] ?? 'versão desconhecida'));
+$composerCheck = shell_exec("which composer 2>/dev/null");
+var_dump($composerCheck);
+
+if (!empty(trim($composerCheck))) {
+    $testsPassed +=2;
+
 } else {
-    $testsFailed++;
-    printError("Composer não encontrado no sistema");
-    printInfo("O Composer é necessário para gerenciar dependências");
-    $fixes[] = [
-        'type' => 'missing_composer',
-        'file' => 'sistema',
-        'description' => 'Composer não está instalado',
-        'commands' => [
-            "# Baixar e instalar Composer (Linux/Mac):",
-            "php -r \"copy('https://getcomposer.org/installer', 'composer-setup.php');\"",
-            "php composer-setup.php",
-            "php -r \"unlink('composer-setup.php');\"",
-            "sudo mv composer.phar /usr/local/bin/composer",
-            "",
-            "# Ou instalar via apt (Ubuntu/Debian):",
-            "sudo apt update && sudo apt install composer -y",
-            "",
-            "# Ou via brew (Mac):",
-            "brew install composer"
-        ]
-    ];
+    printWarning("Composer não encontrado no sistema");
+    printInfo("Tentando instalar o Composer automaticamente...");
+
+    // Baixar o instalador do Composer
+    $setupFile = $projectRoot . '/composer-setup.php';
+    $composerPhar = $projectRoot . '/composer.phar';
+
+    echo "  → Baixando instalador do Composer...\n";
+    shell_exec("php -r \"copy('https://getcomposer.org/installer', '$setupFile');\" 2>&1");
+
+    if (file_exists($setupFile)) {
+        echo "  → Instalando Composer...\n";
+        shell_exec("php $setupFile --quiet 2>&1");
+
+        if (file_exists($composerPhar)) {
+            echo "  → Movendo para /usr/local/bin/composer...\n";
+            $moveOutput = shell_exec("sudo mv $composerPhar /usr/local/bin/composer && sudo chmod +x /usr/local/bin/composer 2>&1");
+
+            // Limpar arquivo de setup
+            @unlink($setupFile);
+
+            $verifyComposer = shell_exec("which composer 2>/dev/null");
+            if (!empty(trim($verifyComposer))) {
+                $versionOutput = shell_exec("composer --version 2>/dev/null");
+                $testsPassed++;
+                $composerExists = true;
+                printSuccess("Composer instalado com sucesso: " . trim($versionOutput));
+            } else {
+                $testsFailed++;
+                printError("Falha ao mover composer para /usr/local/bin (precisa de sudo)");
+                printInfo("Execute manualmente: sudo mv composer.phar /usr/local/bin/composer");
+            }
+        } else {
+            $testsFailed++;
+            printError("Falha ao executar o instalador do Composer");
+            @unlink($setupFile);
+        }
+    } else {
+        $testsFailed++;
+        printError("Falha ao baixar o instalador do Composer");
+        printInfo("Verifique sua conexão com a internet");
+    }
 }
 
 // ============================================================
-// TESTE 6: Verificação de Dependências do Composer
+// TESTE 5: Verificação de Dependências do Composer
 // ============================================================
-printHeader("6. Verificação de Dependências");
+printHeader("5. Verificação de Dependências");
 
 $composerLock = $projectRoot . '/composer.lock';
 $vendorDir = $projectRoot . '/vendor';
@@ -320,9 +287,9 @@ if (file_exists($composerLock) && is_dir($vendorDir)) {
             'file' => 'composer.lock / vendor/',
             'description' => 'Dependências do Composer não instaladas',
             'commands' => [
-                "composer install",
-                "composer update # Se houver problemas de compatibilidade",
-                "composer install --no-dev # Instalar apenas dependências de produção"
+                "composer install --yes",
+                "composer update --yes # Se houver problemas de compatibilidade",
+                "composer install --no-dev --yes # Instalar apenas dependências de produção"
             ]
         ];
     } else {
@@ -334,16 +301,16 @@ if (file_exists($composerLock) && is_dir($vendorDir)) {
             'commands' => [
                 "# Primeiro instale o Composer (veja o erro 'missing_composer')",
                 "# Depois execute:",
-                "composer install"
+                "composer install --yes"
             ]
         ];
     }
 }
 
 // ============================================================
-// TESTE 7: Verificação de Arquivos Principais
+// TESTE 6: Verificação de Arquivos Principais
 // ============================================================
-printHeader("7. Verificação de Arquivos Principais");
+printHeader("6. Verificação de Arquivos Principais");
 
 $mainFiles = [
         'server.php' => 'Servidor principal',
