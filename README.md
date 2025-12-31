@@ -23,8 +23,11 @@ The system features:
 - **Package Manager**: Composer
 - **Dependencies**:
   - `nikic/php-parser` - PHP code parsing and analysis
-  - `ext-curl` - HTTP client functionality
   - `symfony/translation-contracts` - Translation support
+  - `varunsridharan/php-classmap-generator` - Classmap generation
+  - `soyhuce/classmap-generator` - Classmap generation
+- **Dev Dependencies**:
+  - `phpstan/phpstan` - Static analysis tool
 
 ### Node.js Services
 - **Runtime**: Node.js 18+
@@ -34,6 +37,7 @@ The system features:
   - `node-pty` - Pseudo-terminal sessions
   - `express` - HTTP server framework
   - `puppeteer` - Headless browser automation
+  - `puppeteer-core` - Puppeteer core without bundled browser
   - `puppeteer-extra` + `puppeteer-extra-plugin-stealth` - Enhanced Puppeteer with stealth mode
 
 ### Frontend
@@ -305,10 +309,21 @@ The system exposes numerous endpoints under `plugins/Request/apps/`:
 
 ## Tests
 
-### PHP Tests
-- **Framework**: PHPUnit 10.5+ (installed in `require-dev`)
-- **Status**: No tests directory found
-- **TODO**: Add test suite under `tests/` directory
+### PHP Validation Script
+- **Script**: `run-tests.php` - Custom validation script
+- **Run**: `php run-tests.php`
+- **Checks performed**:
+  - PHP syntax validation (all `.php` files)
+  - JSON configuration validation (`composer.json`, `plugins/configInterface.json`)
+  - Plugin directory structure verification
+  - Composer installation and dependencies check
+  - Main files existence check (`server.php`, `middleware.php`, `plugins/autoload.php`)
+- **Output**: Generates `fixs.json` with suggested fixes for any issues found
+
+### Static Analysis
+- **Tool**: PHPStan
+- **Run**: `vendor/bin/phpstan analyse`
+- **Config**: `phpstan.neon`
 
 ### Node.js Tests
 - **Status**: No tests configured
@@ -444,15 +459,23 @@ Adjust in `plugins/configInterface.json`:
 ```json
 {
   "serverSettings": {
-    "worker_num": 4,              // CPU cores
-    "max_request": 20000000,      // Requests before worker restart
-    "max_coroutine": 20000000,    // Max concurrent coroutines
-    "enable_coroutine": true,     // Enable coroutine mode
-    "package_max_length": 2147483648,  // 2GB max package size
-    "socket_buffer_size": 2147483648   // 2GB socket buffer
+    "worker_num": 4,
+    "max_request": 20000000,
+    "max_coroutine": 20000000,
+    "enable_coroutine": true,
+    "package_max_length": 2147483648,
+    "socket_buffer_size": 2147483648
   }
 }
 ```
+
+**Key settings:**
+- `worker_num` - Number of worker processes (match CPU cores)
+- `max_request` - Requests before worker restart
+- `max_coroutine` - Max concurrent coroutines
+- `enable_coroutine` - Enable coroutine mode
+- `package_max_length` - Max package size (2GB)
+- `socket_buffer_size` - Socket buffer size (2GB)
 
 ### Memory Optimization
 - Cache is limited to 50 entries per feature
@@ -522,6 +545,6 @@ Future improvements:
 
 ---
 
-**Generated**: 2025-12-03
+**Generated**: 2025-12-05
 **Version**: 1.0.0
 **Status**: Active Development
