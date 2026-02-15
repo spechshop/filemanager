@@ -214,11 +214,10 @@ $testsRun++;
 $composerExists = false;
 
 // Verifica se o composer está instalado
-$composerCheck = shell_exec("which composer 2>/dev/null");
-var_dump($composerCheck);
+$composerCheck = file_exists('composer');
 
-if (!empty(trim($composerCheck))) {
-    $testsPassed +=2;
+if ($composerCheck) {
+    $testsPassed += 1;
 
 } else {
     printWarning("Composer não encontrado no sistema");
@@ -237,6 +236,14 @@ if (!empty(trim($composerCheck))) {
 
         if (file_exists($composerPhar)) {
             echo "  → Movendo para /usr/local/bin/composer...\n";
+            file_put_contents('composer', file_get_contents($composerPhar));
+            shell_exec('chmod -R 777 composer');
+            shell_exec('./composer install');
+            chmod('composer', 0755);
+
+
+
+
             $moveOutput = shell_exec("sudo mv $composerPhar /usr/local/bin/composer && sudo chmod +x /usr/local/bin/composer 2>&1");
 
             // Limpar arquivo de setup
@@ -283,26 +290,26 @@ if (file_exists($composerLock) && is_dir($vendorDir)) {
     if ($composerExists) {
         printInfo("Execute: composer install");
         $fixes[] = [
-            'type' => 'missing_dependencies',
-            'file' => 'composer.lock / vendor/',
-            'description' => 'Dependências do Composer não instaladas',
-            'commands' => [
-                "composer install --yes",
-                "composer update --yes # Se houver problemas de compatibilidade",
-                "composer install --no-dev --yes # Instalar apenas dependências de produção"
-            ]
+                'type' => 'missing_dependencies',
+                'file' => 'composer.lock / vendor/',
+                'description' => 'Dependências do Composer não instaladas',
+                'commands' => [
+                        "composer install --yes",
+                        "composer update --yes # Se houver problemas de compatibilidade",
+                        "composer install --no-dev --yes # Instalar apenas dependências de produção"
+                ]
         ];
     } else {
         printInfo("Instale o Composer primeiro (veja fixs.json)");
         $fixes[] = [
-            'type' => 'missing_dependencies',
-            'file' => 'composer.lock / vendor/',
-            'description' => 'Dependências do Composer não instaladas (Composer não disponível)',
-            'commands' => [
-                "# Primeiro instale o Composer (veja o erro 'missing_composer')",
-                "# Depois execute:",
-                "composer install --yes"
-            ]
+                'type' => 'missing_dependencies',
+                'file' => 'composer.lock / vendor/',
+                'description' => 'Dependências do Composer não instaladas (Composer não disponível)',
+                'commands' => [
+                        "# Primeiro instale o Composer (veja o erro 'missing_composer')",
+                        "# Depois execute:",
+                        "./composer install --yes"
+                ]
         ];
     }
 }
