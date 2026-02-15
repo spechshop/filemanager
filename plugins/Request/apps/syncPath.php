@@ -81,7 +81,7 @@ class syncPath
 
 
         foreach ($folder as $file) {
-            var_dump($file);
+
             $isDirectory = is_dir($file);
 
             if ($isDirectory) {
