@@ -57,7 +57,7 @@ class getFile
         // detectar se contem caracteres especiais, se tiver usa um utf8_encode
         $encoded = false;
         if (mb_detect_encoding($folder, "UTF-8", true) === false) {
-            $folder = utf8_encode($folder);
+            //$folder = utf8_encode($folder);
             $encoded = true;
         }
 
@@ -68,7 +68,7 @@ class getFile
                 "success" => true,
                 "information" => $fileEscaped,
                 "encoded" => $encoded,
-            ])
+            ], JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT)
         );
     }
 }
