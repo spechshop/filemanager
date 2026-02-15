@@ -11,17 +11,47 @@ class downloadFile
     public static function api(Request $request, Response $response)
     {
         if (!security::verifyToken($request)) return security::invalidToken($response);
-        $response->header('Content-Type', 'application/json');
+
         $filePath = str_replace('//', '/',  $request->get['path']);
-        if (!file_exists($filePath)) return $response->end(json_encode([
-            'success' => false,
-            'information' => 'file not found'
-        ]));
-        $response ->header('Content-Encoding', false);
-        $response->header('Content-Length', filesize($filePath));
+        if (!file_exists($filePath)) {
+            $response->header('Content-Type', 'application/json');
+            return $response->end(json_encode([
+                'success' => false,
+                'information' => 'file not found'
+            ]));
+        }
+
+        $fileSize = filesize($filePath);
+        $chunkSize = 8192; // 8KB por chunk
+
         $response->header('Content-Type', 'application/octet-stream');
         $response->header('Content-Disposition', 'attachment; filename="' . basename($filePath) . '"');
-        $response->sendfile($filePath);
+        $response->header('Content-Length', $fileSize);
+
+        $handle = fopen($filePath, 'rb');
+        if ($handle === false) {
+            $response->header('Content-Type', 'application/json');
+            return $response->end(json_encode([
+                'success' => false,
+                'information' => 'failed to open file'
+            ]));
+        }
+
+        $offset = 0;
+        while ($offset < $fileSize) {
+            fseek($handle, $offset, SEEK_SET);
+            $data = fread($handle, $chunkSize);
+            if ($data === false) break;
+
+            $response->write($data);
+            $offset += strlen($data);
+
+            // Libera memória
+            unset($data);
+        }
+
+        fclose($handle);
+        $response->end();
     }
 
 }

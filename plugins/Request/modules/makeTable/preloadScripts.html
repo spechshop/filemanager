@@ -261,6 +261,18 @@
             tdSize.textContent = item.size;
             tr.appendChild(tdSize);
 
+
+            // last modify
+            const tdlastModified = document.createElement('td');
+            tdlastModified.classList.add('text-white');
+            tdlastModified.textContent = item.lastModified;
+            tr.appendChild(tdlastModified);
+
+
+
+
+
+
             const tdType = document.createElement('td');
             tdType.classList.add('text-white');
             tdType.textContent = ext === 'folder' ? 'Pasta' : (ext || 'Desconhecido').toUpperCase();

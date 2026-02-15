@@ -101,7 +101,7 @@ class syncPath
                 'isMedia' => utilsFunction::isMovie(pathinfo($file, PATHINFO_EXTENSION)),
                 'type' => $typeFile,
                 'size' => $size,
-                'lastModified' => date('Y-m-d H:i:s', filemtime($file)),
+                'lastModified' => date('d/m/Y H:i:s', filemtime($file)),
                 'lastAccessed' => date('Y-m-d H:i:s', fileatime($file)),
                 'created' => date('Y-m-d H:i:s', filectime($file)),
                 'typeFile' => $typeFile,
