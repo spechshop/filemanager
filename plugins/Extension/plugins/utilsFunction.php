@@ -418,15 +418,49 @@ public static function getMemoryUsage(): ?array
 
             $realPath = realpath($file);
 
-            // remove a base do caminho para manter a estrutura relativa
-            $relativePath = ltrim(str_replace($base, '', $realPath), '/\\');
-
-            //echo "📦 $realPath => $relativePath\n";
-
-            $zip->addFile($realPath, $relativePath);
+            if (is_dir($realPath)) {
+                // Adiciona diretório recursivamente
+                self::addDirectoryToZip($zip, $realPath, $base);
+            } else {
+                // Adiciona arquivo individual usando streaming
+                $relativePath = ltrim(str_replace($base, '', $realPath), '/\\');
+                self::addFileToZipStreaming($zip, $realPath, $relativePath);
+            }
         }
 
         return $zip->close();
+    }
+
+    private static function addDirectoryToZip(\ZipArchive $zip, string $dirPath, string $base): void
+    {
+        $dirPath = rtrim($dirPath, '/\\') . DIRECTORY_SEPARATOR;
+        $relativePath = ltrim(str_replace($base, '', $dirPath), '/\\');
+
+        // Adiciona o diretório vazio
+        $zip->addEmptyDir($relativePath);
+
+        $iterator = new \RecursiveIteratorIterator(
+            new \RecursiveDirectoryIterator($dirPath, \RecursiveDirectoryIterator::SKIP_DOTS),
+            \RecursiveIteratorIterator::SELF_FIRST
+        );
+
+        foreach ($iterator as $item) {
+            $itemPath = $item->getRealPath();
+            $relativePath = ltrim(str_replace($base, '', $itemPath), '/\\');
+
+            if ($item->isDir()) {
+                $zip->addEmptyDir($relativePath);
+            } else {
+                self::addFileToZipStreaming($zip, $itemPath, $relativePath);
+            }
+        }
+    }
+
+    private static function addFileToZipStreaming(\ZipArchive $zip, string $filePath, string $zipPath): bool
+    {
+        // addFile do ZipArchive já é otimizado e não carrega o arquivo todo na RAM
+        // Ele usa mmap internamente para arquivos grandes
+        return $zip->addFile($filePath, $zipPath);
     }
 
 

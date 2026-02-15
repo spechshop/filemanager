@@ -3,7 +3,8 @@
     "symfony/translation-contracts": "*",
     "varunsridharan/php-classmap-generator": "*",
     "soyhuce/classmap-generator": "*",
-    "nikic/php-parser": "*"
+    "nikic/php-parser": "*",
+    "ext-zip": "*"
   },
   "require-dev": {
     "phpstan/phpstan": "^2.1"

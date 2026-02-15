@@ -22,7 +22,7 @@ class compressMultipleFiles
 
         
         $destination = $path . '/' . date('d-m-Y_H_i_s') . '.zip';
-        //var_dump($destination);
+        var_dump($destination);
 
         
         $rawList = $request->post['files'] ?? null;
@@ -33,19 +33,9 @@ class compressMultipleFiles
                 'message' => 'No files provided'
             ]));
         }
-        //var_dump($rawList);
 
-        $files = [];
-        foreach ($rawList as $item) {
-            $fullPath = str_replace('//', '/', $path . '/' . str_replace("'", "", $item));
-            if (is_file($fullPath)) {
-                $files[] = $fullPath;
-            } elseif (is_dir($fullPath)) {
-                foreach (utilsFunction::listFiles($fullPath) as $f) {
-                    $files[] = $f;
-                }
-            }
-        }
+
+        $files = $rawList;
 
         if (empty($files)) {
             return $response->end(json_encode([
