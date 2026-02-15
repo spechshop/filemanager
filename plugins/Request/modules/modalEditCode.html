@@ -2870,8 +2870,13 @@
                             `/getFile?tokenBrowser=${$("#fp").text()}&path=${encodeURIComponent(nameFile)}`,
                         )
                     );
-                    if (fileContent['encoded']) fileContent = atob(fileContent["information"]);
-                    else fileContent = fileContent["information"];
+                    try {
+                        if (fileContent['encoded']) fileContent = atob(fileContent["information"]);
+                        else fileContent = fileContent["information"];
+                    } catch (e) {
+                        // Se falhar o decode, mostra o conteúdo original
+                        fileContent = fileContent["information"];
+                    }
                     if (!models[nameFile]) {
                         positions[nameFile] = {
                             lineNumber: 1,
