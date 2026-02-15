@@ -22,7 +22,7 @@ class compressMultipleFiles
 
         
         $destination = $path . '/' . date('d-m-Y_H_i_s') . '.zip';
-        var_dump($destination);
+
 
         
         $rawList = $request->post['files'] ?? null;
