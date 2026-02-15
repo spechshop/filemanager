@@ -2871,8 +2871,17 @@
                         )
                     );
                     try {
-                        if (fileContent['encoded']) fileContent = atob(fileContent["information"]);
-                        else fileContent = fileContent["information"];
+                        if (fileContent['encoded']) {
+                            // Decode base64 com suporte a caracteres especiais
+                            const binaryString = atob(fileContent["information"]);
+                            const bytes = new Uint8Array(binaryString.length);
+                            for (let i = 0; i < binaryString.length; i++) {
+                                bytes[i] = binaryString.charCodeAt(i);
+                            }
+                            fileContent = new TextDecoder('utf-8').decode(bytes);
+                        } else {
+                            fileContent = fileContent["information"];
+                        }
                     } catch (e) {
                         // Se falhar o decode, mostra o conteúdo original
                         fileContent = fileContent["information"];
