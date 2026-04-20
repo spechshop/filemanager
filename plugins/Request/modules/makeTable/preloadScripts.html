@@ -296,6 +296,22 @@
 
             tbody.appendChild(tr);
         });
+
+        // Verifica o modo de visualização salvo e aplica
+        const savedViewMode = localStorage.getItem('viewMode');
+        const container = document.getElementById('viewGridFiles');
+        const table = document.getElementById('tableListFiles');
+
+        if (savedViewMode === 'grid') {
+            // Aplica modo grid
+            if (typeof window.setStyleIconsBox === 'function') {
+                window.setStyleIconsBox();
+            }
+        } else if (savedViewMode === 'table' || !savedViewMode) {
+            // Aplica modo tabela (padrão)
+            if (table) table.style.display = '';
+            if (container) container.style.display = 'none';
+        }
     }
 
     async function renameItem(path) {

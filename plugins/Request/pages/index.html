@@ -306,10 +306,10 @@
             </button>
 
             <div class="btn-group">
-                <button class="btn btn-outline-secondary">
+                <button class="btn btn-outline-secondary" onclick="setStyleIconsBox()">
                     <i class="fa-duotone fa-box"></i>
                 </button>
-                <button class="btn btn-outline-secondary">
+                <button class="btn btn-outline-secondary" onclick="setStyleTable()">
                     <i class="fa-duotone fa-list"></i>
                 </button>
             </div>
@@ -383,8 +383,11 @@
                 <script>
                     document.getElementById('searchInput').addEventListener('input', function () {
                         const termo = this.value.toLowerCase();
-                        const tds = document.querySelectorAll('td[fullpath]');
 
+
+
+                        // Filtrar na tabela
+                        const tds = document.querySelectorAll('td[fullpath]');
                         tds.forEach(td => {
                             const path = td.getAttribute('fullpath').toLowerCase();
                             const span = td.querySelector('span');
@@ -402,6 +405,28 @@
                             if (visible && termo) {
                                 const regex = new RegExp(`(${termo})`, 'gi');
                                 span.innerHTML = originalText.replace(regex, '<span style="color: #ffc107; font-weight: bold;">$1</span>');
+                            }
+                        });
+
+                        // Filtrar no grid
+                        const gridItems = document.querySelectorAll('#viewGridFiles > div[data-fullpath]');
+                        gridItems.forEach(item => {
+                            const path = item.getAttribute('data-fullpath').toLowerCase();
+                            const nameDiv = item.querySelector('div:last-child');
+
+                            if (!nameDiv) return;
+
+                            // Restaurar nome original
+                            const originalText = nameDiv.getAttribute('data-original') || nameDiv.textContent;
+                            nameDiv.setAttribute('data-original', originalText);
+                            nameDiv.innerHTML = originalText;
+
+                            const visible = path.includes(termo);
+                            item.style.display = visible ? '' : 'none';
+
+                            if (visible && termo) {
+                                const regex = new RegExp(`(${termo})`, 'gi');
+                                nameDiv.innerHTML = originalText.replace(regex, '<span style="color: #ffc107; font-weight: bold;">$1</span>');
                             }
                         });
                     });

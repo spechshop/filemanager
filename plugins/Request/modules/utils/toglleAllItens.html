@@ -50,4 +50,164 @@
     document.addEventListener('DOMContentLoaded', function() {
         adjustPath();
     });
+
+
+
+
+    window.setStyleIconsBox = async () => {
+
+            const table = document.getElementById('tableListFiles');
+            const container = document.getElementById('viewGridFiles');
+
+            if (!table || !container) {
+                console.error('Tabela ou container não encontrados');
+                return;
+            }
+
+            // Salva no localStorage
+            localStorage.setItem('viewMode', 'grid');
+
+            table.style.display = 'none';
+            container.style.display = 'grid';
+
+            container.style.gridTemplateColumns = 'repeat(auto-fill, minmax(120px, 1fr))';
+            container.style.gap = '15px';
+            container.style.padding = '10px';
+
+            container.innerHTML = '';
+
+            const rows = table.querySelectorAll('tbody tr');
+
+            rows.forEach(row => {
+                // Pula linhas ocultas pelo filtro de pesquisa
+                if (row.style.display === 'none') return;
+
+                const nameCell = row.querySelector('td[fullpath]');
+                if (!nameCell) return;
+
+                const fullPath = nameCell.getAttribute('fullpath');
+                const span = nameCell.querySelector('span');
+                const img = nameCell.querySelector('img');
+                const checkboxCell = row.querySelector('td:first-child');
+                const checkbox = checkboxCell ? checkboxCell.querySelector('input[type="checkbox"]') : null;
+
+                const fileName = span ? span.textContent : 'unknown';
+
+                // 🔥 clona o ícone original (sem remover da tabela)
+                const icon = img ? img.cloneNode(true) : null;
+
+                const item = document.createElement('div');
+                item.setAttribute('data-row-index', Array.from(rows).indexOf(row));
+                item.setAttribute('data-fullpath', fullPath);
+                item.style.background = '#1e1e2f';
+                item.style.borderRadius = '12px';
+                item.style.padding = '10px';
+                item.style.cursor = 'pointer';
+                item.style.textAlign = 'center';
+                item.style.transition = '0.2s';
+                item.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+                item.style.position = 'relative';
+
+                item.onmouseenter = () => item.style.transform = 'scale(1.05)';
+                item.onmouseleave = () => item.style.transform = 'scale(1)';
+
+                // Adiciona checkbox no topo do card
+                if (checkbox) {
+                    const checkboxClone = checkbox.cloneNode(true);
+                    checkboxClone.style.position = 'absolute';
+                    checkboxClone.style.top = '5px';
+                    checkboxClone.style.left = '5px';
+                    checkboxClone.style.width = '18px';
+                    checkboxClone.style.height = '18px';
+                    checkboxClone.style.cursor = 'pointer';
+                    checkboxClone.style.zIndex = '10';
+
+                    // Sincroniza o estado do checkbox com o original
+                    checkboxClone.checked = checkbox.checked;
+                    checkboxClone.addEventListener('change', (e) => {
+                        checkbox.checked = e.target.checked;
+                        e.stopPropagation();
+                    });
+
+                    item.appendChild(checkboxClone);
+                }
+
+                const iconWrapper = document.createElement('div');
+                iconWrapper.style.marginBottom = '8px';
+                iconWrapper.style.marginTop = '15px';
+
+                if (icon) {
+                    icon.style.width = '40px';
+                    icon.style.height = '40px';
+                    iconWrapper.appendChild(icon);
+                } else {
+                    iconWrapper.innerHTML = '📄'; // fallback
+                }
+
+                const nameDiv = document.createElement('div');
+                nameDiv.style.fontSize = '12px';
+                nameDiv.style.overflow = 'hidden';
+                nameDiv.style.textOverflow = 'ellipsis';
+                nameDiv.style.whiteSpace = 'nowrap';
+                nameDiv.textContent = fileName;
+
+                item.appendChild(iconWrapper);
+                item.appendChild(nameDiv);
+
+                // Extrai e preserva o evento onclick original da célula de nome
+                const nameClickDiv = nameCell.querySelector('div[onclick]');
+                if (nameClickDiv) {
+                    const onclickAttr = nameClickDiv.getAttribute('onclick');
+
+                    // Cria wrapper para evitar conflito com checkbox
+                    const clickableArea = document.createElement('div');
+                    clickableArea.style.position = 'absolute';
+                    clickableArea.style.top = '0';
+                    clickableArea.style.left = '0';
+                    clickableArea.style.width = '100%';
+                    clickableArea.style.height = '100%';
+                    clickableArea.style.zIndex = '1';
+                    clickableArea.setAttribute('onclick', onclickAttr);
+
+                    // Aumenta z-index do checkbox para ficar acima
+                    if (item.querySelector('input[type="checkbox"]')) {
+                        item.querySelector('input[type="checkbox"]').style.zIndex = '20';
+                    }
+
+                    item.appendChild(clickableArea);
+                } else {
+                    // Fallback caso não encontre o onclick
+                    item.onclick = () => {
+                        if (typeof showEditor === 'function') {
+                            showEditor('php', fullPath);
+                        } else {
+                            console.log('Abrir:', fullPath);
+                        }
+                    };
+                }
+
+                container.appendChild(item);
+            });
+
+            console.log('Grid com ícones originais ativado 😎');
+
+    }
+
+    window.setStyleTable = () => {
+        const table = document.getElementById('tableListFiles');
+        const container = document.getElementById('viewGridFiles');
+
+        if (!table || !container) {
+            console.error('Tabela ou container não encontrados');
+            return;
+        }
+
+        // Salva no localStorage
+        localStorage.setItem('viewMode', 'table');
+
+        table.style.display = '';
+        container.style.display = 'none';
+
+        console.log('Modo tabela ativado 📋');
+    }
 </script>
