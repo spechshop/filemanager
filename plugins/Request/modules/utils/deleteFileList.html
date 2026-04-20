@@ -54,7 +54,8 @@
         const list = document.getElementById('filesList').children;
         let files = [];
         for (let i = 0; i < list.length; i++) {
-            if (list[i].children[0].children[0].checked) {
+            // Verifica se o checkbox está marcado E se o elemento está visível
+            if (list[i].children[0].children[0].checked && list[i].style.display !== 'none') {
 
                 files.push(list[i].children[0].children[0].value);
             }
@@ -94,7 +95,8 @@
         const list = document.getElementById('filesList').children;
         let files = [];
         for (let i = 0; i < list.length; i++) {
-            if (list[i].children[0].children[0].checked) {
+            // Verifica se o checkbox está marcado E se o elemento está visível
+            if (list[i].children[0].children[0].checked && list[i].style.display !== 'none') {
                 const file = list[i].children[0].children[0].value.split('item-')[0].split(' (')[0].replaceAll("'", '')
                 files.push(file);
             }
@@ -151,8 +153,8 @@
         const list = document.getElementById('filesList').children;
         let files = [];
         for (let i = 0; i < list.length; i++) {
-
-            if (list[i].children[0].children[0].checked) {
+            // Verifica se o checkbox está marcado E se o elemento está visível
+            if (list[i].children[0].children[0].checked && list[i].style.display !== 'none') {
                 files.push(list[i].children[1].getAttribute('fullpath'));
             }
         }

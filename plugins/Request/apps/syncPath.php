@@ -76,6 +76,10 @@ class syncPath
         if (!is_dir('files')) {
             mkdir('files');
         }
+        if (is_file($pathf)) {
+            $pathf = pathinfo($pathf, PATHINFO_DIRNAME);
+        }
+
         $folder = appController::listFilesAndDirs($pathf);
         $dataEached = [];
 

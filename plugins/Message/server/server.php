@@ -48,8 +48,8 @@ class server extends OpenConnection
                             $message = $wsClient->recv();
                             if (!empty($message->data) or $message->data !== null) {
                                 if ($message->data === '__NOT_EXISTS_SESSION_SIGNAL__') {
-                                    var_dump($message->data, $tokenBrowser);
-                                    var_dump($server->exists($GLOBALS["xterm"][$tokenBrowser]["fd"]));
+                                    //var_dump($message->data, $tokenBrowser);
+                                    //var_dump($server->exists($GLOBALS["xterm"][$tokenBrowser]["fd"]));
                                 }
                                 if (!$server->exist($GLOBALS["xterm"][$tokenBrowser]["fd"])) {
                                     continue;
@@ -58,9 +58,9 @@ class server extends OpenConnection
                             } else {
                                 print $tokenBrowser." false agora".PHP_EOL;
                                 if ($server->exist($GLOBALS["xterm"][$tokenBrowser]["fd"])) {
-                                    $server->push($GLOBALS["xterm"][$tokenBrowser]["fd"], '__SIGNAL_OFF__');
+                                    //$server->push($GLOBALS["xterm"][$tokenBrowser]["fd"], '__SIGNAL_OFF__');
                                 }
-                                $GLOBALS["xterm"][$tokenBrowser]["wsClient"] = false;
+                                //$GLOBALS["xterm"][$tokenBrowser]["wsClient"] = false;
                                 break;
                             }
                         }
@@ -90,7 +90,7 @@ class server extends OpenConnection
 
 
                 if (!empty($GLOBALS["xterm"][$tokenBrowser]["wsClient"])) {
-                       var_dump($object);
+                       //var_dump($object);
                     if (empty($object["command"])) {
                         if (!empty($object["dirCurrent"])) {
                             $dirCurrent = appController::baseDir() . "files" . $object["dirCurrent"];

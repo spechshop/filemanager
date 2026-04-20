@@ -22,15 +22,19 @@ class deleteMultipleFiles
         }
 
         $dirDelete = $request->get['path'];
+
+
         $movedFiles = [];
 
         foreach ($request->post as $key => $value) {
             foreach ($value as $idFile => $del) {
                 $nameFile = str_replace(['"', "'"], '', explode(' (', $del)[0]);
+                var_dump($nameFile, $request->post);
                 
                 if (file_exists($nameFile)) {
                     // Cria nome único para evitar conflitos
                     $trashName = self::TRASH_DIR . '/' . time() . '_' . basename($nameFile);
+
                     
                     // Move para lixeira ao invés de deletar
                     if (rename($nameFile, $trashName)) {

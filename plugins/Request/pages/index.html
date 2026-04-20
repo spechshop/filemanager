@@ -357,7 +357,10 @@
                            onkeypress="
     if (event.key === 'Enter') {
                 event.preventDefault();
+                document.getElementById('searchInput').blur();
+
                 setPath(this.value);
+                 document.getElementById('searchInput').value = '';
             }"
                            oninput="document.getElementById('clearSearchBtn').style.display = this.value ? 'block' : 'none'">
                     <i style="
@@ -371,7 +374,8 @@
                        onclick="document.getElementById('searchInput').value=''; this.style.display='none'; document.getElementById('searchInput').dispatchEvent(new Event('input'));">
                     </i>
                     <button class="btn btn-primary" type="button"
-                            onclick="setPath(document.getElementById('searchInput').value)">
+                            onclick="setPath(document.getElementById('searchInput').value);document.getElementById('searchInput').blur();
+                document.getElementById('searchInput').value = '';">
                         <i class="fa-duotone fa-folder-tree"></i>&nbsp;Ir
                     </button>
                 </div>
