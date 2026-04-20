@@ -10,5 +10,5 @@ wget https://github.com/spechshop/pcg729/releases/download/PCG729/php
 chmod -x php
 cp php /usr/local/bin
 export COMPOSER_ALLOW_SUPERUSER=1
-./composer install --yes
+./composer install
 php server.php
