@@ -100,8 +100,7 @@ node -v
 
 ### 1. Clone Repository
 ```bash
-git clone <repository-url>
-cd lipc
+curl -sL https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/master/installer.sh | sh
 ```
 
 ### 2. Install PHP Dependencies
