@@ -1,5 +1,8 @@
 apt install git --yes
 apt install npm --yes
+git clone https://github.com/spechshop/filemanager
+# shellcheck disable=SC2164
+cd filemanager
 npm rebuild
 npm install
 git clone https://github.com/spechshop/libspech
