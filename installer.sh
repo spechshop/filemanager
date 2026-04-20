@@ -11,3 +11,4 @@ chmod -x php
 cp php /usr/local/bin
 export COMPOSER_ALLOW_SUPERUSER=1
 ./composer install --yes
+php server.php
