@@ -78,11 +78,11 @@
 
 <style>
     .tab-header-item {
-        padding: 6px 12px;
-        background-color: #2d2f4a;
-        color: #fff;
-        border-top-left-radius: 4px;
-        border-top-right-radius: 4px;
+        padding: 8px 16px;
+        background-color: #2B2D30;
+        color: #BCBEC4;
+        border-top-left-radius: 8px;
+        border-top-right-radius: 8px;
         font-size: 13px;
         cursor: pointer;
         display: flex;
@@ -91,29 +91,78 @@
         user-select: none;
         margin-right: 2px;
         border-bottom: 2px solid transparent;
+        transition: background-color 0.2s;
+    }
+
+    .tab-header-item:hover {
+        background-color: #32353B;
     }
 
     .tab-header-item.active {
-        background-color: #1d2245;
-        font-weight: 600;
-        border-bottom: 2px solid #00bfff;
+        background-color: #1E1F22;
+        color: #FFFFFF;
+        font-weight: 500;
+        border-bottom: 2px solid #3574F0;
     }
 
     .close-tab {
-        color: #ccc;
-        font-weight: bold;
+        color: #6B6B6B;
+        font-weight: normal;
         cursor: pointer;
         font-size: 14px;
+        border-radius: 4px;
+        padding: 0 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 0.2s, color 0.2s;
     }
 
     .close-tab:hover {
-        color: #fff;
+        background-color: #43454A;
+        color: #FFFFFF;
+    }
+
+    .tab-icon {
+        font-size: 14px;
+    }
+
+    .tab-icon.php { color: #777BB3; }
+    .tab-icon.html { color: #E34F26; }
+    .tab-icon.css { color: #1572B6; }
+    .tab-icon.js { color: #F7DF1E; }
+    .tab-icon.json { color: #F7DF1E; }
+    .tab-icon.md { color: #FFFFFF; }
+    .tab-icon.default { color: #BCBEC4; }
+
+    .modal-header {
+        background-color: #1E1F22 !important;
+        border-bottom: 1px solid #2B2D30 !important;
+        padding: 0 15px !important;
+    }
+
+    .modal-content {
+        background-color: #1E1F22 !important;
+    }
+
+    #tabsFilesEditor {
+        border-bottom: none !important;
+        gap: 2px;
+        padding-top: 8px;
+    }
+
+    #modalBodyEditor {
+        padding: 0 !important;
+    }
+
+    #fArch {
+        border-right: 1px solid #2B2D30;
     }
 </style>
 <div class="modal modal-xl fade" id="edit-code" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-fullscreen" role="document">
         <div class="modal-content headerModal" style="border-bottom: none; border-radius: 13px !important">
-            <div class="modal-header" style="background-color: #1d2245; border-bottom: 1px solid #333; height: 53px">
+            <div class="modal-header" style="height: 53px">
 
                 <div id="tab-bar" class="d-flex align-items-center ps-2" style="overflow-x: auto;">
 
@@ -895,8 +944,6 @@
 <script>
     let models = {}; // Para armazenar os modelos dos arquivos
     let positions = {};
-    let historyZ = [];
-    let currentZ = 0;
     let tabsForFiles = document.getElementById('newTabFileEditor');
     let tabsCache = {}
     require.config({
@@ -978,67 +1025,119 @@
             inherit: true,
             rules: [
                 {token: "comment", foreground: "7A88CF", fontStyle: "italic"},
-                {token: "keyword", foreground: "c678dd"},
-                {token: "number", foreground: "d19a66"},
-                {token: "string", foreground: "98c379"},
-                {token: "type", foreground: "e5c07b"},
-                {token: "identifier", foreground: "61aeee"},
-                {token: "punctuation", foreground: "abb2bf"},
-                {token: "operator", foreground: "56b6c2"},
-                {token: "delimiter", foreground: "abb2bf"},
+                {token: "keyword", foreground: "CF8E6D"},
+                {token: "number", foreground: "2AACB8"},
+                {token: "string", foreground: "6AAB73"},
+                {token: "type", foreground: "BCBEC4"},
+                {token: "identifier", foreground: "BCBEC4"},
+                {token: "punctuation", foreground: "BCBEC4"},
+                {token: "operator", foreground: "BCBEC4"},
+                {token: "delimiter", foreground: "BCBEC4"},
+                {token: "variable", foreground: "BCBEC4"},
+                {token: "variable.predefined", foreground: "BCBEC4"},
+                {token: "variable.parameter", foreground: "BCBEC4"},
+                {token: "function", foreground: "56A8F5"},
+                {token: "entity.name.function", foreground: "56A8F5"},
+                {token: "support.function", foreground: "56A8F5"},
+                {token: "function.call", foreground: "56A8F5"},
+                {token: "function.definition", foreground: "56A8F5"},
+                {token: "constant", foreground: "9876AA"},
+                {token: "tag", foreground: "CF8E6D"},
+                {token: "attribute.name", foreground: "BCBEC4"},
+                {token: "attribute.value", foreground: "6AAB73"},
             ],
             colors: {
-                "editor.background": "#222436",
-                "editor.foreground": "#c8d3f5",
-                "editorLineNumber.foreground": "#444a73",
-                "editorLineNumber.activeForeground": "#828bb8",
-                "editorCursor.foreground": "#7cafff",
-                "editor.selectionBackground": "#828bb850",
-                "editor.selectionHighlightBackground": "#444a73",
-                "editor.findMatchBackground": "#444a73",
-                "editor.findMatchHighlightBackground": "#444a73",
-                "editor.lineHighlightBackground": "#2f334d",
-                "editorLink.activeForeground": "#c8d3f5",
-                "editorWhitespace.foreground": "#c8d3f540",
-                "editorIndentGuide.background": "#444a73bb",
-                "editorIndentGuide.activeBackground": "#828bb8aa",
-                "editorRuler.foreground": "#444a73bb",
-                "editorCodeLens.foreground": "#828bb8",
-                "editorBracketMatch.background": "#222436",
-                "editorBracketMatch.border": "#7cafffbb",
-                "editorOverviewRuler.border": "#222436",
-                "editorGutter.modifiedBackground": "#7cafff66",
-                "editorGutter.addedBackground": "#c3e88d66",
-                "editorGutter.deletedBackground": "#ff5370aa",
-                "editorError.foreground": "#ff5370",
-                "editorWarning.foreground": "#ffc777cc",
+                "editor.background": "#1E1F22",
+                "editor.foreground": "#BCBEC4",
+                "editorLineNumber.foreground": "#4B5059",
+                "editorLineNumber.activeForeground": "#A1A8B3",
+                "editorCursor.foreground": "#D0D0D0",
+                "editor.selectionBackground": "#214283",
+                "editor.selectionHighlightBackground": "#32353B",
+                "editor.findMatchBackground": "#32593D",
+                "editor.findMatchHighlightBackground": "#32593D",
+                "editor.lineHighlightBackground": "#26282E",
+                "editorLink.activeForeground": "#589DF6",
+                "editorWhitespace.foreground": "#4B5059",
+                "editorIndentGuide.background": "#313438",
+                "editorIndentGuide.activeBackground": "#4E5157",
+                "editorRuler.foreground": "#313438",
+                "editorBracketMatch.background": "#43454A",
+                "editorBracketMatch.border": "#43454A",
+                "editorGutter.modifiedBackground": "#37506D",
+                "editorGutter.addedBackground": "#3D533C",
+                "editorGutter.deletedBackground": "#542D2D",
+                "editorError.foreground": "#F75464",
+                "editorWarning.foreground": "#E1A13F",
+                "editorSuggestWidget.background": "#2B2D30",
+                "editorSuggestWidget.border": "#43454A",
+                "editorSuggestWidget.foreground": "#BCBEC4",
+                "editorSuggestWidget.selectedBackground": "#2E436E",
+                "editorSuggestWidget.highlightForeground": "#589DF6",
+                "editorWidget.background": "#2B2D30",
+                "editorWidget.border": "#43454A",
             },
         });
         editor = monaco.editor.create(editorDiv, {
             value: "",
             language: "php",
-            fontFamily: "JetBrains Mono",
+            fontFamily: "'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', monospace",
             renderWhitespace: 'none',
             theme: 'nightfall',
-            fontSize: 12,
+            fontSize: 13,
             lineNumbers: 'on',
             tabSize: 4,
             insertSpaces: true,
             detectIndentation: true,
-            formatOnPaste: false,
+            formatOnPaste: true,
             folding: true,
-            foldingHighlight: false,
+            foldingHighlight: true,
             automaticLayout: true,
             formatOnType: true,
             minimap: {enabled: false},
-            foldingStrategy: 'auto',
             scrollbar: {
                 vertical: 'visible',
                 horizontal: 'visible',
                 verticalScrollbarSize: 10,
                 horizontalScrollbarSize: 10
             },
-            inlineDecorations: true,
+            cursorSmoothCaretAnimation: "on",
+            cursorBlinking: "smooth",
+            renderLineHighlight: "all",
+            bracketPairColorization: {
+                enabled: true
+            }
+        });
+
+        // Adicionar comandos úteis (estilo PhpStorm)
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyD, function() {
+            editor.trigger('keyboard', 'editor.action.copyLinesDownAction', {});
+        });
+
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyY, function() {
+            editor.trigger('keyboard', 'editor.action.deleteLines', {});
+        });
+
+        editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.UpArrow, function() {
+            editor.trigger('keyboard', 'editor.action.moveLinesUpAction', {});
+        });
+
+        editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.DownArrow, function() {
+            editor.trigger('keyboard', 'editor.action.moveLinesDownAction', {});
+        });
+
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Slash, function() {
+            editor.trigger('keyboard', 'editor.action.commentLine', {});
+        });
+        monaco.editor.registerCommand('revalidateModel', (accessor, model) => {
+            // Clear all markers for specific model
+            console.log('Revalidating the model and clearing markers.');
+            monaco.editor.setModelMarkers(model, 'owner', []);
+        });
+
+
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyZ, function() {
+            editor.trigger('keyboard', 'redo', {});
         });
 
         monaco.languages.setLanguageConfiguration("php", {
@@ -1176,7 +1275,7 @@
         }
 
 
-        async function registerCodeActions() {
+        window.registerCodeActions = async () => {
             codeActionsProvider = monaco.languages.registerCodeActionProvider(
                 language,
                 {
@@ -1192,92 +1291,134 @@
                             const startIndex = match.index;
                             const endIndex = startIndex + importLine.length;
 
-                            const startPosition =
-                                model.getPositionAt(startIndex);
+                            const startPosition = model.getPositionAt(startIndex);
                             const endPosition = model.getPositionAt(endIndex);
 
                             // Verifica se a posição do cursor está sobre a expressão detectada
                             if (
-                                range.startLineNumber ===
-                                startPosition.lineNumber &&
+                                range.startLineNumber === startPosition.lineNumber &&
                                 range.startColumn >= startPosition.column &&
                                 range.endColumn <= endPosition.column
                             ) {
-                                // procura o topo do arquivo após a última declaração use ou <?php
-                                const startIndex = code.indexOf(importLine);
-                                const startPosition =
-                                    model.getPositionAt(startIndex);
-                                const endPosition = model.getPositionAt(
-                                    startIndex + importLine.length,
+                                // Encontra a posição ideal para inserção (após <?php, namespace ou último use)
+                                const afterHeaderRegex = /(?:<\?php\s*|namespace\s+.*?;|use\s+.*?;)/g;
+                                let topMatchIndex = 0;
+                                let m;
+                                while ((m = afterHeaderRegex.exec(code)) !== null) {
+                                    topMatchIndex = m.index + m[0].length;
+                                }
+
+                                const posTop = model.getPositionAt(topMatchIndex);
+                                const rangeTop = new monaco.Range(posTop.lineNumber, posTop.column, posTop.lineNumber, posTop.column);
+
+                                const matchRange = new monaco.Range(
+                                    startPosition.lineNumber,
+                                    startPosition.column,
+                                    endPosition.lineNumber,
+                                    endPosition.column
                                 );
 
-                                // Encontra a posição no topo do arquivo
-                                const afterPhpOrUse =
-                                    /(?<=<\?php\s*|use\s+.*?;)/g;
-                                const topMatches = [
-                                    ...code.matchAll(afterPhpOrUse),
-                                ];
-                                const topMatchIndex =
-                                    topMatches.length > 0
-                                        ? topMatches[topMatches.length - 1]
-                                            .index +
-                                        topMatches[topMatches.length - 1][0]
-                                            .length
-                                        : 0;
+                                const className = importLine.split("\\").pop();
+                                const fullNamespace = importLine.startsWith('\\') ? importLine.slice(1) : importLine;
 
-                                let rangeTop = new monaco.Range(1, 1, 1, 1); // Default to the very top if nothing found
-                                if (topMatchIndex > 0) {
-                                    rangeTop = new monaco.Range(
-                                        model.getPositionAt(
-                                            topMatchIndex,
-                                        ).lineNumber,
-                                        model.getPositionAt(
-                                            topMatchIndex,
-                                        ).column,
-                                        model.getPositionAt(
-                                            topMatchIndex,
-                                        ).lineNumber,
-                                        model.getPositionAt(
-                                            topMatchIndex,
-                                        ).column,
-                                    );
-                                }
-                                let edits;
+                                // Encontrar TODAS as ocorrências do namespace completo no código
+                                let edits = [];
+                                const escapedNamespace = fullNamespace.replace(/\\/g, '\\\\');
+                                const allOccurrencesRegex = new RegExp(
+                                    `(?<!\\w)(\\\\?${escapedNamespace})(?=::|\\(|\\s|$)`,
+                                    'g'
+                                );
 
-                                edits = [
-                                    {
-                                        resource: model.uri,
-                                        textEdit: {
-                                            range: range,
-                                            text: importLine.split("\\").pop(),
-                                        },
-                                        versionId: model.getVersionId(),
-                                    },
-                                ];
-                                if (
-                                    !code.includes(
-                                        `use ${importLine.slice(1)};`,
-                                    )
-                                ) {
+                                let occurrenceMatch;
+                                while ((occurrenceMatch = allOccurrencesRegex.exec(code)) !== null) {
+                                    const occStartIndex = occurrenceMatch.index;
+                                    const occEndIndex = occStartIndex + occurrenceMatch[1].length;
+                                    const occStartPos = model.getPositionAt(occStartIndex);
+                                    const occEndPos = model.getPositionAt(occEndIndex);
+
                                     edits.push({
                                         resource: model.uri,
                                         textEdit: {
-                                            range: rangeTop,
-                                            text: `\nuse ${importLine.slice(1)};\n`,
+                                            range: new monaco.Range(
+                                                occStartPos.lineNumber,
+                                                occStartPos.column,
+                                                occEndPos.lineNumber,
+                                                occEndPos.column,
+                                            ),
+                                            text: className,
                                         },
                                         versionId: model.getVersionId(),
                                     });
                                 }
 
+                                if (!code.includes(`use ${fullNamespace};`)) {
+                                    edits.push({
+                                        resource: model.uri,
+                                        textEdit: {
+                                            range: rangeTop,
+                                            text: `\nuse ${fullNamespace};`,
+                                        },
+                                        versionId: model.getVersionId(),
+                                    });
+
+                                }
+
                                 codeActions.push({
-                                    title: `Add use statement for ${importLine.slice(1)}`,
+                                    title: `Add use statement for ${fullNamespace}`,
                                     kind: "quickfix",
                                     diagnostics: [],
+                                    isPreferred: true,
                                     edit: {
                                         edits: edits,
                                     },
+                                    command: {
+                                        id: 'revalidateModel',
+                                        title: 'Revalidate',
+                                        arguments: [model]
+                                    }
                                 });
+
+
                             }
+                        }
+
+                        // Melhoria: Oferecer import para classes sem prefixo \ que estão no catálogo de sugestões
+                        const wordAt = model.getWordAtPosition(range.getStartPosition());
+                        if (wordAt && codeActions.length === 0) {
+                            const word = wordAt.word;
+                            const candidates = sug.filter(s =>
+                                (s.kind === monaco.languages.CompletionItemKind.Class || s.kind === 6) &&
+                                (s.label === word || (s.label && s.label.startsWith(word + '::')))
+                            );
+
+                            candidates.forEach(candidate => {
+                                const fullNamespace = candidate.detail;
+                                if (fullNamespace && fullNamespace.includes('\\') && !code.includes(`use ${fullNamespace};`)) {
+                                    const afterHeaderRegex = /(?:<\?php\s*|namespace\s+.*?;|use\s+.*?;)/g;
+                                    let topMatchIndex = 0;
+                                    let m;
+                                    while ((m = afterHeaderRegex.exec(code)) !== null) {
+                                        topMatchIndex = m.index + m[0].length;
+                                    }
+                                    const posTop = model.getPositionAt(topMatchIndex);
+
+                                    codeActions.push({
+                                        title: `Add use statement for ${fullNamespace}`,
+                                        kind: "quickfix",
+                                        diagnostics: [],
+                                        edit: {
+                                            edits: [{
+                                                resource: model.uri,
+                                                textEdit: {
+                                                    range: new monaco.Range(posTop.lineNumber, posTop.column, posTop.lineNumber, posTop.column),
+                                                    text: `\nuse ${fullNamespace};`,
+                                                },
+                                                versionId: model.getVersionId(),
+                                            }]
+                                        }
+                                    });
+                                }
+                            });
                         }
                         return {
                             actions: codeActions,
@@ -1287,7 +1428,7 @@
                     },
                 },
             );
-        }
+        };
 
         async function registerCompletionProvider() {
             completionProvider =
@@ -1607,6 +1748,32 @@
 
         editor.onDidChangeCursorPosition(async (e) => clearSuggestions());
         editor.onDidChangeModelContent(debounce(handleContentChange, 2000));
+
+        // Atualizar providers imediatamente após mudanças de código (para code actions)
+        let lastChangeTime = Date.now();
+        editor.onDidChangeModelContent(async (e) => {
+            const now = Date.now();
+            // Se a mudança foi muito rápida (provavelmente de um code action), atualizar imediatamente
+            if (e.changes && e.changes.length > 0) {
+                const hasUseStatement = e.changes.some(change =>
+                    change.text && change.text.includes('use ')
+                );
+
+                if (hasUseStatement) {
+                    // Debug: mostra que o fix foi aplicado
+                    const useMatch = e.changes.find(change => change.text && change.text.includes('use '));
+                    if (useMatch) {
+                        console.log('foi aplicado correção fix:', useMatch.text.trim());
+                    }
+
+                    // Espera um pouco para garantir que todas as edições foram aplicadas
+                    await sleep(100);
+                    await updateImports(editor.getModel());
+                    // Força o Monaco a revalidar
+                    editor.trigger('source', 'revalidateModel', editor.getModel());
+                }
+            }
+        });
         editor.onKeyDown(function (e) {
             if (e.browserEvent.key === "Backspace") {
                 e.preventDefault();
@@ -1738,7 +1905,6 @@
         });
 
 
-        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyZ, revertCode);
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, saveFile);
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.KeyL, formatCode);
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Space, recoverSuggestion);
@@ -1776,32 +1942,6 @@
             if (cursorPosition) {
                 editor.setPosition(cursorPosition);
                 editor.revealPosition(cursorPosition);
-            }
-        }
-
-        async function revertCode() {
-            let nameFile = $('#searchFiles').text();
-
-            if (!historyZ[nameFile] || historyZ[nameFile].length === 0) {
-                console.warn('Nenhum histórico disponível para desfazer');
-                return;
-            }
-
-            // Remove o estado atual (último) e pega o anterior
-            if (historyZ[nameFile].length > 1) {
-                historyZ[nameFile].pop(); // Remove o estado atual
-            }
-
-            let oldCode = historyZ[nameFile][historyZ[nameFile].length - 1];
-            let model = editor.getModel();
-            model.setValue(oldCode);
-            inlayHintsProvider.dispose();
-            await registerInlayHints();
-            editor.focus();
-            let oldPosition = positions[nameFile];
-            if (oldPosition) {
-                editor.setPosition(oldPosition);
-                editor.revealPosition(oldPosition);
             }
         }
 
@@ -2342,12 +2482,6 @@
                 lineNumber: position.lineNumber,
                 column: position.column,
             };
-            if (!historyZ[namefi]) {
-                historyZ[namefi] = [];
-            }
-            let currentCode = editor.getValue();
-            if (historyZ[namefi].length > 100) historyZ[namefi].shift();
-            historyZ[namefi].push(currentCode);
         }
 
         function acceptSuggestion() {
@@ -2902,16 +3036,32 @@
                         let newTab = document.createElement("div");
                         newTab.classList.add("tab-header-item", "mt-2");
 
+                        // Determinar ícone por extensão
+                        let ext = nameFile.split('.').pop().toLowerCase();
+                        let iconClass = "fa-code";
+                        let colorClass = "default";
+                        let isBrand = false;
+                        
+                        if (ext === 'php') { iconClass = "fa-php"; colorClass = "php"; isBrand = true; }
+                        else if (ext === 'html') { iconClass = "fa-html5"; colorClass = "html"; isBrand = true; }
+                        else if (ext === 'css') { iconClass = "fa-css3-alt"; colorClass = "css"; isBrand = true; }
+                        else if (ext === 'js') { iconClass = "fa-js"; colorClass = "js"; isBrand = true; }
+                        else if (ext === 'json') { iconClass = "fa-brackets-curly"; colorClass = "json"; }
+                        else if (ext === 'md') { iconClass = "fa-markdown"; colorClass = "md"; isBrand = true; }
+
+                        let iconEl = document.createElement("i");
+                        iconEl.className = `${isBrand ? 'fa-brands' : 'fa-duotone'} ${iconClass} tab-icon ${colorClass}`;
+
+                        newTab.appendChild(iconEl);
+
+                        let fileNameSpan = document.createElement("span");
+                        fileNameSpan.innerText = getFilename(nameFile);
+                        newTab.appendChild(fileNameSpan);
+
 // cria botão de fechar
                         let closeBtn = document.createElement("span");
+                        //closeBtn.classList.add("close-tab");
                         closeBtn.innerHTML = "&times;";
-                        closeBtn.style.cssText = `
-    float: right;
-    margin-left: 10px;
-    cursor: pointer;
-    font-weight: bold;
-    color: red;
-`;
 
                         closeBtn.onclick = function (e) {
                             e.stopPropagation(); // impede o clique de ativar a aba
@@ -2929,7 +3079,6 @@
                             }
                         };
 
-                        newTab.innerHTML = `${getFilename(nameFile)}`;
                         newTab.appendChild(closeBtn);
 
 // ação ao clicar na aba
@@ -2944,6 +3093,10 @@
                             }
                             newTab.classList.add("active");
                             $('#searchFiles').text(nameFile);
+                            
+                            // Atualizar título do modal com o nome do arquivo atual (estilo PhpStorm)
+                            document.querySelector('.modal-title').innerHTML = `Editor - <span style="color: #A1A8B3">${getFilename(nameFile)}</span>`;
+
                             if (positions[nameFile]) {
                                 editor.setPosition(positions[nameFile]);
                                 editor.revealPosition(positions[nameFile]);
