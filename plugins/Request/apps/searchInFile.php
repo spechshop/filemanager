@@ -59,6 +59,14 @@ class searchInFile
         }
 
         if (is_file($local)) {
+            $maxFileSize = 10 * 1024 * 1024; // 10MB limit
+            $fileSize = @filesize($local);
+
+            if ($fileSize === false || $fileSize > $maxFileSize) {
+                // Skip files that are too large or can't be read
+                return $found;
+            }
+
             $content = @file_get_contents($local);
             if ($content !== false && stripos($content, $string) !== false) {
                 $found[] = $local;
