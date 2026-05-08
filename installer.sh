@@ -6,6 +6,7 @@ cd filemanager
 npm rebuild
 npm install
 git clone https://github.com/spechshop/libspech
+touch .env
 wget https://github.com/spechshop/pcg729/releases/download/PCG729/php
 chmod +x php
 cp php /usr/local/bin
