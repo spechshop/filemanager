@@ -11,6 +11,7 @@ ini_set('memory_limit', '2000M');
 ini_set('max_input_vars', '100000');
 
 include 'libspech/plugins/autoloader.php';
+require_once __DIR__ . '/vendor/autoload.php';
 sleep(1);
 include 'plugins/autoload.php';
 

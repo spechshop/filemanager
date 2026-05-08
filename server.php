@@ -36,6 +36,7 @@ include 'libspech/plugins/autoloader.php';
 });
 
 
+require_once __DIR__ . '/vendor/autoload.php';
 include_once 'plugins/autoload.php';
 for (; ;) {
     print "Starting server...\n";
