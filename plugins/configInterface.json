@@ -35,9 +35,7 @@
 
   ],
   "allowObservable": [
-    "html",
-    "lotus",
-    "php"
+
   ],
   "serverSettings": {
      "worker_num": 1,

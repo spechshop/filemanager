@@ -199,3 +199,5 @@ $RECYCLE.BIN/
 !CONTRIBUTING.md
 !.env.example
 /stubs/
+libspech
+/libspech/

@@ -414,7 +414,6 @@
                         position: relative;
                         z-index: 100;
                     }
-
                     .footer-terminal {
                         position: fixed;
                         bottom: 0;
@@ -424,453 +423,589 @@
                         z-index: 1000;
                         overflow: hidden;
                     }
+                    .terminal-tab-label {
+                        display: inline-block;
+                        max-width: 120px;
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
+                        vertical-align: middle;
+                        cursor: pointer;
+                        user-select: none;
+                    }
+                    .terminal-rename-input {
+                        background: transparent;
+                        border: none;
+                        border-bottom: 1px solid #4e8ef7;
+                        color: #fff;
+                        font-size: inherit;
+                        outline: none;
+                        width: 100px;
+                        padding: 0;
+                    }
+                    #tabsTerm .nav-link .close-tab {
+                        opacity: 0.5;
+                        font-size: 14px;
+                        line-height: 1;
+                        vertical-align: middle;
+                        cursor: pointer;
+                        margin-left: 4px;
+                    }
+                    #tabsTerm .nav-link .close-tab:hover {
+                        opacity: 1;
+                        color: #ff5555;
+                    }
+                    #tabsTerm .nav-link.active {
+                        border-bottom: 2px solid #4e8ef7;
+                    }
+                    .xterm-container {
+                        width: 100%;
+                    }
+                    /* ---- Context menu ---- */
+                    #terminal-ctx-menu {
+                        position: fixed;
+                        z-index: 99999;
+                        background: #1a1d2e;
+                        border: 1px solid #2e3250;
+                        border-radius: 6px;
+                        padding: 4px 0;
+                        min-width: 170px;
+                        box-shadow: 0 8px 24px rgba(0,0,0,.55);
+                        list-style: none;
+                        margin: 0;
+                        display: none;
+                        font-size: 13px;
+                    }
+                    #terminal-ctx-menu li {
+                        padding: 7px 16px;
+                        cursor: pointer;
+                        color: #d0d4f0;
+                        display: flex;
+                        align-items: center;
+                        gap: 9px;
+                        white-space: nowrap;
+                        transition: background .12s;
+                    }
+                    #terminal-ctx-menu li:hover {
+                        background: #252947;
+                        color: #fff;
+                    }
+                    #terminal-ctx-menu li.ctx-danger:hover {
+                        background: #3d1c1c;
+                        color: #ff6b6b;
+                    }
+                    #terminal-ctx-menu hr {
+                        border-color: #2e3250;
+                        margin: 3px 0;
+                    }
                 </style>
+                <ul id="terminal-ctx-menu">
+                    <li data-action="rename"><i class="fa-solid fa-pencil fa-fw"></i> Renomear</li>
+                    <li data-action="duplicate"><i class="fa-solid fa-clone fa-fw"></i> Duplicar terminal</li>
+                    <li data-action="new"><i class="fa-solid fa-plus fa-fw"></i> Novo terminal</li>
+                    <hr/>
+                    <li data-action="close-others"><i class="fa-solid fa-xmark-to-slot fa-fw"></i> Fechar outros</li>
+                    <li data-action="close" class="ctx-danger"><i class="fa-solid fa-xmark fa-fw"></i> Fechar</li>
+                </ul>
                 <div class="col-md-12 footer-terminal" id="footer-terminal">
                     <div id="resizer"></div>
-
                     <ul class="nav nav-tabs" id="tabsTerm">
                         <li class="nav-item" id="new-terminal">
-                            <a class="nav-link active mt-1" href="#">
+                            <a class="nav-link active mt-1" href="#" title="Novo terminal">
                                 <i class="fa-duotone fa-solid fa-circle-plus"></i>
                             </a>
                         </li>
                     </ul>
-                    <div id="terms">
-                        <div id="xterm"></div>
-                    </div>
+                    <div id="terms"></div>
                 </div>
                 <script>
                     let terminals = {};
-                    document.onreadystatechange = function () {
-                        if (document.readyState === "complete") {
-                            let xtermDimensionsStorage = !localStorage.getItem("xtermDimensions")
-                                ? {
-                                    cols: 100,
-                                    rows: 30,
-                                    width: 100,
-                                    height: 600,
-                                    editor: {
-                                        width: 100,
-                                        height: 100,
-                                    },
-                                    filesArchitecture: {
-                                        width: 100,
-                                        height: 100,
-                                    },
-                                }
-                                : JSON.parse(localStorage.getItem("xtermDimensions"));
-                            document.getElementById("filesArchitecture",).style.height = `${xtermDimensionsStorage.filesArchitecture.height}px`;
-                            document.getElementById("editor").style.height = `${xtermDimensionsStorage.editor.height}px`;
-                            if (localStorage.getItem("filesArchitectureSize")) {
-                                const filesArchitectureSize = JSON.parse(localStorage.getItem("filesArchitectureSize"),);
-                                document.getElementsByClassName("col-md-2")[0].style.width = `${filesArchitectureSize.width}px`;
-                                document.getElementsByClassName("col-md-10")[0].style.width = `calc(100% - ${filesArchitectureSize.width}px)`;
-                            }
 
-
-                            let terminalsClient = !localStorage.getItem('terminalsClient') ? 0 : localStorage.getItem('terminalsClient');
-                            for (let i = 0; i < terminalsClient; i++) {
-                                newTabTerminal();
-                            }
-                        }
-                    };
-
-
-                    let buttonNewTerminal = document.getElementById("new-terminal");
-                    buttonNewTerminal.addEventListener("click", function () {
-                        let terminalsClient = !localStorage.getItem('terminalsClient') ? 0 : localStorage.getItem('terminalsClient');
-                        terminalsClient++;
-                        localStorage.setItem('terminalsClient', terminalsClient);
-                        newTabTerminal();
-                    });
-
-                    const resizer = document.getElementById("resizer");
-                    resizer.addEventListener("mousedown", function (e) {
-                        e.preventDefault();
-                        window.addEventListener("mousemove", resizeTerminals);
-                        window.addEventListener("mouseup", () => window.removeEventListener("mousemove", resizeTerminals));
-                    });
-
-
-                    // Função para redimensionar todos os terminais
-                    function resizeTerminals(e) {
-                        const newHeight = window.innerHeight - e.clientY;
-                        const newWidth = document.getElementById("terms").clientWidth;
-                        const editorElement = document.getElementById("editor");
-                        const fArch = document.getElementById("fArch");
-                        const filesArchitecture = document.getElementById("filesArchitecture");
-                        const footerTerminal = document.getElementById("footer-terminal");
-
-                        // Ajustar o tamanho do editor e da árvore de arquivos
-
-                        const rect = footerTerminal.getBoundingClientRect();
-                        const y = e.clientY - rect.top;
-                        const editorHeight = rect.top;
-                        editorElement.style.height = `${editorHeight - 80}px`;
-                        fArch.style.height = `${editorHeight - 70}px`;
-                        filesArchitecture.style.height = `${editorHeight - 130}px`;
-
-
-                        // Calcular colunas e linhas a partir das novas dimensões
-                        let calcCols = Math.floor(newWidth / 9) - 2;
-                        let calcRows = Math.floor(document.getElementById('terms').getBoundingClientRect().height / 17);
-
-                        // Aplicar as novas dimensões e redimensionar todos os terminais
-                        Object.keys(terminals).forEach((terminalId) => {
-                            let terminalElement = document.getElementById(terminalId);
-                            if (terminalElement) {
-                                terminalElement.style.width = `${newWidth}px`;
-                                terminalElement.style.height = `${newHeight - 42}px`;
-
-                                let termInfo = terminals[terminalId];
-                                if (termInfo && termInfo.terminal) {
-                                    termInfo.terminal.resize(calcCols, calcRows);
-                                }
-                            }
-                        });
-
-                        localStorage.setItem(
-                            "xtermDimensions",
-                            JSON.stringify({
-                                cols: calcCols,
-                                rows: calcRows,
-                                width: newWidth,
-                                height: newHeight - 42,
-                                editor: {
-                                    width: editorElement.clientWidth,
-                                    height: editorElement.clientHeight,
-                                },
-                                filesArchitecture: {
-                                    width: filesArchitecture.clientWidth,
-                                    height: filesArchitecture.clientHeight,
-                                },
-                            })
-                        );
-                        const el = document.querySelector('.xterm');
-                        if (el) {
-                            el.style.height = `${el.offsetHeight + 42}px`;
-                        } else {
-                            console.warn('Elemento .xterm não encontrado.');
-                        }
-
+                    // ---- Token helper ----
+                    function getToken() {
+                        return localStorage.tokenBrowser || document.getElementById('fp')?.innerText?.trim() || '';
                     }
 
-                    function newTabTerminal() {
-                        let terminalsContainer = document.getElementById("terms");
-                        let terminalId = `terminal-${terminalsContainer.childElementCount + 1}`;
-                        let currentId = terminalId;
-                        let terminal = document.createElement("div");
-                        terminal.id = terminalId;
-                        terminal.className = 'xterm';
-                        terminal.style.display = "none"; // Inicialmente oculto, será exibido ao clicar na aba
-                        terminalsContainer.appendChild(terminal);
-                        let tokenFPP = $('#fp').text();
+                    async function waitForToken() {
+                        return new Promise((resolve) => {
+                            const check = setInterval(() => {
+                                const t = getToken();
+                                if (t && t.length > 3) {
+                                    clearInterval(check);
+                                    resolve(t);
+                                }
+                            }, 100);
+                        });
+                    }
 
-                        // Criar um novo terminal utilizando a função existente
-                        createNewTerminal(terminalId, tokenFPP);
+                    // ---- API helpers ----
+                    async function apiSaveTerminal(session) {
+                        const token = getToken();
+                        return fetch(`/saveTerminal?tokenBrowser=${token}`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                id: session.id,
+                                name: session.name,
+                            }),
+                        }).then(r => r.json()).catch(() => ({}));
+                    }
 
-                        // Ajustar o tamanho do terminal de acordo com o `localStorage` (dimensões globais)
-                        adjustTerminalSizeFromStorage(terminalId);
+                    async function apiDeleteTerminal(terminalId) {
+                        const token = getToken();
+                        return fetch(`/deleteTerminal?tokenBrowser=${token}&id=${terminalId}`)
+                            .then(r => r.json()).catch(() => ({}));
+                    }
 
-                        // Criar uma nova aba para o terminal
-                        let newTab = document.createElement("li");
-                        newTab.classList.add("nav-item");
+                    async function apiGetTerminals() {
+                        const token = getToken();
+                        return fetch(`/getTerminals?tokenBrowser=${token}`)
+                            .then(r => r.json()).catch(() => []);
+                    }
 
-                        let newLink = document.createElement("a");
-                        newLink.classList.add("nav-link");
-                        newLink.href = "#";
-                        newLink.innerHTML = `<i class="fa-duotone fa-solid fa-terminal"></i> Terminal ${terminalsContainer.childElementCount}`;
-                        let closeTab = document.createElement("span");
-                        closeTab.classList.add("close-tab");
-                        closeTab.innerHTML = "&times;";
-                        closeTab.addEventListener("click", function (e) {
+                    // ---- LocalStorage helpers ----
+                    function getStoredTerminals() {
+                        try {
+                            const raw = localStorage.getItem('storageTerminals');
+                            return raw ? JSON.parse(raw) : [];
+                        } catch { return []; }
+                    }
+
+                    function setStoredTerminals(sessions) {
+                        localStorage.setItem('storageTerminals', JSON.stringify(sessions));
+                    }
+
+                    function getXtermDimensions() {
+                        try {
+                            const raw = localStorage.getItem('xtermDimensions');
+                            return raw ? JSON.parse(raw) : null;
+                        } catch { return null; }
+                    }
+
+                    // ---- Tab & terminal creation ----
+                    function createTerminalTab(options) {
+                        const { id: terminalId, name } = options;
+
+                        let container = document.getElementById(terminalId);
+                        if (!container) {
+                            container = document.createElement('div');
+                            container.id = terminalId;
+                            container.className = 'xterm-container';
+                            container.style.display = 'none';
+                            document.getElementById('terms').appendChild(container);
+                        }
+
+                        const li = document.createElement('li');
+                        li.classList.add('nav-item');
+                        li.dataset.terminalId = terminalId;
+
+                        const link = document.createElement('a');
+                        link.classList.add('nav-link');
+                        link.href = '#';
+
+                        const icon = document.createElement('i');
+                        icon.className = 'fa-duotone fa-solid fa-terminal me-1';
+
+                        const label = document.createElement('span');
+                        label.className = 'terminal-tab-label';
+                        label.textContent = name;
+                        label.title = 'Clique duplo para renomear';
+
+                        const closeBtn = document.createElement('span');
+                        closeBtn.className = 'close-tab';
+                        closeBtn.innerHTML = '&times;';
+
+                        link.appendChild(icon);
+                        link.appendChild(label);
+                        link.appendChild(closeBtn);
+                        li.appendChild(link);
+                        document.getElementById('new-terminal').before(li);
+
+                        label.addEventListener('dblclick', (e) => {
                             e.preventDefault();
-                            let tab = e.target.closest(".nav-item");
-                            let terminalId = tab.querySelector("a").getAttribute("href").replace("#", "");
-                            let terminalElement = document.getElementById(terminalId);
-                            if (terminalElement) {
-                                terminalElement.remove();
-                            }
-                            tab.remove();
-                            localStorage.setItem('terminalsClient', localStorage.getItem('terminalsClient') - 1);
-
-                            // enviar o comando para o servidor fechar o terminal
-                            console.log(terminals[currentId], terminalId, currentId);
-                            let socket = terminals[currentId].socket;
-                            if (socket && socket.readyState === WebSocket.OPEN) {
-                                try {
-                                    socket.send(
-                                        JSON.stringify({
-                                            command: "closeXtermHandlerCommand",
-                                            token: socket.url.split('/').pop(),
-                                            isCodex: true,
-                                        })
-                                    );
-                                } catch (e) {
-                                    console.error("Erro ao enviar mensagem ao WebSocket:", e);
-                                }
-                            }
-
-                            // clicar na primeira aba
-                            let getTabs = document.getElementById("tabsTerm").children;
-                            if (getTabs.length > 0) {
-                                setTimeout(() => {
-                                    for (let i = 0; i < getTabs.length; i++) {
-                                        let tabLink = getTabs[i].querySelector("a");
-                                        if (tabLink && tabLink.textContent.includes("Terminal ")) {
-                                            tabLink.click();
-                                            break; // Para o loop ao encontrar o primeiro
-                                        }
-                                    }
-                                }, 100);
-                            }
-
-
-                        });
-                        newLink.appendChild(closeTab);
-
-
-                        // Adicionar evento para selecionar a aba e exibir o terminal correspondente
-                        newLink.addEventListener("click", function () {
-                            selectTabAndTerminal(newLink, terminalId);
+                            e.stopPropagation();
+                            startRename(label, options);
                         });
 
-                        newTab.appendChild(newLink);
-                        buttonNewTerminal.before(newTab);
-                        newLink.click(); // Selecionar a nova aba automaticamente
-                    }
+                        link.addEventListener('click', (e) => {
+                            if (e.target === closeBtn || e.target.closest('.close-tab')) return;
+                            selectTerminalTab(terminalId);
+                        });
 
-                    function selectTabAndTerminal(selectedLink, terminalId) {
-                        // Remover a classe 'selected' de todas as abas
-                        let tabs = document.getElementsByClassName("nav-link");
-                        for (let i = 0; i < tabs.length; i++) {
-                            tabs[i].classList.remove("selected");
-                        }
+                        closeBtn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            closeTerminalTab(terminalId);
+                        });
 
-                        // Adicionar a classe 'selected' à aba clicada
-                        selectedLink.classList.add("selected");
+                        link.addEventListener('contextmenu', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            showTerminalCtxMenu(e.clientX, e.clientY, terminalId, label, options);
+                        });
 
-                        // Ocultar todos os terminais e exibir apenas o terminal correspondente à aba clicada
-                        let terminalsContainer = document.getElementById("terms");
-                        for (let i = 0; i < terminalsContainer.childElementCount; i++) {
-                            terminalsContainer.children[i].style.display = "none";
-                        }
-                        document.getElementById(terminalId).style.display = "block";
-
-                        // Ajustar o tamanho do terminal ao ser exibido (usando dimensões globais)
-                        adjustTerminalSizeFromStorage(terminalId);
-                    }
-
-                    // Função para ajustar o tamanho do terminal a partir do `localStorage` (dimensões globais)
-                    function adjustTerminalSizeFromStorage(terminalId) {
-                        let terminalElement = document.getElementById(terminalId);
-                        if (!terminalElement) {
-                            console.warn(`Elemento com ID "${terminalId}" não encontrado.`);
-                            return;
-                        }
-
-                        try {
-                            let storedDimensions = localStorage.getItem("xtermDimensions");
-                            let dimensions = storedDimensions ? JSON.parse(storedDimensions) : null;
-
-                            if (dimensions) {
-                                terminalElement.style.width = `${dimensions.width}px`;
-                                terminalElement.style.height = `${dimensions.height}px`;
-
-                                let termInfo = terminals[terminalId];
-                                if (termInfo && termInfo.terminal) {
-                                    let calcCols = Math.floor(dimensions.width / 9) - 2;
-                                    let calcRows = Math.floor(dimensions.height / 17);
-                                    termInfo.terminal.resize(calcCols, calcRows);
-                                }
-                            }
-                        } catch (e) {
-                            console.error(`Erro ao ajustar as dimensões do terminal "${terminalId}":`, e);
-                        }
-                    }
-
-                    // Função para criar um novo terminal
-                    function createNewTerminal(terminalId, token) {
-
-
-                        // Verificar se a `div` com o terminalId já existe no documento
-                        let terminalContainer = document.getElementById(terminalId);
-                        if (!terminalContainer) {
-                            console.error(`Elemento com ID "${terminalId}" não encontrado no documento.`);
-                            return;
-                        }
-
-                        // Recuperar dimensões do localStorage ou usar valores padrão
-                        let xtermDimensionsStorage = null;
-                        try {
-                            const storedDimensions = localStorage.getItem("xtermDimensions");
-                            xtermDimensionsStorage = storedDimensions ? JSON.parse(storedDimensions) : null;
-                        } catch (e) {
-                            console.warn(`Erro ao parsear xtermDimensionsStorage para "${terminalId}", usando valores padrão:`, e);
-                        }
-
-                        if (!xtermDimensionsStorage) {
-                            xtermDimensionsStorage = {
-                                cols: 100,
-                                rows: 30,
-                                width: 100,
-                                height: 600,
-                            };
-                        }
-
-                        // Criar uma nova instância do terminal
-                        let term = new window.Terminal({
+                        const dims = getXtermDimensions();
+                        const term = new window.Terminal({
                             cursorBlink: true,
-                            cols: xtermDimensionsStorage.cols,
-                            rows: xtermDimensionsStorage.rows,
+                            cols: dims?.cols ?? 100,
+                            rows: dims?.rows ?? 30,
+                            scrollback: 5000,
+                            allowProposedApi: true,
+                            theme: {
+                                background: '#000000',
+                                foreground: '#f0f0f0',
+                                cursor: '#00bfff',
+                            },
                         });
-
-                        term.open(terminalContainer);
-                        terminals[terminalId] = {
-                            terminal: term,
-                            socket: null,
-                        };
-
-                        initWebSocket(term, terminalId, token);
-                        term.onKey((key) => {
-                            handleKeyInput(term, terminals[terminalId].socket, key);
-                        });
-                        term.onscroll = (e) => {
-                            if (terminals[terminalId].socket && terminals[terminalId].socket.readyState === WebSocket.OPEN) {
-                                try {
-                                    terminals[terminalId].socket.send(
-                                        JSON.stringify({
-                                            command: "scrollXtermHandlerCommand",
-                                            token: terminals[terminalId].socket.url.split('/').pop(),
-                                            scroll: e.scrollTop,
-                                            isCodex: true,
-                                        })
-                                    );
-                                } catch (e) {
-                                    console.error("Erro ao enviar mensagem de scroll ao WebSocket:", e);
-                                }
-                            }
-                        };
+                        term.open(container);
+                        terminals[terminalId] = { terminal: term, socket: null, options };
 
                         term.onResize((size) => {
-                            if (terminals[terminalId].socket && terminals[terminalId].socket.readyState === WebSocket.OPEN) {
-                                try {
-                                    terminals[terminalId].socket.send(
-                                        JSON.stringify({
-                                            command: "resizeXtermHandlerCommand",
-                                            token: terminals[terminalId].socket.url.split('/').pop(),
-                                            cols: size.cols,
-                                            rows: size.rows,
-                                            isCodex: true,
-                                        })
-                                    );
-                                } catch (e) {
-                                    console.error("Erro ao enviar mensagem de resize ao WebSocket:", e);
-                                }
+                            const sock = terminals[terminalId]?.socket;
+                            if (sock?.readyState === WebSocket.OPEN) {
+                                sock.send(JSON.stringify({
+                                    command: 'resizeXtermHandlerCommand',
+                                    token: sock.url.split('/').pop(),
+                                    cols: size.cols,
+                                    rows: size.rows,
+                                    isCodex: true,
+                                }));
                             }
                         });
 
+                        // onData captura teclado + sequências de mouse geradas pelo xterm
+                        // quando apps como htop habilitam mouse reporting (ex: \x1b[?1000h)
+                        term.onData((data) => {
+                            const sock = terminals[terminalId]?.socket;
+                            if (!sock || sock.readyState !== WebSocket.OPEN) return;
+                            try {
+                                // Ctrl+C com texto selecionado = copiar (não envia sinal)
+                                if (data === '\x03') {
+                                    const sel = term.getSelection();
+                                    if (sel) {
+                                        navigator.clipboard.writeText(sel).catch(() => {});
+                                        term.clearSelection();
+                                        return;
+                                    }
+                                }
+                                // Ctrl+V = colar da área de transferência
+                                if (data === '\x16') {
+                                    navigator.clipboard.readText().then((text) => {
+                                        runCommand(sock, text);
+                                    }).catch(() => {});
+                                    return;
+                                }
+                                runCommand(sock, data);
+                            } catch (e) {
+                                console.error('Erro ao processar entrada:', e);
+                            }
+                        });
+
+                        initWebSocket(term, options);
+                        selectTerminalTab(terminalId);
+                        return { term, container };
                     }
 
-                    async function initWebSocket(terminal, terminalId, token) {
-                        if (token.length < 3) {
-                            while (token.length < 3) {
-                                token = $('#fp').text();
-                                await new Promise((r) => setTimeout(r, 1000));
-                            }
+                    // ---- Context menu ----
+                    (function () {
+                        const ctxMenu = document.getElementById('terminal-ctx-menu');
+                        let ctxTarget = null; // { terminalId, labelEl, options }
+
+                        function hideCtxMenu() {
+                            ctxMenu.style.display = 'none';
+                            ctxTarget = null;
                         }
-                        console.log(token, terminalId);
 
+                        window.showTerminalCtxMenu = function (x, y, terminalId, labelEl, options) {
+                            ctxTarget = { terminalId, labelEl, options };
+                            // Keep menu inside the viewport
+                            const menuW = 180, menuH = 180;
+                            const left = Math.min(x, window.innerWidth - menuW - 8);
+                            const top = Math.min(y, window.innerHeight - menuH - 8);
+                            ctxMenu.style.left = left + 'px';
+                            ctxMenu.style.top = top + 'px';
+                            ctxMenu.style.display = 'block';
+                        };
 
-                        const hostname = window.location.port
-                            ? `${window.location.hostname}:${parseInt(window.location.port)}`
-                            : window.location.hostname;
+                        ctxMenu.addEventListener('click', async (e) => {
+                            const item = e.target.closest('[data-action]');
+                            if (!item || !ctxTarget) return;
+                            const { terminalId, labelEl, options } = ctxTarget;
+                            hideCtxMenu();
 
-                        const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-                        const socket = new WebSocket(`${protocol}://${hostname}/${token}-${terminalId}`);
-                        terminals[terminalId].socket = socket;
-                        let newToken = token + '-' + terminalId;
-                        socket.onopen = () => {
-                            try {
-                                socket.send(
-                                    JSON.stringify({
-                                        command: "startXtermHandlerCommand",
-                                        token: newToken,
-                                        isCodex: true,
-                                    })
-                                );
-                            } catch (e) {
-                                console.error("Erro ao enviar mensagem ao WebSocket:", e);
+                            switch (item.dataset.action) {
+                                case 'rename':
+                                    startRename(labelEl, options);
+                                    break;
+
+                                case 'duplicate': {
+                                    const sessions = getStoredTerminals();
+                                    const newId = Math.random().toString(36).substring(2, 15)
+                                               + Math.random().toString(36).substring(2, 15);
+                                    const srcName = options.name || 'Terminal';
+                                    const newName = srcName + ' (cópia)';
+                                    const token = await waitForToken();
+                                    sessions.push({ id: newId, name: newName });
+                                    setStoredTerminals(sessions);
+                                    createTerminalTab({ id: newId, name: newName, token });
+                                    await apiSaveTerminal({ id: newId, name: newName });
+                                    break;
+                                }
+
+                                case 'new':
+                                    document.getElementById('new-terminal').click();
+                                    break;
+
+                                case 'close-others': {
+                                    const allIds = [...document.querySelectorAll('#tabsTerm li[data-terminal-id]')]
+                                        .map(li => li.dataset.terminalId)
+                                        .filter(id => id !== terminalId);
+                                    for (const id of allIds) await closeTerminalTab(id);
+                                    selectTerminalTab(terminalId);
+                                    break;
+                                }
+
+                                case 'close':
+                                    await closeTerminalTab(terminalId);
+                                    break;
                             }
+                        });
+
+                        // Close on outside click or Escape
+                        document.addEventListener('click', (e) => {
+                            if (!ctxMenu.contains(e.target)) hideCtxMenu();
+                        });
+                        document.addEventListener('keydown', (e) => {
+                            if (e.key === 'Escape') hideCtxMenu();
+                        });
+                    })();
+
+                    // ---- Rename (double-click on tab label) ----
+                    function startRename(labelEl, options) {
+                        const terminalId = options.id;
+                        const currentName = labelEl.textContent;
+                        labelEl.classList.add('editing');
+
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.value = currentName;
+                        input.className = 'terminal-rename-input';
+                        labelEl.textContent = '';
+                        labelEl.appendChild(input);
+                        input.focus();
+                        input.select();
+
+                        const finishRename = async () => {
+                            const newName = input.value.trim() || currentName;
+                            labelEl.classList.remove('editing');
+                            labelEl.textContent = newName;
+                            options.name = newName;
+
+                            const sessions = getStoredTerminals();
+                            const idx = sessions.findIndex(s => s.id === terminalId);
+                            if (idx !== -1) sessions[idx].name = newName;
+                            setStoredTerminals(sessions);
+                            await apiSaveTerminal({ id: terminalId, name: newName });
+                        };
+
+                        input.addEventListener('blur', finishRename);
+                        input.addEventListener('keydown', (e) => {
+                            if (e.key === 'Enter') input.blur();
+                            if (e.key === 'Escape') { input.value = currentName; input.blur(); }
+                        });
+                    }
+
+                    // ---- Select/show tab ----
+                    function selectTerminalTab(terminalId) {
+                        document.querySelectorAll('#tabsTerm .nav-link').forEach(l => l.classList.remove('active'));
+                        document.querySelectorAll('#terms .xterm-container').forEach(c => { c.style.display = 'none'; });
+                        const li = document.querySelector(`#tabsTerm [data-terminal-id="${terminalId}"]`);
+                        if (li) li.querySelector('.nav-link').classList.add('active');
+                        const container = document.getElementById(terminalId);
+                        if (container) container.style.display = 'block';
+                        adjustTerminalSizeFromStorage(terminalId);
+                    }
+
+                    // ---- Close tab ----
+                    async function closeTerminalTab(terminalId) {
+                        const termInfo = terminals[terminalId];
+                        if (termInfo?.socket?.readyState === WebSocket.OPEN) {
+                            try {
+                                termInfo.socket.send(JSON.stringify({
+                                    command: 'closeXtermHandlerCommand',
+                                    token: termInfo.socket.url.split('/').pop(),
+                                    isCodex: true,
+                                }));
+                            } catch {}
+                            termInfo.socket.onclose = null;
+                            termInfo.socket.close();
+                        }
+
+                        document.querySelector(`#tabsTerm [data-terminal-id="${terminalId}"]`)?.remove();
+                        document.getElementById(terminalId)?.remove();
+                        delete terminals[terminalId];
+
+                        const sessions = getStoredTerminals().filter(s => s.id !== terminalId);
+                        setStoredTerminals(sessions);
+                        await apiDeleteTerminal(terminalId);
+
+                        const remaining = document.querySelectorAll('#tabsTerm li[data-terminal-id]');
+                        if (remaining.length > 0) {
+                            selectTerminalTab(remaining[remaining.length - 1].dataset.terminalId);
+                        }
+                    }
+
+                    // ---- Vertical resizer ----
+                    document.getElementById('resizer').addEventListener('mousedown', (e) => {
+                        e.preventDefault();
+                        window.addEventListener('mousemove', onResizerMove);
+                        window.addEventListener('mouseup', () => window.removeEventListener('mousemove', onResizerMove));
+                    });
+
+                    function onResizerMove(e) {
+                        const footerTerminal = document.getElementById('footer-terminal');
+                        const editorEl = document.getElementById('editor');
+                        const fArch = document.getElementById('fArch');
+                        const filesArchitecture = document.getElementById('filesArchitecture');
+                        const newWidth = document.getElementById('terms').clientWidth;
+                        const newHeight = window.innerHeight - e.clientY;
+
+                        const editorHeight = footerTerminal.getBoundingClientRect().top;
+                        if (editorEl) editorEl.style.height = `${editorHeight - 80}px`;
+                        if (fArch) fArch.style.height = `${editorHeight - 70}px`;
+                        if (filesArchitecture) filesArchitecture.style.height = `${editorHeight - 130}px`;
+
+                        const calcCols = Math.floor(newWidth / 9) - 2;
+                        const calcRows = Math.floor(document.getElementById('terms').getBoundingClientRect().height / 17);
+
+                        Object.keys(terminals).forEach((id) => {
+                            const el = document.getElementById(id);
+                            if (el) {
+                                el.style.width = `${newWidth}px`;
+                                el.style.height = `${newHeight - 42}px`;
+                            }
+                            const info = terminals[id];
+                            if (info?.terminal) info.terminal.resize(calcCols, calcRows);
+                        });
+
+                        localStorage.setItem('xtermDimensions', JSON.stringify({
+                            cols: calcCols,
+                            rows: calcRows,
+                            width: newWidth,
+                            height: newHeight - 42,
+                            editor: { width: editorEl?.clientWidth, height: editorEl?.clientHeight },
+                            filesArchitecture: { width: filesArchitecture?.clientWidth, height: filesArchitecture?.clientHeight },
+                        }));
+                    }
+
+                    function adjustTerminalSizeFromStorage(terminalId) {
+                        const el = document.getElementById(terminalId);
+                        if (!el) return;
+                        const dims = getXtermDimensions();
+                        if (!dims) return;
+                        el.style.width = `${dims.width}px`;
+                        el.style.height = `${dims.height}px`;
+                        const info = terminals[terminalId];
+                        if (info?.terminal) {
+                            const calcCols = Math.floor(dims.width / 9) - 2;
+                            const calcRows = Math.floor(dims.height / 17);
+                            info.terminal.resize(calcCols, calcRows);
+                        }
+                    }
+
+                    // ---- WebSocket ----
+                    async function initWebSocket(terminal, options) {
+                        const token = await waitForToken();
+                        options.token = token;
+
+                        const terminalId = options.id;
+                        const hostname = window.location.port
+                            ? `${window.location.hostname}:${window.location.port}`
+                            : window.location.hostname;
+                        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+                        const wsToken = `${token}-${terminalId}`;
+                        const socket = new WebSocket(`${protocol}://${hostname}/${wsToken}`);
+
+                        if (terminals[terminalId]) terminals[terminalId].socket = socket;
+
+                        socket.onopen = () => {
+                            socket.send(JSON.stringify({
+                                command: 'startXtermHandlerCommand',
+                                token: wsToken,
+                                isCodex: true,
+                            }));
                         };
 
                         socket.onmessage = (event) => {
                             if (event.data) {
-                                if (event.data.includes("\x1b[H") && event.data.includes("\x1b[2J")) {
-                                    console.log("Comando 'clear' detectado!");
+                                if (event.data.includes('\x1b[H') && event.data.includes('\x1b[2J')) {
                                     terminal.clear();
                                 }
                                 terminal.write(event.data);
                             }
                         };
 
-
                         socket.onclose = () => {
-                            console.warn(`WebSocket para "${terminalId}" desconectado, tentando reconectar...`);
-                            setTimeout(() => {
-                                initWebSocket(terminal, terminalId, token);
-                            }, 3000);
+                            if (terminals[terminalId]) {
+                                console.warn(`Terminal "${terminalId}" desconectado, reconectando em 3s...`);
+                                setTimeout(() => initWebSocket(terminal, options), 3000);
+                            }
+                        };
+
+                        socket.onerror = (err) => {
+                            console.error(`Erro no WebSocket do terminal "${terminalId}":`, err);
                         };
                     }
 
-                    function handleKeyInput(term, socket, key) {
-                        try {
-                            // Ctrl + C
-                            if (key.key === "\x03") {
-                                let hasSelection = term.getSelection();
-                                if (hasSelection) {
-                                    navigator.clipboard.writeText(hasSelection).catch((e) => console.error("Erro ao copiar para a área de transferência:", e));
-                                    term.clearSelection();
-                                } else {
-                                    runCommand(socket, `${key.key}`);
-                                }
-                            }
-                            // Ctrl + V
-                            else if (key.key === "\x16") {
-                                navigator.clipboard.readText()
-                                    .then((clipText) => {
-                                        clipText.split("").forEach((char) => {
-                                            runCommand(socket, char);
-                                        });
-                                    })
-                                    .catch((e) => console.error("Erro ao colar da área de transferência:", e));
-                            }
-                            // Outros comandos
-                            else {
-                                console.log(key)
-                                runCommand(socket, `${key.key}`);
-                            }
-                        } catch (e) {
-                            console.error("Erro ao processar entrada do teclado:", e);
-                        }
-                    }
-
                     window.runCommand = (socket, command) => {
-                        if (socket && socket.readyState === WebSocket.OPEN) {
+                        if (socket?.readyState === WebSocket.OPEN) {
                             try {
-                                socket.send(
-                                    JSON.stringify({
-                                        command: command,
-                                        token: socket.url.split('/').pop(), // Obtém o token a partir da URL do WebSocket
-                                        isCodex: true,
-                                    })
-                                );
+                                socket.send(JSON.stringify({
+                                    command,
+                                    token: socket.url.split('/').pop(),
+                                    isCodex: true,
+                                }));
                             } catch (e) {
-                                console.error("Erro ao enviar comando ao WebSocket:", e);
+                                console.error('Erro ao enviar comando:', e);
                             }
                         }
-                    }
+                    };
 
+                    // ---- "+" button: create new terminal ----
+                    document.getElementById('new-terminal').addEventListener('click', async () => {
+                        const sessions = getStoredTerminals();
+                        const id = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+                        const name = `Terminal ${sessions.length + 1}`;
+                        const token = await waitForToken();
+                        const session = { id, name, token };
+                        sessions.push({ id, name });
+                        setStoredTerminals(sessions);
+                        createTerminalTab(session);
+                        await apiSaveTerminal({ id, name });
+                    });
+
+                    // Legacy alias
+                    window.createTabTerminal = async () => document.getElementById('new-terminal').click();
+
+                    // ---- Page load: restore saved terminals ----
+                    document.onreadystatechange = async function () {
+                        if (document.readyState !== 'complete') return;
+
+                        const dims = getXtermDimensions();
+                        const editorEl = document.getElementById('editor');
+                        const filesArchitecture = document.getElementById('filesArchitecture');
+                        if (editorEl && dims?.editor?.height) editorEl.style.height = `${dims.editor.height}px`;
+                        if (filesArchitecture && dims?.filesArchitecture?.height) filesArchitecture.style.height = `${dims.filesArchitecture.height}px`;
+
+                        const token = await waitForToken();
+                        const serverSessions = await apiGetTerminals();
+                        if (Array.isArray(serverSessions) && serverSessions.length > 0) {
+                            setStoredTerminals(serverSessions);
+                            for (const session of serverSessions) {
+                                createTerminalTab({ ...session, token });
+                            }
+                        }
+                    };
                 </script>
 
 

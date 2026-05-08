@@ -15,6 +15,11 @@ class server
     public static function tick(\Swoole\Http\Server $server, int $milliseconds, Table $tableServer)
     {
         Timer::tick($milliseconds, function () use ($server, $tableServer) {
+
+
+
+
+
             $algorithm = "crc32";
             $Iterator = new RecursiveTreeIterator(new RecursiveDirectoryIterator(".", FilesystemIterator::SKIP_DOTS));
             foreach ($Iterator as $path) {
@@ -83,6 +88,7 @@ class server
                 $idKey = explode(".", $e[count($e) - 1])[0];
                 $cachePages[$idKey] = \plugins\Utils\cache\bufferPages::get($idKey, __DIR__);
             }
+            cache::global()['listRoutes'] = $listRoutes;
         });
         print $cli->color(sprintf("O servidor está sendo executado no endereço => %s%s:%s%s", $prefix, $server->host, $server->port, PHP_EOL), "yellow");
         self::tick($server, 10000, $tableServer);

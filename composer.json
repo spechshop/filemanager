@@ -4,7 +4,8 @@
     "varunsridharan/php-classmap-generator": "*",
     "soyhuce/classmap-generator": "*",
     "nikic/php-parser": "*",
-    "ext-zip": "*"
+    "ext-zip": "*",
+    "ext-swoole": "*"
   },
   "require-dev": {
     "phpstan/phpstan": "^2.1"

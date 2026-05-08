@@ -504,10 +504,14 @@
     const callback = async function (mutationsList, observer) {
         const fopenDynamicToken = $('#fp').text();
         const pathInvisible = $('#pathInvisible').text();
-        return setItemsInTbody(
-            (await asyncGet(`/syncPath?tokenBrowser=${fopenDynamicToken}&path=${pathInvisible}`))['information'],
-            'filesList'
-        );
+        try {
+            return setItemsInTbody(
+                (await asyncGet(`/syncPath?tokenBrowser=${fopenDynamicToken}&path=${pathInvisible}`))['information'],
+                'filesList'
+            );
+        } catch (e) {
+            console.log('e');
+        }
 
         for (const mutation of mutationsList) {
             if (mutation.type === 'childList' || mutation.type === 'characterData') {

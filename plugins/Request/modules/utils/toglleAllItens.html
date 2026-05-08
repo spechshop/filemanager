@@ -48,7 +48,11 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        adjustPath();
+        try {
+            adjustPath();
+        } catch (error) {
+            console.error('Erro ao ajustar a caminho:', error);
+        }
     });
 
 

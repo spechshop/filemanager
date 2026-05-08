@@ -213,7 +213,13 @@
 
         const tbody = document.getElementById(tbodyId);
         tbody.innerHTML = '';
-        fileList = items.map(item => item.path); // Armazena os caminhos dos arquivos para navegação
+        var fileList;
+        try {
+            fileList = items.map(item => item.path); // Armazena os caminhos dos arquivos para navegação
+        } catch (error) {
+            console.log('Erro ao obter itens:', error);
+            return;
+        }
         // filtrar midia
         fileList = fileList.filter(item => {
             const ext = item.split('.').pop().toLowerCase();

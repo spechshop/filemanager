@@ -20,6 +20,15 @@ class server
         if ($path === '/') {
             $response->header('Content-Type', 'text/html; charset=utf-8');
             $response->status(200);
+            $indexNeedFull = template::prepare(file_get_contents(
+                'plugins/Request/pages/index.html'
+            ));
+
+
+
+            \libspech\Cache\cache::subDefine('cachePages', 'index', $indexNeedFull);
+
+
             return $response->end(cache::global()['cachePages']['index']);
         }
         $pages = cache::global()['listRoutes'];
@@ -40,6 +49,7 @@ class server
             }
         }
         $response->status(200);
+
         if (!appController::call($request, $response, $appReplace)) {
             $response->header('Content-Type', 'text/html; charset=utf-8');
             return $response->end(cache::global()['cachePages']['404']);
