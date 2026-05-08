@@ -3,114 +3,78 @@
 namespace plugins\Request;
 
 use PhpParser\Node\Expr;
+use PhpParser\Node\Stmt;
 use PhpParser\PrettyPrinter\Standard;
 
-/**
- * Classe para formatação de código PHP conforme PSR-12
- */
 class CustomPrettyPrinter extends Standard
 {
-    private $lastLine;
-    public $nameFile = '';
-    public $dataFileLines = '';
+    public string $nameFile = '';
+    public array $dataFileLines = [];
 
     /**
-     * Formata arrays estilo PSR-12
+     * Formata arrays multi-item com indentação alinhada à coluna de origem (PSR-12).
+     * Arrays vazios → [] | um item → inline | múltiplos → multi-linha.
      */
     protected function pExpr_Array(Expr\Array_ $node): string
     {
         if (empty($node->items)) {
             return '[]';
         }
+
         if (count($node->items) === 1) {
             return '[' . $this->p($node->items[0]) . ']';
         }
 
-        $indent = $this->indent();
-        $result = "[\n";
+        $startLine = $node->getStartLine();
+        $sourceLine = $this->dataFileLines[$startLine - 1] ?? '';
 
-
-
-        var_dump($node->getLine());
-        $line = $this->dataFileLines[$node->getLine()-1];
-        $spaces = 0;
-        for ($i = 0; $i < strlen($line); $i++) {
-            if ($line[$i] === ' ') {
-                $spaces++;
-            } else {
+        $leadingSpaces = 0;
+        for ($i = 0; $i < strlen($sourceLine); $i++) {
+            if ($sourceLine[$i] !== ' ') {
                 break;
             }
-        }
-         
-        foreach ($node->items as $item) {
-            //var_dump($item);;
-            $rs = str_repeat(' ', $spaces+4);
-            $result .= $rs . $this->p($item) . ",\n";
+            $leadingSpaces++;
         }
 
-        $rs = str_repeat(' ', $spaces);
-        $result .= $this->outdent() .$rs. "]";
-        if (str_ends_with($result, ",\n]")) {
-            $result = str_replace(",\n]", "\n]", $result);
+        $innerPad = str_repeat(' ', $leadingSpaces + 4);
+        $outerPad = str_repeat(' ', $leadingSpaces);
+
+        $result = "[\n";
+        foreach ($node->items as $item) {
+            $result .= $innerPad . $this->p($item) . ",\n";
         }
+
+        // Remove trailing comma on last item before closing bracket
+        $result = substr($result, 0, -2) . "\n";
+        $result .= $outerPad . ']';
 
         return $result;
     }
 
-
-
-
-
-
-
-
-
-
-
     /**
-     * Ajusta atribuição com espaço conforme PSR-12
+     * Força abertura de chave na mesma linha do método (PSR-12).
      */
-    protected function pExpr_Assign(Expr\Assign $node, int $precedence, int $lhsPrecedence): string
-    {
-        return $this->p($node->var) . ' = ' . $this->p($node->expr);
-    }
-
-    /**
-     * Ajusta operadores binários com espaço conforme PSR-12
-     */
-    protected function pExpr_BinaryOp(Expr\BinaryOp $node, int $precedence, int $lhsPrecedence): string
-    {
-        return $this->p($node->left) . ' ' . $node->getOperatorSigil() . ' ' . $this->p($node->right);
-    }
-
-    /**
-     * Força chaves na mesma linha para métodos conforme PSR-12
-     */
-    protected function pStmt_ClassMethod(\PhpParser\Node\Stmt\ClassMethod $node): string
+    protected function pStmt_ClassMethod(Stmt\ClassMethod $node): string
     {
         $result = parent::pStmt_ClassMethod($node);
         return preg_replace('/\)\s*\n\s*\{/', ') {', $result);
     }
 
     /**
-     * Força chaves na mesma linha para funções conforme PSR-12
+     * Força abertura de chave na mesma linha da função (PSR-12).
      */
-    protected function pStmt_Function(\PhpParser\Node\Stmt\Function_ $node): string
+    protected function pStmt_Function(Stmt\Function_ $node): string
     {
         $result = parent::pStmt_Function($node);
         return preg_replace('/\)\s*\n\s*\{/', ') {', $result);
     }
 
     /**
-     * Adiciona linha em branco entre blocos principais conforme PSR-12
+     * Adiciona linha em branco após blocos de controle (PSR-12).
      */
     protected function pStmts(array $nodes, bool $indent = true): string
     {
         $code = parent::pStmts($nodes, $indent);
-
-        // Adiciona linha em branco entre blocos principais (if, foreach, return)
-        $code = preg_replace('/(\})\n(\$|if|foreach|return)/', "\$1\n\n\$2", $code);
-
-        return $code;
+        return preg_replace('/(\})\n(\$|if|foreach|return)/', "$1\n\n$2", $code);
     }
 }
