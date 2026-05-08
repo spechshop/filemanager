@@ -100,7 +100,7 @@ node -v
 
 ### 1. Clone Repository
 ```bash
-curl -sL https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/master/installer.sh | sh
+curl -sL https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/installer.sh | sh
 ```
 
 ### 2. Install PHP Dependencies
