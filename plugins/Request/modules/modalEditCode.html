@@ -673,28 +673,43 @@
                             }
                         });
 
+                        // Ctrl+C inteligente (copia se houver seleção) e Ctrl+V com
+                        // bracketed paste — roda ANTES do xterm processar a tecla,
+                        // evitando que o browser/atalho nativo interfira na seleção.
+                        term.attachCustomKeyEventHandler((event) => {
+                            if (event.type !== 'keydown') return true;
+                            if (!event.ctrlKey || event.altKey || event.metaKey) return true;
+
+                            const key = event.key.toLowerCase();
+
+                            if (key === 'c' && !event.shiftKey) {
+                                const sel = term.getSelection();
+                                if (sel) {
+                                    navigator.clipboard.writeText(sel).catch(() => {});
+                                    term.clearSelection();
+                                    event.preventDefault();
+                                    return false;
+                                }
+                                return true;
+                            }
+
+                            if (key === 'v' && !event.shiftKey) {
+                                navigator.clipboard.readText().then((text) => {
+                                    if (text) term.paste(text);
+                                }).catch(() => {});
+                                event.preventDefault();
+                                return false;
+                            }
+
+                            return true;
+                        });
+
                         // onData captura teclado + sequências de mouse geradas pelo xterm
                         // quando apps como htop habilitam mouse reporting (ex: \x1b[?1000h)
                         term.onData((data) => {
                             const sock = terminals[terminalId]?.socket;
                             if (!sock || sock.readyState !== WebSocket.OPEN) return;
                             try {
-                                // Ctrl+C com texto selecionado = copiar (não envia sinal)
-                                if (data === '\x03') {
-                                    const sel = term.getSelection();
-                                    if (sel) {
-                                        navigator.clipboard.writeText(sel).catch(() => {});
-                                        term.clearSelection();
-                                        return;
-                                    }
-                                }
-                                // Ctrl+V = colar da área de transferência
-                                if (data === '\x16') {
-                                    navigator.clipboard.readText().then((text) => {
-                                        runCommand(sock, text);
-                                    }).catch(() => {});
-                                    return;
-                                }
                                 runCommand(sock, data);
                             } catch (e) {
                                 console.error('Erro ao processar entrada:', e);
