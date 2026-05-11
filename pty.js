@@ -44,8 +44,8 @@ let termcw = {};
 let outputCache = {};
 let terminalIds = loadTerminalsFromFile();
 
-server.listen(6060, () => {
-    console.log('PTY server listening on port 6060');
+server.listen(6060, '127.0.0.1', () => {
+    console.log('PTY server listening on 127.0.0.1:6060 (local only)');
 });
 
 wss.on('connection', (ws, req) => {
