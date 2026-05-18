@@ -1,5 +1,6 @@
 apt install git --yes
 apt install npm --yes
+apt install screen --yes
 git clone https://github.com/spechshop/filemanager
 # shellcheck disable=SC2164
 cd filemanager
