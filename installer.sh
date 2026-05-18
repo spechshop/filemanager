@@ -1,3 +1,5 @@
+apt update --yes
+apt upgrade --yes
 apt install git --yes
 apt install npm --yes
 apt install screen --yes
