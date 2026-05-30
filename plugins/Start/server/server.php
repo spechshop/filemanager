@@ -91,6 +91,8 @@ class server
             cache::global()['listRoutes'] = $listRoutes;
         });
         print $cli->color(sprintf("O servidor está sendo executado no endereço => %s%s:%s%s", $prefix, $server->host, $server->port, PHP_EOL), "yellow");
+         print $cli->color(sprintf("O servidor está sendo executado no endereço => %s%s:%s%s", $prefix, \libspech\Network\network::getLocalIp(), $server->port, PHP_EOL), "yellow");
+        
         self::tick($server, 10000, $tableServer);
     }
 }
