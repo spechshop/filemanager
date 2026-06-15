@@ -56,9 +56,33 @@ if (cacheLibSpech::get('interface')['ssl']) {
         throw new Error("INVALID SSL CONFIGURATION: ssl_cert_file and ssl_key_file must be set in interface.json");
     }
 }
-
+if (!function_exists('portAlive')) {
+    function portAlive(mixed $port): bool
+    {
+        $host = "0.0.0.0";
+        $fp = @fsockopen($host, $port, $errno, $errstr, 5);
+        if (!$fp) {
+            return false;
+        }
+        fclose($fp);
+        return true;
+    }
+}
 $host = cache::global()['interface']['host'];
 $port = cache::global()['interface']['port'];
+\co\run(function () use (&$port) {
+    $free = portAlive($port);
+    if ($free) {
+        $sock = new \Swoole\Coroutine\Socket(AF_INET, SOCK_STREAM, SOL_TCP);
+        $sock->bind('0.0.0.0', 0);
+        cacheLibSpech::subDefine('interface', 'port', $sock->getsockname()['port']);
+        $port = cache::global()['interface']['port'];
+        $sock->close();
+        \libspech\Cli\cli::pcl("Porta {$port} disponível", 'bold_green');
+    }
+});
+
+
 try {
     $server = new Server($host, $port, SWOOLE_PROCESS, SWOOLE_SOCK_TCP | SWOOLE_SSL);
 } catch (Throwable $e) {
@@ -67,19 +91,7 @@ try {
     exit(1);
 }
 
-if (!function_exists('portAlive')) {
-    function portAlive(mixed $port): bool
-    {
-        $host = "0.0.0.0";
-        $fp = @fsockopen($host, $port, $errno, $errstr, 5);
-        var_dump($fp);
-        if (!$fp) {
-            return false;
-        }
-        fclose($fp);
-        return true;
-    }
-}
+
 co\run(function () {
     if (!portAlive(6060)) {
         shell_exec("screen -dmS nodePTY node pty");

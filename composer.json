@@ -5,7 +5,8 @@
     "soyhuce/classmap-generator": "*",
     "nikic/php-parser": "*",
     "ext-zip": "*",
-    "ext-swoole": "*"
+    "ext-swoole": "*",
+    "ext-sockets": "*"
   },
   "require-dev": {
     "phpstan/phpstan": "^2.1"
