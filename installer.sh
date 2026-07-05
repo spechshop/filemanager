@@ -41,4 +41,22 @@ systemctl daemon-reload
 systemctl enable filemanager.service
 systemctl start filemanager.service
 
+# Obter IP e Porta para exibir o link de acesso
+IP_ADDR=$(hostname -I | awk '{print $1}')
+if [ -z "$IP_ADDR" ]; then
+    IP_ADDR="localhost"
+fi
+
+PORT=$(grep '"port":' plugins/configInterface.json | sed 's/[^0-9]*//g')
+if [ -z "$PORT" ]; then
+    PORT="8080"
+fi
+
+SSL=$(grep '"ssl":' plugins/configInterface.json | cut -d: -f2 | sed 's/[", ]//g')
+PROTOCOL="http"
+if [ "$SSL" != "false" ] && [ -n "$SSL" ]; then
+    PROTOCOL="https"
+fi
+
 echo "Instalação concluída e serviço iniciado no boot!"
+echo "Acesse o sistema em: $PROTOCOL://$IP_ADDR:$PORT"
