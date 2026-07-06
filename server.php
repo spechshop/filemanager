@@ -23,8 +23,8 @@ if (!$existSwoole) {
     print "Swoole not found in path, please install it or add it to your path\n";
     exit(1);
 } else {
-    // setamos para quando usar o comando php nessa sessão, ele use o ./php
-    putenv('PATH=' . getcwd() . ':$PATH');
+    // setamos para quando usar o comando "php" nessa sessão, ele use o ./php
+    shell_exec('export PATH=' . getcwd() . ':$PATH');
     print shell_exec('php -m | grep swoole');
 }
 
