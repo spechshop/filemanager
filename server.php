@@ -14,6 +14,20 @@ function portAlive(mixed $port): bool
     fclose($fp);
     return true;
 }
+// antes checamos se o php do ambiente tem swoole, se não tiver usamos o ./php adicionando o em path local
+$existSwoole = shell_exec('php --ri swoole');
+if (!$existSwoole) {
+    $existSwoole = shell_exec('./php --ri swoole');
+}
+if (!$existSwoole) {
+    print "Swoole not found in path, please install it or add it to your path\n";
+    exit(1);
+} else {
+    // setamos para quando usar o comando php nessa sessão, ele use o ./php
+    putenv('PATH=' . getcwd() . ':$PATH');
+    print shell_exec('php -m | grep swoole');
+}
+
 
 
 include 'libspech/plugins/autoloader.php';

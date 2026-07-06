@@ -14,6 +14,8 @@ wget https://github.com/spechshop/pcg729/releases/download/PCG729/php
 chmod +x php
 cp php /usr/local/bin
 export COMPOSER_ALLOW_SUPERUSER=1
+export HOME=${HOME:-/root}
+export COMPOSER_HOME=${COMPOSER_HOME:-$HOME/.composer}
 ./composer install
 
 # Configurar inicialização automática junto ao boot (Systemd)
@@ -29,7 +31,7 @@ After=network.target
 [Service]
 Type=simple
 WorkingDirectory=$CURRENT_DIR
-ExecStart=/usr/local/bin/php $CURRENT_DIR/server.php
+ExecStart=$CURRENT_DIR/php $CURRENT_DIR/server.php
 Restart=always
 User=root
 
