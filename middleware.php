@@ -92,9 +92,67 @@ try {
 }
 
 
+if (!function_exists('nodePtyAvailable')) {
+    /**
+     * Verifica se o Node e o node-pty estão realmente utilizáveis.
+     * Em ambientes sem root/npm o node-pty frequentemente não compila,
+     * então neste caso usamos o fallback em Swoole (pty.php).
+     */
+    function nodePtyAvailable(): bool
+    {
+        $nodeBin = trim((string) shell_exec('command -v node 2>/dev/null'));
+        if ($nodeBin === '') {
+            return false;
+        }
+        if (!is_dir(__DIR__ . '/node_modules/node-pty')) {
+            return false;
+        }
+        // Confirma que o módulo carrega (binário nativo compilado).
+        $check = trim((string) shell_exec(
+            'cd ' . escapeshellarg(__DIR__)
+            . ' && node -e "require(\'node-pty\')" >/dev/null 2>&1 && echo ok'
+        ));
+        return $check === 'ok';
+    }
+}
+
+if (!function_exists('startPtyServer')) {
+    /**
+     * Inicia o servidor de PTY: prefere o pty.js (node-pty) quando
+     * disponível; caso contrário, sobe o fallback em Swoole (pty.php),
+     * usando o MESMO binário PHP atual (que já possui Swoole).
+     */
+    function startPtyServer(): void
+    {
+        $hasScreen = trim((string) shell_exec('command -v screen 2>/dev/null')) !== '';
+
+        if (nodePtyAvailable()) {
+            echo "Iniciando PTY via node (node-pty)...\n";
+            if ($hasScreen) {
+                shell_exec('screen -dmS nodePTY node pty');
+            } else {
+                shell_exec('nohup node ' . escapeshellarg(__DIR__ . '/pty.js')
+                    . ' >> ' . escapeshellarg(__DIR__ . '/pty.log') . ' 2>&1 &');
+            }
+            return;
+        }
+
+        // Fallback em Swoole: usa o binário PHP atual (com Swoole garantido).
+        $php     = PHP_BINARY ?: 'php';
+        $ptyPhp  = __DIR__ . '/pty.php';
+        echo "node-pty indisponível; usando fallback em Swoole (pty.php)...\n";
+        if ($hasScreen) {
+            shell_exec('screen -dmS phpPTY ' . escapeshellarg($php) . ' ' . escapeshellarg($ptyPhp));
+        } else {
+            shell_exec('nohup ' . escapeshellarg($php) . ' ' . escapeshellarg($ptyPhp)
+                . ' >> ' . escapeshellarg(__DIR__ . '/pty.log') . ' 2>&1 &');
+        }
+    }
+}
+
 co\run(function () {
     if (!portAlive(6060)) {
-        shell_exec("screen -dmS nodePTY node pty");
+        startPtyServer();
     } else {
         echo "Port 6060 is already in use.\n";
     }
