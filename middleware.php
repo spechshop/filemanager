@@ -150,11 +150,46 @@ if (!function_exists('startPtyServer')) {
     }
 }
 
+if (!function_exists('startLspServer')) {
+    /**
+     * Sobe o bridge do Language Server PHP (lsp.js -> Intelephense) na
+     * porta 3057. É a fonte de inteligência do editor (autocomplete,
+     * hover/documentação, assinatura de parâmetros e diagnósticos),
+     * substituindo o antigo stubs-generated.json.
+     */
+    function startLspServer(): void
+    {
+        $node = trim((string) shell_exec('command -v node 2>/dev/null'));
+        if ($node === '') {
+            echo "node indisponível; LSP (Intelephense) não será iniciado.\n";
+            return;
+        }
+        if (!is_dir(__DIR__ . '/node_modules/intelephense')) {
+            echo "Intelephense não instalado (npm install intelephense); LSP desativado.\n";
+            return;
+        }
+
+        $hasScreen = trim((string) shell_exec('command -v screen 2>/dev/null')) !== '';
+        echo "Iniciando LSP PHP (Intelephense) via node...\n";
+        if ($hasScreen) {
+            shell_exec('screen -dmS nodeLSP node ' . escapeshellarg(__DIR__ . '/lsp.js'));
+        } else {
+            shell_exec('nohup node ' . escapeshellarg(__DIR__ . '/lsp.js')
+                . ' >> ' . escapeshellarg(__DIR__ . '/lsp.log') . ' 2>&1 &');
+        }
+    }
+}
+
 co\run(function () {
     if (!portAlive(6060)) {
         startPtyServer();
     } else {
         echo "Port 6060 is already in use.\n";
+    }
+    if (!portAlive(3057)) {
+        startLspServer();
+    } else {
+        echo "Port 3057 is already in use.\n";
     }
     if (!portAlive(3090)) {
         //shell_exec("screen -dmS nodeGPT node gpt");

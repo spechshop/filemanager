@@ -9,6 +9,7 @@
     "ext-sockets": "*"
   },
   "require-dev": {
-    "phpstan/phpstan": "^2.1"
+    "phpstan/phpstan": "^2.1",
+    "swoole/ide-helper": "^6.0"
   }
 }

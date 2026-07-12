@@ -194,6 +194,59 @@ function extractNamedConstants(): array
     return array_map(fn($name) => ['name' => $name], array_keys(get_defined_constants()));
 }
 
+// ----------------------------------------------------------------------
+// PHP keywords / language constructs para o autocomplete.
+//
+// O catalogo por reflection so contem funcoes/classes/constantes, entao
+// keywords como "if", "print", "echo", "foreach" nunca eram sugeridas.
+// Espelha o catalogo do editor (modalEditCode.html) para que o backend
+// seja a fonte de verdade das sugestoes (frontend usa como fallback).
+// ----------------------------------------------------------------------
+function extractPhpKeywords(): array
+{
+    $keywords = [
+        'abstract', 'and', 'array', 'as', 'bool', 'break', 'callable', 'case',
+        'catch', 'class', 'clone', 'const', 'continue', 'declare', 'default',
+        'do', 'echo', 'else', 'elseif', 'empty', 'enddeclare', 'endfor',
+        'endforeach', 'endif', 'endswitch', 'endwhile', 'enum', 'extends',
+        'false', 'final', 'finally', 'float', 'fn', 'for', 'foreach',
+        'function', 'global', 'goto', 'if', 'implements', 'include',
+        'include_once', 'instanceof', 'insteadof', 'int', 'interface',
+        'isset', 'iterable', 'list', 'match', 'mixed', 'namespace', 'never',
+        'new', 'null', 'object', 'or', 'parent', 'print', 'private',
+        'protected', 'public', 'readonly', 'require', 'require_once', 'return',
+        'self', 'static', 'string', 'switch', 'throw', 'trait', 'true', 'try',
+        'unset', 'use', 'var', 'void', 'while', 'xor', 'yield',
+    ];
+
+    $snippets = [
+        'if'        => "if (\$1) {\n\t\$0\n}",
+        'else'      => "else {\n\t\$0\n}",
+        'elseif'    => "elseif (\$1) {\n\t\$0\n}",
+        'foreach'   => "foreach (\$\${1:items} as \$\${2:item}) {\n\t\$0\n}",
+        'for'       => "for (\$\${1:i} = 0; \$\$1 < \$\${2:count}; \$\$1++) {\n\t\$0\n}",
+        'while'     => "while (\$1) {\n\t\$0\n}",
+        'do'        => "do {\n\t\$0\n} while (\$1);",
+        'switch'    => "switch (\$1) {\n\tcase \$2:\n\t\t\$0\n\t\tbreak;\n}",
+        'function'  => "function \${1:name}(\$2) {\n\t\$0\n}",
+        'class'     => "class \${1:Name} {\n\t\$0\n}",
+        'interface' => "interface \${1:Name} {\n\t\$0\n}",
+        'trait'     => "trait \${1:Name} {\n\t\$0\n}",
+        'try'       => "try {\n\t\$0\n} catch (\\Throwable \$\${1:e}) {\n\t\n}",
+        'echo'      => "echo \$0;",
+        'print'     => "print \$0;",
+        'return'    => "return \$0;",
+    ];
+
+    return array_map(static function (string $kw) use ($snippets): array {
+        return [
+            'name'    => $kw,
+            'type'    => 'keyword',
+            'snippet' => $snippets[$kw] ?? null,
+        ];
+    }, $keywords);
+}
+
 // ---- Parse project files ----
 
 $parser     = (new ParserFactory)->createForNewestSupportedVersion();
@@ -280,6 +333,7 @@ file_put_contents('stubs-generated.json', json_encode([
     'functions' => $allFunctions,
     'classes'   => $allClasses,
     'constants' => extractNamedConstants(),
+    'keywords'  => extractPhpKeywords(),
 ], JSON_PRETTY_PRINT));
 
-echo 'stubs-generated.json atualizado (' . count($allClasses) . ' membros de classe, ' . count($allFunctions) . ' funções).' . PHP_EOL;
+echo 'stubs-generated.json atualizado (' . count($allClasses) . ' membros de classe, ' . count($allFunctions) . ' funções, ' . count(extractPhpKeywords()) . ' keywords).' . PHP_EOL;

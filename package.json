@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "intelephense": "^1.18.5",
     "node-pty": "^1.1.0",
     "ws": "^8.18.2"
   }

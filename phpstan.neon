@@ -12,9 +12,9 @@ parameters:
             - libspech (?)
     scanDirectories:
         - libspech/plugins
+        - vendor/swoole/ide-helper/src/
     ignoreErrors:
         - '#Call to an undefined method#'
         - '#Access to an undefined property#'
         - '#Variable \$[a-zA-Z0-9_]+ might not be defined#'
-    checkMissingIterableValueType: false
-    checkGenericClassInNonGenericObjectType: false
+        - '#Function Co\\[a-zA-Z0-9_]+ not found#'

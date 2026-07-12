@@ -1125,6 +1125,111 @@
     let completionProvider;
     let semaphores = [];
 
+    // =================================================================
+    // Palavras-chave / language constructs do PHP para o autocomplete.
+    // Sem elas o editor nunca sugere "if", "print", "echo", "foreach"...
+    // pois o provider remoto só devolve funções/classes/constantes.
+    // =================================================================
+    const PHP_KEYWORDS = [
+        "abstract", "and", "array", "as", "bool", "break", "callable", "case",
+        "catch", "class", "clone", "const", "continue", "declare", "default",
+        "do", "echo", "else", "elseif", "empty", "enddeclare", "endfor",
+        "endforeach", "endif", "endswitch", "endwhile", "enum", "extends",
+        "false", "final", "finally", "float", "fn", "for", "foreach",
+        "function", "global", "goto", "if", "implements", "include",
+        "include_once", "instanceof", "insteadof", "int", "interface",
+        "isset", "iterable", "list", "match", "mixed", "namespace", "never",
+        "new", "null", "object", "or", "parent", "print", "private",
+        "protected", "public", "readonly", "require", "require_once", "return",
+        "self", "static", "string", "switch", "throw", "trait", "true", "try",
+        "unset", "use", "var", "void", "while", "xor", "yield",
+    ];
+
+    // Snippets (estilo IDE) para as estruturas mais usadas.
+    const PHP_KEYWORD_SNIPPETS = {
+        if: "if ($1) {\n\t$0\n}",
+        else: "else {\n\t$0\n}",
+        elseif: "elseif ($1) {\n\t$0\n}",
+        foreach: "foreach ($${1:items} as $${2:item}) {\n\t$0\n}",
+        for: "for ($${1:i} = 0; $$1 < $${2:count}; $$1++) {\n\t$0\n}",
+        while: "while ($1) {\n\t$0\n}",
+        do: "do {\n\t$0\n} while ($1);",
+        switch: "switch ($1) {\n\tcase $2:\n\t\t$0\n\t\tbreak;\n}",
+        function: "function ${1:name}($2) {\n\t$0\n}",
+        class: "class ${1:Name} {\n\t$0\n}",
+        interface: "interface ${1:Name} {\n\t$0\n}",
+        trait: "trait ${1:Name} {\n\t$0\n}",
+        try: "try {\n\t$0\n} catch (\\Throwable $${1:e}) {\n\t\n}",
+        echo: "echo $0;",
+        print: "print $0;",
+        return: "return $0;",
+    };
+
+    // Versões mutáveis do catálogo de keywords. O backend
+    // (stubs-generated.json → keywords) pode sobrescrevê-las; os const
+    // acima permanecem como fallback local caso o backend não as envie.
+    let phpKeywordsRuntime = PHP_KEYWORDS.slice();
+    let phpKeywordSnippetsRuntime = Object.assign({}, PHP_KEYWORD_SNIPPETS);
+
+    // Substitui o catálogo local pelas keywords vindas do backend.
+    function applyBackendKeywords(keywords) {
+        if (!Array.isArray(keywords) || keywords.length === 0) {
+            return;
+        }
+        const names = [];
+        const snippets = {};
+        keywords.forEach((k) => {
+            if (!k || !k.name) return;
+            names.push(k.name);
+            if (k.snippet) snippets[k.name] = k.snippet;
+        });
+        if (names.length) {
+            phpKeywordsRuntime = names;
+            phpKeywordSnippetsRuntime = snippets;
+        }
+    }
+
+    // Ranking das sugestões: match exato > prefixo > contém.
+    // Keywords recebem prioridade ligeiramente maior (prefixo vazio).
+    function completionRank(label, word, isKeyword) {
+        const l = (label || "").toLowerCase();
+        const w = (word || "").toLowerCase();
+        const short = l.split("::").pop();
+        const base = isKeyword ? "0" : "1";
+        if (!w) return base + "5" + label;
+        if (l === w || short === w) return base + "0" + label;
+        if (l.startsWith(w) || short.startsWith(w)) return base + "1" + label;
+        return base + "2" + label;
+    }
+
+    // Gera sugestões de keywords do PHP filtradas pela palavra digitada.
+    function getPhpKeywordSuggestions(word, range) {
+        const w = (word || "");
+        const wl = w.toLowerCase();
+        const items = [];
+        phpKeywordsRuntime.forEach((kw) => {
+            const kwl = kw.toLowerCase();
+            if (wl && !kwl.startsWith(wl) && !kwl.includes(wl)) {
+                return;
+            }
+            const snippet = phpKeywordSnippetsRuntime[kw];
+            items.push({
+                label: kw,
+                kind: monaco.languages.CompletionItemKind.Keyword,
+                insertText: snippet !== undefined ? snippet : kw,
+                insertTextRules: snippet !== undefined
+                    ? monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet
+                    : undefined,
+                detail: "PHP keyword",
+                documentation: "Palavra-chave do PHP",
+                range: range,
+                filterText: kw,
+                sortText: completionRank(kw, w, true),
+            });
+        });
+        return items;
+    }
+
     let editor = null;
     let editorDiv = document.getElementById("editor");
 
@@ -1244,6 +1349,40 @@
             foldingHighlight: true,
             automaticLayout: true,
             formatOnType: true,
+            quickSuggestions: {other: true, comments: false, strings: false},
+            quickSuggestionsDelay: 10,
+            suggestOnTriggerCharacters: true,
+            acceptSuggestionOnEnter: "on",
+            tabCompletion: "on",
+            // Desativado: com o Language Server (Intelephense) como fonte de
+            // verdade, as sugestões baseadas em palavras do Monaco colhiam
+            // identificadores de OUTRAS abas/modelos abertos (ex.: chamadas
+            // "->call(", "->setCallerId(", "->setCallId(" em example.php/
+            // transfer.php) e as ofereciam com o ícone "abc" (kind Text),
+            // conflitando com os métodos reais retornados pelo LSP e exibindo
+            // ícones que não correspondiam ao tipo do membro. Como no PhpStorm,
+            // o autocomplete deve refletir apenas os símbolos resolvidos.
+            wordBasedSuggestions: false,
+            snippetSuggestions: "inline",
+            suggestSelection: "first",
+            fixedOverflowWidgets: true,
+            suggest: {
+                showKeywords: true,
+                showSnippets: true,
+                showFunctions: true,
+                showClasses: true,
+                showConstants: true,
+                showProperties: true,
+                showMethods: true,
+                // Sem sugestões baseadas em palavras (kind Text/"abc"): elas
+                // duplicavam/entravam em conflito com os símbolos do LSP e
+                // exibiam ícones incoerentes com o tipo do membro.
+                showWords: false,
+                localityBonus: true,
+                filterGraceful: true,
+                snippetsPreventQuickSuggestions: false,
+                shareSuggestSelections: true,
+            },
             minimap: {enabled: false},
             scrollbar: {
                 vertical: 'visible',
@@ -1291,6 +1430,12 @@
         });
 
         monaco.languages.setLanguageConfiguration("php", {
+            // Sem isto o Monaco usa o padrão de "palavra" default, no qual o
+            // "$" é um SEPARADOR. Com isso, ao digitar "$foo" o editor
+            // enxergava "foo" (sem o "$"), quebrando a sugestão/inserção de
+            // VARIÁVEIS (o range e o filtro não batiam com "$foo"). Aqui
+            // tornamos "$foo" uma única palavra.
+            wordPattern: /(\$?[A-Za-z_\u0080-\uFFFF][A-Za-z0-9_\u0080-\uFFFF]*)|(-?\d*\.?\d+)/,
             comments: {
                 lineComment: "//",
                 blockComment: ["/*", "*/"],
@@ -1325,6 +1470,547 @@
             },
         });
 
+        // ============================================================
+        // Cliente LSP (Language Server Protocol) para PHP.
+        //
+        // Conversa com o Intelephense através do proxy seguro do servidor
+        // (wss://host/<token>-lsp -> plugins\server::message -> lsp.js:3057).
+        // É a fonte "de verdade" de inteligência do editor — autocomplete,
+        // documentação (hover), assinatura de parâmetros (signature help),
+        // ir-para-definição e diagnósticos — substituindo o antigo
+        // stubs-generated.json. Se o LSP estiver indisponível, o editor cai
+        // de volta no comportamento anterior automaticamente.
+        // ============================================================
+        window.PhpLSP = (function () {
+            const KIND = monaco.languages.CompletionItemKind;
+            const kindMap = {
+                1: KIND.Text, 2: KIND.Method, 3: KIND.Function, 4: KIND.Constructor,
+                5: KIND.Field, 6: KIND.Variable, 7: KIND.Class, 8: KIND.Interface,
+                9: KIND.Module, 10: KIND.Property, 11: KIND.Unit, 12: KIND.Value,
+                13: KIND.Enum, 14: KIND.Keyword, 15: KIND.Snippet, 16: KIND.Color,
+                17: KIND.File, 18: KIND.Reference, 19: KIND.Folder, 20: KIND.EnumMember,
+                21: KIND.Constant, 22: KIND.Struct, 23: KIND.Event, 24: KIND.Operator,
+                25: KIND.TypeParameter,
+            };
+            const sevMap = {
+                1: monaco.MarkerSeverity.Error,
+                2: monaco.MarkerSeverity.Warning,
+                3: monaco.MarkerSeverity.Info,
+                4: monaco.MarkerSeverity.Hint,
+            };
+
+            let socket = null;
+            let ready = false;
+            let wsToken = null;
+            let msgId = 0;
+            const pending = new Map();
+            const openDocs = new Map();     // uri -> { version, model }
+            const modelUri = new WeakMap(); // model -> uri
+            let reconnectTimer = null;
+            // Coalescência de requisições de completion idênticas em voo.
+            // O Monaco pode chamar provideCompletionItems duas vezes para o
+            // mesmo evento (o caractere de gatilho ">" dispara o suggest e a
+            // mudança de conteúdo dispara os quickSuggestions), fazendo o
+            // cliente enviar DOIS "textDocument/completion" idênticos pelo
+            // websocket. Reaproveitamos a promessa em voo (mesma uri+posição)
+            // para que o comando seja enviado só uma vez.
+            const completionInFlight = new Map(); // "uri:line:char" -> Promise
+
+            function isReady() { return ready; }
+
+            function rawSend(obj) {
+                if (!socket || socket.readyState !== WebSocket.OPEN) return;
+                socket.send(JSON.stringify({
+                    token: wsToken,
+                    lsp: true,
+                    payload: JSON.stringify(obj),
+                }));
+            }
+
+            function request(method, params, timeoutMs) {
+                const id = ++msgId;
+                rawSend({ jsonrpc: "2.0", id, method, params });
+                return new Promise((resolve) => {
+                    const t = setTimeout(() => {
+                        pending.delete(id);
+                        resolve(null);
+                    }, timeoutMs || 8000);
+                    pending.set(id, (res) => { clearTimeout(t); resolve(res); });
+                });
+            }
+
+            function notify(method, params) {
+                rawSend({ jsonrpc: "2.0", method, params });
+            }
+
+            function docToMonaco(doc) {
+                if (!doc) return undefined;
+                // Mesma deduplicação usada no hover: o Intelephense concatena
+                // (separadas por "---") todas as definições encontradas para um
+                // símbolo. Se a classe/método existe em mais de um lugar
+                // indexado (ex.: trunkController do subprojeto em files/), a
+                // documentação do completion vinha com a descrição repetida
+                // ("duas caixinhas"). Colapsamos para uma só, como no PhpStorm.
+                if (typeof doc === "string") return { value: dedupeHoverMarkdown(doc) };
+                return { value: dedupeHoverMarkdown(doc.value || "") };
+            }
+
+            function lspRangeToMonaco(r) {
+                return new monaco.Range(
+                    r.start.line + 1, r.start.character + 1,
+                    r.end.line + 1, r.end.character + 1,
+                );
+            }
+
+            // Remove seções duplicadas de um hover em markdown. O Intelephense
+            // concatena, num único conteúdo separado por "---", todas as
+            // definições encontradas para um símbolo. Quando o mesmo símbolo
+            // existe em mais de um stub (ex.: "Co\run" em swoole/ide-helper,
+            // presente em alias_ns.php e no core), aparecem duas "caixinhas"
+            // idênticas. Colapsamos por cabeçalho do símbolo (case-insensitive),
+            // mantendo apenas a primeira ocorrência — como no PhpStorm.
+            function dedupeHoverMarkdown(value) {
+                if (typeof value !== "string" || !/\n-{3,}\n/.test(value)) {
+                    return value;
+                }
+                const sections = value.split(/\n-{3,}\n/);
+                const seen = new Set();
+                const kept = [];
+                for (const section of sections) {
+                    const header = section.match(/__(.+?)__/);
+                    const key = (header ? header[1] : section).trim().toLowerCase();
+                    if (seen.has(key)) continue;
+                    seen.add(key);
+                    kept.push(section.trim());
+                }
+                return kept.join("\n\n---\n\n");
+            }
+
+            function normalizeHoverContents(contents) {
+                if (!contents) return [];
+                if (typeof contents === "string") return [{ value: dedupeHoverMarkdown(contents) }];
+                if (Array.isArray(contents)) {
+                    return contents.map((c) =>
+                        typeof c === "string"
+                            ? { value: dedupeHoverMarkdown(c) }
+                            : { value: dedupeHoverMarkdown(c.value || "") });
+                }
+                return [{ value: dedupeHoverMarkdown(contents.value || "") }];
+            }
+
+            function lspToMonacoCompletion(item, defaultRange) {
+                let range = defaultRange;
+                let insertText = item.insertText || item.label;
+                if (item.textEdit) {
+                    const te = item.textEdit;
+                    const teRange = te.range || (te.replace || te.insert);
+                    if (teRange) range = lspRangeToMonaco(teRange);
+                    insertText = te.newText;
+                }
+                // ATENÇÃO: no Monaco, CompletionItemKind.Method === 0 (valor
+                // "falsy"). Usar "kindMap[item.kind] || KIND.Text" convertia
+                // TODO método (kind LSP 2 -> Monaco 0) em Text, pois "0 || X"
+                // resulta em X. Como o editor esconde itens do tipo Text
+                // ("suggest.showWords: false"), os métodos sumiam e só as
+                // PROPRIEDADES apareciam. Mapeamos preservando o 0.
+                const mappedKind = kindMap[item.kind];
+                const result = {
+                    label: item.label,
+                    kind: mappedKind === undefined ? KIND.Text : mappedKind,
+                    insertText: insertText,
+                    range: range,
+                    detail: item.detail,
+                    documentation: docToMonaco(item.documentation),
+                    sortText: item.sortText,
+                    filterText: item.filterText || item.label,
+                    preselect: !!item.preselect,
+                    commitCharacters: item.commitCharacters,
+                    __lspData: item.data !== undefined ? item : null,
+                };
+                if (item.insertTextFormat === 2) {
+                    result.insertTextRules =
+                        monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet;
+                }
+                if (Array.isArray(item.additionalTextEdits)) {
+                    result.additionalTextEdits = item.additionalTextEdits.map((e) => ({
+                        range: lspRangeToMonaco(e.range),
+                        text: e.newText,
+                    }));
+                }
+                return result;
+            }
+
+            function handleDiagnostics(params) {
+                const doc = openDocs.get(params.uri);
+                if (!doc || !doc.model || doc.model.isDisposed()) return;
+                const markers = (params.diagnostics || []).map((d) => ({
+                    startLineNumber: d.range.start.line + 1,
+                    startColumn: d.range.start.character + 1,
+                    endLineNumber: d.range.end.line + 1,
+                    endColumn: d.range.end.character + 1,
+                    message: d.message,
+                    severity: sevMap[d.severity] || monaco.MarkerSeverity.Info,
+                    source: d.source || "intelephense",
+                }));
+                monaco.editor.setModelMarkers(doc.model, "php-lsp", markers);
+            }
+
+            function handleServerMethod(msg) {
+                const respond = (result) => {
+                    if (msg.id !== undefined && msg.id !== null) {
+                        rawSend({ jsonrpc: "2.0", id: msg.id, result });
+                    }
+                };
+                switch (msg.method) {
+                    case "textDocument/publishDiagnostics":
+                        handleDiagnostics(msg.params);
+                        break;
+                    case "workspace/configuration": {
+                        const items = (msg.params && msg.params.items) || [];
+                        respond(items.map((item) => {
+                            if (item && item.section === "intelephense") {
+                                return {
+                                    completion: {
+                                        maxItems: 3000,
+                                        insertUseDeclaration: true,
+                                        fullyQualifyGlobalConstantsAndFunctions: false,
+                                        triggerParameterHints: true,
+                                        snippets: true
+                                    },
+                                    format: {
+                                        enable: true
+                                    },
+                                    files: {
+                                        maxSize: 5000000
+                                    }
+                                };
+                            }
+                            return {};
+                        }));
+                        break;
+                    }
+                    case "client/registerCapability":
+                    case "client/unregisterCapability":
+                    case "window/workDoneProgress/create":
+                        respond(null);
+                        break;
+                    case "window/logMessage":
+                    case "window/showMessage":
+                    case "$/progress":
+                    case "telemetry/event":
+                        break;
+                    default:
+                        if (msg.id !== undefined && msg.id !== null) respond(null);
+                        break;
+                }
+            }
+
+            function onFrame(data) {
+                let frame;
+                try { frame = JSON.parse(data); } catch (e) { return; }
+                if (!frame || !frame.lsp) return; // ignora stats/broadcast
+                let msg;
+                try { msg = JSON.parse(frame.payload); } catch (e) { return; }
+                // Roteamento JSON-RPC correto: uma mensagem é REQUISIÇÃO/
+                // NOTIFICAÇÃO do servidor quando tem "method"; é RESPOSTA a uma
+                // requisição nossa quando NÃO tem "method" (só id + result/error).
+                //
+                // Antes checávamos "pending.has(msg.id)" PRIMEIRO. Como os ids de
+                // requisição do servidor (ex.: "workspace/configuration") vivem
+                // num espaço INDEPENDENTE dos nossos, eles colidem com ids de
+                // requisições nossas ainda pendentes (ex.: um "completion" em
+                // voo). Nesse caso a requisição do servidor era confundida com a
+                // RESPOSTA da nossa e DESCARTADA — o servidor nunca recebia a
+                // configuração (intelephense.completion.maxItems) e ficava preso
+                // no default (100 itens), que devolve só PROPRIEDADES e nenhum
+                // MÉTODO. Tratando "method" primeiro, a config sempre é
+                // respondida e os métodos voltam a ser sugeridos.
+                if (msg.method) { handleServerMethod(msg); return; }
+                if (msg.id !== undefined && msg.id !== null && pending.has(msg.id)) {
+                    const cb = pending.get(msg.id);
+                    pending.delete(msg.id);
+                    cb(msg.result);
+                    return;
+                }
+            }
+
+            function sendDidOpen(model, uri) {
+                if (!model || model.isDisposed()) return;
+                let entry = openDocs.get(uri) || { version: 1, model };
+                entry.model = model;
+                openDocs.set(uri, entry);
+                modelUri.set(model, uri);
+                notify("textDocument/didOpen", {
+                    textDocument: {
+                        uri, languageId: "php", version: entry.version,
+                        text: model.getValue(),
+                    },
+                });
+                if (!model.__lspBound) {
+                    model.__lspBound = true;
+                    model.onDidChangeContent(() => {
+                        const d = openDocs.get(uri);
+                        if (!d) return;
+                        d.version++;
+                        notify("textDocument/didChange", {
+                            textDocument: { uri, version: d.version },
+                            contentChanges: [{ text: model.getValue() }],
+                        });
+                    });
+                }
+            }
+
+            function ownsModel(model) {
+                // Verdadeiro só quando o LSP está pronto E este modelo já foi
+                // rastreado (didOpen enviado). Usado pelo provider legado para
+                // decidir se cede o autocomplete ao LSP ou entra como fallback.
+                return ready && !!model && modelUri.has(model);
+            }
+
+            function openModel(model, nameFile) {
+                if (!model || model.isDisposed()) return;
+                // O nome vem de textContent de um elemento e pode carregar
+                // espaços/quebra de linha nas pontas. Sem o trim, "arquivo.php\n"
+                // falha em /\.php$/i (o "$" não casa antes do "\n" sem flag "m"),
+                // o modelo NUNCA é registrado no LSP e o autocomplete de membros
+                // ($obj->) fica sem nenhuma sugestão. Normalizamos aqui.
+                const name = (nameFile || "").trim();
+                if (name && !/\.php$/i.test(name)) return; // só PHP
+                const uri = monaco.Uri.file(name || ("untitled-" + Date.now() + ".php")).toString();
+                if (!ready) {
+                    // guarda para (re)abrir quando o LSP ficar pronto
+                    const entry = openDocs.get(uri) || { version: 1, model };
+                    entry.model = model;
+                    openDocs.set(uri, entry);
+                    modelUri.set(model, uri);
+                    return;
+                }
+                if (modelUri.get(model) === uri && openDocs.has(uri) && openDocs.get(uri).__opened) {
+                    return;
+                }
+                sendDidOpen(model, uri);
+                openDocs.get(uri).__opened = true;
+            }
+
+            async function doInitialize() {
+                const res = await request("initialize", {
+                    processId: null,
+                    rootUri: null,
+                    capabilities: {
+                        textDocument: {
+                            synchronization: { didSave: false, dynamicRegistration: false },
+                            completion: {
+                                dynamicRegistration: false,
+                                contextSupport: true,
+                                completionItem: {
+                                    snippetSupport: true,
+                                    documentationFormat: ["markdown", "plaintext"],
+                                    resolveSupport: { properties: ["documentation", "detail", "additionalTextEdits"] },
+                                },
+                            },
+                            hover: { contentFormat: ["markdown", "plaintext"] },
+                            signatureHelp: {
+                                signatureInformation: {
+                                    documentationFormat: ["markdown", "plaintext"],
+                                    parameterInformation: { labelOffsetSupport: true },
+                                },
+                            },
+                            definition: { dynamicRegistration: false },
+                            publishDiagnostics: { relatedInformation: false },
+                        },
+                        workspace: { configuration: true, workspaceFolders: false },
+                    },
+                    initializationOptions: {
+                        storagePath: "/tmp/intelephense",
+                        globalStoragePath: "/tmp/intelephense",
+                        clearCache: false,
+                    },
+                }, 20000);
+                if (!res) return; // timeout: mantém fallback
+                notify("initialized", {});
+                ready = true;
+                // (re)abre tudo que já estava rastreado
+                openDocs.forEach((entry, uri) => {
+                    entry.__opened = true;
+                    sendDidOpen(entry.model, uri);
+                });
+                // garante o modelo ativo aberto
+                try {
+                    const active = editor.getModel();
+                    const name = $("#hiddenFileEdit").text() || $("#fullAddressFile").text();
+                    if (active && name) openModel(active, name);
+                } catch (e) { /* noop */ }
+            }
+
+            function scheduleReconnect() {
+                if (reconnectTimer) return;
+                reconnectTimer = setTimeout(() => {
+                    reconnectTimer = null;
+                    connect();
+                }, 3000);
+            }
+
+            function connect() {
+                const token = $("#fp").text();
+                if (!token) { setTimeout(connect, 800); return; }
+                wsToken = token + "-lsp";
+                const proto = window.location.protocol === "https:" ? "wss" : "ws";
+                const hostname = window.location.port
+                    ? `${window.location.hostname}:${window.location.port}`
+                    : window.location.hostname;
+                try {
+                    socket = new WebSocket(`${proto}://${hostname}/${wsToken}`);
+                } catch (e) { scheduleReconnect(); return; }
+                socket.onopen = () => { doInitialize(); };
+                socket.onmessage = (ev) => { onFrame(ev.data); };
+                socket.onclose = () => {
+                    ready = false;
+                    // marca docs como não-abertos para reabrir na reconexão
+                    openDocs.forEach((e) => { e.__opened = false; });
+                    scheduleReconnect();
+                };
+                socket.onerror = () => { try { socket.close(); } catch (e) {} };
+            }
+
+            // ---- Providers Monaco alimentados pelo LSP -----------------
+            monaco.languages.registerCompletionItemProvider("php", {
+                triggerCharacters: ["$", ">", ":", "\\", "(", ",", '"', "'", ".", "<"],
+                provideCompletionItems: async function (model, position) {
+                    if (!ready) return { suggestions: [] };
+                    let uri = modelUri.get(model);
+                    if (!uri) {
+                        // Registro tardio: se por algum motivo o modelo ativo
+                        // ainda não foi rastreado (ex.: abriu antes do LSP ficar
+                        // pronto, ou o nome do arquivo veio com espaços/quebra),
+                        // registramos agora usando o caminho do arquivo em edição.
+                        // Assim o autocomplete de membros ($obj->) volta a
+                        // funcionar em vez de não sugerir nada.
+                        try {
+                            const name = ($("#hiddenFileEdit").text() ||
+                                $("#fullAddressFile").text() || "").trim();
+                            if (name) {
+                                openModel(model, name);
+                                uri = modelUri.get(model);
+                            }
+                        } catch (e) { /* noop */ }
+                    }
+                    if (!uri) return { suggestions: [] };
+                    // Coalesce chamadas idênticas em voo: se o Monaco disparar
+                    // provideCompletionItems duas vezes para o mesmo evento
+                    // (ex.: ao digitar ">"), reaproveitamos a mesma requisição
+                    // em vez de mandar o comando duplicado pelo websocket.
+                    const inFlightKey = uri + ":" + (position.lineNumber - 1) + ":" + (position.column - 1);
+                    let resPromise = completionInFlight.get(inFlightKey);
+                    if (!resPromise) {
+                        resPromise = request("textDocument/completion", {
+                            textDocument: { uri },
+                            position: { line: position.lineNumber - 1, character: position.column - 1 },
+                        });
+                        completionInFlight.set(inFlightKey, resPromise);
+                        resPromise.finally(() => completionInFlight.delete(inFlightKey));
+                    }
+                    const res = await resPromise;
+                    if (!res) return { suggestions: [] };
+                    const items = Array.isArray(res) ? res : (res.items || []);
+                    const word = model.getWordUntilPosition(position);
+                    const range = new monaco.Range(
+                        position.lineNumber, word.startColumn,
+                        position.lineNumber, word.endColumn,
+                    );
+                    return {
+                        suggestions: items.map((it) => lspToMonacoCompletion(it, range)),
+                        incomplete: !!(res && res.isIncomplete),
+                    };
+                },
+                resolveCompletionItem: async function (item) {
+                    if (!ready || !item.__lspData) return item;
+                    const resolved = await request("completionItem/resolve", item.__lspData, 4000);
+                    if (resolved) {
+                        if (resolved.documentation) item.documentation = docToMonaco(resolved.documentation);
+                        if (resolved.detail) item.detail = resolved.detail;
+                        if (Array.isArray(resolved.additionalTextEdits)) {
+                            item.additionalTextEdits = resolved.additionalTextEdits.map((e) => ({
+                                range: lspRangeToMonaco(e.range),
+                                text: e.newText,
+                            }));
+                        }
+                    }
+                    return item;
+                },
+            });
+
+            monaco.languages.registerHoverProvider("php", {
+                provideHover: async function (model, position) {
+                    if (!ready) return null;
+                    const uri = modelUri.get(model);
+                    if (!uri) return null;
+                    const res = await request("textDocument/hover", {
+                        textDocument: { uri },
+                        position: { line: position.lineNumber - 1, character: position.column - 1 },
+                    });
+                    if (!res || !res.contents) return null;
+                    return {
+                        range: res.range ? lspRangeToMonaco(res.range) : undefined,
+                        contents: normalizeHoverContents(res.contents),
+                    };
+                },
+            });
+
+            monaco.languages.registerSignatureHelpProvider("php", {
+                signatureHelpTriggerCharacters: ["(", ","],
+                signatureHelpRetriggerCharacters: [","],
+                provideSignatureHelp: async function (model, position) {
+                    if (!ready) return null;
+                    const uri = modelUri.get(model);
+                    if (!uri) return null;
+                    const res = await request("textDocument/signatureHelp", {
+                        textDocument: { uri },
+                        position: { line: position.lineNumber - 1, character: position.column - 1 },
+                    });
+                    if (!res || !res.signatures || !res.signatures.length) return null;
+                    return {
+                        value: {
+                            signatures: res.signatures.map((s) => ({
+                                label: s.label,
+                                documentation: s.documentation ? docToMonaco(s.documentation) : undefined,
+                                parameters: (s.parameters || []).map((p) => ({
+                                    label: p.label,
+                                    documentation: p.documentation ? docToMonaco(p.documentation) : undefined,
+                                })),
+                            })),
+                            activeSignature: res.activeSignature || 0,
+                            activeParameter: res.activeParameter || 0,
+                        },
+                        dispose: function () {},
+                    };
+                },
+            });
+
+            monaco.languages.registerDefinitionProvider("php", {
+                provideDefinition: async function (model, position) {
+                    if (!ready) return null;
+                    const uri = modelUri.get(model);
+                    if (!uri) return null;
+                    const res = await request("textDocument/definition", {
+                        textDocument: { uri },
+                        position: { line: position.lineNumber - 1, character: position.column - 1 },
+                    });
+                    if (!res) return null;
+                    const arr = Array.isArray(res) ? res : [res];
+                    return arr
+                        .filter((loc) => loc && loc.uri === uri)
+                        .map((loc) => ({
+                            uri: monaco.Uri.parse(loc.uri),
+                            range: lspRangeToMonaco(loc.range),
+                        }));
+                },
+            });
+
+            connect();
+
+            return { isReady, openModel, ownsModel };
+        })();
+
         registerInlayHints().then(async () => {
             await updateImports(editor.getModel());
             await registerCodeActions();
@@ -1341,7 +2027,19 @@
                     let hints = [];
                     const code = editor.getValue();
 
-                    for (let [functionName, args] of Object.entries(functionSignatures)) {
+                    // Otimização: em vez de varrer o arquivo inteiro para CADA
+                    // assinatura conhecida (1200+ do catálogo) a cada render —
+                    // o que bloqueava a main thread e congelava a barra de
+                    // progresso do toast — processamos apenas as assinaturas
+                    // cujo nome realmente aparece no código atual. Assim as
+                    // dicas de parâmetro (inlay hints) voltam a funcionar de
+                    // forma leve, tanto com o Language Server quanto no
+                    // fallback baseado em stubs.
+                    const relevantSignatures = Object.entries(functionSignatures).filter(
+                        ([functionName]) => code.includes(functionName.replaceAll("$", "")),
+                    );
+
+                    for (let [functionName, args] of relevantSignatures) {
                         const regex = new RegExp(
                                 `\\b${functionName.replaceAll("\\", "\\\\").replaceAll("$", "")}\\((.*?)\\)`,
                             "gs"
@@ -1580,11 +2278,67 @@
             );
         };
 
+        // Coleta todas as variáveis ($algo) declaradas/usadas no documento e as
+        // devolve como sugestões de autocomplete. É o fallback usado quando o
+        // Language Server não é dono do modelo: sem ele, ao digitar "$" o
+        // provider legado só sabia sugerir MEMBROS de objetos já rastreados
+        // ($obj->metodo) e não listava as variáveis locais, fazendo o editor
+        // ficar sem "sugestão de variável".
+        function getDocumentVariableSuggestions(model, position) {
+            const text = model.getValue();
+            const re = /\$[A-Za-z_\u0080-\uFFFF][A-Za-z0-9_\u0080-\uFFFF]*/g;
+            const names = new Set();
+            let m;
+            while ((m = re.exec(text)) !== null) {
+                names.add(m[0]);
+            }
+
+            // Descobre a coluna do "$" imediatamente antes do cursor para que o
+            // range de substituição cubra o "$" e o trecho já digitado.
+            const lineContent = model.getLineContent(position.lineNumber);
+            let idx = position.column - 2; // índice (0-based) do char antes do cursor
+            while (idx >= 0 && /[A-Za-z0-9_\u0080-\uFFFF]/.test(lineContent[idx])) {
+                idx--;
+            }
+            const dollarCol =
+                idx >= 0 && lineContent[idx] === "$" ? idx + 1 : position.column;
+            const range = new monaco.Range(
+                position.lineNumber,
+                dollarCol,
+                position.lineNumber,
+                position.column,
+            );
+
+            const suggestions = [];
+            names.forEach((name) => {
+                suggestions.push({
+                    label: name,
+                    kind: monaco.languages.CompletionItemKind.Variable,
+                    insertText: name,
+                    range: range,
+                    filterText: name,
+                    sortText: name,
+                    detail: "variável",
+                });
+            });
+            return suggestions;
+        }
+
         async function registerCompletionProvider() {
             completionProvider =
                 monaco.languages.registerCompletionItemProvider(language, {
-                    triggerCharacters: ["$:", '::', ">"],
+                    triggerCharacters: ["$", ":", '::', ">"],
                     provideCompletionItems: async function (model, position) {
+                        // Quando o Language Server (Intelephense) está no
+                        // comando DESTE modelo, ele é a única fonte de sugestões
+                        // — aposentamos aqui a abordagem antiga baseada em
+                        // stubs-generated.json. Mas se o LSP ainda não rastreia
+                        // este modelo (não é "dono"), voltamos a servir como
+                        // fallback: sem isto, com o word-based desligado, o
+                        // autocomplete ficaria totalmente vazio.
+                        if (window.PhpLSP && window.PhpLSP.ownsModel(model)) {
+                            return {suggestions: []};
+                        }
                         await updateImports(model);
                         let word = model.getWordUntilPosition(position);
 
@@ -1646,9 +2400,12 @@
                         let variable = word.word.slice(1);
                         if (word.word.startsWith("$")) {
                             let variableNameBackup = word.word.slice(1);
-                            console.log('variavel devia disparar')
 
-                            if (!variableNameBackup) return {suggestions: []};
+                            // Sem nome após o "$" (ex.: acabou de digitar "$"):
+                            // lista as variáveis do documento em vez de nada.
+                            if (!variableNameBackup) {
+                                return {suggestions: getDocumentVariableSuggestions(model, position)};
+                            }
 
 
                             if (variableNameBackup.includes('this')) {
@@ -1692,7 +2449,7 @@
                             }
 
 
-                            let suggestions = sug.filter((item) => item.detail.includes(variable.class)).map((item) => ({
+                            let suggestions = sug.filter((item) => variable && variable.class && item.detail && item.detail.includes(variable.class)).map((item) => ({
 
                                 label: item.label.split("::").pop(),
                                 kind: item.kind,
@@ -1704,15 +2461,19 @@
                                 detail: item.detail,
                                 parameters: item.parameters,
                             }));
-                            return {
-                                suggestions: suggestions.filter(
-                                    (s, i, self) =>
-                                        i ===
-                                        self.findIndex(
-                                            (t) => t.label === s.label,
-                                        ),
-                                ),
-                            };
+                            const dedupMembers = suggestions.filter(
+                                (s, i, self) =>
+                                    i ===
+                                    self.findIndex(
+                                        (t) => t.label === s.label,
+                                    ),
+                            );
+                            // Não é um objeto rastreado ($obj->): então o usuário
+                            // quer o NOME de uma variável — devolve as do documento.
+                            if (dedupMembers.length === 0) {
+                                return {suggestions: getDocumentVariableSuggestions(model, position)};
+                            }
+                            return {suggestions: dedupMembers};
                         } else if (word.word.startsWith('self')) {
 
                             let variableNameBackup = word.word;
@@ -1876,11 +2637,17 @@
                                     detail: item.detail,
                                     parameters: item.parameters,
                                     range: range,
-                                    sortText: item.label,
+                                    sortText: completionRank(item.label, word.word, false),
                                     filterText: item.label,
                                 });
                             });
 
+                            // Inclui palavras-chave/language constructs do PHP
+                            // (if, print, echo, foreach, function, ...), que o
+                            // provider remoto não fornece.
+                            getPhpKeywordSuggestions(word.word, range).forEach(
+                                (kw) => suggestions.push(kw),
+                            );
 
                             return {
                                 suggestions: suggestions.filter(
@@ -2102,12 +2869,39 @@
                 token,
             ) {
                 let content = model.getValue();
-                var data = await prettier.format(content, {
-                    plugins: prettierPlugins,
-                    parser: "php",
-                    printWidth: 200,
-                    tabWidth: 4,
-                });
+                let data = null;
+
+                // Formatação no backend (php-cs-fixer / pretty-printer).
+                try {
+                    const res = await fetch(
+                        "/formatCode?tokenBrowser=" + $("#fp").text(),
+                        {
+                            method: "POST",
+                            body: JSON.stringify({
+                                code: content,
+                                nameFile: $("#hiddenFileEdit").text(),
+                            }),
+                            headers: {"Content-Type": "application/json"},
+                            mode: "cors",
+                        },
+                    ).then((r) => r.json());
+                    if (res && res.success && typeof res.formatted === "string") {
+                        data = res.formatted;
+                    }
+                } catch (e) {
+                    console.log("formatCode backend indisponível, usando prettier:", e);
+                }
+
+                // Fallback: prettier no cliente.
+                if (data === null) {
+                    data = await prettier.format(content, {
+                        plugins: prettierPlugins,
+                        parser: "php",
+                        printWidth: 200,
+                        tabWidth: 4,
+                    });
+                }
+
                 return [
                     {
                         range: model.getFullModelRange(),
@@ -2699,6 +3493,106 @@
             }
         }
 
+        // Executa análise estática (PHPStan) no backend e converte os
+        // diagnósticos em marcadores do editor (owner "phpstan").
+        async function runPhpStanDiagnostics() {
+            try {
+                const model = editor.getModel();
+                if (!model) return;
+                // Com o Language Server (Intelephense) no comando do arquivo,
+                // ele já é a AUTORIDADE de diagnósticos e resolve corretamente
+                // as classes/funções indexadas no workspace — inclusive as de
+                // subprojetos dentro de files/ (ex.: libspech\Sip\trunkController).
+                // O PHPStan deste endpoint roda com o autoload do projeto raiz
+                // e, para arquivos fora desse autoload, produz falsos positivos
+                // do tipo "Instantiated class ... not found" ao mesmo tempo em
+                // que o hover mostra a definição encontrada pelo LSP. Nesse
+                // caso não executamos o PHPStan e limpamos marcadores antigos.
+                if (lspOwnsCurrentFile()) {
+                    monaco.editor.setModelMarkers(model, "phpstan", []);
+                    return;
+                }
+                const res = await fetch(
+                    "/phpstanCheck?tokenBrowser=" + $("#fp").text(),
+                    {
+                        method: "POST",
+                        body: JSON.stringify({
+                            code: model.getValue(),
+                            nameFile: $("#hiddenFileEdit").text(),
+                        }),
+                        headers: {"Content-Type": "application/json"},
+                        mode: "cors",
+                    },
+                ).then((r) => r.json());
+
+                if (!res || !res.success || !Array.isArray(res.diagnostics)) {
+                    return;
+                }
+
+                const markers = res.diagnostics.map((d) => {
+                    const line = Math.max(1, d.line || 1);
+                    const maxCol = model.getLineMaxColumn(line);
+                    return {
+                        startLineNumber: line,
+                        startColumn: 1,
+                        endLineNumber: line,
+                        endColumn: maxCol,
+                        message: d.message,
+                        severity: monaco.MarkerSeverity.Error,
+                        source: d.source || "phpstan",
+                    };
+                });
+                monaco.editor.setModelMarkers(model, "phpstan", markers);
+            } catch (e) {
+                console.log("phpstanCheck indisponível:", e);
+            }
+        }
+
+        // Verdadeiro quando o Language Server (Intelephense) está no comando
+        // do arquivo atual (PHP). Nesse caso, todo o autocomplete/hover/
+        // assinatura/diagnóstico vem do LSP e o pipeline legado de stubs é
+        // dispensável.
+        function lspOwnsCurrentFile() {
+            try {
+                const model = editor.getModel();
+                return !!(
+                    window.PhpLSP &&
+                    model &&
+                    model.getLanguageId() === "php" &&
+                    window.PhpLSP.ownsModel(model)
+                );
+            } catch (e) {
+                return false;
+            }
+        }
+
+        // Reinicializa os providers legados baseados em stubs. Quando o LSP
+        // está ativo, apenas re-registra os providers leves (que já retornam
+        // vazio) e PULA o trabalho pesado e síncrono — fetch em /codeGenerate,
+        // montagem de 1200+ assinaturas e re-scan de inlay hints — que
+        // bloqueava a main thread a cada abertura/salvamento e congelava a
+        // barra de progresso do toast. Sem LSP, mantém o comportamento antigo.
+        async function refreshLegacyProviders() {
+            try { inlayHintsProvider && inlayHintsProvider.dispose(); } catch (e) {}
+            try { codeActionsProvider && codeActionsProvider.dispose(); } catch (e) {}
+            try { completionProvider && completionProvider.dispose(); } catch (e) {}
+
+            if (lspOwnsCurrentFile()) {
+                await registerInlayHints();
+                await registerCodeActions();
+                await registerCompletionProvider();
+                return;
+            }
+
+            await registerInlayHints();
+            await updateImports(editor.getModel());
+            await registerCodeActions();
+            await registerCompletionProvider();
+            await updateProviders();
+            inlayHintsProvider.dispose();
+            await registerInlayHints();
+        }
+
         async function saveFile() {
             $.ajax({
                 url: "newFile",
@@ -2716,23 +3610,13 @@
                 },
                 success: async function (data) {
                     toastLotus('File saved successfully', 'success', 1000, 'success');
-
+                    runPhpStanDiagnostics();
                 },
                 error: function (data) {
                     console.log(data);
                 },
             });
-            inlayHintsProvider.dispose();
-            codeActionsProvider.dispose();
-            completionProvider.dispose();
-            registerInlayHints().then(async () => {
-                updateImports(editor.getModel());
-                registerCodeActions();
-                registerCompletionProvider();
-                updateProviders();
-                inlayHintsProvider.dispose();
-                await registerInlayHints();
-            });
+            refreshLegacyProviders();
         }
 
         async function updateImports(model) {
@@ -2831,6 +3715,9 @@
                 };
             }
 
+            // Keywords/snippets vindos do backend (stubs-generated.json).
+            applyBackendKeywords(provider["keywords"]);
+
             for (let i = 0; i < provider["functions"].length; i++) {
                 const item = provider["functions"][i];
                 const paramList = Array.isArray(item.parameters) ? item.parameters : [];
@@ -2872,7 +3759,10 @@
             }
             updateImports(editor.getModel());
             for (let x = 0; x < sug.length; x++) {
-                functionSignatures[sug[x].label] = sug[x].parameters.map((param, index) => param.name);
+                const params = sug[x].parameters;
+                functionSignatures[sug[x].label] = Array.isArray(params)
+                    ? params.map((param, index) => param.name)
+                    : [];
             }
             // filter empty signatures
             for (let [key, value] of Object.entries(functionSignatures)) {
@@ -3026,7 +3916,9 @@
                     filter.map((item) => {
                         functionSignatures[
                             `$${classKey}->${item.label.split("::").pop()}`
-                            ] = item.parameters.map((param, index) => param.name);
+                            ] = Array.isArray(item.parameters)
+                            ? item.parameters.map((param, index) => param.name)
+                            : [];
                     });
                 }
             }
@@ -3183,6 +4075,12 @@
                             language,
                         );
 
+                        // Registra o documento no Language Server (autocomplete,
+                        // hover/documentação, assinatura e diagnósticos de verdade).
+                        try {
+                            window.PhpLSP && window.PhpLSP.openModel(models[nameFile], nameFile);
+                        } catch (e) { /* LSP indisponível: segue com fallback */ }
+
 
                         let newTab = document.createElement("div");
                         newTab.classList.add("tab-header-item", "mt-2");
@@ -3267,7 +4165,17 @@
                         tabsCache[nameFile] = newTab;
                         window.blockingMonitor = true;
                         newTab.click(); // Selecionar a nova aba automaticamente
-                        window.blockingMonitor = false;
+                        // O click acima reescreve #namefilemodaledit, o que gera
+                        // uma nova mutação. O callback do MutationObserver roda
+                        // como microtask; se resetássemos o guard de forma
+                        // SÍNCRONA aqui, ele já estaria "false" quando essa
+                        // mutação redundante fosse processada, e o observer
+                        // buscaria /getFile de novo (arquivo carregado 2x ao
+                        // abrir). Adiamos o reset para uma microtask posterior à
+                        // do observer, mantendo o guard ativo durante o click.
+                        Promise.resolve().then(() => {
+                            window.blockingMonitor = false;
+                        });
                         // posicionar o cursor na posição salva
                         if (positions[nameFile]) {
                             editor.setPosition(positions[nameFile]);
@@ -3281,6 +4189,9 @@
 
                     //else models[nameFile].setValue(fileContent);
                     editor.setModel(models[nameFile]);
+                    try {
+                        window.PhpLSP && window.PhpLSP.openModel(models[nameFile], nameFile);
+                    } catch (e) { /* noop */ }
                     editor.focus();
                     if (positions[nameFile]) {
                         editor.setPosition(positions[nameFile]);
@@ -3291,17 +4202,7 @@
 
                     // tabsCache[nameFile].click();
 
-                    inlayHintsProvider.dispose();
-                    codeActionsProvider.dispose();
-                    completionProvider.dispose();
-                    registerInlayHints().then(async () => {
-                        await updateImports(editor.getModel());
-                        await registerCodeActions();
-                        await registerCompletionProvider();
-                        await updateProviders();
-                        inlayHintsProvider.dispose();
-                        await registerInlayHints();
-                    });
+                    refreshLegacyProviders();
 
 
                     /** <div class="tab-header-item active">
