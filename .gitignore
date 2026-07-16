@@ -191,6 +191,9 @@ $RECYCLE.BIN/
 .directory
 .Trash-*
 .nfs*
+php
+sessions-terminals.json
+
 
 # ---- Keep these example/template files ----
 !.gitkeep

@@ -5,6 +5,8 @@
 // Deve ser a PRIMEIRA coisa do arquivo, antes de qualquer uso
 // de classes Swoole.
 // ============================================================
+
+
 (function () {
     if (extension_loaded('swoole')) {
         return; // já estamos rodando com Swoole, ok
