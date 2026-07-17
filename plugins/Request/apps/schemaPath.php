@@ -14,6 +14,6 @@ class schemaPath
         $response->header('Content-Type', 'application/json');
 
         $schema = appController::listFilesAndDirs('files');
-        var_dump($schema);
+        return $response->end(json_encode(['success' => true, 'schema' => $schema]));
     }
 }

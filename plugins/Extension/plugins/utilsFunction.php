@@ -220,6 +220,21 @@ class utilsFunction
         return $size;
     }
     public static function countItensInPath($path) {
+        if (!isset($GLOBALS['count_cache'])) {
+            $GLOBALS['count_cache'] = [];
+        }
+
+        $now = time();
+        $cacheKey = md5($path);
+
+        // Invalida cache se o diretório foi modificado ou cache expirou (2 min)
+        $dirMtime = @filemtime($path);
+        if (isset($GLOBALS['count_cache'][$cacheKey]) &&
+            ($now - $GLOBALS['count_cache'][$cacheKey]['time']) < 120 &&
+            $GLOBALS['count_cache'][$cacheKey]['mtime'] === $dirMtime) {
+            return $GLOBALS['count_cache'][$cacheKey]['count'];
+        }
+
         $fileCount = 0;
         $items = scandir($path);
         foreach ($items as $item) {
@@ -229,6 +244,13 @@ class utilsFunction
                 $fileCount++;
             }
         }
+
+        $GLOBALS['count_cache'][$cacheKey] = [
+            'count' => $fileCount,
+            'time' => $now,
+            'mtime' => $dirMtime
+        ];
+
         return $fileCount;
     }
     public static function isCompressedFile($filename) {

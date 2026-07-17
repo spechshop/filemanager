@@ -118,6 +118,21 @@ class appController
     {
         if ($dir == '') $dir = '/';
         if (!is_dir($dir)) return [];
+
+        if (!isset($GLOBALS['list_cache'])) {
+            $GLOBALS['list_cache'] = [];
+        }
+
+        $now = time();
+        $cacheKey = md5($dir);
+        $dirMtime = @filemtime($dir);
+
+        if (isset($GLOBALS['list_cache'][$cacheKey]) &&
+            ($now - $GLOBALS['list_cache'][$cacheKey]['time']) < 120 &&
+            $GLOBALS['list_cache'][$cacheKey]['mtime'] === $dirMtime) {
+            return $GLOBALS['list_cache'][$cacheKey]['list'];
+        }
+
         $items = scandir($dir);
         $filesAndDirs = [];
         foreach ($items as $item) {
@@ -126,6 +141,12 @@ class appController
             $fullPath = str_replace('//', '/', $fullPath);
             if (is_file($fullPath) || (is_dir($fullPath) && !is_link($fullPath))) $filesAndDirs[] = $fullPath;
         }
+
+        $GLOBALS['list_cache'][$cacheKey] = [
+            'list' => $filesAndDirs,
+            'time' => $now,
+            'mtime' => $dirMtime
+        ];
 
         return $filesAndDirs;
     }

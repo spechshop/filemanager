@@ -2,9 +2,6 @@
 
 namespace plugins\Request;
 
-use plugins\Extension\utilsFunction;
-use plugins\Start\cache;
-use Swoole\Coroutine;
 use Swoole\Http\Request;
 use Swoole\Http\Response;
 
@@ -15,12 +12,8 @@ class treeDetails
         if (!security::verifyToken($request)) return security::invalidToken($response);
         $_GET = $request->get;
         $_POST = $request->post;
-        $dir = isset($params['dir']) ? urldecode($params['dir']) : '/';
 
-
-        $path = $_GET['dir'];
-        var_dump($path, $_GET);
-
+        $path = isset($_GET['dir']) ? $_GET['dir'] : '/';
 
         if (is_dir($path)) {
             $tree = self::getDirTree($path);
