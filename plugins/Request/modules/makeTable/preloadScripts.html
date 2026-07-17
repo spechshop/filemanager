@@ -153,6 +153,9 @@
     }
 
     function setItemsInTbody(items, tbodyId) {
+        if (items && Array.isArray(items)) {
+            window.currentFileItems = [...items];
+        }
         const iconMap = {
             'cfg': 'cfg.png',
             'folder': 'pasta-aberta.png',
@@ -319,6 +322,80 @@
             if (container) container.style.display = 'none';
         }
     }
+
+    // Funções para sortable na tabela de arquivos
+    window.parseSizeToBytes = function(sizeStr) {
+        if (!sizeStr) return 0;
+        const match = sizeStr.match(/([\d.,]+)\s*([A-Za-z]+)/);
+        if (!match) return 0;
+        let num = parseFloat(match[1].replace(',', '.'));
+        const unit = match[2].toUpperCase();
+        const multipliers = {
+            'B': 1,
+            'KB': 1024,
+            'MB': 1024 * 1024,
+            'GB': 1024 * 1024 * 1024,
+            'TB': 1024 * 1024 * 1024 * 1024
+        };
+        return num * (multipliers[unit] || 1);
+    };
+
+    window.parseDateToTimestamp = function(dateStr) {
+        if (!dateStr) return 0;
+        const parts = dateStr.match(/(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2}):(\d{2})/);
+        if (!parts) return 0;
+        const [_, d, m, y, h, min, s] = parts;
+        return new Date(y, m - 1, d, h, min, s).getTime();
+    };
+
+    window.currentSortState = { column: null, direction: 'asc' };
+
+    window.sortFileTable = function(column, direction = null) {
+        if (!window.currentFileItems || !Array.isArray(window.currentFileItems)) {
+            console.warn('Nenhum dado de arquivos para ordenar');
+            return;
+        }
+        let asc;
+        if (direction !== null) {
+            asc = direction === 'asc';
+        } else {
+            if (window.currentSortState && window.currentSortState.column === column) {
+                asc = !(window.currentSortState.direction === 'asc');
+            } else {
+                asc = true;
+            }
+        }
+        window.currentSortState = { column: column, direction: asc ? 'asc' : 'desc' };
+        const sortedItems = [...window.currentFileItems].sort((a, b) => {
+            let valA, valB;
+            let compareResult = 0;
+            if (column === 'name') {
+                valA = a.name || '';
+                valB = b.name || '';
+                compareResult = valA.localeCompare(valB, 'pt', {sensitivity: 'base'});
+            } else if (column === 'size') {
+                valA = window.parseSizeToBytes(a.size);
+                valB = window.parseSizeToBytes(b.size);
+                compareResult = valA - valB;
+            } else if (column === 'lastModified') {
+                valA = window.parseDateToTimestamp(a.lastModified);
+                valB = window.parseDateToTimestamp(b.lastModified);
+                compareResult = valA - valB;
+            } else if (column === 'type') {
+                valA = (a.typeFile === 'folder' ? 'Pasta' : (a.typeFile || '').toUpperCase());
+                valB = (b.typeFile === 'folder' ? 'Pasta' : (b.typeFile || '').toUpperCase());
+                compareResult = valA.localeCompare(valB, 'pt', {sensitivity: 'base'});
+            } else if (column === 'permissions') {
+                valA = a.permissions || '';
+                valB = b.permissions || '';
+                compareResult = valA.localeCompare(valB);
+            } else {
+                return 0;
+            }
+            return asc ? compareResult : -compareResult;
+        });
+        setItemsInTbody(sortedItems, 'filesList');
+    };
 
     async function renameItem(path) {
         var splp = path;

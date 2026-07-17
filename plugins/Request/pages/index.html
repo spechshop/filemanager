@@ -448,11 +448,11 @@ max-height: calc(-2px + 57vh);"></div>
                         <th style="width: 30px;"><input type="checkbox" class="form-check-input"
                                                         onclick="toglleAllItens()">
                         </th>
-                        <th>Nome</th>
-                        <th>Tamanho</th>
-                        <th>Modificado</th>
-                        <th>Tipo</th>
-                        <th>Permissão</th>
+                        <th style="cursor: pointer;" onclick="window.sortFileTable('name')" title="Clique para ordenar por Nome">Nome</th>
+                        <th style="cursor: pointer;" onclick="window.sortFileTable('size')" title="Clique para ordenar por Tamanho">Tamanho</th>
+                        <th style="cursor: pointer;" onclick="window.sortFileTable('lastModified')" title="Clique para ordenar por Modificado">Modificado</th>
+                        <th style="cursor: pointer;" onclick="window.sortFileTable('type')" title="Clique para ordenar por Tipo">Tipo</th>
+                        <th style="cursor: pointer;" onclick="window.sortFileTable('permissions')" title="Clique para ordenar por Permissão">Permissão</th>
                         <th>Ações</th>
                     </tr>
                     </thead>
