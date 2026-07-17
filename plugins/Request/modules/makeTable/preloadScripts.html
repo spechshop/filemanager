@@ -3,6 +3,7 @@
 
 <script>
     window.allImagePaths = [];
+    window.fileList = [];
     bootstrap = !bootstrap ? {} : bootstrap;
     bootstrap.showToast = !bootstrap.showToast ? function (parameters = {
         header: '',
@@ -216,7 +217,7 @@
 
         const tbody = document.getElementById(tbodyId);
         tbody.innerHTML = '';
-        var fileList;
+        let fileList;
         try {
             fileList = items.map(item => item.path); // Armazena os caminhos dos arquivos para navegação
         } catch (error) {
@@ -228,6 +229,8 @@
             const ext = item.split('.').pop().toLowerCase();
             return isImageExtension(ext) || ['mp4', 'webm', 'ogg', 'mp3', 'wav'].includes(ext);
         });
+
+        window.fileList = fileList; // expõe globalmente para showImage() e navegação dinâmica
 
 
         items.forEach(item => {
@@ -692,7 +695,8 @@
         const token = $('#fp').text();
         const ext = path.split('.').pop().toLowerCase();
         const url = `imageBase64?tokenBrowser=${token}&path=${path}`;
-        const currentIndex = fileList.indexOf(path);
+        const mediaFileList = Array.isArray(window.fileList) ? window.fileList : [];
+        const currentIndex = mediaFileList.indexOf(path);
 
         const viewer = document.getElementById('customImageViewer');
         const modalMedia = document.getElementById('modalMedia');
@@ -731,7 +735,7 @@
 
 
         const thumb = (idx) => {
-            const file = fileList[idx];
+            const file = mediaFileList[idx];
             if (!file) return '';
             let thumbUrl = `imageBase64?tokenBrowser=${token}&path=${file}`;
             let fll = getFilename(file).split('.')[getFilename(file).split('.').length-1].toLowerCase();
@@ -765,7 +769,7 @@
 
         viewer.style.display = 'block';
 
-        window.__fileList = fileList;
+        window.__fileList = mediaFileList;
         window.__currentIndex = currentIndex;
 
         toggleArrowButtons();
@@ -778,20 +782,29 @@
     }
 
     function navPrev() {
-        if (window.__currentIndex > 0) {
+        if (Array.isArray(window.__fileList) && window.__currentIndex > 0) {
             showImage(window.__fileList[window.__currentIndex - 1]);
         }
     }
 
     function navNext() {
-        if (window.__currentIndex < window.__fileList.length - 1) {
+        if (Array.isArray(window.__fileList)
+            && window.__currentIndex >= 0
+            && window.__currentIndex < window.__fileList.length - 1) {
             showImage(window.__fileList[window.__currentIndex + 1]);
         }
     }
 
     function toggleArrowButtons() {
-        //document.getElementById('leftArrow').style.display = window.__currentIndex > 0 ? 'block' : 'none';
-        //document.getElementById('rightArrow').style.display = window.__currentIndex < window.__fileList.length - 1 ? 'block' : 'none';
+        const hasMediaList = Array.isArray(window.__fileList);
+        const canNavigate = hasMediaList && window.__currentIndex >= 0;
+        const leftArrow = document.getElementById('leftArrow');
+        const rightArrow = document.getElementById('rightArrow');
+
+        leftArrow.disabled = !canNavigate || window.__currentIndex === 0;
+        rightArrow.disabled = !canNavigate || window.__currentIndex === window.__fileList.length - 1;
+        leftArrow.style.opacity = leftArrow.disabled ? '0.4' : '1';
+        rightArrow.style.opacity = rightArrow.disabled ? '0.4' : '1';
     }
 
     function closeImageViewer() {
