@@ -84,6 +84,33 @@ function saveTerminalsToFile(array $ids): void
     }
 }
 
+/**
+ * Mantém o shell do fallback alinhado ao runtime instalado pelo diagnóstico.
+ * O diretório pode ainda não existir quando o PTY inicia; deixá-lo no PATH
+ * permite que novos comandos o encontrem assim que o reparo for concluído.
+ */
+function terminalEnvironment(): array
+{
+    $env = getenv();
+    if (!is_array($env)) {
+        $env = [];
+    }
+
+    $preferredBins = [
+        __DIR__ . '/.runtime/node/bin',
+        __DIR__ . '/.runtime/codex/bin',
+    ];
+    $inheritedPath = isset($env['PATH']) ? (string) $env['PATH'] : '';
+    $pathEntries = array_merge($preferredBins, explode(PATH_SEPARATOR, $inheritedPath));
+    $pathEntries = array_values(array_unique(array_filter(
+        $pathEntries,
+        static fn(string $entry): bool => $entry !== ''
+    )));
+    $env['PATH'] = implode(PATH_SEPARATOR, $pathEntries);
+
+    return $env;
+}
+
 // ---------------------------------------------------------------------
 // Criação / retomada de terminais
 // ---------------------------------------------------------------------
@@ -93,11 +120,8 @@ function createNewTerminal(Server $server, string $token): bool
 
     $descriptorspec = [['pty'], ['pty'], ['pty']];
 
-    // Herdar o ambiente atual e ajustar TERM/COLUMNS/LINES.
-    $env = getenv();
-    if (!is_array($env)) {
-        $env = [];
-    }
+    // Herdar o ambiente atual e ajustar o runtime/TERM/COLUMNS/LINES.
+    $env = terminalEnvironment();
     $env['TERM']    = 'xterm-color';
     $env['COLUMNS'] = (string) DEFAULT_COLS;
     $env['LINES']   = (string) DEFAULT_ROWS;

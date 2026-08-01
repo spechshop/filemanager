@@ -256,6 +256,8 @@
         const navButtons = modal.querySelectorAll('[data-settings-pane]');
         let serviceStatusInterval = null;
         let diagnosticStatusInterval = null;
+        let restartPtyAfterRepair = false;
+        let ptyRepairRestartRunning = false;
         let activePaneId = 'settingsSystemPane';
         let codexModels = [];
         let codexModelsLoading = false;
@@ -467,7 +469,62 @@
             repairLog.textContent = repair.log || '';
             repairLog.classList.toggle('d-none', !repair.log);
             if (running) startDiagnosticPolling();
-            else stopDiagnosticPolling();
+            else {
+                stopDiagnosticPolling();
+                if (state === 'success' && restartPtyAfterRepair) {
+                    restartPtyForUpdatedRuntime();
+                }
+            }
+        }
+
+        async function restartPtyForUpdatedRuntime() {
+            if (ptyRepairRestartRunning) return;
+            ptyRepairRestartRunning = true;
+            restartPtyAfterRepair = false;
+            try {
+                const statusResponse = await fetch(
+                    `/fileManagerServices?tokenBrowser=${encodeURIComponent(tokenBrowser())}`
+                );
+                const statusData = await statusResponse.json();
+                if (!statusResponse.ok || !statusData.success) {
+                    throw new Error(statusData.message || 'Não foi possível consultar o Terminal PTY.');
+                }
+                const ptyService = Array.isArray(statusData.services)
+                    ? statusData.services.find(service => service.id === 'pty')
+                    : null;
+                if (!ptyService?.running) return;
+
+                repairStatus.className = 'small mt-3 text-info';
+                repairStatus.textContent = 'Runtime atualizado. Reiniciando o Terminal PTY...';
+                const body = new URLSearchParams({
+                    tokenBrowser: tokenBrowser(),
+                    service: 'pty',
+                    action: 'restart'
+                });
+                const response = await fetch('/fileManagerServices', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'},
+                    body: body.toString()
+                });
+                const data = await response.json();
+                if (Array.isArray(data.services)) renderServices(data.services);
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Não foi possível reiniciar o Terminal PTY.');
+                }
+                repairStatus.className = 'small mt-3 text-success';
+                repairStatus.textContent = 'Node.js, dependências e Codex CLI estão prontos. Terminal PTY reiniciado.';
+                bootstrap.showToast({
+                    header: 'Diagnóstico',
+                    body: 'Reparo concluído e Terminal PTY atualizado.',
+                    toastClass: 'bg-success text-white',
+                    colorHeader: 'text-white'
+                });
+            } catch (error) {
+                repairStatus.className = 'small mt-3 text-warning';
+                repairStatus.textContent = `O reparo terminou, mas o Terminal PTY não reiniciou: ${error.message}`;
+            } finally {
+                ptyRepairRestartRunning = false;
+            }
         }
 
         function renderDiagnostics(data) {
@@ -536,7 +593,7 @@
         async function installCodex() {
             const confirmation = await Swal.fire({
                 title: 'Reparar ambiente do Codex?',
-                text: 'O processo pode baixar o Node.js 22, reinstalar dependências npm e atualizar o Codex CLI.',
+                text: 'O processo pode baixar o Node.js 22, reinstalar dependências npm e atualizar o Codex CLI. Ao concluir, o Terminal PTY em execução será reiniciado e as sessões abertas serão desconectadas.',
                 icon: 'question',
                 showCancelButton: true,
                 confirmButtonText: 'Reparar e instalar',
@@ -558,10 +615,12 @@
                     body: body.toString()
                 });
                 const data = await response.json();
-                if (data.repair) renderRepair(data.repair);
                 if (!response.ok || !data.success) {
+                    if (data.repair) renderRepair(data.repair);
                     throw new Error(data.message || 'Não foi possível iniciar o instalador.');
                 }
+                restartPtyAfterRepair = true;
+                if (data.repair) renderRepair(data.repair);
                 startDiagnosticPolling();
                 bootstrap.showToast({
                     header: 'Diagnóstico',

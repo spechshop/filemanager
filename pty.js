@@ -21,6 +21,27 @@ if (!fs.existsSync(filesDir)) {
     console.log('Directory "files" created.');
 }
 
+/**
+ * O runtime instalado pelo diagnóstico é isolado em .runtime e, por isso,
+ * não altera o PATH do processo PHP que iniciou este serviço. Sem este
+ * ajuste o pty.js roda com o Node gerenciado, mas o shell aberto por ele pode
+ * continuar encontrando uma versão antiga do Node instalada no sistema.
+ */
+function terminalEnvironment() {
+    const env = {...process.env};
+    const pathKey = Object.keys(env).find(key => key.toLowerCase() === 'path') || 'PATH';
+    const inheritedPath = String(env[pathKey] || '');
+    const preferredBins = [
+        path.join(__dirname, '.runtime', 'node', 'bin'),
+        path.join(__dirname, '.runtime', 'codex', 'bin'),
+    ];
+    const entries = [...preferredBins, ...inheritedPath.split(path.delimiter)]
+        .filter((entry, index, all) => entry && all.indexOf(entry) === index);
+
+    env[pathKey] = entries.join(path.delimiter);
+    return env;
+}
+
 function loadTerminalsFromFile() {
     if (fs.existsSync(TERMINALS_FILE)) {
         try {
@@ -128,7 +149,7 @@ function createNewTerminal(userToken) {
         cols: 220,
         rows: 30,
         cwd: filesDir,
-        env: process.env,
+        env: terminalEnvironment(),
     });
     terminals.set(userToken, ptyProcess);
     termcw[userToken] = 0;

@@ -224,6 +224,9 @@ If Node.js, npm dependencies, or the Codex CLI are missing or incompatible, open
 **Configurações > Diagnóstico** and select **Reparar e instalar**. Installation
 runs in the background and its progress log is shown in the same panel.
 The same repair can be run from a terminal with `bash scripts/install-codex.sh`.
+Terminals created by either PTY backend put the managed Node.js and Codex runtime
+first in `PATH`, so they use the versions prepared by this repair without changing
+the server's global Node.js installation.
 
 The permission selector below the Codex Agent composer is remembered in the browser:
 `Apenas leitura` uses a read-only sandbox, `Agente` can write only inside the current
