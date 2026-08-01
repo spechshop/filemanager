@@ -115,7 +115,7 @@ class fileManagerServices
         $statuses = [];
         foreach (self::SERVICES as $id => $definition) {
             [$available, $reason] = self::availability($id);
-            $statuses[] = [
+            $status = [
                 'id' => $id,
                 'name' => $definition['name'],
                 'description' => $definition['description'],
@@ -125,6 +125,13 @@ class fileManagerServices
                 'available' => $available,
                 'unavailableReason' => $reason,
             ];
+            if ($id === 'pty') {
+                $backend = fileManagerConfig::ptyBackend($config);
+                $status['backend'] = $backend;
+                $status['backendLabel'] = self::ptyBackendLabel($backend);
+                $status['activeBackend'] = self::activePtyBackend();
+            }
+            $statuses[] = $status;
         }
 
         return $statuses;
@@ -136,10 +143,19 @@ class fileManagerServices
         $node = self::nodeBinary();
 
         if ($service === 'pty') {
-            $nodePty = $node !== null
-                && is_dir($root . '/node_modules/node-pty')
-                && self::nodeCanRequire($node, ['node-pty']);
+            $backend = self::configuredPtyBackend();
+            $nodePty = self::ptyNodeBinary() !== null;
             $phpFallback = file_exists($root . '/pty.php') && extension_loaded('swoole');
+            if ($backend === 'node') {
+                return $nodePty
+                    ? [true, null]
+                    : [false, 'Node.js foi selecionado, mas nenhum runtime consegue carregar node-pty.'];
+            }
+            if ($backend === 'php') {
+                return $phpFallback
+                    ? [true, null]
+                    : [false, 'PHP foi selecionado, mas pty.php ou a extensão Swoole não está disponível.'];
+            }
             return ($nodePty || $phpFallback)
                 ? [true, null]
                 : [false, 'node-pty e o fallback PHP/Swoole não estão disponíveis.'];
@@ -256,11 +272,21 @@ class fileManagerServices
         $node = self::nodeBinary();
 
         if ($service === 'pty') {
-            if ($node !== null && is_dir($root . '/node_modules/node-pty')
-                && self::nodeCanRequire($node, ['node-pty'])) {
-                return [$node, $root . '/pty.js'];
+            $backend = self::configuredPtyBackend();
+            if ($backend !== 'php') {
+                $ptyNode = self::ptyNodeBinary();
+                if ($ptyNode !== null) {
+                    return [$ptyNode, $root . '/pty.js'];
+                }
             }
-            return [PHP_BINARY, $root . '/pty.php'];
+            if ($backend !== 'node' && file_exists($root . '/pty.php') && extension_loaded('swoole')) {
+                return [PHP_BINARY, $root . '/pty.php'];
+            }
+            throw new \RuntimeException(
+                $backend === 'node'
+                    ? 'O backend Node.js foi selecionado, mas node-pty não pode ser carregado.'
+                    : 'O backend PHP/Swoole foi selecionado, mas não está disponível.'
+            );
         }
 
         if ($node === null) {
@@ -402,6 +428,63 @@ class fileManagerServices
         } while (microtime(true) < $deadline);
 
         return self::portAlive($port) === $expected;
+    }
+
+    private static function configuredPtyBackend(): string
+    {
+        try {
+            return fileManagerConfig::ptyBackend(fileManagerConfig::read());
+        } catch (\Throwable) {
+            return 'auto';
+        }
+    }
+
+    private static function ptyBackendLabel(string $backend): string
+    {
+        return match ($backend) {
+            'node' => 'Node.js (node-pty)',
+            'php' => 'PHP/Swoole',
+            default => 'Automático',
+        };
+    }
+
+    private static function ptyNodeBinary(): ?string
+    {
+        $root = self::root();
+        if (!is_dir($root . '/node_modules/node-pty') || !file_exists($root . '/pty.js')) {
+            return null;
+        }
+
+        $managed = $root . '/.runtime/node/bin/node';
+        $system = trim((string) shell_exec('command -v node 2>/dev/null'));
+        $candidates = array_values(array_unique(array_filter([
+            is_file($managed) && is_executable($managed) ? $managed : null,
+            $system !== '' ? $system : null,
+        ])));
+        foreach ($candidates as $candidate) {
+            if (self::nodeCanRequire($candidate, ['node-pty'])) {
+                return $candidate;
+            }
+        }
+        return null;
+    }
+
+    private static function activePtyBackend(): ?string
+    {
+        foreach (self::serviceProcessIds('pty') as $pid) {
+            $cmdline = @file_get_contents("/proc/$pid/cmdline");
+            if (!is_string($cmdline)) {
+                continue;
+            }
+            $command = str_replace("\0", ' ', $cmdline);
+            if (str_contains($command, 'pty.js')) {
+                return 'node';
+            }
+            if (str_contains($command, 'pty.php')) {
+                return 'php';
+            }
+        }
+        return null;
     }
 
     private static function nodeCanRequire(string $node, array $modules): bool

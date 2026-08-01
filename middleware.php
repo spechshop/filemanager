@@ -96,41 +96,54 @@ if (!function_exists('fileManagerNodeBinary')) {
     }
 }
 
-if (!function_exists('nodePtyAvailable')) {
+if (!function_exists('fileManagerPtyNodeBinary')) {
     /**
-     * Verifica se o Node e o node-pty estão realmente utilizáveis.
-     * Em ambientes sem root/npm o node-pty frequentemente não compila,
-     * então neste caso usamos o fallback em Swoole (pty.php).
+     * O node-pty é nativo e pode ter sido compilado para o Node do sistema,
+     * enquanto o runtime gerenciado usa outra ABI. Testamos ambos e usamos
+     * efetivamente aquele que consegue carregar o módulo.
      */
+    function fileManagerPtyNodeBinary(): string
+    {
+        $managed = __DIR__ . '/.runtime/node/bin/node';
+        $system = trim((string) shell_exec('command -v node 2>/dev/null'));
+        $candidates = array_values(array_unique(array_filter([
+            is_file($managed) && is_executable($managed) ? $managed : null,
+            $system !== '' ? $system : null,
+        ])));
+        if (!is_dir(__DIR__ . '/node_modules/node-pty') || !file_exists(__DIR__ . '/pty.js')) {
+            return '';
+        }
+        foreach ($candidates as $nodeBin) {
+            $check = trim((string) shell_exec(
+                'cd ' . escapeshellarg(__DIR__) . ' && ' . escapeshellarg($nodeBin)
+                . ' -e "require(\'node-pty\')" >/dev/null 2>&1 && echo ok'
+            ));
+            if ($check === 'ok') {
+                return $nodeBin;
+            }
+        }
+        return '';
+    }
+}
+
+if (!function_exists('nodePtyAvailable')) {
     function nodePtyAvailable(): bool
     {
-        $nodeBin = fileManagerNodeBinary();
-        if ($nodeBin === '') {
-            return false;
-        }
-        if (!is_dir(__DIR__ . '/node_modules/node-pty')) {
-            return false;
-        }
-        // Confirma que o módulo carrega (binário nativo compilado).
-        $check = trim((string) shell_exec(
-            'cd ' . escapeshellarg(__DIR__) . ' && ' . escapeshellarg($nodeBin)
-            . ' -e "require(\'node-pty\')" >/dev/null 2>&1 && echo ok'
-        ));
-        return $check === 'ok';
+        return fileManagerPtyNodeBinary() !== '';
     }
 }
 
 if (!function_exists('startPtyServer')) {
     /**
-     * Inicia o servidor de PTY: prefere o pty.js (node-pty) quando
-     * disponível; caso contrário, sobe o fallback em Swoole (pty.php),
-     * usando o MESMO binário PHP atual (que já possui Swoole).
+     * Inicia o servidor de PTY conforme a escolha salva no painel. O modo
+     * automático tenta Node.js primeiro e usa PHP/Swoole como fallback.
      */
     function startPtyServer(): void
     {
         $hasScreen = trim((string) shell_exec('command -v screen 2>/dev/null')) !== '';
-        if (nodePtyAvailable()) {
-            $node = fileManagerNodeBinary();
+        $backend = fileManagerPtyBackend();
+        $node = $backend !== 'php' ? fileManagerPtyNodeBinary() : '';
+        if ($node !== '') {
             echo "Iniciando PTY via node (node-pty)...\n";
             if ($hasScreen) {
                 shell_exec('screen -dmS nodePTY ' . escapeshellarg($node) . ' ' . escapeshellarg(__DIR__ . '/pty.js'));
@@ -139,10 +152,20 @@ if (!function_exists('startPtyServer')) {
             }
             return;
         }
+        if ($backend === 'node') {
+            echo "PTY Node.js foi selecionado, mas nenhum runtime conseguiu carregar node-pty.\n";
+            return;
+        }
         // Fallback em Swoole: usa o binário PHP atual (com Swoole garantido).
-        $php = PHP_BINARY ?: 'php';
+        $php = PHP_BINARY;
         $ptyPhp = __DIR__ . '/pty.php';
-        echo "node-pty indisponível; usando fallback em Swoole (pty.php)...\n";
+        if (!file_exists($ptyPhp) || !extension_loaded('swoole')) {
+            echo "PTY PHP/Swoole foi selecionado, mas não está disponível.\n";
+            return;
+        }
+        echo $backend === 'php'
+            ? "Iniciando PTY via PHP/Swoole...\n"
+            : "node-pty indisponível; usando fallback em Swoole (pty.php)...\n";
         if ($hasScreen) {
             shell_exec('screen -dmS phpPTY ' . escapeshellarg($php) . ' ' . escapeshellarg($ptyPhp));
         } else {
@@ -194,6 +217,18 @@ if (!function_exists('fileManagerServiceEnabled')) {
             return $defaults[$service] ?? false;
         }
         return ($config['fileManager']['services'][$service] ?? $defaults[$service] ?? false) !== false;
+    }
+}
+
+if (!function_exists('fileManagerPtyBackend')) {
+    function fileManagerPtyBackend(): string
+    {
+        $contents = @file_get_contents(__DIR__ . '/plugins/configInterface.json');
+        $config = is_string($contents) ? json_decode($contents, true) : null;
+        $backend = is_array($config)
+            ? strtolower(trim((string) ($config['fileManager']['ptyBackend'] ?? 'auto')))
+            : 'auto';
+        return in_array($backend, ['auto', 'node', 'php'], true) ? $backend : 'auto';
     }
 }
 

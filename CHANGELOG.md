@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Settings now allow choosing the terminal PTY backend (`Node.js`, `PHP/Swoole`, or automatic fallback), with the same preference applied by automatic startup and service controls
+- Diagnostics now report system and managed Node.js runtimes plus both PTY implementations, and can update the managed runtime to Node.js 22, 24 LTS, or 26 Current
 - Real PHP Language Server (Intelephense) powering the code editor, replacing the static `stubs-generated.json` approach with a proper LSP pipeline — delivering PhpStorm-like fluidity:
   - `lsp.js`: a WebSocket↔stdio bridge (port 3057) that spawns Intelephense per connection and (de)frames LSP JSON-RPC; started automatically by `middleware.php` alongside the PTY server
   - Secure relay in the Swoole WebSocket server (`plugins/Message/server/server.php`): LSP traffic tunnels through the existing `wss://host/<token>-lsp` proxy (a per-token `Channel` + worker keeps the `initialize` handshake intact), so it also works for remote access

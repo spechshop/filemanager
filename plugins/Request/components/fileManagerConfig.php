@@ -87,6 +87,12 @@ class fileManagerConfig
         return ($config['fileManager']['services'][$service] ?? $defaults[$service] ?? false) !== false;
     }
 
+    public static function ptyBackend(array $config): string
+    {
+        $backend = strtolower(trim((string) ($config['fileManager']['ptyBackend'] ?? 'auto')));
+        return in_array($backend, ['auto', 'node', 'php'], true) ? $backend : 'auto';
+    }
+
     public static function setServiceEnabled(string $service, bool $enabled): array
     {
         return self::update(static function (array $config) use ($service, $enabled): array {

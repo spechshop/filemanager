@@ -112,10 +112,10 @@ process. Unlike `killall php`, it stops the process manager before terminating
 the PHP process, so the server is not immediately started again.
 
 It also verifies the Node.js version. If the system runtime is older than 22,
-it downloads a checksum-verified Node.js 22 runtime into `.runtime/`, installs
+it downloads a checksum-verified Node.js 24 LTS runtime into `.runtime/`, installs
 the project dependencies, and installs the official `@openai/codex` CLI without
 replacing the system-wide Node.js. The same repair is available later under
-**Configurações > Diagnóstico**.
+**Configurações > Diagnóstico**, where Node.js 22, 24 or 26 can be selected.
 
 ```bash
 filemanagerctl status
@@ -179,6 +179,7 @@ For production, update certificate paths in `plugins/configInterface.json`.
 - **`port`** - WebSocket server port (default: `8080`)
 - **`ssl`** - Path to SSL certificate directory
 - **`fileManager.autoRestart`** - Restarts the middleware after a stop and when monitored PHP files change; it can also be changed from the File Manager settings panel
+- **`fileManager.ptyBackend`** - Selects `node`, `php`, or `auto` (Node.js with PHP/Swoole fallback) for terminal sessions
 - **`fileManager.services`** - Controls whether PTY, LSP, legacy GPT and Codex Agent services start with the File Manager; each service can also be started, stopped or restarted from the settings panel
 - **`autoload`** - Plugin directories to autoload
 - **`allowExtensions`** - MIME types for static file serving
@@ -221,9 +222,11 @@ is enabled. The bridge listens only on `127.0.0.1:3091`; browsers connect throug
 the authenticated Swoole WebSocket relay.
 
 If Node.js, npm dependencies, or the Codex CLI are missing or incompatible, open
-**Configurações > Diagnóstico** and select **Reparar e instalar**. Installation
+**Configurações > Diagnóstico**, choose the desired Node.js line, and select
+**Atualizar e reparar**. Installation
 runs in the background and its progress log is shown in the same panel.
-The same repair can be run from a terminal with `bash scripts/install-codex.sh`.
+The same repair can be run from a terminal with `bash scripts/install-codex.sh . 24`
+(use `preserve`, `22`, `24`, or `26` as the second argument).
 Terminals created by either PTY backend put the managed Node.js and Codex runtime
 first in `PATH`, so they use the versions prepared by this repair without changing
 the server's global Node.js installation.

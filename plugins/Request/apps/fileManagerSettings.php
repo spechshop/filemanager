@@ -57,12 +57,21 @@ class fileManagerSettings
             ]);
         }
 
+        $ptyBackend = strtolower(trim((string) ($request->post['ptyBackend'] ?? 'auto')));
+        if (!in_array($ptyBackend, ['auto', 'node', 'php'], true)) {
+            return self::respond($response, 422, [
+                'success' => false,
+                'message' => 'O backend PTY deve ser automático, Node.js ou PHP.',
+            ]);
+        }
+
         try {
-            $config = fileManagerConfig::update(static function (array $config) use ($autoRestart): array {
+            $config = fileManagerConfig::update(static function (array $config) use ($autoRestart, $ptyBackend): array {
                 $config['fileManager'] = is_array($config['fileManager'] ?? null)
                     ? $config['fileManager']
                     : [];
                 $config['fileManager']['autoRestart'] = $autoRestart;
+                $config['fileManager']['ptyBackend'] = $ptyBackend;
                 return $config;
             });
 
@@ -125,6 +134,7 @@ class fileManagerSettings
     {
         return [
             'autoRestart' => ($config['fileManager']['autoRestart'] ?? true) !== false,
+            'ptyBackend' => fileManagerConfig::ptyBackend($config),
             'codex' => fileManagerConfig::codexPreferences($config, $token),
         ];
     }

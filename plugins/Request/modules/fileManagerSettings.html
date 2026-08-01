@@ -134,6 +134,23 @@
                             </div>
 
                             <div id="fileManagerAutoRestartStatus" class="small text-muted mt-2" aria-live="polite"></div>
+
+                            <div class="settings-section p-3 mt-3">
+                                <label class="form-label fw-semibold" for="fileManagerPtyBackend">
+                                    Backend do terminal PTY
+                                </label>
+                                <select class="form-select" id="fileManagerPtyBackend">
+                                    <option value="auto">Automático (Node.js, com fallback PHP)</option>
+                                    <option value="node">Node.js (node-pty)</option>
+                                    <option value="php">PHP (Swoole)</option>
+                                </select>
+                                <div class="settings-description small mt-2">
+                                    A escolha é usada tanto na inicialização automática quanto nos controles da
+                                    seção Serviços. Reinicie o Terminal PTY para aplicar uma alteração.
+                                </div>
+                                <div id="fileManagerPtyBackendStatus" class="small text-muted mt-2"
+                                     aria-live="polite"></div>
+                            </div>
                         </section>
 
                         <section class="p-4 settings-pane d-none" id="settingsCodexPane">
@@ -203,17 +220,28 @@
                             <div class="settings-section p-3">
                                 <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
                                     <div>
-                                        <div class="fw-semibold">Instalador automático do Codex</div>
+                                        <div class="fw-semibold">Runtime Node.js e Codex</div>
                                         <div class="settings-description small mt-1">
-                                            Instala Node.js 22 em um runtime isolado quando necessário, executa
+                                            Instala ou atualiza um runtime Node.js isolado, executa
                                             <code>npm install</code> e instala o pacote oficial
                                             <code>@openai/codex</code>.
                                         </div>
                                     </div>
-                                    <button class="btn btn-primary text-nowrap" id="installFileManagerCodex"
-                                            type="button">
-                                        <i class="fa-duotone fa-wand-magic-sparkles me-1"></i>Reparar e instalar
-                                    </button>
+                                    <div class="d-flex flex-column gap-2" style="min-width: 245px">
+                                        <label class="form-label small mb-0" for="fileManagerNodeVersion">
+                                            Versão desejada
+                                        </label>
+                                        <select class="form-select" id="fileManagerNodeVersion">
+                                            <option value="preserve">Manter runtime compatível</option>
+                                            <option value="22">Node.js 22 LTS</option>
+                                            <option value="24">Node.js 24 LTS (recomendado)</option>
+                                            <option value="26">Node.js 26 Current</option>
+                                        </select>
+                                        <button class="btn btn-primary text-nowrap" id="installFileManagerCodex"
+                                                type="button">
+                                            <i class="fa-duotone fa-wand-magic-sparkles me-1"></i>Atualizar e reparar
+                                        </button>
+                                    </div>
                                 </div>
                                 <div id="fileManagerRepairStatus" class="small text-muted mt-3"></div>
                                 <pre id="fileManagerRepairLog" class="diagnostic-log d-none mt-2 mb-0"></pre>
@@ -241,6 +269,8 @@
         const modal = document.getElementById('fileManagerSettingsModal');
         const toggle = document.getElementById('fileManagerAutoRestart');
         const status = document.getElementById('fileManagerAutoRestartStatus');
+        const ptyBackend = document.getElementById('fileManagerPtyBackend');
+        const ptyBackendStatus = document.getElementById('fileManagerPtyBackendStatus');
         const saveButton = document.getElementById('saveFileManagerSettings');
         const servicesList = document.getElementById('fileManagerServicesList');
         const refreshServicesButton = document.getElementById('refreshFileManagerServices');
@@ -251,6 +281,7 @@
         const diagnosticsSummary = document.getElementById('fileManagerDiagnosticsSummary');
         const refreshDiagnosticsButton = document.getElementById('refreshFileManagerDiagnostics');
         const installCodexButton = document.getElementById('installFileManagerCodex');
+        const nodeVersion = document.getElementById('fileManagerNodeVersion');
         const repairStatus = document.getElementById('fileManagerRepairStatus');
         const repairLog = document.getElementById('fileManagerRepairLog');
         const navButtons = modal.querySelectorAll('[data-settings-pane]');
@@ -262,6 +293,7 @@
         let codexModels = [];
         let codexModelsLoading = false;
         let formBusy = false;
+        let loadedPtyBackend = 'auto';
 
         function tokenBrowser() {
             return document.getElementById('fp').textContent.trim();
@@ -277,6 +309,7 @@
             formBusy = busy;
             saveButton.disabled = busy || (activePaneId === 'settingsCodexPane' && codexModels.length === 0);
             toggle.disabled = busy;
+            ptyBackend.disabled = busy;
             codexModel.disabled = busy || codexModels.length === 0;
             codexReasoning.disabled = busy || codexModels.length === 0 || !codexModel.value;
             saveButton.querySelector('.settings-save-label').classList.toggle('d-none', busy);
@@ -288,6 +321,18 @@
                 ? 'Ativado: o File Manager será reiniciado automaticamente.'
                 : 'Desativado: uma parada exigirá inicialização manual.';
             status.className = `small mt-2 ${toggle.checked ? 'text-success' : 'text-warning'}`;
+        }
+
+        function updatePtyBackendStatus(changed = false) {
+            const labels = {
+                auto: 'Automático: tenta Node.js e usa PHP/Swoole como fallback.',
+                node: 'Node.js: exige que o módulo nativo node-pty possa ser carregado.',
+                php: 'PHP: usa pty.php com a extensão Swoole.'
+            };
+            ptyBackendStatus.textContent = changed
+                ? `${labels[ptyBackend.value]} Preferência salva; reinicie o Terminal PTY para aplicar.`
+                : labels[ptyBackend.value];
+            ptyBackendStatus.className = `small mt-2 ${changed ? 'text-warning' : 'text-info'}`;
         }
 
         async function loadSettings() {
@@ -303,7 +348,10 @@
                     throw new Error(data.message || 'Não foi possível carregar as configurações.');
                 }
                 toggle.checked = data.settings.autoRestart !== false;
+                loadedPtyBackend = data.settings.ptyBackend || 'auto';
+                ptyBackend.value = loadedPtyBackend;
                 updateStatus();
+                updatePtyBackendStatus();
                 loadCodexModels(data.settings.codex || {}).catch(() => {});
             } catch (error) {
                 status.className = 'small text-danger mt-2';
@@ -399,6 +447,9 @@
                 const reason = service.unavailableReason
                     ? `<div class="small text-warning mt-2"><i class="fa-duotone fa-triangle-exclamation me-1"></i>${service.unavailableReason}</div>`
                     : '';
+                const ptyDetails = service.id === 'pty'
+                    ? `<div class="small text-info mt-1">Configurado: ${escapeHtml(service.backendLabel || 'Automático')}${service.activeBackend ? ` · Ativo: ${service.activeBackend === 'node' ? 'Node.js' : 'PHP/Swoole'}` : ''}</div>`
+                    : '';
 
                 return `
                     <article class="service-card p-3" data-service-card="${service.id}">
@@ -407,6 +458,7 @@
                                 <div class="fw-semibold">${service.name}</div>
                                 <div class="settings-description small">${service.description}</div>
                                 <div class="small text-muted mt-1">Porta ${service.port} · ${desiredState}</div>
+                                ${ptyDetails}
                                 ${reason}
                             </div>
                             <span class="badge text-bg-${stateClass} text-nowrap">
@@ -457,10 +509,11 @@
             const state = repair.status || 'idle';
             const running = state === 'running';
             installCodexButton.disabled = running;
+            nodeVersion.disabled = running;
             refreshDiagnosticsButton.disabled = running;
             installCodexButton.innerHTML = running
                 ? '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Instalando...'
-                : '<i class="fa-duotone fa-wand-magic-sparkles me-1"></i>Reparar e instalar';
+                : '<i class="fa-duotone fa-wand-magic-sparkles me-1"></i>Atualizar e reparar';
             const stateClass = state === 'success'
                 ? 'text-success'
                 : (state === 'failed' ? 'text-danger' : (running ? 'text-info' : 'text-muted'));
@@ -493,6 +546,11 @@
                     ? statusData.services.find(service => service.id === 'pty')
                     : null;
                 if (!ptyService?.running) return;
+                if (ptyService.backend === 'php') {
+                    repairStatus.className = 'small mt-3 text-success';
+                    repairStatus.textContent = 'Node.js, dependências e Codex CLI estão prontos. O PTY PHP permaneceu ativo.';
+                    return;
+                }
 
                 repairStatus.className = 'small mt-3 text-info';
                 repairStatus.textContent = 'Runtime atualizado. Reiniciando o Terminal PTY...';
@@ -529,6 +587,13 @@
 
         function renderDiagnostics(data) {
             const checks = Array.isArray(data.checks) ? data.checks : [];
+            const selectedNodeVersion = nodeVersion.value || 'preserve';
+            if (Array.isArray(data.nodeVersions) && data.nodeVersions.length > 0) {
+                nodeVersion.replaceChildren(...data.nodeVersions.map((entry) => new Option(entry.label, entry.value)));
+                nodeVersion.value = data.nodeVersions.some((entry) => entry.value === selectedNodeVersion)
+                    ? selectedNodeVersion
+                    : 'preserve';
+            }
             const appearance = {
                 ok: {badge: 'success', icon: 'fa-circle-check', label: 'OK'},
                 warning: {badge: 'warning', icon: 'fa-triangle-exclamation', label: 'Atenção'},
@@ -591,12 +656,14 @@
         }
 
         async function installCodex() {
+            const selectedVersion = nodeVersion.value || 'preserve';
+            const selectedLabel = nodeVersion.selectedOptions[0]?.textContent || selectedVersion;
             const confirmation = await Swal.fire({
-                title: 'Reparar ambiente do Codex?',
-                text: 'O processo pode baixar o Node.js 22, reinstalar dependências npm e atualizar o Codex CLI. Ao concluir, o Terminal PTY em execução será reiniciado e as sessões abertas serão desconectadas.',
+                title: 'Atualizar runtime e reparar?',
+                text: `Opção: ${selectedLabel}. O processo reinstala as dependências npm e atualiza o Codex CLI. Ao concluir, um Terminal PTY configurado para Node.js ou automático será reiniciado e as sessões abertas serão desconectadas.`,
                 icon: 'question',
                 showCancelButton: true,
-                confirmButtonText: 'Reparar e instalar',
+                confirmButtonText: 'Atualizar e reparar',
                 cancelButtonText: 'Cancelar',
                 background: '#1c2438',
                 color: '#fff'
@@ -607,7 +674,8 @@
             try {
                 const body = new URLSearchParams({
                     tokenBrowser: tokenBrowser(),
-                    action: 'install_codex'
+                    action: 'install_codex',
+                    nodeVersion: selectedVersion
                 });
                 const response = await fetch('/fileManagerDiagnostics', {
                     method: 'POST',
@@ -715,6 +783,7 @@
         }
 
         toggle.addEventListener('change', updateStatus);
+        ptyBackend.addEventListener('change', () => updatePtyBackendStatus());
         codexModel.addEventListener('change', () => renderReasoningOptions());
         navButtons.forEach((button) => {
             button.addEventListener('click', () => selectPane(button.dataset.settingsPane));
@@ -757,6 +826,7 @@
                 } else {
                     body.set('settingGroup', 'system');
                     body.set('autoRestart', toggle.checked ? 'true' : 'false');
+                    body.set('ptyBackend', ptyBackend.value);
                 }
                 const response = await fetch('/fileManagerSettings', {
                     method: 'POST',
@@ -770,6 +840,14 @@
 
                 toggle.checked = data.settings.autoRestart !== false;
                 updateStatus();
+                if (!codexPane) {
+                    const backendChanged = loadedPtyBackend !== data.settings.ptyBackend;
+                    loadedPtyBackend = data.settings.ptyBackend || 'auto';
+                    ptyBackend.value = loadedPtyBackend;
+                    updatePtyBackendStatus(backendChanged);
+                    loadServices(false);
+                    loadDiagnostics(false);
+                }
                 if (codexPane) {
                     codexStatus.className = 'small text-success mt-2';
                     codexStatus.textContent = 'Preferências salvas somente para este token.';

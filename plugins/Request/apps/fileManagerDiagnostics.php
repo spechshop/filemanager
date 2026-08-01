@@ -36,6 +36,14 @@ class fileManagerDiagnostics
             ]);
         }
 
+        $nodeTarget = strtolower(trim((string) ($request->post['nodeVersion'] ?? 'preserve')));
+        if (!in_array($nodeTarget, ['preserve', '22', '24', '26'], true)) {
+            return self::respond($response, 422, [
+                'success' => false,
+                'message' => 'A versão escolhida do Node.js é inválida.',
+            ]);
+        }
+
         try {
             $job = self::jobStatus();
             if (($job['status'] ?? '') === 'running') {
@@ -45,11 +53,13 @@ class fileManagerDiagnostics
                     'repair' => $job,
                 ]);
             }
-            self::startInstaller();
+            self::startInstaller($nodeTarget);
             usleep(150000);
             return self::respond($response, 202, [
                 'success' => true,
-                'message' => 'Instalação automática iniciada.',
+                'message' => $nodeTarget === 'preserve'
+                    ? 'Reparo automático iniciado, mantendo o runtime Node.js compatível.'
+                    : "Atualização para Node.js $nodeTarget e reparo iniciados.",
                 'repair' => self::jobStatus(),
             ]);
         } catch (\Throwable $exception) {
@@ -65,6 +75,18 @@ class fileManagerDiagnostics
         $node = self::nodeBinary();
         $nodeVersion = self::versionOutput($node);
         $nodeMajor = self::majorVersion($nodeVersion);
+        $managedNode = self::managedNodeBinary();
+        $managedNodeVersion = self::versionOutput($managedNode);
+        $systemNode = self::commandPath('node');
+        $systemNodeVersion = self::versionOutput($systemNode);
+        $ptyNode = self::ptyNodeBinary();
+        $phpPtyAvailable = is_file(self::root() . '/pty.php') && extension_loaded('swoole');
+        $ptyBackend = self::ptyBackend();
+        $ptyAvailable = match ($ptyBackend) {
+            'node' => $ptyNode !== null,
+            'php' => $phpPtyAvailable,
+            default => $ptyNode !== null || $phpPtyAvailable,
+        };
         $npm = self::npmCommand($node);
         $npmVersion = self::npmVersion($node, $npm);
         $codex = self::codexBinary();
@@ -79,8 +101,57 @@ class fileManagerDiagnostics
                 'status' => $nodeMajor >= self::MIN_NODE_MAJOR ? 'ok' : 'error',
                 'value' => $nodeVersion !== '' ? $nodeVersion : 'Não instalado',
                 'message' => $nodeMajor >= self::MIN_NODE_MAJOR
-                    ? 'Compatível com as dependências atuais (Node 22+).'
-                    : 'Versão incompatível. O reparo instalará Node.js 22 isolado no File Manager.',
+                    ? 'Compatível (Node 22+). Em uso: ' . ($node ?? 'não identificado') . '.'
+                    : 'Versão incompatível. O reparo pode instalar um Node.js 22+ isolado no File Manager.',
+            ],
+            [
+                'id' => 'system_node',
+                'name' => 'Node.js do sistema',
+                'status' => self::majorVersion($systemNodeVersion) >= self::MIN_NODE_MAJOR ? 'ok' : 'warning',
+                'value' => $systemNodeVersion !== '' ? $systemNodeVersion : 'Não encontrado',
+                'message' => $systemNode !== null
+                    ? 'Executável: ' . $systemNode . '.'
+                    : 'Nenhum comando node foi encontrado no PATH do servidor.',
+            ],
+            [
+                'id' => 'managed_node',
+                'name' => 'Node.js gerenciado',
+                'status' => self::majorVersion($managedNodeVersion) >= self::MIN_NODE_MAJOR ? 'ok' : 'warning',
+                'value' => $managedNodeVersion !== '' ? $managedNodeVersion : 'Não instalado',
+                'message' => $managedNode !== null
+                    ? 'Runtime isolado em .runtime/node; pode ser atualizado abaixo.'
+                    : 'Opcional quando o Node.js do sistema já é compatível.',
+            ],
+            [
+                'id' => 'node_pty',
+                'name' => 'PTY via Node.js',
+                'status' => $ptyNode !== null ? 'ok' : ($ptyBackend === 'node' ? 'error' : 'warning'),
+                'value' => $ptyNode !== null ? 'Disponível' : 'Indisponível',
+                'message' => $ptyNode !== null
+                    ? 'node-pty carregado com ' . $ptyNode . '.'
+                    : 'Nenhum runtime Node.js disponível conseguiu carregar o módulo nativo node-pty.',
+            ],
+            [
+                'id' => 'php_pty',
+                'name' => 'PTY via PHP',
+                'status' => $phpPtyAvailable ? 'ok' : ($ptyBackend === 'php' ? 'error' : 'warning'),
+                'value' => $phpPtyAvailable ? 'Disponível' : 'Indisponível',
+                'message' => $phpPtyAvailable
+                    ? 'pty.php e a extensão Swoole estão disponíveis.'
+                    : 'pty.php ou a extensão Swoole não está disponível.',
+            ],
+            [
+                'id' => 'pty_backend',
+                'name' => 'Backend PTY selecionado',
+                'status' => $ptyAvailable ? 'ok' : 'error',
+                'value' => match ($ptyBackend) {
+                    'node' => 'Node.js',
+                    'php' => 'PHP/Swoole',
+                    default => 'Automático',
+                },
+                'message' => $ptyAvailable
+                    ? 'A preferência salva pode ser iniciada pelo gerenciador de serviços.'
+                    : 'O backend escolhido não está disponível neste ambiente.',
             ],
             [
                 'id' => 'npm',
@@ -156,11 +227,17 @@ class fileManagerDiagnostics
                 static fn(array $check): bool => $check['status'] === 'warning'
             ),
             'checks' => $checks,
+            'nodeVersions' => [
+                ['value' => 'preserve', 'label' => 'Manter runtime compatível'],
+                ['value' => '22', 'label' => 'Node.js 22 LTS (manutenção)'],
+                ['value' => '24', 'label' => 'Node.js 24 LTS (recomendado)'],
+                ['value' => '26', 'label' => 'Node.js 26 Current'],
+            ],
             'repair' => self::jobStatus(),
         ];
     }
 
-    private static function startInstaller(): void
+    private static function startInstaller(string $nodeTarget): void
     {
         $root = self::root();
         $script = $root . '/scripts/install-codex.sh';
@@ -173,6 +250,7 @@ class fileManagerDiagnostics
         }
         $log = $runtime . '/codex-installer.log';
         $command = 'nohup bash ' . escapeshellarg($script) . ' ' . escapeshellarg($root)
+            . ' ' . escapeshellarg($nodeTarget)
             . ' > ' . escapeshellarg($log) . ' 2>&1 < /dev/null & echo $!';
         $pid = trim((string) shell_exec($command));
         if (!ctype_digit($pid) || (int) $pid <= 1) {
@@ -256,6 +334,48 @@ class fileManagerDiagnostics
         $audit = json_decode((string) @file_get_contents($file), true);
         $vulnerabilities = $audit['metadata']['vulnerabilities'] ?? null;
         return is_array($vulnerabilities) ? $vulnerabilities : null;
+    }
+
+    private static function ptyBackend(): string
+    {
+        try {
+            return fileManagerConfig::ptyBackend(fileManagerConfig::read());
+        } catch (\Throwable) {
+            return 'auto';
+        }
+    }
+
+    private static function managedNodeBinary(): ?string
+    {
+        $managed = self::root() . '/.runtime/node/bin/node';
+        return is_file($managed) && is_executable($managed) ? $managed : null;
+    }
+
+    private static function ptyNodeBinary(): ?string
+    {
+        if (!is_file(self::root() . '/pty.js') || !is_dir(self::root() . '/node_modules/node-pty')) {
+            return null;
+        }
+        $candidates = array_values(array_unique(array_filter([
+            self::managedNodeBinary(),
+            self::commandPath('node'),
+        ])));
+        foreach ($candidates as $candidate) {
+            if (self::nodeCanRequire($candidate, 'node-pty')) {
+                return $candidate;
+            }
+        }
+        return null;
+    }
+
+    private static function nodeCanRequire(string $node, string $module): bool
+    {
+        $command = 'cd ' . escapeshellarg(self::root()) . ' && '
+            . escapeshellarg($node) . ' -e '
+            . escapeshellarg('require(' . json_encode($module) . ')')
+            . ' >/dev/null 2>&1';
+        exec($command, $output, $exitCode);
+        return $exitCode === 0;
     }
 
     private static function nodeBinary(): ?string

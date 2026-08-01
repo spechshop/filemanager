@@ -35,6 +35,7 @@
     "allowObservable": [],
     "fileManager": {
         "autoRestart": true,
+        "ptyBackend": "auto",
         "services": {
             "pty": true,
             "lsp": true,

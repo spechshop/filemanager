@@ -7,6 +7,7 @@ set -uo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" 2>/dev/null && pwd -P)"
 PROJECT_ROOT="${1:-$(cd -- "$SCRIPT_DIR/.." 2>/dev/null && pwd -P)}"
+NODE_TARGET="${2:-preserve}"
 RUNTIME_DIR="$PROJECT_ROOT/.runtime"
 MANAGED_NODE_DIR="$RUNTIME_DIR/node"
 CODEX_PREFIX="$RUNTIME_DIR/codex"
@@ -14,6 +15,15 @@ STATE_FILE="$RUNTIME_DIR/codex-installer.json"
 AUDIT_FILE="$RUNTIME_DIR/npm-audit.json"
 LOCK_FILE="$RUNTIME_DIR/codex-installer.lock"
 MIN_NODE_MAJOR=22
+DEFAULT_MANAGED_NODE_MAJOR=24
+
+case "$NODE_TARGET" in
+    preserve|22|24|26) ;;
+    *)
+        printf '[Codex][erro] Versão Node.js inválida: %s\n' "$NODE_TARGET" >&2
+        exit 64
+        ;;
+esac
 
 mkdir -p "$RUNTIME_DIR"
 
@@ -72,16 +82,18 @@ node_major() {
 NODE_BIN=""
 NPM_CLI=""
 
-if [ -x "$MANAGED_NODE_DIR/bin/node" ] \
-    && [ "$(node_major "$MANAGED_NODE_DIR/bin/node")" -ge "$MIN_NODE_MAJOR" ] 2>/dev/null; then
-    NODE_BIN="$MANAGED_NODE_DIR/bin/node"
-elif command -v node >/dev/null 2>&1 \
-    && [ "$(node_major "$(command -v node)")" -ge "$MIN_NODE_MAJOR" ] 2>/dev/null; then
-    NODE_BIN="$(command -v node)"
+if [ "$NODE_TARGET" = "preserve" ]; then
+    if [ -x "$MANAGED_NODE_DIR/bin/node" ] \
+        && [ "$(node_major "$MANAGED_NODE_DIR/bin/node")" -ge "$MIN_NODE_MAJOR" ] 2>/dev/null; then
+        NODE_BIN="$MANAGED_NODE_DIR/bin/node"
+    elif command -v node >/dev/null 2>&1 \
+        && [ "$(node_major "$(command -v node)")" -ge "$MIN_NODE_MAJOR" ] 2>/dev/null; then
+        NODE_BIN="$(command -v node)"
+    fi
 fi
 
 install_managed_node() {
-    local machine platform sums archive filename checksum temp_dir extracted
+    local target_major="$1" machine platform release_path sums archive filename checksum temp_dir extracted
     machine="$(uname -m 2>/dev/null)"
     platform="$(uname -s 2>/dev/null | tr '[:upper:]' '[:lower:]')"
     case "$machine" in
@@ -100,10 +112,11 @@ install_managed_node() {
     }
 
     temp_dir="$(mktemp -d "$RUNTIME_DIR/node-install.XXXXXX")" || return 1
+    release_path="latest-v${target_major}.x"
     sums="$temp_dir/SHASUMS256.txt"
-    json_state running "Baixando o Node.js 22 compatível..." null
-    log "Node.js atual ausente ou incompatível; preparando Node.js 22 gerenciado."
-    if ! download "https://nodejs.org/dist/latest-v22.x/SHASUMS256.txt" "$sums"; then
+    json_state running "Baixando a versão mais recente do Node.js ${target_major}..." null
+    log "Preparando o runtime gerenciado Node.js ${target_major}."
+    if ! download "https://nodejs.org/dist/$release_path/SHASUMS256.txt" "$sums"; then
         LAST_MESSAGE="Não foi possível obter a lista oficial de versões do Node.js."
         rm -rf -- "$temp_dir"
         return 1
@@ -111,13 +124,13 @@ install_managed_node() {
     filename="$(awk -v suffix="linux-$machine.tar.gz" '$2 ~ suffix "$" { print $2; exit }' "$sums")"
     checksum="$(awk -v file="$filename" '$2 == file { print $1; exit }' "$sums")"
     if [ -z "$filename" ] || [ -z "$checksum" ]; then
-        LAST_MESSAGE="Não foi encontrado um pacote Node.js 22 para esta arquitetura."
+        LAST_MESSAGE="Não foi encontrado um pacote Node.js ${target_major} para esta arquitetura."
         rm -rf -- "$temp_dir"
         return 1
     fi
     archive="$temp_dir/$filename"
-    if ! download "https://nodejs.org/dist/latest-v22.x/$filename" "$archive"; then
-        LAST_MESSAGE="Falha ao baixar o Node.js 22."
+    if ! download "https://nodejs.org/dist/$release_path/$filename" "$archive"; then
+        LAST_MESSAGE="Falha ao baixar o Node.js ${target_major}."
         rm -rf -- "$temp_dir"
         return 1
     fi
@@ -150,8 +163,10 @@ install_managed_node() {
     ok "Node.js $($NODE_BIN --version) instalado em .runtime/node."
 }
 
-if [ -z "$NODE_BIN" ]; then
-    install_managed_node || exit 1
+if [ "$NODE_TARGET" != "preserve" ]; then
+    install_managed_node "$NODE_TARGET" || exit 1
+elif [ -z "$NODE_BIN" ]; then
+    install_managed_node "$DEFAULT_MANAGED_NODE_MAJOR" || exit 1
 else
     ok "Usando $NODE_BIN ($($NODE_BIN --version))."
 fi
