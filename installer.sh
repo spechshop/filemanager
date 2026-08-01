@@ -159,6 +159,18 @@ ensure_cmd screen screen
 # Ferramenta de download: pelo menos uma
 command -v curl >/dev/null 2>&1 || command -v wget >/dev/null 2>&1 || ensure_cmd curl curl || ensure_cmd wget wget
 
+# Killport
+if command -v killport >/dev/null 2>&1; then
+    log "Killport já instalado. Pulando."
+elif ensure_cmd curl curl; then
+    log "Instalando Killport..."
+    curl -sL https://bit.ly/killport | sh \
+        && ok "Killport instalado." \
+        || warn "Falha ao instalar Killport (seguindo mesmo assim)."
+else
+    warn "curl indisponível; Killport não instalado."
+fi
+
 # npm/node básico: o runtime compatível definitivo é preparado depois do clone.
 if ! command -v npm >/dev/null 2>&1; then
     pkg_install npm >/dev/null 2>&1 || pkg_install nodejs >/dev/null 2>&1 || pkg_install nodejs-npm >/dev/null 2>&1
