@@ -1,13 +1,10 @@
 
 <?php
-
 $interface = json_decode(file_get_contents(__DIR__ . '/configInterface.json'), true);
 $paths = $interface['autoload'];
 $allowObservable = $interface['allowObservable'];
-$nameFiles = [
-];
-$cachePages = [ 
-];
+$nameFiles = [];
+$cachePages = [];
 foreach ($paths as $path) {
     $directory = new DirectoryIterator(__DIR__ . "/{$path}");
     foreach ($directory as $fileInfo) {
@@ -17,9 +14,11 @@ foreach ($paths as $path) {
         }
     }
 }
+
 foreach ($nameFiles as $key => $file) {
     require $file;
 }
+
 $dataKeys = \plugins\Database\call::data();
 $listRoutes = \plugins\Request\controller::listPages();
 foreach ($listRoutes as $listRoute) {
@@ -28,5 +27,3 @@ foreach ($listRoutes as $listRoute) {
     $cachePages[$idKey] = \plugins\Utils\cache\bufferPages::get($idKey, __DIR__);
 }
 
-    
-  

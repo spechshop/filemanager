@@ -1,0 +1,539 @@
+<style>
+    #fileManagerSettingsModal .modal-content {
+        background: #1c2438;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        color: #fff;
+    }
+
+    #fileManagerSettingsModal .settings-sidebar {
+        background: rgba(0, 0, 0, 0.12);
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    #fileManagerSettingsModal .settings-section {
+        background: rgba(255, 255, 255, 0.035);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+    }
+
+    #fileManagerSettingsModal .form-check-input {
+        cursor: pointer;
+        height: 1.35rem;
+        width: 2.6rem;
+    }
+
+    #fileManagerSettingsModal .settings-description {
+        color: #aab3c5;
+        max-width: 560px;
+    }
+
+    #fileManagerSettingsModal .settings-nav-button {
+        color: #c5ccda;
+        border: 0;
+    }
+
+    #fileManagerSettingsModal .settings-nav-button:hover,
+    #fileManagerSettingsModal .settings-nav-button.active {
+        color: #fff;
+        background: #0d6efd;
+    }
+
+    #fileManagerSettingsModal .service-card {
+        background: rgba(255, 255, 255, 0.035);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+    }
+
+    #fileManagerSettingsModal .service-status-dot {
+        border-radius: 50%;
+        display: inline-block;
+        height: 8px;
+        width: 8px;
+    }
+
+    @media (max-width: 767.98px) {
+        #fileManagerSettingsModal .settings-sidebar {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            border-right: 0;
+        }
+    }
+</style>
+
+<div class="modal fade" id="fileManagerSettingsModal" tabindex="-1" aria-labelledby="fileManagerSettingsTitle"
+     aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title" id="fileManagerSettingsTitle">
+                    <i class="fa-duotone fa-gears me-2"></i>Configurações do File Manager
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="row g-0">
+                    <aside class="col-md-3 settings-sidebar p-3">
+                        <div class="small text-uppercase text-muted mb-2">Seções</div>
+                        <button class="btn settings-nav-button active w-100 text-start mb-1"
+                                data-settings-pane="settingsSystemPane" type="button" aria-current="page">
+                            <i class="fa-duotone fa-server me-2"></i>Sistema
+                        </button>
+                        <button class="btn settings-nav-button w-100 text-start mb-1"
+                                data-settings-pane="settingsCodexPane" type="button">
+                            <i class="fa-duotone fa-robot me-2"></i>Codex
+                        </button>
+                        <button class="btn settings-nav-button w-100 text-start"
+                                data-settings-pane="settingsServicesPane" type="button">
+                            <i class="fa-duotone fa-network-wired me-2"></i>Serviços
+                        </button>
+                    </aside>
+                    <div class="col-md-9">
+                        <section class="p-4 settings-pane" id="settingsSystemPane">
+                            <h6 class="mb-1">Execução</h6>
+                            <p class="settings-description small mb-4">
+                                Preferências de funcionamento e manutenção do serviço.
+                            </p>
+
+                            <div class="settings-section p-3 d-flex justify-content-between align-items-start gap-3">
+                                <div>
+                                    <label class="form-check-label fw-semibold" for="fileManagerAutoRestart">
+                                        Reinício automático
+                                    </label>
+                                    <div class="settings-description small mt-1">
+                                        Reinicia o servidor após uma parada ou quando uma alteração nos arquivos PHP
+                                        monitorados for detectada.
+                                    </div>
+                                </div>
+                                <div class="form-check form-switch m-0">
+                                    <input class="form-check-input" type="checkbox" role="switch"
+                                           id="fileManagerAutoRestart" aria-describedby="fileManagerAutoRestartStatus">
+                                </div>
+                            </div>
+
+                            <div id="fileManagerAutoRestartStatus" class="small text-muted mt-2" aria-live="polite"></div>
+                        </section>
+
+                        <section class="p-4 settings-pane d-none" id="settingsCodexPane">
+                            <h6 class="mb-1">Modelo e raciocínio</h6>
+                            <p class="settings-description small mb-4">
+                                Estas escolhas pertencem somente ao seu token. Outros colaboradores podem usar
+                                modelos diferentes sem alterar as suas tarefas.
+                            </p>
+
+                            <div class="settings-section p-3">
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold" for="fileManagerCodexModel">Modelo</label>
+                                    <select class="form-select" id="fileManagerCodexModel" disabled>
+                                        <option value="">Carregando modelos disponíveis...</option>
+                                    </select>
+                                    <div class="settings-description small mt-1">
+                                        A lista considera os modelos disponíveis para a conta conectada ao Codex.
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="form-label fw-semibold" for="fileManagerCodexReasoning">
+                                        Nível de raciocínio
+                                    </label>
+                                    <select class="form-select" id="fileManagerCodexReasoning" disabled>
+                                        <option value="">Selecione um modelo primeiro</option>
+                                    </select>
+                                    <div class="settings-description small mt-1">
+                                        Níveis maiores podem melhorar tarefas complexas, mas levam mais tempo.
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="fileManagerCodexStatus" class="small text-muted mt-2" aria-live="polite"></div>
+                        </section>
+
+                        <section class="p-4 settings-pane d-none" id="settingsServicesPane">
+                            <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                                <div>
+                                    <h6 class="mb-1">Serviços auxiliares</h6>
+                                    <p class="settings-description small mb-0">
+                                        Controle os componentes usados pelo terminal, editor e integrações.
+                                    </p>
+                                </div>
+                                <button class="btn btn-sm btn-outline-light" id="refreshFileManagerServices"
+                                        type="button" title="Atualizar status">
+                                    <i class="fa-duotone fa-rotate"></i>
+                                </button>
+                            </div>
+                            <div id="fileManagerServicesList" class="d-grid gap-2" aria-live="polite"></div>
+                        </section>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="saveFileManagerSettings">
+                    <span class="settings-save-label"><i class="fa-duotone fa-floppy-disk me-1"></i>Salvar</span>
+                    <span class="settings-save-loading d-none">
+                        <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        Salvando...
+                    </span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        const modal = document.getElementById('fileManagerSettingsModal');
+        const toggle = document.getElementById('fileManagerAutoRestart');
+        const status = document.getElementById('fileManagerAutoRestartStatus');
+        const saveButton = document.getElementById('saveFileManagerSettings');
+        const servicesList = document.getElementById('fileManagerServicesList');
+        const refreshServicesButton = document.getElementById('refreshFileManagerServices');
+        const codexModel = document.getElementById('fileManagerCodexModel');
+        const codexReasoning = document.getElementById('fileManagerCodexReasoning');
+        const codexStatus = document.getElementById('fileManagerCodexStatus');
+        const navButtons = modal.querySelectorAll('[data-settings-pane]');
+        let serviceStatusInterval = null;
+        let activePaneId = 'settingsSystemPane';
+        let codexModels = [];
+        let codexModelsLoading = false;
+        let formBusy = false;
+
+        function tokenBrowser() {
+            return document.getElementById('fp').textContent.trim();
+        }
+
+        function setBusy(busy) {
+            formBusy = busy;
+            saveButton.disabled = busy || (activePaneId === 'settingsCodexPane' && codexModels.length === 0);
+            toggle.disabled = busy;
+            codexModel.disabled = busy || codexModels.length === 0;
+            codexReasoning.disabled = busy || codexModels.length === 0 || !codexModel.value;
+            saveButton.querySelector('.settings-save-label').classList.toggle('d-none', busy);
+            saveButton.querySelector('.settings-save-loading').classList.toggle('d-none', !busy);
+        }
+
+        function updateStatus() {
+            status.textContent = toggle.checked
+                ? 'Ativado: o File Manager será reiniciado automaticamente.'
+                : 'Desativado: uma parada exigirá inicialização manual.';
+            status.className = `small mt-2 ${toggle.checked ? 'text-success' : 'text-warning'}`;
+        }
+
+        async function loadSettings() {
+            setBusy(true);
+            status.className = 'small text-muted mt-2';
+            status.textContent = 'Carregando configurações...';
+
+            try {
+                const token = tokenBrowser();
+                const response = await fetch(`/fileManagerSettings?tokenBrowser=${encodeURIComponent(token)}`);
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Não foi possível carregar as configurações.');
+                }
+                toggle.checked = data.settings.autoRestart !== false;
+                updateStatus();
+                loadCodexModels(data.settings.codex || {}).catch(() => {});
+            } catch (error) {
+                status.className = 'small text-danger mt-2';
+                status.textContent = error.message;
+            } finally {
+                setBusy(false);
+            }
+        }
+
+        function reasoningLabel(value) {
+            const labels = {
+                none: 'Nenhum', minimal: 'Mínimo', low: 'Baixo', medium: 'Médio', high: 'Alto',
+                xhigh: 'Extra alto', max: 'Máximo', ultra: 'Ultra'
+            };
+            return labels[value] || value;
+        }
+
+        function renderReasoningOptions(preferred = '') {
+            const model = codexModels.find((entry) => (entry.model || entry.id) === codexModel.value);
+            codexReasoning.replaceChildren();
+            if (!model) {
+                codexReasoning.add(new Option('Selecione um modelo primeiro', ''));
+                codexReasoning.disabled = true;
+                return;
+            }
+
+            const efforts = Array.isArray(model.supportedReasoningEfforts)
+                ? model.supportedReasoningEfforts
+                : [];
+            efforts.forEach((entry) => {
+                const value = entry.reasoningEffort || '';
+                if (!value) return;
+                const option = new Option(reasoningLabel(value), value);
+                option.title = entry.description || '';
+                codexReasoning.add(option);
+            });
+            const fallback = model.defaultReasoningEffort || efforts[0]?.reasoningEffort || '';
+            const selected = efforts.some((entry) => entry.reasoningEffort === preferred) ? preferred : fallback;
+            codexReasoning.value = selected;
+            codexReasoning.disabled = formBusy || efforts.length === 0;
+        }
+
+        async function loadCodexModels(preferences = {}) {
+            if (codexModelsLoading) return;
+            codexModelsLoading = true;
+            codexStatus.className = 'small text-muted mt-2';
+            codexStatus.textContent = 'Consultando os modelos disponíveis no Codex...';
+            codexModel.disabled = true;
+            codexReasoning.disabled = true;
+            try {
+                const bridge = window.FileManagerCodexBridge;
+                if (!bridge?.listModels) throw new Error('A integração do Codex ainda não está disponível.');
+                codexModels = await bridge.listModels();
+                if (!codexModels.length) throw new Error('Nenhum modelo foi disponibilizado para esta conta.');
+
+                codexModel.replaceChildren();
+                codexModels.forEach((model) => {
+                    const value = model.model || model.id;
+                    const option = new Option(model.displayName || value, value);
+                    option.title = model.description || '';
+                    codexModel.add(option);
+                });
+                const savedModel = preferences.model || '';
+                const preferredModel = codexModels.find((model) => (model.model || model.id) === savedModel)
+                    || codexModels.find((model) => model.isDefault)
+                    || codexModels[0];
+                codexModel.value = preferredModel.model || preferredModel.id;
+                renderReasoningOptions(preferences.reasoningEffort || '');
+                codexModel.disabled = formBusy;
+                saveButton.disabled = formBusy || (activePaneId === 'settingsCodexPane' && codexModels.length === 0);
+                codexStatus.className = `small mt-2 ${savedModel ? 'text-success' : 'text-info'}`;
+                codexStatus.textContent = savedModel
+                    ? 'Preferências exclusivas deste token carregadas.'
+                    : 'Selecione e salve para criar preferências exclusivas para este token.';
+            } catch (error) {
+                codexModels = [];
+                codexModel.replaceChildren(new Option('Modelos indisponíveis', ''));
+                codexReasoning.replaceChildren(new Option('Raciocínio indisponível', ''));
+                codexStatus.className = 'small text-danger mt-2';
+                codexStatus.textContent = error.message;
+                saveButton.disabled = formBusy || activePaneId === 'settingsCodexPane';
+            } finally {
+                codexModelsLoading = false;
+            }
+        }
+
+        function renderServices(services) {
+            servicesList.innerHTML = services.map((service) => {
+                const stateClass = service.running ? 'success' : 'secondary';
+                const stateLabel = service.running ? 'Em execução' : 'Parado';
+                const desiredState = service.enabled ? 'Inicialização habilitada' : 'Inicialização desabilitada';
+                const unavailable = !service.available && !service.running;
+                const reason = service.unavailableReason
+                    ? `<div class="small text-warning mt-2"><i class="fa-duotone fa-triangle-exclamation me-1"></i>${service.unavailableReason}</div>`
+                    : '';
+
+                return `
+                    <article class="service-card p-3" data-service-card="${service.id}">
+                        <div class="d-flex justify-content-between align-items-start gap-3">
+                            <div>
+                                <div class="fw-semibold">${service.name}</div>
+                                <div class="settings-description small">${service.description}</div>
+                                <div class="small text-muted mt-1">Porta ${service.port} · ${desiredState}</div>
+                                ${reason}
+                            </div>
+                            <span class="badge text-bg-${stateClass} text-nowrap">
+                                <span class="service-status-dot bg-light me-1"></span>${stateLabel}
+                            </span>
+                        </div>
+                        <div class="d-flex flex-wrap gap-2 mt-3">
+                            <button class="btn btn-sm btn-success" data-service-action="start"
+                                    data-service="${service.id}" ${service.running || unavailable ? 'disabled' : ''}>
+                                <i class="fa-duotone fa-play me-1"></i>Iniciar
+                            </button>
+                            <button class="btn btn-sm btn-warning" data-service-action="restart"
+                                    data-service="${service.id}" ${!service.running || unavailable ? 'disabled' : ''}>
+                                <i class="fa-duotone fa-rotate me-1"></i>Reiniciar
+                            </button>
+                            <button class="btn btn-sm btn-danger" data-service-action="stop"
+                                    data-service="${service.id}" ${!service.running ? 'disabled' : ''}>
+                                <i class="fa-duotone fa-stop me-1"></i>Parar
+                            </button>
+                        </div>
+                    </article>`;
+            }).join('');
+        }
+
+        async function loadServices(showLoading = true) {
+            if (showLoading) {
+                servicesList.innerHTML = `
+                    <div class="text-center text-muted py-4">
+                        <span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
+                        Consultando serviços...
+                    </div>`;
+            }
+            try {
+                const response = await fetch(
+                    `/fileManagerServices?tokenBrowser=${encodeURIComponent(tokenBrowser())}`
+                );
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Não foi possível consultar os serviços.');
+                }
+                renderServices(data.services);
+            } catch (error) {
+                servicesList.innerHTML = `<div class="alert alert-danger mb-0">${error.message}</div>`;
+            }
+        }
+
+        async function confirmServiceAction(service, action) {
+            if (action === 'start') return true;
+            const verb = action === 'stop' ? 'parar' : 'reiniciar';
+            const warning = service === 'pty'
+                ? ' As sessões de terminal abertas serão desconectadas.'
+                : '';
+            const result = await Swal.fire({
+                title: `${verb.charAt(0).toUpperCase() + verb.slice(1)} serviço?`,
+                text: `Deseja ${verb} este serviço?${warning}`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Confirmar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: action === 'stop' ? '#dc3545' : '#ffc107',
+                background: '#1c2438',
+                color: '#fff'
+            });
+            return result.isConfirmed;
+        }
+
+        async function executeServiceAction(service, action, button) {
+            if (!await confirmServiceAction(service, action)) return;
+            const originalContent = button.innerHTML;
+            button.disabled = true;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Aguarde';
+            try {
+                const body = new URLSearchParams({
+                    tokenBrowser: tokenBrowser(),
+                    service: service,
+                    action: action
+                });
+                const response = await fetch('/fileManagerServices', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'},
+                    body: body.toString()
+                });
+                const data = await response.json();
+                if (Array.isArray(data.services)) renderServices(data.services);
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Não foi possível controlar o serviço.');
+                }
+                bootstrap.showToast({
+                    header: 'Serviços',
+                    body: data.message,
+                    toastClass: 'bg-success text-white',
+                    colorHeader: 'text-white'
+                });
+            } catch (error) {
+                await loadServices(false);
+                Swal.fire({
+                    title: 'Falha ao controlar serviço',
+                    text: error.message,
+                    icon: 'error',
+                    background: '#1c2438',
+                    color: '#fff'
+                });
+            } finally {
+                if (button.isConnected) {
+                    button.disabled = false;
+                    button.innerHTML = originalContent;
+                }
+            }
+        }
+
+        function selectPane(paneId) {
+            activePaneId = paneId;
+            modal.querySelectorAll('.settings-pane').forEach((pane) => {
+                pane.classList.toggle('d-none', pane.id !== paneId);
+            });
+            navButtons.forEach((button) => {
+                button.classList.toggle('active', button.dataset.settingsPane === paneId);
+            });
+            saveButton.classList.toggle('d-none', paneId === 'settingsServicesPane');
+            saveButton.disabled = formBusy || (paneId === 'settingsCodexPane' && codexModels.length === 0);
+            if (paneId === 'settingsServicesPane') loadServices();
+        }
+
+        toggle.addEventListener('change', updateStatus);
+        codexModel.addEventListener('change', () => renderReasoningOptions());
+        navButtons.forEach((button) => {
+            button.addEventListener('click', () => selectPane(button.dataset.settingsPane));
+        });
+        refreshServicesButton.addEventListener('click', () => loadServices());
+        servicesList.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-service-action]');
+            if (!button) return;
+            executeServiceAction(button.dataset.service, button.dataset.serviceAction, button);
+        });
+        modal.addEventListener('show.bs.modal', () => {
+            selectPane('settingsSystemPane');
+            loadSettings();
+            loadServices();
+            clearInterval(serviceStatusInterval);
+            serviceStatusInterval = setInterval(() => {
+                if (!document.getElementById('settingsServicesPane').classList.contains('d-none')) {
+                    loadServices(false);
+                }
+            }, 5000);
+        });
+        modal.addEventListener('hidden.bs.modal', () => {
+            clearInterval(serviceStatusInterval);
+            serviceStatusInterval = null;
+        });
+        saveButton.addEventListener('click', async function () {
+            const codexPane = activePaneId === 'settingsCodexPane';
+            setBusy(true);
+            try {
+                const token = tokenBrowser();
+                const body = new URLSearchParams({ tokenBrowser: token });
+                if (codexPane) {
+                    body.set('settingGroup', 'codex');
+                    body.set('codexModel', codexModel.value);
+                    body.set('codexReasoningEffort', codexReasoning.value);
+                } else {
+                    body.set('settingGroup', 'system');
+                    body.set('autoRestart', toggle.checked ? 'true' : 'false');
+                }
+                const response = await fetch('/fileManagerSettings', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'},
+                    body: body.toString()
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Não foi possível salvar as configurações.');
+                }
+
+                toggle.checked = data.settings.autoRestart !== false;
+                updateStatus();
+                if (codexPane) {
+                    codexStatus.className = 'small text-success mt-2';
+                    codexStatus.textContent = 'Preferências salvas somente para este token.';
+                    try {
+                        const applied = await window.FileManagerCodexBridge?.applyCurrentPreferences?.();
+                        if (applied?.applied) {
+                            codexStatus.textContent += ' A conversa atual também foi atualizada.';
+                        }
+                    } catch (error) {
+                        codexStatus.className = 'small text-warning mt-2';
+                        codexStatus.textContent = `Preferências salvas; serão aplicadas na próxima tarefa. ${error.message}`;
+                    }
+                }
+                bootstrap.showToast({
+                    header: 'Configurações',
+                    body: data.message,
+                    toastClass: 'bg-success text-white',
+                    colorHeader: 'text-white'
+                });
+            } catch (error) {
+                const target = codexPane ? codexStatus : status;
+                target.className = 'small text-danger mt-2';
+                target.textContent = error.message;
+            } finally {
+                setBusy(false);
+            }
+        });
+    })();
+</script>

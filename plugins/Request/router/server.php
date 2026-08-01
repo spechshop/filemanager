@@ -41,10 +41,12 @@ class server
                     $response->status(500, 'Internal Error Page');
                     return $response->end();
                 } else {
-                    $replace = str_replace('/', '', $nameRoute);
                     $response->header('Content-Type', 'text/html; charset=utf-8');
                     $response->status(200);
-                    return $response->end(cache::global()['cachePages'][$replace]);
+                    // As páginas e seus @imports podem mudar com o autorestart
+                    // desligado. Renderizar a fonte atual aqui impede que o
+                    // cache em memória da inicialização devolva HTML antigo.
+                    return $response->end(template::prepare(file_get_contents($page)));
                 }
             }
         }

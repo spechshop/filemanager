@@ -10,6 +10,10 @@
 # Não usamos "set -e": queremos sobreviver a falhas e seguir com fallbacks.
 set +e
 
+# Toda a instalação deve poder rodar sem interação no terminal.
+export DEBIAN_FRONTEND=noninteractive
+export COMPOSER_NO_INTERACTION=1
+
 # ---------------------------------------------------------------------
 # Logs
 # ---------------------------------------------------------------------
@@ -28,11 +32,9 @@ SUDO=""
 if [ "$IS_ROOT" -ne 1 ]; then
     if command -v sudo >/dev/null 2>&1; then
         if sudo -n true 2>/dev/null; then
-            SUDO="sudo"
-        elif sudo true 2>/dev/null; then
-            SUDO="sudo"
+            SUDO="sudo -n"
         else
-            warn "sudo indisponível/sem permissão. Seguindo em modo usuário (sem root)."
+            warn "sudo sem senha indisponível. Seguindo em modo usuário (sem perguntas)."
         fi
     else
         warn "Comando sudo não encontrado. Seguindo em modo usuário (sem root)."
@@ -50,6 +52,14 @@ run_priv() {
         "$@"
     fi
 }
+
+# Usuário que executará o FileManager. Quando o instalador tiver sido chamado
+# via sudo, preservamos o usuário original em vez de subir o serviço como root.
+FILEMANAGER_USER="$(id -un 2>/dev/null)"
+if [ "$IS_ROOT" -eq 1 ] && [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ] \
+    && id "$SUDO_USER" >/dev/null 2>&1; then
+    FILEMANAGER_USER="$SUDO_USER"
+fi
 
 # ---------------------------------------------------------------------
 # 2) Diretório de binários do usuário (fallback quando não há root)
@@ -295,10 +305,117 @@ if [ -n "$COMPOSER_CMD" ]; then
 fi
 
 # ---------------------------------------------------------------------
-# 11) Inicialização automática no boot (com cascata de fallbacks)
+# 11) Helper privilegiado e restrito para a rota freeRam
+# ---------------------------------------------------------------------
+DROP_CACHES_HELPER="/usr/local/sbin/filemanager-drop-caches"
+FILEMANAGER_UID="$(id -u "$FILEMANAGER_USER" 2>/dev/null)"
+[ -z "$FILEMANAGER_UID" ] && FILEMANAGER_UID="unknown"
+DROP_CACHES_SUDOERS="/etc/sudoers.d/filemanager-drop-caches-$FILEMANAGER_UID"
+FREE_RAM_OK=0
+
+drop_caches_is_available() {
+    [ -x "$DROP_CACHES_HELPER" ] || return 1
+    [ -x /usr/bin/sudo ] || return 1
+
+    if [ "$IS_ROOT" -eq 1 ]; then
+        return 0
+    fi
+
+    /usr/bin/sudo -n -l "$DROP_CACHES_HELPER" >/dev/null 2>&1
+}
+
+configure_drop_caches() {
+    local helper_tmp sudoers_tmp
+
+    if [ ! -e /proc/sys/vm/drop_caches ]; then
+        warn "freeRam indisponível: este sistema não oferece /proc/sys/vm/drop_caches."
+        return 1
+    fi
+
+    if [ "$IS_ROOT" -ne 1 ] && [ -z "$SUDO" ]; then
+        if drop_caches_is_available; then
+            ok "Helper de freeRam já está configurado para $FILEMANAGER_USER."
+            return 0
+        fi
+
+        warn "freeRam não funcionará: a instalação está sem root e sem sudo não interativo."
+        return 1
+    fi
+
+    if [ ! -x /usr/bin/sudo ]; then
+        pkg_install sudo >/dev/null 2>&1
+    fi
+    if [ ! -x /usr/bin/sudo ]; then
+        warn "freeRam não funcionará: /usr/bin/sudo não está disponível."
+        return 1
+    fi
+
+    helper_tmp="$(mktemp 2>/dev/null)"
+    sudoers_tmp="$(mktemp 2>/dev/null)"
+    if [ -z "$helper_tmp" ] || [ -z "$sudoers_tmp" ]; then
+        [ -n "$helper_tmp" ] && rm -f -- "$helper_tmp"
+        [ -n "$sudoers_tmp" ] && rm -f -- "$sudoers_tmp"
+        warn "freeRam não funcionará: não foi possível criar arquivos temporários."
+        return 1
+    fi
+
+    printf '%s\n' \
+        '#!/bin/sh' \
+        'set -eu' \
+        '' \
+        '/usr/bin/sync' \
+        "printf '3\\n' > /proc/sys/vm/drop_caches" > "$helper_tmp"
+
+    printf '%s ALL=(root) NOPASSWD: %s\n' \
+        "$FILEMANAGER_USER" "$DROP_CACHES_HELPER" > "$sudoers_tmp"
+
+    if ! command -v visudo >/dev/null 2>&1 \
+        || ! visudo -cf "$sudoers_tmp" >/dev/null 2>&1; then
+        rm -f -- "$helper_tmp" "$sudoers_tmp"
+        warn "freeRam não funcionará: não foi possível validar a regra sudoers."
+        return 1
+    fi
+
+    if ! run_priv install -o root -g root -m 0755 "$helper_tmp" "$DROP_CACHES_HELPER" \
+        || ! run_priv install -o root -g root -m 0440 "$sudoers_tmp" "$DROP_CACHES_SUDOERS"; then
+        rm -f -- "$helper_tmp" "$sudoers_tmp"
+        warn "freeRam não funcionará: não foi possível instalar o helper privilegiado."
+        return 1
+    fi
+
+    rm -f -- "$helper_tmp" "$sudoers_tmp"
+    ok "freeRam configurado com permissão restrita para $FILEMANAGER_USER."
+    return 0
+}
+
+configure_drop_caches && FREE_RAM_OK=1
+
+# ---------------------------------------------------------------------
+# 12) Inicialização automática no boot (com cascata de fallbacks)
 # ---------------------------------------------------------------------
 log "Configurando inicialização automática..."
 CURRENT_DIR="$(pwd)"
+
+# Instalar o controlador antes de iniciar qualquer supervisor. Diferentemente
+# de "killall php", ele para primeiro o systemd/screen responsável por recriar
+# o processo. O script local é sempre mantido como forma de acesso garantida.
+CONTROL_SCRIPT="$CURRENT_DIR/filemanagerctl"
+CONTROL_COMMAND="$CONTROL_SCRIPT"
+if [ -f "$CONTROL_SCRIPT" ]; then
+    chmod +x "$CONTROL_SCRIPT" 2>/dev/null
+    if run_priv ln -sfn "$CONTROL_SCRIPT" /usr/local/bin/filemanagerctl 2>/dev/null; then
+        CONTROL_COMMAND="filemanagerctl"
+        ok "Comando de controle instalado: filemanagerctl"
+    elif ln -sfn "$CONTROL_SCRIPT" "$LOCAL_BIN/filemanagerctl" 2>/dev/null; then
+        CONTROL_COMMAND="filemanagerctl"
+        ok "Comando de controle instalado em $LOCAL_BIN/filemanagerctl"
+    else
+        warn "Não foi possível adicionar filemanagerctl ao PATH; use $CONTROL_SCRIPT."
+    fi
+else
+    warn "Controlador filemanagerctl não encontrado no repositório."
+fi
+
 # Binário php a ser executado pelo serviço
 if [ "$PHP_INSTALLED_GLOBAL" -eq 1 ] && command -v php >/dev/null 2>&1; then
     RUN_PHP="$(command -v php)"
@@ -321,8 +438,10 @@ After=network.target
 Type=simple
 WorkingDirectory=$CURRENT_DIR
 ExecStart=$RUN_PHP $CURRENT_DIR/server.php
-Restart=always
-User=$(id -un)
+Restart=on-failure
+KillMode=control-group
+TimeoutStopSec=15
+User=$FILEMANAGER_USER
 
 [Install]
 WantedBy=multi-user.target
@@ -354,7 +473,9 @@ After=network.target
 Type=simple
 WorkingDirectory=$CURRENT_DIR
 ExecStart=$RUN_PHP $CURRENT_DIR/server.php
-Restart=always
+Restart=on-failure
+KillMode=control-group
+TimeoutStopSec=15
 
 [Install]
 WantedBy=default.target
@@ -401,7 +522,7 @@ if ! pgrep -f "$CURRENT_DIR/server.php" >/dev/null 2>&1; then
 fi
 
 # ---------------------------------------------------------------------
-# 12) Exibir link de acesso
+# 13) Exibir link de acesso
 # ---------------------------------------------------------------------
 IP_ADDR=""
 if command -v hostname >/dev/null 2>&1; then
@@ -429,3 +550,10 @@ fi
 
 ok "Instalação concluída!"
 log "Acesse o sistema em: $PROTOCOL://$IP_ADDR:$PORT"
+if [ "$FREE_RAM_OK" -ne 1 ]; then
+    warn "Instalação concluída sem freeRam; essa função exige root ou sudo não interativo durante a instalação."
+fi
+if [ -f "$CONTROL_SCRIPT" ]; then
+    log "Para desligar agora: $CONTROL_COMMAND stop"
+    log "Para desligar e desativar no boot: $CONTROL_COMMAND disable"
+fi

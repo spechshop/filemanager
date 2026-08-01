@@ -64,6 +64,9 @@ The system features:
   - Session files stored in `files/`
 - **`gpt.js`** - Puppeteer-based service (port 3090)
   - AI/GPT integration for code refactoring
+- **`codex-agent.js`** - Official Codex app-server bridge (port 3091, loopback only)
+  - Streams task progress, approvals, commands and diffs to the File Manager
+  - Uses ChatGPT Business/Enterprise `CODEX_ACCESS_TOKEN`; it does not require an API key
 
 ### Frontend
 - **`index.html`** - Main application entry point
@@ -80,6 +83,7 @@ The system features:
 - Swoole extension (matching your PHP version)
 - Composer
 - Node.js 18+ and npm
+- Node.js 20.6+ and the Codex CLI when the Codex Agent service is enabled
 
 ### Optional
 - Git (for `importGit` functionality)
@@ -102,6 +106,22 @@ node -v
 ```bash
 curl -sL https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/installer.sh | sh
 ```
+
+The installer adds a `filemanagerctl` command to control the supervised
+process. Unlike `killall php`, it stops the process manager before terminating
+the PHP process, so the server is not immediately started again.
+
+```bash
+filemanagerctl status
+filemanagerctl stop       # stop now, but keep autostart enabled
+filemanagerctl start
+filemanagerctl restart
+filemanagerctl disable    # stop now and disable autostart
+filemanagerctl enable
+```
+
+If the command could not be added to `PATH`, run `./filemanagerctl` from the
+installation directory. A system-level service may request the sudo password.
 
 ### 2. Install PHP Dependencies
 ```bash
@@ -127,6 +147,15 @@ For production, update certificate paths in `plugins/configInterface.json`.
   "host": "0.0.0.0",
   "port": 8080,
   "ssl": ".",
+  "fileManager": {
+    "autoRestart": true,
+    "services": {
+      "pty": true,
+      "lsp": true,
+      "gpt": false,
+      "codex": true
+    }
+  },
   "serverSettings": {
     "worker_num": 1,
     "max_request": 20000000,
@@ -143,6 +172,8 @@ For production, update certificate paths in `plugins/configInterface.json`.
 - **`host`** - Server bind address (default: `0.0.0.0`)
 - **`port`** - WebSocket server port (default: `8080`)
 - **`ssl`** - Path to SSL certificate directory
+- **`fileManager.autoRestart`** - Restarts the middleware after a stop and when monitored PHP files change; it can also be changed from the File Manager settings panel
+- **`fileManager.services`** - Controls whether PTY, LSP, legacy GPT and Codex Agent services start with the File Manager; each service can also be started, stopped or restarted from the settings panel
 - **`autoload`** - Plugin directories to autoload
 - **`allowExtensions`** - MIME types for static file serving
 - **`serverSettings`** - Swoole server configuration
@@ -168,6 +199,25 @@ Provides terminal sessions on port 6060.
 node gpt.js
 ```
 Provides AI refactoring on port 3090.
+
+**Codex Agent (ChatGPT Business/Enterprise):**
+
+Create a Codex access token in the ChatGPT workspace admin console and keep it
+in the ignored `.env` file. Do not expose this port publicly.
+
+```bash
+CODEX_ACCESS_TOKEN=your-access-token
+node codex-agent.js
+```
+
+The File Manager starts this service automatically when `fileManager.services.codex`
+is enabled. The bridge listens only on `127.0.0.1:3091`; browsers connect through
+the authenticated Swoole WebSocket relay.
+
+The permission selector below the Codex Agent composer is remembered in the browser:
+`Apenas leitura` uses a read-only sandbox, `Agente` can write only inside the current
+workspace, and `Agente full` disables both the sandbox and approval prompts after an
+explicit warning.
 
 ### Production Mode
 
@@ -226,9 +276,11 @@ php formatter.php <file>
 
 ## Environment Variables
 
-Currently, configuration is read from JSON files. The following environment variables could be implemented (TODO):
+Application configuration is read from JSON files. The Codex Agent also reads
+its credential from the ignored `.env` file:
 
 ```bash
+CODEX_ACCESS_TOKEN=...       # ChatGPT workspace Codex access token
 APP_HOST=0.0.0.0           # Override host
 APP_PORT=8080              # Override port
 SSL_CERT_FILE=fullchain.pem  # SSL certificate path
@@ -242,6 +294,7 @@ SSL_KEY_FILE=privkey.pem   # SSL key path
 | Swoole WebSocket | 8080 | Yes (configInterface.json) | Main application server |
 | Node PTY | 6060 | No (hardcoded) | Terminal sessions |
 | GPT Service | 3090 | No (hardcoded) | AI refactoring |
+| Codex Agent | 3091 | No (hardcoded) | Enterprise coding tasks; loopback only |
 
 ## API Endpoints
 

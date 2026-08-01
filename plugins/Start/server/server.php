@@ -3,6 +3,7 @@
 namespace plugins\Start;
 
 use FilesystemIterator;
+use libspech\Cli\cli;
 use plugins\Utils\cache\observer;
 use RecursiveDirectoryIterator;
 use RecursiveTreeIterator;
@@ -12,9 +13,25 @@ use Swoole\Timer;
 
 class server
 {
+    private static function autoRestartEnabled(): bool
+    {
+        $configPath = dirname(__DIR__, 2) . '/configInterface.json';
+        $contents = @file_get_contents($configPath);
+        $config = is_string($contents) ? json_decode($contents, true) : null;
+
+        // Compatibilidade com instalações antigas e tolerância a uma escrita
+        // inválida: o comportamento histórico era manter o autorestart ligado.
+        return !is_array($config)
+            || ($config['fileManager']['autoRestart'] ?? true) !== false;
+    }
+
     public static function tick(\Swoole\Http\Server $server, int $milliseconds, Table $tableServer)
     {
         Timer::tick($milliseconds, function () use ($server, $tableServer) {
+
+            if (!self::autoRestartEnabled()) {
+                return;
+            }
 
 
 
@@ -61,6 +78,7 @@ class server
                         if ($nowHash !== $tableServer->get($id, "data")) {
                             $server->stop();
                             Timer::clearAll();
+                            cli::pcl("File has been modified: " . $addressFile);
                             throw new \Exception();
                         }
                     }
@@ -88,7 +106,9 @@ class server
                 $idKey = explode(".", $e[count($e) - 1])[0];
                 $cachePages[$idKey] = \plugins\Utils\cache\bufferPages::get($idKey, __DIR__);
             }
+            cache::global()['dataKeys'] = $dataKeys;
             cache::global()['listRoutes'] = $listRoutes;
+            cache::global()['cachePages'] = $cachePages;
         });
         print $cli->color(sprintf("O servidor está sendo executado no endereço => %s%s:%s%s", $prefix, $server->host, $server->port, PHP_EOL), "yellow");
          print $cli->color(sprintf("O servidor está sendo executado no endereço => %s%s:%s%s", $prefix, \libspech\Network\network::getLocalIp(), $server->port, PHP_EOL), "yellow");

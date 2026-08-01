@@ -23,14 +23,56 @@ class server extends OpenConnection
         if (empty($object)) {
             return $server->close($frame->fd);
         }
-        $tokenBrowser = !empty($object["token"]) ? $object["token"] : null;
-        if (str_contains($tokenBrowser, '-')) {
+        $tokenBrowser = !empty($object["token"]) && is_string($object["token"])
+            ? $object["token"]
+            : '';
+        if (array_key_exists('codexAgent', $object) && str_ends_with($tokenBrowser, '-codex-agent')) {
+            $tokenClient = substr($tokenBrowser, 0, -strlen('-codex-agent'));
+        } elseif ($tokenBrowser !== '' && str_contains($tokenBrowser, '-')) {
             $tokenClient = explode("-", $tokenBrowser)[0];
         } else {
             $tokenClient = $tokenBrowser;
         }
         if (!empty($GLOBALS["coroutinesProcess"][$tokenBrowser])) {
             $GLOBALS["coroutinesProcess"][$tokenBrowser]["fd"] = $frame->fd;
+        }
+
+        if (array_key_exists("codexAgent", $object)) {
+            if (!self::validBrowserToken($tokenClient)) {
+                return $server->close($frame->fd);
+            }
+
+            $payload = $object["payload"] ?? null;
+            if (is_array($payload)) {
+                $payload = self::withCodexPreferences($payload, $tokenClient);
+                $payload = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            } elseif (is_string($payload)) {
+                $decodedPayload = json_decode($payload, true);
+                if (is_array($decodedPayload)) {
+                    $payload = json_encode(
+                        self::withCodexPreferences($decodedPayload, $tokenClient),
+                        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+                    );
+                }
+            }
+            if (!is_string($payload) || $payload === '' || strlen($payload) > 131072) {
+                self::pushCodexAgentError($server, $frame->fd, 'Mensagem inválida ou muito grande.');
+                return;
+            }
+
+            $GLOBALS["codexAgent"][$tokenBrowser]["fd"] = $frame->fd;
+            if (empty($GLOBALS["codexAgent"][$tokenBrowser]["chan"])) {
+                $GLOBALS["codexAgent"][$tokenBrowser]["chan"] = new \Swoole\Coroutine\Channel(1024);
+            }
+            if (empty($GLOBALS["codexAgent"][$tokenBrowser]["worker"])) {
+                $GLOBALS["codexAgent"][$tokenBrowser]["worker"] = true;
+                Coroutine::create(function () use ($tokenBrowser, $server) {
+                    self::runCodexAgentWorker($tokenBrowser, $server);
+                    $GLOBALS["codexAgent"][$tokenBrowser]["worker"] = false;
+                });
+            }
+            $GLOBALS["codexAgent"][$tokenBrowser]["chan"]->push($payload);
+            return;
         }
 
         if (array_key_exists("isCodex", $object)) {
@@ -160,6 +202,124 @@ class server extends OpenConnection
                 ])
             );
         }
+    }
+
+    private static function validBrowserToken(string $token): bool
+    {
+        if ($token === '' || !key_exists($token, cache::global()["dataKeys"])) {
+            return false;
+        }
+        $expires = cache::global()["dataKeys"][$token]["expire"] ?? 0;
+        return time() < (int) $expires;
+    }
+
+    private static function pushCodexAgentError(\Swoole\Server $server, int $fd, string $message): void
+    {
+        if (!$server->exist($fd)) {
+            return;
+        }
+        $server->push($fd, json_encode([
+            'codexAgent' => true,
+            'payload' => [
+                'type' => 'status',
+                'status' => 'error',
+                'message' => $message,
+            ],
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    }
+
+    /**
+     * Injeta no bridge somente as preferências associadas ao token autenticado.
+     * O navegador não pode escolher configurações pertencentes a outro token.
+     */
+    private static function withCodexPreferences(array $payload, string $token): array
+    {
+        $actions = ['thread.start', 'thread.resume', 'thread.settings.update', 'turn.start'];
+        if (!in_array($payload['action'] ?? null, $actions, true)) {
+            return $payload;
+        }
+
+        unset($payload['model'], $payload['reasoningEffort']);
+        try {
+            $preferences = \plugins\Request\fileManagerConfig::codexPreferences(
+                \plugins\Request\fileManagerConfig::read(),
+                $token
+            );
+        } catch (Throwable) {
+            return $payload;
+        }
+
+        if (!empty($preferences['model'])) {
+            $payload['model'] = $preferences['model'];
+        }
+        if (!empty($preferences['reasoningEffort'])) {
+            $payload['reasoningEffort'] = $preferences['reasoningEffort'];
+        }
+        return $payload;
+    }
+
+    /**
+     * Mantém o bridge oficial do Codex isolado em loopback. O navegador fala
+     * somente com este servidor Swoole e nunca recebe CODEX_ACCESS_TOKEN.
+     */
+    private static function runCodexAgentWorker(string $tokenBrowser, \Swoole\Server $server): void
+    {
+        $client = new Client('127.0.0.1', 3091);
+        // Clientes WebSocket devem mascarar frames enviados ao servidor (RFC 6455).
+        $client->set(['websocket_mask' => true]);
+        if (!$client->upgrade('/agent')) {
+            $fd = $GLOBALS["codexAgent"][$tokenBrowser]["fd"] ?? null;
+            if (is_int($fd)) {
+                self::pushCodexAgentError($server, $fd, 'O serviço Codex Agent não está disponível.');
+            }
+            $GLOBALS["codexAgent"][$tokenBrowser]["chan"] = null;
+            return;
+        }
+
+        Coroutine::create(function () use ($client, $tokenBrowser, $server) {
+            while ($client->connected) {
+                $message = $client->recv();
+                if ($message === false || $message === '') {
+                    if ($client->connected) {
+                        continue;
+                    }
+                    break;
+                }
+                if (empty($message->data)) {
+                    continue;
+                }
+                $payload = json_decode($message->data, true);
+                if (!is_array($payload)) {
+                    continue;
+                }
+                $fd = $GLOBALS["codexAgent"][$tokenBrowser]["fd"] ?? null;
+                if (is_int($fd) && $server->exist($fd)) {
+                    $server->push($fd, json_encode([
+                        'codexAgent' => true,
+                        'payload' => $payload,
+                    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+                }
+            }
+        });
+
+        $channel = $GLOBALS["codexAgent"][$tokenBrowser]["chan"];
+        while ($client->connected) {
+            $payload = $channel->pop();
+            if ($payload === false || !is_string($payload)) {
+                break;
+            }
+            try {
+                $client->push($payload);
+            } catch (Throwable) {
+                break;
+            }
+        }
+
+        try {
+            $client->close();
+        } catch (Throwable) {
+        }
+        $GLOBALS["codexAgent"][$tokenBrowser]["chan"] = null;
     }
 
     /**

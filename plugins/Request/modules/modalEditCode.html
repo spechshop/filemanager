@@ -1093,6 +1093,7 @@
 <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.41.0/min/vs/loader.js"></script>
 <script>
     let models = {}; // Para armazenar os modelos dos arquivos
+    let cleanModelVersions = {}; // Última versão confirmada no disco por arquivo
     let positions = {};
     let tabsForFiles = document.getElementById('newTabFileEditor');
     let tabsCache = {}
@@ -3609,6 +3610,10 @@
                     content: editor.getValue(),
                 },
                 success: async function (data) {
+                    const savedPath = $("#hiddenFileEdit").text();
+                    if (models[savedPath]) {
+                        cleanModelVersions[savedPath] = models[savedPath].getAlternativeVersionId();
+                    }
                     toastLotus('File saved successfully', 'success', 1000, 'success');
                     runPhpStanDiagnostics();
                 },
@@ -4074,6 +4079,7 @@
                             fileContent,
                             language,
                         );
+                        cleanModelVersions[nameFile] = models[nameFile].getAlternativeVersionId();
 
                         // Registra o documento no Language Server (autocomplete,
                         // hover/documentação, assinatura e diagnósticos de verdade).
@@ -4119,6 +4125,7 @@
                             if (models[nameFile]) {
                                 models[nameFile].dispose(); // libera o modelo do editor
                                 delete models[nameFile]; // remove o modelo do cache
+                                delete cleanModelVersions[nameFile];
                             }
                             if (tabsCache[nameFile]) {
                                 delete tabsCache[nameFile]; // remove a aba do cache
@@ -4218,6 +4225,118 @@
                 }
             }
         });
+
+        window.FileManagerEditorBridge = {
+            async openFileAt(filePath, line = 1, column = 1) {
+                const normalizedPath = String(filePath || '').replaceAll('\\', '/').trim();
+                if (!normalizedPath || normalizedPath.includes('\0')) {
+                    throw new Error('Caminho de arquivo inválido.');
+                }
+
+                const requestedLine = Math.max(1, Number.parseInt(line, 10) || 1);
+                const requestedColumn = Math.max(1, Number.parseInt(column, 10) || 1);
+                const activateModel = () => {
+                    const model = models[normalizedPath];
+                    if (!model || model.isDisposed() || !editor) return false;
+                    const lineNumber = Math.min(requestedLine, model.getLineCount());
+                    const columnNumber = Math.min(requestedColumn, model.getLineMaxColumn(lineNumber));
+                    const position = {lineNumber, column: columnNumber};
+
+                    if (tabsCache[normalizedPath]) tabsCache[normalizedPath].click();
+                    editor.setModel(model);
+                    positions[normalizedPath] = position;
+                    const focusPosition = () => {
+                        if (editor.getModel() !== model) return;
+                        editor.layout();
+                        editor.setPosition(position);
+                        editor.revealPositionInCenter(position);
+                        editor.focus();
+                    };
+                    focusPosition();
+                    window.setTimeout(focusPosition, 250);
+                    return true;
+                };
+
+                $('#edit-code').modal('show');
+                if (activateModel()) return {path: normalizedPath, line: requestedLine, column: requestedColumn};
+
+                $('#nameFileForEdit').text(getFilename(normalizedPath));
+                $('#hiddenFileEdit').text(normalizedPath);
+                window.blockingMonitor = false;
+                const trigger = document.getElementById('namefilemodaledit');
+                trigger.textContent = '';
+                trigger.textContent = normalizedPath;
+
+                await new Promise((resolve, reject) => {
+                    const startedAt = Date.now();
+                    const timer = window.setInterval(() => {
+                        if (activateModel()) {
+                            window.clearInterval(timer);
+                            resolve();
+                        } else if (Date.now() - startedAt >= 15000) {
+                            window.clearInterval(timer);
+                            reject(new Error('O editor não conseguiu carregar o arquivo a tempo.'));
+                        }
+                    }, 50);
+                });
+                return {path: normalizedPath, line: requestedLine, column: requestedColumn};
+            },
+            async refreshChangedFiles(paths) {
+                const normalizedPaths = [...new Set((Array.isArray(paths) ? paths : [])
+                    .filter((entry) => typeof entry === 'string')
+                    .map((entry) => '/' + entry.replaceAll('\\', '/').replace(/^\/+/, ''))
+                    .map((entry) => entry.replace(/\/{2,}/g, '/')))];
+                const conflicts = [];
+                const refreshed = [];
+
+                for (const changedPath of normalizedPaths) {
+                    const modelPath = Object.keys(models).find((entry) => {
+                        const normalized = '/' + entry.replaceAll('\\', '/').replace(/^\/+/, '');
+                        return normalized.replace(/\/{2,}/g, '/') === changedPath;
+                    });
+                    if (!modelPath || !models[modelPath] || models[modelPath].isDisposed()) {
+                        continue;
+                    }
+
+                    const model = models[modelPath];
+                    const cleanVersion = cleanModelVersions[modelPath];
+                    if (cleanVersion !== undefined && model.getAlternativeVersionId() !== cleanVersion) {
+                        conflicts.push(changedPath);
+                        continue;
+                    }
+
+                    try {
+                        let response = await asyncGet(
+                            `/getFile?tokenBrowser=${encodeURIComponent($("#fp").text())}&path=${encodeURIComponent(modelPath)}`,
+                        );
+                        let contents;
+                        if (response && response.encoded) {
+                            const binary = atob(response.information);
+                            const bytes = new Uint8Array(binary.length);
+                            for (let index = 0; index < binary.length; index++) {
+                                bytes[index] = binary.charCodeAt(index);
+                            }
+                            contents = new TextDecoder('utf-8').decode(bytes);
+                        } else {
+                            contents = response?.information;
+                        }
+                        if (typeof contents !== 'string') {
+                            continue;
+                        }
+                        model.setValue(contents);
+                        cleanModelVersions[modelPath] = model.getAlternativeVersionId();
+                        refreshed.push(changedPath);
+                        try {
+                            window.PhpLSP && window.PhpLSP.openModel(model, modelPath);
+                        } catch (e) { /* LSP indisponível: o editor continua funcional. */ }
+                    } catch (error) {
+                        console.warn(`Não foi possível recarregar ${changedPath}:`, error);
+                    }
+                }
+
+                return {conflicts, refreshed};
+            },
+        };
 
         const config = {attributes: false, childList: true, subtree: false};
         observer.observe(target, config);

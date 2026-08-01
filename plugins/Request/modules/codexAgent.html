@@ -1,0 +1,1801 @@
+
+<div class="offcanvas offcanvas-end" tabindex="-1" id="codexAgentPanel" aria-labelledby="codexAgentTitle">
+    <button class="codex-resize-handle" id="codexAgentResize" type="button" role="separator"
+            aria-label="Redimensionar painel do Codex" aria-orientation="vertical"
+            title="Arraste para redimensionar; clique duas vezes para restaurar"></button>
+    <div class="offcanvas-header">
+        <div>
+            <h5 class="offcanvas-title mb-1" id="codexAgentTitle">
+                <i class="fa-duotone fa-robot me-2"></i>Codex Agent
+            </h5>
+            <div class="small text-blue text-truncate" id="codexAgentWorkspace">Pasta: /</div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <span class="badge text-bg-secondary" id="codexAgentStatus">Desconectado</span>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"
+                    aria-label="Fechar"></button>
+        </div>
+    </div>
+
+    <div class="codex-toolbar p-2 d-flex gap-2">
+        <button class="btn btn-sm btn-primary" id="codexAgentNewThread" type="button" title="Nova conversa">
+            <i class="fa-duotone fa-plus"></i>
+        </button>
+        <select class="form-select form-select-sm" id="codexAgentThreads" aria-label="Conversas do Codex">
+            <option value="">Nova conversa</option>
+        </select>
+        <button class="btn btn-sm btn-outline-info" id="codexAgentRename" type="button"
+                title="Renomear conversa" disabled>
+            <i class="fa-duotone fa-pen"></i>
+        </button>
+        <button class="btn btn-sm btn-outline-danger" id="codexAgentArchive" type="button"
+                title="Arquivar conversa" disabled>
+            <i class="fa-duotone fa-box-archive"></i>
+        </button>
+    </div>
+
+    <section class="codex-context" id="codexAgentContext" aria-labelledby="codexAgentContextTitle">
+        <div class="codex-context-donut" id="codexAgentContextDonut" role="progressbar"
+             aria-valuemin="0" aria-valuemax="100" aria-valuetext="Uso de contexto ainda não medido"
+             title="O uso de contexto será informado depois da primeira resposta do modelo.">
+            <svg viewBox="0 0 72 72" aria-hidden="true">
+                <circle class="codex-context-track" cx="36" cy="36" r="29"></circle>
+                <circle class="codex-context-progress" id="codexAgentContextProgress" cx="36" cy="36" r="29"
+                        pathLength="100" stroke-dasharray="100" stroke-dashoffset="100"></circle>
+            </svg>
+            <span class="codex-context-percent" id="codexAgentContextPercent">—</span>
+        </div>
+        <div class="codex-context-copy flex-grow-1">
+            <div class="codex-context-heading">
+                <span class="codex-context-title" id="codexAgentContextTitle">Contexto usado</span>
+                <span class="codex-context-value" id="codexAgentContextValue">Aguardando medição</span>
+            </div>
+            <div class="codex-context-events" id="codexAgentContextEvents" role="list"
+                 aria-label="Linha do tempo do consumo de contexto"></div>
+            <div class="codex-context-caption">
+                <span id="codexAgentContextEventCount">Nenhum evento</span>
+                <span id="codexAgentContextRisk">Sem medição ainda</span>
+            </div>
+        </div>
+    </section>
+
+    <div class="offcanvas-body p-0 d-flex flex-column">
+        <div class="p-3 flex-grow-1" id="codexAgentTimeline" aria-live="polite">
+            <div class="text-center py-5" id="codexAgentEmpty">
+                <i class="fa-duotone fa-sparkles fa-2x mb-3"></i>
+                <div>Descreva uma tarefa para o Codex executar nesta pasta.</div>
+            </div>
+        </div>
+
+        <details class="mx-3 mb-2 d-none" id="codexAgentDiffBox">
+            <summary class="small text-info mb-1">Alterações desta tarefa</summary>
+            <pre class="codex-card p-2" id="codexAgentDiff"></pre>
+        </details>
+
+        <div class="codex-composer p-3">
+            <textarea class="form-control mb-2" id="codexAgentPrompt" maxlength="65536"
+                      placeholder="Ex.: revise este projeto, corrija o problema e execute os testes"></textarea>
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <label class="small text-muted" for="codexAgentPermissionMode">Modo</label>
+                    <select class="form-select form-select-sm" id="codexAgentPermissionMode"
+                            aria-label="Modo de permissão do Codex">
+                        <option value="read-only">Apenas leitura</option>
+                        <option value="agent" selected>Agente</option>
+                        <option value="agent-full">Agente full</option>
+                    </select>
+                    <small class="text-muted" id="codexAgentHint">As alterações ficam limitadas à pasta atual.</small>
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-danger d-none" id="codexAgentStop" type="button">
+                        <i class="fa-duotone fa-stop me-1"></i>Parar
+                    </button>
+                    <button class="btn btn-success" id="codexAgentSend" type="button">
+                        <i class="fa-duotone fa-paper-plane me-1"></i>Enviar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js" data-manual></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+<script>
+    (function () {
+        const panel = document.getElementById('codexAgentPanel');
+        const resizeHandle = document.getElementById('codexAgentResize');
+        const timeline = document.getElementById('codexAgentTimeline');
+        const empty = document.getElementById('codexAgentEmpty');
+        const statusBadge = document.getElementById('codexAgentStatus');
+        const workspaceLabel = document.getElementById('codexAgentWorkspace');
+        const threadSelect = document.getElementById('codexAgentThreads');
+        const newThreadButton = document.getElementById('codexAgentNewThread');
+        const renameButton = document.getElementById('codexAgentRename');
+        const archiveButton = document.getElementById('codexAgentArchive');
+        const sendButton = document.getElementById('codexAgentSend');
+        const stopButton = document.getElementById('codexAgentStop');
+        const prompt = document.getElementById('codexAgentPrompt');
+        const permissionModeSelect = document.getElementById('codexAgentPermissionMode');
+        const hint = document.getElementById('codexAgentHint');
+        const diffBox = document.getElementById('codexAgentDiffBox');
+        const diff = document.getElementById('codexAgentDiff');
+        const contextPanel = document.getElementById('codexAgentContext');
+        const contextDonut = document.getElementById('codexAgentContextDonut');
+        const contextProgress = document.getElementById('codexAgentContextProgress');
+        const contextPercent = document.getElementById('codexAgentContextPercent');
+        const contextValue = document.getElementById('codexAgentContextValue');
+        const contextEventsNode = document.getElementById('codexAgentContextEvents');
+        const contextEventCount = document.getElementById('codexAgentContextEventCount');
+        const contextRisk = document.getElementById('codexAgentContextRisk');
+
+        let socket = null;
+        let reconnectTimer = null;
+        let requestSequence = 1;
+        let workspace = '/';
+        let currentThreadId = null;
+        let activeTurnId = null;
+        let ready = false;
+        let changedPaths = new Set();
+        let activityNode = null;
+        let activityStartedAt = 0;
+        let activityTimer = null;
+        const pending = new Map();
+        const itemNodes = new Map();
+        const activityEntries = new Map();
+        const threadNames = new Map();
+        const tokenUsageByThread = new Map();
+        const contextEvents = [];
+        const contextEventIndexes = new Map();
+        const panelWidthStorageKey = 'codexAgentPanelWidth';
+        const permissionModeStorageKey = 'codexAgentPermissionMode';
+        const permissionModes = new Set(['read-only', 'agent', 'agent-full']);
+        const defaultPanelWidth = 620;
+        let savedPermissionMode = 'agent';
+        let resizePointerId = null;
+        let resizeStartX = 0;
+        let resizeStartWidth = 0;
+        let currentTokenUsage = null;
+
+        function browserToken() {
+            return document.getElementById('fp')?.textContent?.trim() || '';
+        }
+
+        function currentWorkspace() {
+            let value = document.getElementById('pathInvisible')?.textContent?.trim() || '/';
+            value = '/' + value.replaceAll('\\', '/').replace(/^\/+/, '');
+            return value.replace(/\/{2,}/g, '/').replace(/\/$/, '') || '/';
+        }
+
+        function selectedThreadStorageKey() {
+            return `codexAgentThread:${workspace}`;
+        }
+
+        function permissionMode() {
+            return permissionModes.has(permissionModeSelect.value) ? permissionModeSelect.value : 'agent';
+        }
+
+        function updatePermissionModeUi() {
+            const mode = permissionMode();
+            const descriptions = {
+                'read-only': 'Pode analisar o projeto; alterações e comandos exigem aprovação.',
+                agent: 'Pode editar e executar comandos dentro da pasta atual.',
+                'agent-full': 'Sem sandbox e sem aprovações; pode acessar todo o sistema e a rede.',
+            };
+            permissionModeSelect.title = descriptions[mode];
+            permissionModeSelect.classList.toggle('permission-agent-full', mode === 'agent-full');
+        }
+
+        function restorePermissionMode() {
+            const stored = localStorage.getItem(permissionModeStorageKey);
+            savedPermissionMode = permissionModes.has(stored) ? stored : 'agent';
+            permissionModeSelect.value = savedPermissionMode;
+            updatePermissionModeUi();
+        }
+
+        function panelWidthLimits() {
+            const maximum = Math.max(240, window.innerWidth - 16);
+            return { minimum: Math.min(420, maximum), maximum };
+        }
+
+        function setPanelWidth(value, persist = false) {
+            const { minimum, maximum } = panelWidthLimits();
+            const width = Math.round(Math.min(maximum, Math.max(minimum, Number(value) || defaultPanelWidth)));
+            panel.style.setProperty('--codex-panel-width', `${width}px`);
+            resizeHandle.setAttribute('aria-valuemin', String(minimum));
+            resizeHandle.setAttribute('aria-valuemax', String(maximum));
+            resizeHandle.setAttribute('aria-valuenow', String(width));
+            resizeHandle.setAttribute('aria-valuetext', `${width} pixels`);
+            if (persist) localStorage.setItem(panelWidthStorageKey, String(width));
+            return width;
+        }
+
+        function restorePanelWidth() {
+            const saved = Number.parseInt(localStorage.getItem(panelWidthStorageKey) || '', 10);
+            setPanelWidth(Number.isFinite(saved) ? saved : defaultPanelWidth);
+        }
+
+        function beginPanelResize(event) {
+            if (event.pointerType === 'mouse' && event.button !== 0) return;
+            resizePointerId = event.pointerId;
+            resizeStartX = event.clientX;
+            resizeStartWidth = panel.getBoundingClientRect().width;
+            resizeHandle.setPointerCapture(event.pointerId);
+            panel.classList.add('is-resizing');
+            document.body.classList.add('codex-panel-resizing');
+            event.preventDefault();
+        }
+
+        function movePanelResize(event) {
+            if (event.pointerId !== resizePointerId) return;
+            setPanelWidth(resizeStartWidth + resizeStartX - event.clientX);
+            event.preventDefault();
+        }
+
+        function endPanelResize(event) {
+            if (event.pointerId !== resizePointerId) return;
+            const pointerId = resizePointerId;
+            resizePointerId = null;
+            panel.classList.remove('is-resizing');
+            document.body.classList.remove('codex-panel-resizing');
+            setPanelWidth(panel.getBoundingClientRect().width, true);
+            if (resizeHandle.hasPointerCapture(pointerId)) resizeHandle.releasePointerCapture(pointerId);
+        }
+
+        function resizePanelWithKeyboard(event) {
+            const current = panel.getBoundingClientRect().width;
+            const step = event.shiftKey ? 60 : 20;
+            let next = null;
+            if (event.key === 'ArrowLeft') next = current + step;
+            else if (event.key === 'ArrowRight') next = current - step;
+            else if (event.key === 'Home') next = defaultPanelWidth;
+            if (next === null) return;
+            event.preventDefault();
+            setPanelWidth(next, true);
+        }
+
+        function setStatus(state, message) {
+            const styles = {
+                ready: ['success', 'Conectado'],
+                starting: ['warning', 'Iniciando'],
+                restarting: ['warning', 'Reconectando'],
+                error: ['danger', 'Erro'],
+                disconnected: ['secondary', 'Desconectado'],
+            };
+            const [style, label] = styles[state] || styles.disconnected;
+            statusBadge.className = `badge text-bg-${style}`;
+            statusBadge.textContent = label;
+            statusBadge.title = message || '';
+            hint.textContent = message || 'As alterações ficam limitadas à pasta atual.';
+            ready = state === 'ready';
+            updateControls();
+        }
+
+        function updateControls() {
+            sendButton.disabled = !ready || !prompt.value.trim();
+            newThreadButton.disabled = !ready || Boolean(activeTurnId);
+            threadSelect.disabled = !ready || Boolean(activeTurnId);
+            renameButton.disabled = !ready || !currentThreadId || Boolean(activeTurnId);
+            archiveButton.disabled = !ready || !currentThreadId || Boolean(activeTurnId);
+            permissionModeSelect.disabled = Boolean(activeTurnId);
+            stopButton.classList.toggle('d-none', !activeTurnId);
+            sendButton.innerHTML = activeTurnId
+                ? '<i class="fa-duotone fa-arrow-turn-down-left me-1"></i>Orientar'
+                : '<i class="fa-duotone fa-paper-plane me-1"></i>Enviar';
+        }
+
+        function formatTokenCount(value) {
+            const number = Math.max(0, Number(value) || 0);
+            if (number < 1000) return Math.round(number).toLocaleString('pt-BR');
+            if (number < 1_000_000) return `${(number / 1000).toLocaleString('pt-BR', {
+                minimumFractionDigits: number < 10_000 ? 1 : 0,
+                maximumFractionDigits: 1,
+            })} mil`;
+            return `${(number / 1_000_000).toLocaleString('pt-BR', { maximumFractionDigits: 1 })} mi`;
+        }
+
+        function contextRiskFor(percent) {
+            if (percent >= 85) return { className: 'is-danger', label: 'Risco de truncamento' };
+            if (percent >= 65) return { className: 'is-warning', label: 'Atenção ao contexto' };
+            return { className: '', label: 'Contexto confortável' };
+        }
+
+        function contextStageColor(percent) {
+            if (percent >= 85) return '#ff7885';
+            if (percent >= 65) return '#ffd35b';
+            return '#78dba9';
+        }
+
+        function renderContextIndicator() {
+            const usage = currentTokenUsage;
+            const used = Number(usage?.last?.totalTokens);
+            const capacity = Number(usage?.modelContextWindow);
+            const hasMeasurement = Number.isFinite(used) && used >= 0 && Number.isFinite(capacity) && capacity > 0;
+            const rawPercent = hasMeasurement ? (used / capacity) * 100 : 0;
+            const percent = Math.max(0, Math.min(100, rawPercent));
+            const risk = contextRiskFor(rawPercent);
+
+            contextPanel.classList.remove('is-warning', 'is-danger');
+            if (risk.className) contextPanel.classList.add(risk.className);
+            contextProgress.style.strokeDashoffset = String(100 - percent);
+            contextPercent.textContent = hasMeasurement ? `${Math.round(rawPercent)}%` : '—';
+            if (hasMeasurement) contextDonut.setAttribute('aria-valuenow', String(Math.round(percent)));
+            else contextDonut.removeAttribute('aria-valuenow');
+            contextDonut.setAttribute('aria-valuetext', hasMeasurement
+                ? `${Math.round(rawPercent)} por cento do contexto usado`
+                : 'Uso de contexto ainda não medido');
+            contextValue.textContent = hasMeasurement
+                ? `${formatTokenCount(used)} / ${formatTokenCount(capacity)} tokens`
+                : 'Aguardando medição';
+            contextRisk.textContent = hasMeasurement ? risk.label : 'Sem medição ainda';
+
+            const accumulated = Number(usage?.total?.totalTokens);
+            contextDonut.title = hasMeasurement
+                ? `Contexto atual medido na chamada mais recente: ${Math.round(used).toLocaleString('pt-BR')} de ${Math.round(capacity).toLocaleString('pt-BR')} tokens.${Number.isFinite(accumulated) ? ` Uso acumulado na conversa: ${Math.round(accumulated).toLocaleString('pt-BR')} tokens.` : ''}`
+                : 'O uso de contexto será informado depois da primeira resposta do modelo.';
+
+            contextEventsNode.replaceChildren();
+            const totalWeight = contextEvents.reduce((sum, event) => sum + event.weight, 0) || 1;
+            let consumedWeight = 0;
+            contextEvents.forEach((event) => {
+                consumedWeight += event.weight;
+                const eventPosition = consumedWeight / totalWeight;
+                const stagePercent = hasMeasurement ? rawPercent * eventPosition : 0;
+                const block = document.createElement('span');
+                block.className = `codex-context-event is-${event.kind}`;
+                block.style.flexGrow = String(Math.max(1, Math.min(240, event.weight)));
+                block.style.backgroundColor = hasMeasurement ? contextStageColor(stagePercent) : '#667085';
+                const approximation = `aprox. ${Math.round(event.weight).toLocaleString('pt-BR')} tokens visíveis`;
+                block.title = `${event.label} · ${approximation}`;
+                block.setAttribute('aria-label', `${event.label}, ${approximation}`);
+                block.setAttribute('role', 'listitem');
+                block.tabIndex = 0;
+                contextEventsNode.appendChild(block);
+            });
+            contextEventCount.textContent = contextEvents.length
+                ? `${contextEvents.length} evento${contextEvents.length === 1 ? '' : 's'} na sessão`
+                : 'Nenhum evento';
+        }
+
+        function resetContextIndicator() {
+            currentTokenUsage = null;
+            contextEvents.length = 0;
+            contextEventIndexes.clear();
+            renderContextIndicator();
+        }
+
+        function estimateVisibleTokens(value, minimum = 8) {
+            let text;
+            if (typeof value === 'string') text = value;
+            else {
+                try { text = JSON.stringify(value || ''); } catch { text = String(value || ''); }
+            }
+            return Math.max(minimum, Math.ceil(text.length / 4));
+        }
+
+        function recordContextEvent(key, kind, label, value = '') {
+            const stableKey = String(key || `${kind}-${contextEvents.length}`);
+            const weight = estimateVisibleTokens(value, kind === 'tool' ? 16 : 8);
+            const existingIndex = contextEventIndexes.get(stableKey);
+            if (existingIndex !== undefined) {
+                contextEvents[existingIndex].weight = Math.max(contextEvents[existingIndex].weight, weight);
+                contextEvents[existingIndex].label = label || contextEvents[existingIndex].label;
+            } else {
+                contextEventIndexes.set(stableKey, contextEvents.length);
+                contextEvents.push({ key: stableKey, kind, label, weight });
+            }
+            renderContextIndicator();
+        }
+
+        function updateContextUsage(tokenUsage, threadId = currentThreadId) {
+            if (!tokenUsage || typeof tokenUsage !== 'object') return;
+            if (threadId) tokenUsageByThread.set(threadId, tokenUsage);
+            if (threadId && threadId !== currentThreadId) return;
+            currentTokenUsage = tokenUsage;
+            renderContextIndicator();
+        }
+
+        function clearTimeline() {
+            clearInterval(activityTimer);
+            activityTimer = null;
+            activityNode = null;
+            activityEntries.clear();
+            timeline.replaceChildren();
+            itemNodes.clear();
+            changedPaths = new Set();
+            diff.textContent = '';
+            diffBox.classList.add('d-none');
+            resetContextIndicator();
+        }
+
+        function showEmpty() {
+            if (timeline.childElementCount) return;
+            const clone = empty.cloneNode(true);
+            clone.removeAttribute('id');
+            timeline.appendChild(clone);
+        }
+
+        function scrollTimeline() {
+            timeline.scrollTop = timeline.scrollHeight;
+        }
+
+        function card(title, text = '', cssClass = '') {
+            const container = document.createElement('article');
+            container.className = `codex-card ${cssClass}`.trim();
+            const header = document.createElement('div');
+            header.className = 'small fw-semibold text-uppercase opacity-75';
+            header.textContent = title;
+            const content = document.createElement('pre');
+            content.textContent = text;
+            container.append(header, content);
+            timeline.appendChild(container);
+            scrollTimeline();
+            return { container, content, header };
+        }
+
+        function detailCard(title, text = '', cssClass = '') {
+            const container = document.createElement('details');
+            container.className = `codex-card codex-detail-card ${cssClass}`.trim();
+            const header = document.createElement('summary');
+            header.className = 'small fw-semibold';
+            header.textContent = title;
+            const content = document.createElement('pre');
+            content.textContent = text;
+            container.append(header, content);
+            timeline.appendChild(container);
+            scrollTimeline();
+            return { container, content, header };
+        }
+
+        function markdownCard(title, text = '', cssClass = '') {
+            const container = document.createElement('article');
+            container.className = `codex-card ${cssClass}`.trim();
+            const header = document.createElement('div');
+            header.className = 'small fw-semibold text-uppercase opacity-75';
+            header.textContent = title;
+            const copyButton = document.createElement('button');
+            copyButton.className = 'codex-message-copy';
+            copyButton.type = 'button';
+            setMessageCopyButtonState(copyButton, 'copy');
+            const content = document.createElement('div');
+            content.className = 'codex-markdown';
+            const actions = document.createElement('div');
+            actions.className = 'codex-message-actions';
+            actions.appendChild(copyButton);
+            container.append(header, content, actions);
+            timeline.appendChild(container);
+            const node = { container, content, header, markdown: true, rawText: '' };
+            copyButton.addEventListener('click', () => copyMessage(node, copyButton));
+            renderMarkdown(node, text);
+            scrollTimeline();
+            return node;
+        }
+
+        function elapsedLabel() {
+            const seconds = Math.max(0, Math.floor((Date.now() - activityStartedAt) / 1000));
+            if (seconds < 60) return `${seconds}s`;
+            return `${Math.floor(seconds / 60)}min ${String(seconds % 60).padStart(2, '0')}s`;
+        }
+
+        function keepActivityLast() {
+            if (activityNode?.container?.isConnected) timeline.appendChild(activityNode.container);
+            scrollTimeline();
+        }
+
+        function startActivity(label = 'Pensando…') {
+            if (activityNode?.container?.classList.contains('is-active')) {
+                setActivityLabel(label);
+                return;
+            }
+            clearInterval(activityTimer);
+            activityEntries.clear();
+            activityStartedAt = Date.now();
+
+            const container = document.createElement('aside');
+            container.className = 'codex-activity is-active';
+            container.setAttribute('role', 'status');
+            container.setAttribute('aria-live', 'polite');
+            const main = document.createElement('div');
+            main.className = 'codex-activity-main';
+            const dot = document.createElement('span');
+            dot.className = 'codex-activity-dot';
+            dot.setAttribute('aria-hidden', 'true');
+            const copy = document.createElement('div');
+            copy.className = 'codex-activity-copy flex-grow-1';
+            const labelNode = document.createElement('div');
+            labelNode.className = 'codex-activity-label';
+            labelNode.textContent = label;
+            const time = document.createElement('div');
+            time.className = 'codex-activity-time';
+            time.textContent = 'agora';
+            time.setAttribute('aria-hidden', 'true');
+            copy.append(labelNode, time);
+            main.append(dot, copy);
+
+            const details = document.createElement('details');
+            details.className = 'codex-activity-details d-none';
+            const summary = document.createElement('summary');
+            summary.textContent = 'Ver detalhes da atividade';
+            const list = document.createElement('ol');
+            list.className = 'codex-activity-list';
+            details.append(summary, list);
+            container.append(main, details);
+            timeline.appendChild(container);
+            activityNode = { container, label: labelNode, time, details, list };
+            activityTimer = setInterval(() => {
+                if (activityNode) activityNode.time.textContent = `há ${elapsedLabel()}`;
+            }, 1000);
+            scrollTimeline();
+        }
+
+        function setActivityLabel(label) {
+            if (!activityNode) startActivity(label);
+            else {
+                activityNode.label.textContent = label;
+                keepActivityLast();
+            }
+        }
+
+        function finishActivity(label = 'Concluído', failed = false) {
+            if (!activityNode) return;
+            if (activityNode.container.classList.contains('is-error') && !failed) return;
+            clearInterval(activityTimer);
+            activityTimer = null;
+            activityNode.container.classList.remove('is-active');
+            activityNode.container.classList.add(failed ? 'is-error' : 'is-complete');
+            activityNode.label.textContent = label;
+            activityNode.time.textContent = elapsedLabel();
+            activityEntries.forEach((entry) => {
+                if (!entry.classList.contains('is-complete')) entry.classList.add(failed ? 'is-error' : 'is-complete');
+            });
+            keepActivityLast();
+        }
+
+        function concise(value, limit = 180) {
+            const text = String(value || '').replace(/\s+/g, ' ').trim();
+            return text.length > limit ? text.slice(0, limit - 1) + '…' : text;
+        }
+
+        function safeJson(value) {
+            if (value === undefined || value === null || value === '') return '';
+            if (typeof value === 'string') return value;
+            try { return JSON.stringify(value, null, 2); } catch { return String(value); }
+        }
+
+        function safeMarkdownUrl(value, image = false) {
+            const source = String(value || '').trim();
+            if (image && /^data:image\/(?:png|jpeg|gif|webp);base64,/i.test(source)) return source;
+            try {
+                const parsed = new URL(source, location.href);
+                const protocols = image ? ['http:', 'https:'] : ['http:', 'https:', 'mailto:'];
+                return protocols.includes(parsed.protocol) ? parsed.href : '';
+            } catch {
+                return '';
+            }
+        }
+
+        function localFileReference(anchor) {
+            try {
+                const url = new URL(anchor.href, location.href);
+                if (!['http:', 'https:'].includes(url.protocol) || url.origin !== location.origin) return null;
+                let filePath = decodeURIComponent(url.pathname);
+                let line = 0;
+                let column = 1;
+                const hashLocation = url.hash.match(/^#L(\d+)(?:C(\d+))?$/i);
+                const pathLocation = filePath.match(/:(\d+)(?::(\d+))?$/);
+                if (hashLocation) {
+                    line = Number.parseInt(hashLocation[1], 10);
+                    column = Number.parseInt(hashLocation[2] || '1', 10);
+                } else if (pathLocation) {
+                    line = Number.parseInt(pathLocation[1], 10);
+                    column = Number.parseInt(pathLocation[2] || '1', 10);
+                    filePath = filePath.slice(0, -pathLocation[0].length);
+                }
+                if (!filePath || !line || line > 10_000_000 || column > 1_000_000) return null;
+                return {filePath, line, column};
+            } catch {
+                return null;
+            }
+        }
+
+        function decorateLocalFileLinks(container) {
+            container.querySelectorAll('a[href]').forEach((anchor) => {
+                const reference = localFileReference(anchor);
+                if (!reference) return;
+                anchor.classList.add('codex-local-file-link');
+                anchor.dataset.filePath = reference.filePath;
+                anchor.dataset.fileLine = String(reference.line);
+                anchor.dataset.fileColumn = String(reference.column);
+                anchor.removeAttribute('target');
+                anchor.removeAttribute('rel');
+                anchor.title = `Abrir no editor na linha ${reference.line}`;
+            });
+        }
+
+        async function hideCodexPanel() {
+            if (!panel.classList.contains('show') || !window.bootstrap?.Offcanvas) return;
+            const instance = window.bootstrap.Offcanvas.getInstance(panel);
+            if (!instance) return;
+            await new Promise((resolve) => {
+                let settled = false;
+                const done = () => {
+                    if (settled) return;
+                    settled = true;
+                    panel.removeEventListener('hidden.bs.offcanvas', done);
+                    resolve();
+                };
+                panel.addEventListener('hidden.bs.offcanvas', done, {once: true});
+                instance.hide();
+                window.setTimeout(done, 500);
+            });
+        }
+
+        async function openLocalFileReference(reference) {
+            if (!currentThreadId) throw new Error('Selecione uma conversa antes de abrir o arquivo.');
+            if (typeof window.FileManagerEditorBridge?.openFileAt !== 'function') {
+                throw new Error('O editor de código ainda não está disponível.');
+            }
+            const result = await request('file.resolve', {
+                threadId: currentThreadId,
+                filePath: reference.filePath,
+            });
+            if (!result.editorPath) throw new Error('O arquivo referenciado não pôde ser localizado.');
+            let editorPath;
+            try {
+                editorPath = decodeURIComponent(result.editorPath);
+            } catch {
+                throw new Error('O caminho completo retornado para o editor é inválido.');
+            }
+            if (!editorPath.startsWith('/')) throw new Error('O editor não recebeu o caminho completo do arquivo.');
+            await hideCodexPanel();
+            await window.FileManagerEditorBridge.openFileAt(editorPath, reference.line, reference.column);
+        }
+
+        function sanitizeMarkdownHtml(html) {
+            const allowedTags = new Set([
+                'A', 'BLOCKQUOTE', 'BR', 'CODE', 'DEL', 'EM', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6',
+                'HR', 'IMG', 'INPUT', 'LI', 'OL', 'P', 'PRE', 'S', 'STRONG', 'TABLE', 'TBODY', 'TD',
+                'TFOOT', 'TH', 'THEAD', 'TR', 'UL',
+            ]);
+            const droppedTags = new Set(['IFRAME', 'OBJECT', 'SCRIPT', 'STYLE', 'SVG', 'MATH', 'TEMPLATE']);
+            const template = document.createElement('template');
+            template.innerHTML = String(html || '');
+
+            [...template.content.querySelectorAll('*')].forEach((element) => {
+                if (!template.content.contains(element)) return;
+                if (droppedTags.has(element.tagName)) {
+                    element.remove();
+                    return;
+                }
+                if (!allowedTags.has(element.tagName)) {
+                    element.replaceWith(document.createTextNode(element.textContent || ''));
+                    return;
+                }
+
+                const attributes = Object.fromEntries([...element.attributes]
+                    .map((attribute) => [attribute.name.toLowerCase(), attribute.value]));
+                [...element.attributes].forEach((attribute) => element.removeAttribute(attribute.name));
+
+                if (element.tagName === 'A') {
+                    const href = safeMarkdownUrl(attributes.href);
+                    if (href) {
+                        element.setAttribute('href', href);
+                        element.setAttribute('target', '_blank');
+                        element.setAttribute('rel', 'noopener noreferrer');
+                    }
+                    if (attributes.title) element.setAttribute('title', attributes.title.slice(0, 300));
+                } else if (element.tagName === 'IMG') {
+                    const source = safeMarkdownUrl(attributes.src, true);
+                    if (!source) {
+                        element.replaceWith(document.createTextNode(attributes.alt || ''));
+                        return;
+                    }
+                    element.setAttribute('src', source);
+                    element.setAttribute('alt', (attributes.alt || '').slice(0, 500));
+                    element.setAttribute('loading', 'lazy');
+                    element.setAttribute('referrerpolicy', 'no-referrer');
+                    if (attributes.title) element.setAttribute('title', attributes.title.slice(0, 300));
+                } else if (element.tagName === 'CODE' && /^language-[a-z0-9_+-]+$/i.test(attributes.class || '')) {
+                    element.setAttribute('class', attributes.class);
+                } else if (element.tagName === 'OL' && /^\d{1,6}$/.test(attributes.start || '')) {
+                    element.setAttribute('start', attributes.start);
+                } else if (['TD', 'TH'].includes(element.tagName)) {
+                    if (/^\d{1,3}$/.test(attributes.colspan || '')) element.setAttribute('colspan', attributes.colspan);
+                    if (/^\d{1,3}$/.test(attributes.rowspan || '')) element.setAttribute('rowspan', attributes.rowspan);
+                } else if (element.tagName === 'INPUT') {
+                    if ((attributes.type || '').toLowerCase() !== 'checkbox') {
+                        element.remove();
+                        return;
+                    }
+                    element.setAttribute('type', 'checkbox');
+                    element.setAttribute('disabled', '');
+                    if (Object.hasOwn(attributes, 'checked')) element.setAttribute('checked', '');
+                }
+            });
+            return template.content;
+        }
+
+        function renderMarkdown(node, value) {
+            const text = String(value || '');
+            node.rawText = text;
+            if (!window.marked || typeof window.marked.parse !== 'function') {
+                node.content.textContent = text;
+                return;
+            }
+            try {
+                const html = window.marked.parse(text, { async: false, breaks: true, gfm: true });
+                node.content.replaceChildren(sanitizeMarkdownHtml(html));
+                highlightMarkdownCode(node.content);
+                decorateLocalFileLinks(node.content);
+            } catch (error) {
+                console.warn('Não foi possível renderizar Markdown:', error);
+                node.content.textContent = text;
+            }
+        }
+
+        function highlightMarkdownCode(container) {
+            container.querySelectorAll('pre > code').forEach((code) => {
+                const languageClass = [...code.classList].find((name) => name.startsWith('language-'));
+                const declaredLanguage = languageClass?.slice('language-'.length) || '';
+                const prismLanguage = normalizeCodeLanguage(declaredLanguage);
+                if (languageClass && prismLanguage !== declaredLanguage) {
+                    code.classList.remove(languageClass);
+                    code.classList.add(`language-${prismLanguage}`);
+                }
+                if (prismLanguage && window.Prism && typeof window.Prism.highlightElement === 'function') {
+                    try {
+                        window.Prism.highlightElement(code);
+                    } catch (error) {
+                        console.warn('Não foi possível colorir o bloco de código:', error);
+                    }
+                }
+                scheduleGenericSyntaxFallback(code);
+                decorateCodeBlock(code, declaredLanguage || 'código');
+            });
+        }
+
+        function normalizeCodeLanguage(language) {
+            const aliases = {
+                asm: 'nasm',
+                assembly: 'nasm',
+                x86asm: 'nasm',
+                yasm: 'nasm',
+                shell: 'bash',
+                console: 'bash',
+                js: 'javascript',
+                jsx: 'jsx',
+                ts: 'typescript',
+                py: 'python',
+                rb: 'ruby',
+                cs: 'csharp',
+                'c#': 'csharp',
+                'c++': 'cpp',
+                dockerfile: 'docker',
+            };
+            const normalized = String(language || '').toLowerCase();
+            return aliases[normalized] || normalized;
+        }
+
+        function genericSyntaxGrammar() {
+            return {
+                comment: [
+                    { pattern: /\/\*[\s\S]*?(?:\*\/|$)/, greedy: true },
+                    { pattern: /(^|[^\\:])\/\/.*$/m, lookbehind: true, greedy: true },
+                    { pattern: /(^|\s)[#;].*$/m, lookbehind: true, greedy: true },
+                ],
+                string: {
+                    pattern: /(["'`])(?:\\[\s\S]|(?!\1)[^\\\r\n])*\1/,
+                    greedy: true,
+                },
+                keyword: /\b(?:abstract|as|async|await|break|case|catch|class|const|continue|def|default|delete|do|else|enum|export|extends|false|finally|for|foreach|from|function|global|if|implements|import|in|instanceof|interface|lambda|let|namespace|new|null|package|private|protected|public|readonly|return|section|static|struct|super|switch|this|throw|trait|true|try|type|typeof|use|using|var|void|while|yield|mov|lea|push|pop|call|ret|jmp|cmp|test|add|sub|mul|imul|div|idiv|inc|dec|and|or|xor|not|shl|shr|nop|int|syscall|je|jne|jz|jnz|jg|jge|jl|jle)\b/i,
+                builtin: /\b(?:r(?:ax|bx|cx|dx|si|di|sp|bp|ip|[8-9]|1[0-5])|e(?:ax|bx|cx|dx|si|di|sp|bp|ip)|[abcd][lh]|[sd]il|[sb]pl|xmm\d+|ymm\d+|zmm\d+)\b/i,
+                boolean: /\b(?:true|false|null|nil|none)\b/i,
+                number: /\b(?:0x[\da-f]+|0b[01]+|\d+(?:\.\d+)?(?:e[+-]?\d+)?)\b/i,
+                function: /\b[a-z_$][\w$]*(?=\s*\()/i,
+                property: /(?:^|\n)\s*(?:\.[a-z_]\w*|[a-z_.$?][\w.$?]*:)/i,
+                operator: /=>|===?|!==?|<=?|>=?|\+\+|--|&&|\|\||[-+*/%&|^~]=?|::|:=/,
+                punctuation: /[{}[\];(),.:]/,
+            };
+        }
+
+        function applyGenericSyntaxFallback(code) {
+            if (!code.isConnected || code.querySelector('.token') || code.dataset.genericHighlight === 'true') return;
+            if (!window.Prism || typeof window.Prism.highlight !== 'function') return;
+            try {
+                code.innerHTML = window.Prism.highlight(code.textContent || '', genericSyntaxGrammar(), 'generic');
+                code.dataset.genericHighlight = 'true';
+                code.classList.add('language-generic-fallback');
+            } catch (error) {
+                console.warn('Não foi possível aplicar o esquema de cores genérico:', error);
+            }
+        }
+
+        function scheduleGenericSyntaxFallback(code) {
+            window.setTimeout(() => applyGenericSyntaxFallback(code), 700);
+        }
+
+        function decorateCodeBlock(code, language) {
+            const pre = code.parentElement;
+            if (!pre || pre.parentElement?.classList.contains('codex-code-block')) return;
+
+            const block = document.createElement('div');
+            block.className = 'codex-code-block';
+            const toolbar = document.createElement('div');
+            toolbar.className = 'codex-code-toolbar';
+            const label = document.createElement('span');
+            label.textContent = language;
+            const copyButton = document.createElement('button');
+            copyButton.className = 'codex-code-copy';
+            copyButton.type = 'button';
+            copyButton.title = 'Copiar código';
+            copyButton.setAttribute('aria-label', 'Copiar bloco de código');
+            setCopyButtonState(copyButton, 'copy');
+            copyButton.addEventListener('click', () => copyCodeBlock(code, copyButton));
+
+            toolbar.append(label, copyButton);
+            pre.before(block);
+            block.append(toolbar, pre);
+        }
+
+        function setCopyButtonState(button, state) {
+            const states = {
+                copy: ['fa-copy', 'Copiar'],
+                copied: ['fa-check', 'Copiado!'],
+                error: ['fa-triangle-exclamation', 'Erro ao copiar'],
+            };
+            const [icon, label] = states[state] || states.copy;
+            button.classList.toggle('is-copied', state === 'copied');
+            button.classList.toggle('is-error', state === 'error');
+            button.replaceChildren();
+            const iconNode = document.createElement('i');
+            iconNode.className = `fa-duotone ${icon}`;
+            iconNode.setAttribute('aria-hidden', 'true');
+            button.append(iconNode, document.createTextNode(label));
+        }
+
+        function setMessageCopyButtonState(button, state) {
+            const states = {
+                copy: ['fa-copy', 'Copiar mensagem'],
+                copied: ['fa-check', 'Mensagem copiada'],
+                error: ['fa-triangle-exclamation', 'Não foi possível copiar'],
+            };
+            const [icon, label] = states[state] || states.copy;
+            button.classList.toggle('is-copied', state === 'copied');
+            button.classList.toggle('is-error', state === 'error');
+            button.title = label;
+            button.setAttribute('aria-label', label);
+            const iconNode = document.createElement('i');
+            iconNode.className = `fa-duotone ${icon}`;
+            iconNode.setAttribute('aria-hidden', 'true');
+            button.replaceChildren(iconNode);
+        }
+
+        function writeClipboardText(value) {
+            if (navigator.clipboard?.writeText && window.isSecureContext) {
+                return navigator.clipboard.writeText(value);
+            }
+            const textarea = document.createElement('textarea');
+            textarea.value = value;
+            textarea.setAttribute('readonly', '');
+            Object.assign(textarea.style, { position: 'fixed', opacity: '0', pointerEvents: 'none' });
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                if (!document.execCommand('copy')) throw new Error('O navegador recusou a cópia.');
+                return Promise.resolve();
+            } finally {
+                textarea.remove();
+            }
+        }
+
+        async function copyMessage(node, button) {
+            try {
+                await writeClipboardText(node.rawText || node.content.textContent || '');
+                setMessageCopyButtonState(button, 'copied');
+            } catch (error) {
+                console.warn('Não foi possível copiar a mensagem:', error);
+                setMessageCopyButtonState(button, 'error');
+            }
+            window.setTimeout(() => setMessageCopyButtonState(button, 'copy'), 1800);
+        }
+
+        async function copyCodeBlock(code, button) {
+            try {
+                await writeClipboardText(code.textContent || '');
+                setCopyButtonState(button, 'copied');
+            } catch (error) {
+                console.warn('Não foi possível copiar o bloco de código:', error);
+                setCopyButtonState(button, 'error');
+            }
+            window.setTimeout(() => setCopyButtonState(button, 'copy'), 1800);
+        }
+
+        function detectPastedCodeLanguage(value) {
+            const source = String(value || '').trim();
+            if (!source || source.includes('```')) return '';
+
+            if (/^<\?(?:php|=)/i.test(source) || (/\$[a-z_]\w*\s*=/i.test(source) && /;/.test(source))) {
+                return 'php';
+            }
+            if (/^(?:<!doctype\s+html|<\/?[a-z][\w:-]*(?:\s[^<>]*)?>)/i.test(source)
+                && /<\/?[a-z][\w:-]*/i.test(source)) {
+                return 'html';
+            }
+            if (/^[\[{]/.test(source)) {
+                try {
+                    JSON.parse(source);
+                    return 'json';
+                } catch { /* Não é JSON válido; continua a detecção. */ }
+            }
+            if (/^(?:\s*(?:SELECT|INSERT\s+INTO|UPDATE|DELETE\s+FROM|CREATE\s+TABLE|ALTER\s+TABLE)\b)/i.test(source)) {
+                return 'sql';
+            }
+            if (/^(?:\s*#!.*\b(?:ba|z|fi)?sh\b|\s*(?:sudo\s+)?(?:git|npm|npx|pnpm|yarn|composer|curl|wget|docker|php|node|python\d*)\s+)/i.test(source)) {
+                return 'bash';
+            }
+            if (/(?:^|\n)\s*(?:(?:[a-z_.$?][\w.$?]*:)\s*)?(?:mov|lea|push|pop|call|ret|jmp|cmp|test|add|sub|mul|imul|div|idiv|inc|dec|and|or|xor|shl|shr|nop|int|syscall|je|jne|jz|jnz)\b/i.test(source)) {
+                return 'nasm';
+            }
+            if (/^(?:\s*(?:from\s+\S+\s+import|import\s+\S+|def\s+\w+\s*\(|class\s+\w+\s*[:(]))/m.test(source)
+                || /(?:^|\n)\s*print\s*\(/.test(source)) {
+                return 'python';
+            }
+            if (/^[.#]?[a-z][^{}\n]*\{[\s\S]*[\w-]+\s*:\s*[^{};]+;?[\s\S]*\}$/i.test(source)) {
+                return 'css';
+            }
+            if (/(?:^|\n)\s*(?:const|let|var|function|class|import|export)\b/.test(source)
+                || /(?:console\.(?:log|warn|error)|alert|document\.\w+)\s*\(/.test(source)
+                || /=>\s*[({]?/.test(source)
+                || /^\s*[a-z_$][\w.$]*\([^\n]*\);?\s*$/i.test(source)) {
+                return 'javascript';
+            }
+            return '';
+        }
+
+        function formatPastedCode(value) {
+            const source = String(value || '');
+            if (!source || source.includes('```')) return source;
+            const parts = source.split(/(\r?\n[\t ]*\r?\n)/);
+            let changed = false;
+            const formatted = parts.map((part) => {
+                if (!part.trim()) return part;
+                const language = detectPastedCodeLanguage(part);
+                if (!language) return part;
+                changed = true;
+                const code = part.replace(/^[\r\n]+|[\r\n]+$/g, '');
+                return `\`\`\`${language}\n${code}\n\`\`\``;
+            }).join('');
+            return changed ? formatted : source;
+        }
+
+        function handlePromptPaste(event) {
+            const pasted = event.clipboardData?.getData('text/plain');
+            if (!pasted) return;
+            let formatted = formatPastedCode(pasted);
+            if (formatted === pasted) return;
+
+            const start = prompt.selectionStart ?? prompt.value.length;
+            const end = prompt.selectionEnd ?? start;
+            const before = prompt.value.slice(0, start);
+            const after = prompt.value.slice(end);
+            if (before && !before.endsWith('\n')) formatted = `\n\n${formatted}`;
+            if (after && !after.startsWith('\n')) formatted = `${formatted}\n\n`;
+            if (prompt.maxLength > 0 && before.length + formatted.length + after.length > prompt.maxLength) return;
+
+            event.preventDefault();
+            prompt.setRangeText(formatted, start, end, 'end');
+            prompt.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+
+        function scheduleMarkdown(node, value) {
+            node.rawText = String(value || '');
+            if (node.markdownFrame) return;
+            node.markdownFrame = requestAnimationFrame(() => {
+                node.markdownFrame = null;
+                renderMarkdown(node, node.rawText);
+            });
+        }
+
+        function textWithLinks(container, value) {
+            container.replaceChildren();
+            const parts = String(value || '').split(/(https?:\/\/[^\s]+)/g);
+            parts.forEach((part) => {
+                if (!/^https?:\/\//i.test(part)) {
+                    container.appendChild(document.createTextNode(part));
+                    return;
+                }
+                const trailing = part.match(/[),.;]+$/)?.[0] || '';
+                const href = trailing ? part.slice(0, -trailing.length) : part;
+                const link = document.createElement('a');
+                link.href = href;
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+                link.className = 'link-info';
+                link.textContent = href;
+                container.appendChild(link);
+                if (trailing) container.appendChild(document.createTextNode(trailing));
+            });
+        }
+
+        function activityForItem(item) {
+            if (!item) return null;
+            if (item.type === 'reasoning') return { label: 'Pensando…', title: 'Analisando a solicitação' };
+            if (item.type === 'plan') return { label: 'Organizando as etapas…', title: 'Preparando um plano' };
+            if (item.type === 'agentMessage') return { label: 'Escrevendo a resposta…', title: 'Preparando a resposta' };
+            if (item.type === 'webSearch') {
+                const action = item.action || {};
+                const query = action.query || action.queries?.join(', ') || item.query;
+                const target = action.url || query || '';
+                const label = ['openPage', 'open_page', 'findInPage', 'find_in_page'].includes(action.type)
+                    ? 'Consultando uma página…' : 'Buscando na web…';
+                return { label, title: 'Pesquisa na web', detail: concise(target) };
+            }
+            if (item.type === 'commandExecution') {
+                return { label: 'Executando um comando…', title: 'Comando', detail: concise(item.command) };
+            }
+            if (item.type === 'fileChange') {
+                const paths = (item.changes || []).map((change) => change.path).filter(Boolean).join(', ');
+                return { label: 'Atualizando arquivos…', title: 'Alteração de arquivos', detail: concise(paths) };
+            }
+            if (item.type === 'mcpToolCall') {
+                return { label: 'Consultando uma ferramenta…', title: item.tool || 'Ferramenta', detail: concise(item.server) };
+            }
+            if (item.type === 'dynamicToolCall') {
+                return { label: 'Usando uma ferramenta…', title: item.tool || 'Ferramenta', detail: concise(item.namespace) };
+            }
+            if (item.type === 'collabAgentToolCall' || item.type === 'subAgentActivity') {
+                return { label: 'Coordenando a tarefa…', title: 'Agente auxiliar', detail: concise(item.prompt || item.agentPath) };
+            }
+            if (item.type === 'imageGeneration') return { label: 'Gerando uma imagem…', title: 'Geração de imagem' };
+            if (item.type === 'imageView') return { label: 'Analisando uma imagem…', title: 'Leitura de imagem', detail: concise(item.path) };
+            return null;
+        }
+
+        function trackActivityItem(item, completed = false) {
+            const activity = activityForItem(item);
+            if (!activity) return;
+            if (!activityNode?.container?.classList.contains('is-active')) startActivity(activity.label);
+            setActivityLabel(activity.label);
+            const key = item.id || `${item.type}-${activityEntries.size}`;
+            let entry = activityEntries.get(key);
+            if (!entry) {
+                entry = document.createElement('li');
+                entry.className = 'codex-activity-entry';
+                const title = document.createElement('span');
+                title.textContent = activity.title;
+                entry.appendChild(title);
+                if (activity.detail) {
+                    const detail = document.createElement('span');
+                    detail.className = 'codex-activity-entry-detail';
+                    detail.textContent = activity.detail;
+                    entry.appendChild(detail);
+                }
+                activityEntries.set(key, entry);
+                activityNode.list.appendChild(entry);
+                activityNode.details.classList.remove('d-none');
+            }
+            entry.classList.toggle('is-complete', completed);
+            keepActivityLast();
+        }
+
+        function request(action, data = {}, timeout = 30000) {
+            if (!socket || socket.readyState !== WebSocket.OPEN) {
+                return Promise.reject(new Error('A conexão com o Codex está fechada.'));
+            }
+            const requestId = `ui-${Date.now()}-${requestSequence++}`;
+            return new Promise((resolve, reject) => {
+                const timer = setTimeout(() => {
+                    pending.delete(requestId);
+                    reject(new Error(`Tempo limite excedido em ${action}.`));
+                }, timeout);
+                pending.set(requestId, { resolve, reject, timer });
+                socket.send(JSON.stringify({
+                    codexAgent: true,
+                    token: browserToken() + '-codex-agent',
+                    payload: { action, requestId, ...data },
+                }));
+            });
+        }
+
+        function rejectPending(message) {
+            for (const entry of pending.values()) {
+                clearTimeout(entry.timer);
+                entry.reject(new Error(message));
+            }
+            pending.clear();
+        }
+
+        function connect() {
+            if (socket && [WebSocket.OPEN, WebSocket.CONNECTING].includes(socket.readyState)) return;
+            if (!browserToken()) {
+                reconnectTimer = setTimeout(connect, 700);
+                return;
+            }
+            const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
+            socket = new WebSocket(`${protocol}://${location.host}/${browserToken()}-codex-agent`);
+            setStatus('starting', 'Conectando ao Codex Agent...');
+
+            socket.addEventListener('open', async () => {
+                try {
+                    const health = await request('health');
+                    setStatus(health.ready ? 'ready' : 'starting',
+                        health.ready ? 'Codex Enterprise conectado.' : 'Codex ainda está inicializando.');
+                    if (health.ready && panel.classList.contains('show')) await loadThreads();
+                } catch (error) {
+                    setStatus('error', error.message);
+                }
+            });
+            socket.addEventListener('message', (event) => {
+                try {
+                    const outer = JSON.parse(event.data);
+                    if (!outer.codexAgent || !outer.payload) return;
+                    handleMessage(outer.payload);
+                } catch (error) {
+                    setStatus('error', `Resposta inválida do servidor: ${error.message}`);
+                }
+            });
+            socket.addEventListener('close', () => {
+                rejectPending('A conexão com o Codex foi encerrada.');
+                if (activeTurnId) finishActivity('Conexão interrompida', true);
+                setStatus('disconnected', 'A conexão com o Codex foi encerrada.');
+                if (panel.classList.contains('show')) {
+                    clearTimeout(reconnectTimer);
+                    reconnectTimer = setTimeout(connect, 2000);
+                }
+            });
+            socket.addEventListener('error', () => setStatus('error', 'Não foi possível conectar ao Codex Agent.'));
+        }
+
+        function waitForCodexConnection(timeout = 15000) {
+            if (ready && socket?.readyState === WebSocket.OPEN) return Promise.resolve();
+            connect();
+            return new Promise((resolve, reject) => {
+                const startedAt = Date.now();
+                const timer = window.setInterval(() => {
+                    if (ready && socket?.readyState === WebSocket.OPEN) {
+                        window.clearInterval(timer);
+                        resolve();
+                    } else if (Date.now() - startedAt >= timeout) {
+                        window.clearInterval(timer);
+                        reject(new Error('O Codex não ficou disponível a tempo. Verifique o serviço.'));
+                    }
+                }, 100);
+            });
+        }
+
+        window.FileManagerCodexBridge = Object.freeze({
+            async listModels() {
+                await waitForCodexConnection();
+                const result = await request('model.list');
+                return Array.isArray(result.data) ? result.data : [];
+            },
+            async applyCurrentPreferences() {
+                if (!currentThreadId) return { applied: false };
+                await waitForCodexConnection();
+                return request('thread.settings.update', { threadId: currentThreadId });
+            },
+        });
+
+        function handleMessage(message) {
+            if (message.type === 'response') {
+                const entry = pending.get(message.requestId);
+                if (!entry) return;
+                pending.delete(message.requestId);
+                clearTimeout(entry.timer);
+                if (message.ok) entry.resolve(message.data || {});
+                else entry.reject(new Error(message.error || 'Falha no Codex Agent.'));
+                return;
+            }
+            if (message.type === 'status') {
+                setStatus(message.status, message.message);
+                if (message.status === 'ready' && panel.classList.contains('show')) loadThreads().catch(showError);
+                return;
+            }
+            if (message.type === 'server.request') {
+                renderServerRequest(message);
+                return;
+            }
+            if (message.type === 'event') handleEvent(message.method, message.params || {});
+        }
+
+        function showError(error, trackContext = true) {
+            if (trackContext) recordContextEvent(`ui-error-${Date.now()}-${contextEvents.length}`, 'error',
+                'Erro ou interrupção', error.message || String(error));
+            card('Erro', error.message || String(error), 'codex-card-error');
+            setStatus(ready ? 'ready' : 'error', error.message || String(error));
+        }
+
+        function threadLabel(thread) {
+            const title = thread.name || thread.preview || 'Conversa sem título';
+            return title.length > 70 ? title.slice(0, 67) + '…' : title;
+        }
+
+        function updateThreadName(threadId, name) {
+            threadNames.set(threadId, name);
+            const option = [...threadSelect.options].find((entry) => entry.value === threadId);
+            if (option) option.textContent = threadLabel({ name });
+        }
+
+        async function loadThreads() {
+            const result = await request('thread.list', { workspace });
+            const threads = Array.isArray(result.data) ? result.data : [];
+            threadNames.clear();
+            threadSelect.replaceChildren(new Option('Nova conversa', ''));
+            threads.forEach((thread) => {
+                threadNames.set(thread.id, thread.name || thread.preview || 'Conversa sem título');
+                threadSelect.add(new Option(threadLabel(thread), thread.id));
+            });
+
+            const saved = localStorage.getItem(selectedThreadStorageKey());
+            if (saved && threads.some((thread) => thread.id === saved)) {
+                await selectThread(saved);
+            } else if (currentThreadId && threads.some((thread) => thread.id === currentThreadId)) {
+                threadSelect.value = currentThreadId;
+            } else if (currentThreadId) {
+                threadSelect.add(new Option('Nova conversa (ainda sem mensagens)', currentThreadId));
+                threadSelect.value = currentThreadId;
+            } else {
+                currentThreadId = null;
+                activeTurnId = null;
+                clearTimeline();
+                showEmpty();
+                updateControls();
+            }
+        }
+
+        async function startThread() {
+            const result = await request('thread.start', { workspace, permissionMode: permissionMode() });
+            currentThreadId = result.thread.id;
+            activeTurnId = null;
+            localStorage.setItem(selectedThreadStorageKey(), currentThreadId);
+            clearTimeline();
+            threadSelect.add(new Option('Nova conversa (ainda sem mensagens)', currentThreadId));
+            threadSelect.value = currentThreadId;
+            updateControls();
+            return currentThreadId;
+        }
+
+        async function selectThread(threadId) {
+            if (!threadId) {
+                currentThreadId = null;
+                activeTurnId = null;
+                localStorage.removeItem(selectedThreadStorageKey());
+                clearTimeline();
+                showEmpty();
+                updateControls();
+                return;
+            }
+            const resumed = await request('thread.resume', {
+                threadId,
+                workspace,
+                permissionMode: permissionMode(),
+            });
+            currentThreadId = resumed.thread.id;
+            localStorage.setItem(selectedThreadStorageKey(), currentThreadId);
+            threadSelect.value = currentThreadId;
+            const result = await request('thread.read', { threadId: currentThreadId }, 60000);
+            renderThread(result.thread, result.tokenUsage);
+            updateControls();
+        }
+
+        function itemText(item) {
+            if (item.type === 'userMessage') {
+                return (item.content || []).map((part) => part.text || '').filter(Boolean).join('\n');
+            }
+            if (item.type === 'agentMessage') return item.text || '';
+            if (item.type === 'reasoning') return (item.summary || []).join('\n');
+            if (item.type === 'plan') return item.text || '';
+            if (item.type === 'commandExecution') {
+                const command = Array.isArray(item.command) ? item.command.join(' ') : (item.command || '');
+                return `${command}${item.aggregatedOutput ? `\n\n${item.aggregatedOutput}` : ''}`;
+            }
+            if (item.type === 'fileChange') {
+                return (item.changes || []).map((change) => `${change.kind || 'edit'}: ${change.path || ''}`).join('\n');
+            }
+            if (item.type === 'webSearch') {
+                const action = item.action || {};
+                const lines = [];
+                const queries = action.queries?.length ? action.queries : [action.query || item.query].filter(Boolean);
+                if (queries.length) lines.push(`Consulta: ${queries.join(', ')}`);
+                if (action.url) lines.push(`Página: ${action.url}`);
+                if (action.pattern) lines.push(`Trecho procurado: ${action.pattern}`);
+                if (Array.isArray(item.results) && item.results.length) {
+                    lines.push('', 'Resultados:');
+                    item.results.forEach((result, index) => {
+                        const title = result?.title || result?.name || result?.url || `Resultado ${index + 1}`;
+                        lines.push(`${index + 1}. ${title}`);
+                        if (result?.url && result.url !== title) lines.push(`   ${result.url}`);
+                        if (result?.snippet || result?.description) lines.push(`   ${concise(result.snippet || result.description, 360)}`);
+                    });
+                }
+                return lines.join('\n') || 'A pesquisa não forneceu detalhes adicionais.';
+            }
+            if (item.type === 'mcpToolCall') {
+                const lines = [`${item.server || 'MCP'} · ${item.tool || 'ferramenta'}`];
+                const args = safeJson(item.arguments);
+                const result = safeJson(item.result);
+                if (args) lines.push('', 'Entrada:', args);
+                if (result) lines.push('', 'Resultado:', result);
+                if (item.error) lines.push('', 'Erro:', safeJson(item.error));
+                return lines.join('\n');
+            }
+            if (item.type === 'dynamicToolCall') {
+                const lines = [`${item.namespace ? item.namespace + ' · ' : ''}${item.tool || 'ferramenta'}`];
+                const args = safeJson(item.arguments);
+                const output = safeJson(item.contentItems);
+                if (args) lines.push('', 'Entrada:', args);
+                if (output) lines.push('', 'Resultado:', output);
+                return lines.join('\n');
+            }
+            if (item.type === 'collabAgentToolCall') {
+                return [item.tool || 'Coordenação de agente', item.prompt || '', safeJson(item.agentsStates)]
+                    .filter(Boolean).join('\n\n');
+            }
+            if (item.type === 'imageView') return item.path || '';
+            if (item.type === 'imageGeneration') return item.revisedPrompt || '';
+            return '';
+        }
+
+        function contextEventForItem(item) {
+            if (!item) return null;
+            if (item.type === 'userMessage') return { kind: 'user', label: 'Mensagem do usuário' };
+            if (item.type === 'agentMessage') return { kind: 'agent', label: 'Resposta do agente' };
+            if (item.type === 'reasoning') return { kind: 'agent', label: 'Análise do agente' };
+            if (item.type === 'plan') return { kind: 'agent', label: 'Plano do agente' };
+            if (['commandExecution', 'fileChange', 'webSearch', 'mcpToolCall', 'dynamicToolCall',
+                'collabAgentToolCall', 'subAgentActivity', 'imageView', 'imageGeneration'].includes(item.type)) {
+                const toolLabels = {
+                    commandExecution: 'Chamada de ferramenta: comando',
+                    fileChange: 'Chamada de ferramenta: arquivos',
+                    webSearch: 'Chamada de ferramenta: pesquisa web',
+                    mcpToolCall: 'Chamada de ferramenta: MCP',
+                    dynamicToolCall: 'Chamada de ferramenta',
+                    collabAgentToolCall: 'Chamada de ferramenta: agente auxiliar',
+                    subAgentActivity: 'Atividade de agente auxiliar',
+                    imageView: 'Chamada de ferramenta: leitura de imagem',
+                    imageGeneration: 'Chamada de ferramenta: geração de imagem',
+                };
+                return { kind: 'tool', label: toolLabels[item.type] || 'Chamada de ferramenta' };
+            }
+            return null;
+        }
+
+        function renderItem(item, completed = false) {
+            if (!item || !item.id) return null;
+            let node = itemNodes.get(item.id);
+            if (!node) {
+                const kinds = {
+                    userMessage: ['Você', 'codex-card-user'],
+                    agentMessage: ['Codex', ''],
+                    reasoning: ['Resumo da análise', ''],
+                    plan: ['Plano', ''],
+                    commandExecution: ['Comando', 'codex-card-command'],
+                    fileChange: ['Arquivos', ''],
+                    webSearch: ['Detalhes da pesquisa web', ''],
+                    mcpToolCall: ['Detalhes da ferramenta', ''],
+                    dynamicToolCall: ['Detalhes da ferramenta', ''],
+                    collabAgentToolCall: ['Detalhes da coordenação', ''],
+                    imageView: ['Imagem analisada', ''],
+                    imageGeneration: ['Imagem gerada', ''],
+                };
+                const [title, css] = kinds[item.type] || [item.type || 'Evento', ''];
+                const collapsible = ['reasoning', 'webSearch', 'mcpToolCall', 'dynamicToolCall',
+                    'collabAgentToolCall', 'imageView', 'imageGeneration'].includes(item.type);
+                node = ['userMessage', 'agentMessage'].includes(item.type)
+                    ? markdownCard(title, itemText(item), css)
+                    : collapsible ? detailCard(title, itemText(item), css) : card(title, itemText(item), css);
+                if (item.type === 'webSearch') textWithLinks(node.content, itemText(item));
+                itemNodes.set(item.id, node);
+            } else if (completed) {
+                if (item.type === 'webSearch') textWithLinks(node.content, itemText(item));
+                else if (node.markdown) renderMarkdown(node, itemText(item));
+                else node.content.textContent = itemText(item) || node.content.textContent;
+            }
+            if (completed && item.status && !node.header.dataset.status) {
+                node.header.dataset.status = item.status;
+                node.header.textContent += ` · ${item.status}`;
+            }
+            if (item.type === 'fileChange') {
+                (item.changes || []).forEach((change) => change.path && changedPaths.add(change.path));
+            }
+            const contextEvent = contextEventForItem(item);
+            if (contextEvent) recordContextEvent(item.id, contextEvent.kind, contextEvent.label, itemText(item));
+            return node;
+        }
+
+        function renderThread(thread, tokenUsage = null) {
+            const restoredTokenUsage = tokenUsage || tokenUsageByThread.get(thread.id) || null;
+            clearTimeline();
+            activeTurnId = null;
+            for (const turn of thread.turns || []) {
+                for (const item of turn.items || []) renderItem(item, true);
+                if (turn.status === 'inProgress') activeTurnId = turn.id;
+                if (['failed', 'error'].includes(turn.status)) {
+                    recordContextEvent(`turn-error-${turn.id}`, 'error', 'Erro na execução', turn.error || '');
+                } else if (['interrupted', 'cancelled', 'canceled'].includes(turn.status)) {
+                    recordContextEvent(`turn-interrupted-${turn.id}`, 'interruption', 'Execução interrompida');
+                }
+            }
+            updateContextUsage(restoredTokenUsage, thread.id);
+            if (!timeline.childElementCount) showEmpty();
+            if (activeTurnId) startActivity('Retomando o andamento…');
+            updateControls();
+        }
+
+        function renderPlan(params) {
+            let node = itemNodes.get(`plan-${params.turnId}`);
+            if (!node) {
+                node = card('Plano', '');
+                itemNodes.set(`plan-${params.turnId}`, node);
+            }
+            node.content.replaceChildren();
+            if (params.explanation) {
+                const explanation = document.createElement('div');
+                explanation.className = 'mb-2';
+                explanation.textContent = params.explanation;
+                node.content.appendChild(explanation);
+            }
+            (params.plan || []).forEach((entry) => {
+                const line = document.createElement('div');
+                line.className = `codex-plan-step ${entry.status || ''}`;
+                line.textContent = `${entry.status === 'completed' ? '✓' : entry.status === 'inProgress' ? '●' : '○'} ${entry.step}`;
+                node.content.appendChild(line);
+            });
+        }
+
+        function handleEvent(method, params) {
+            if (method === 'thread/tokenUsage/updated') {
+                updateContextUsage(params.tokenUsage, params.threadId || currentThreadId);
+                return;
+            }
+            if (method === 'turn/started') {
+                activeTurnId = params.turn?.id || activeTurnId;
+                startActivity('Pensando…');
+                updateControls();
+                return;
+            }
+            if (method === 'item/started') {
+                renderItem(params.item);
+                trackActivityItem(params.item);
+                keepActivityLast();
+            } else if (method === 'item/completed') {
+                renderItem(params.item, true);
+                trackActivityItem(params.item, true);
+                keepActivityLast();
+            } else if (method === 'item/agentMessage/delta' || method === 'item/commandExecution/outputDelta'
+                || method === 'item/reasoning/summaryTextDelta' || method === 'item/plan/delta') {
+                let node = itemNodes.get(params.itemId);
+                if (!node) {
+                    const isCommand = method.includes('commandExecution');
+                    const isReasoning = method.includes('reasoning');
+                    node = isReasoning
+                        ? detailCard('Resumo da análise', '')
+                        : isCommand
+                            ? card('Comando', '', 'codex-card-command')
+                            : markdownCard('Codex', '');
+                    itemNodes.set(params.itemId, node);
+                }
+                if (method.includes('reasoning')) setActivityLabel('Pensando…');
+                else if (method.includes('commandExecution')) setActivityLabel('Executando um comando…');
+                else if (method.includes('agentMessage')) setActivityLabel('Escrevendo a resposta…');
+                if (node.markdown) scheduleMarkdown(node, node.rawText + (params.delta || ''));
+                else node.content.textContent += params.delta || '';
+                keepActivityLast();
+                scrollTimeline();
+            } else if (method === 'item/mcpToolCall/progress') {
+                setActivityLabel(concise(params.message) || 'Consultando uma ferramenta…');
+            } else if (method === 'turn/plan/updated') {
+                renderPlan(params);
+                setActivityLabel('Organizando as etapas…');
+            } else if (method === 'turn/diff/updated') {
+                diff.textContent = params.diff || '';
+                diffBox.classList.toggle('d-none', !params.diff);
+            } else if (method === 'thread/name/updated') {
+                if (params.threadId && params.threadName) updateThreadName(params.threadId, params.threadName);
+            } else if (method === 'thread/compacted') {
+                recordContextEvent(`compacted-${params.turnId || contextEvents.length}`, 'tool',
+                    'Contexto compactado automaticamente');
+            } else if (method === 'error') {
+                finishActivity('Não foi possível concluir', true);
+                recordContextEvent(`turn-error-${params.turnId || activeTurnId || contextEvents.length}`, 'error', 'Erro na execução',
+                    params.error?.message || params.message || '');
+                showError(new Error(params.error?.message || params.message || 'O Codex encontrou um erro.'), false);
+            } else if (method === 'turn/completed') {
+                const turnStatus = params.turn?.status || params.status || 'completed';
+                const failed = ['failed', 'error'].includes(turnStatus);
+                const interrupted = ['interrupted', 'cancelled', 'canceled'].includes(turnStatus);
+                finishActivity(failed ? 'Tarefa encerrada com erro' : interrupted ? 'Tarefa interrompida' : 'Concluído', failed);
+                if (failed) recordContextEvent(`turn-error-${params.turn?.id || contextEvents.length}`, 'error',
+                    'Erro na execução', params.turn?.error || '');
+                else if (interrupted) recordContextEvent(`turn-interrupted-${params.turn?.id || contextEvents.length}`,
+                    'interruption', 'Execução interrompida');
+                activeTurnId = null;
+                updateControls();
+                refreshFilesAfterTurn();
+                loadThreads().catch((error) => console.warn('Não foi possível atualizar as conversas:', error));
+            }
+        }
+
+        function serverRequestDescription(message) {
+            const params = message.params || {};
+            if (message.method === 'item/commandExecution/requestApproval') {
+                return `${params.reason || 'O Codex quer executar um comando.'}\n\n${params.command || ''}`;
+            }
+            if (message.method === 'item/fileChange/requestApproval') {
+                return params.reason || 'O Codex solicita permissão para alterar arquivos.';
+            }
+            if (message.method === 'item/permissions/requestApproval') {
+                return `${params.reason || 'O Codex solicita permissões adicionais.'}\n\n${JSON.stringify(params.permissions || {}, null, 2)}`;
+            }
+            return 'O Codex precisa de uma resposta para continuar.';
+        }
+
+        function approvalButton(label, style, handler) {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = `btn btn-sm btn-${style}`;
+            button.textContent = label;
+            button.addEventListener('click', handler);
+            return button;
+        }
+
+        function renderServerRequest(message) {
+            setActivityLabel('Aguardando sua resposta…');
+            const description = serverRequestDescription(message);
+            recordContextEvent(`approval-${message.serverRequestId}`, 'approval', 'Aprovação solicitada', description);
+            const node = card('Aprovação necessária', description, 'codex-card-approval');
+            const actions = document.createElement('div');
+            actions.className = 'd-flex flex-wrap gap-2 mt-2';
+            node.container.appendChild(actions);
+
+            if (message.method === 'item/tool/requestUserInput') {
+                const inputs = {};
+                for (const question of message.params?.questions || []) {
+                    const label = document.createElement('label');
+                    label.className = 'd-block small mt-2';
+                    label.textContent = question.question || question.header || question.id;
+                    let input;
+                    if (Array.isArray(question.options) && question.options.length) {
+                        input = document.createElement('select');
+                        input.className = 'form-select form-select-sm mt-1';
+                        question.options.forEach((option) => input.add(new Option(option.label, option.label)));
+                    } else {
+                        input = document.createElement('input');
+                        input.className = 'form-control form-control-sm mt-1';
+                    }
+                    inputs[question.id] = input;
+                    label.appendChild(input);
+                    node.container.insertBefore(label, actions);
+                }
+                actions.appendChild(approvalButton('Responder', 'primary', async () => {
+                    const answers = Object.fromEntries(Object.entries(inputs).map(([id, input]) => [id, input.value]));
+                    await resolveServerRequest(message, { answers }, node.container);
+                }));
+                return;
+            }
+
+            if (message.method === 'item/permissions/requestApproval') {
+                actions.append(
+                    approvalButton('Permitir uma vez', 'success', () => resolveServerRequest(message,
+                        { decision: 'accept', scope: 'turn' }, node.container)),
+                    approvalButton('Permitir na sessão', 'outline-success', () => resolveServerRequest(message,
+                        { decision: 'accept', scope: 'session' }, node.container)),
+                    approvalButton('Recusar', 'outline-danger', () => resolveServerRequest(message,
+                        { decision: 'decline' }, node.container)),
+                );
+                return;
+            }
+
+            actions.append(
+                approvalButton('Aceitar', 'success', () => resolveServerRequest(message,
+                    { decision: 'accept' }, node.container)),
+                approvalButton('Aceitar na sessão', 'outline-success', () => resolveServerRequest(message,
+                    { decision: 'acceptForSession' }, node.container)),
+                approvalButton('Recusar', 'outline-warning', () => resolveServerRequest(message,
+                    { decision: 'decline' }, node.container)),
+                approvalButton('Cancelar tarefa', 'outline-danger', () => resolveServerRequest(message,
+                    { decision: 'cancel' }, node.container)),
+            );
+        }
+
+        async function resolveServerRequest(message, answer, container) {
+            container.querySelectorAll('button, input, select').forEach((element) => element.disabled = true);
+            try {
+                await request('server.respond', { serverRequestId: message.serverRequestId, ...answer });
+                container.classList.remove('codex-card-approval');
+                container.querySelector('div').textContent += ' · respondido';
+                setActivityLabel('Continuando…');
+            } catch (error) {
+                showError(error);
+            }
+        }
+
+        async function sendPrompt() {
+            const text = prompt.value.trim();
+            if (!text) return;
+            try {
+                sendButton.disabled = true;
+                startActivity(activeTurnId ? 'Enviando orientação…' : 'Enviando mensagem…');
+                if (!currentThreadId) await startThread();
+                startActivity(activeTurnId ? 'Enviando orientação…' : 'Pensando…');
+                prompt.value = '';
+                updateControls();
+                if (activeTurnId) {
+                    await request('turn.steer', { threadId: currentThreadId, text });
+                } else {
+                    const result = await request('turn.start', {
+                        threadId: currentThreadId,
+                        text,
+                        permissionMode: permissionMode(),
+                    });
+                    activeTurnId = result.turn?.id || activeTurnId;
+                }
+                updateControls();
+            } catch (error) {
+                finishActivity('Não foi possível enviar', true);
+                showError(error);
+                updateControls();
+            }
+        }
+
+        async function refreshFilesAfterTurn() {
+            try {
+                if (typeof window.FileManagerEditorBridge?.refreshChangedFiles === 'function') {
+                    const result = await window.FileManagerEditorBridge.refreshChangedFiles([...changedPaths]);
+                    if (result?.conflicts?.length) {
+                        card('Atenção', `Arquivos com mudanças locais não foram recarregados:\n${result.conflicts.join('\n')}`,
+                            'codex-card-error');
+                    }
+                }
+                if (typeof window.setItemsInTbody === 'function' && typeof window.asyncGet === 'function'
+                    && currentWorkspace() === workspace) {
+                    const data = await window.asyncGet(
+                        `/syncPath?tokenBrowser=${encodeURIComponent(browserToken())}&path=${encodeURIComponent(workspace)}`
+                    );
+                    if (data?.information) window.setItemsInTbody(data.information, 'filesList');
+                }
+            } catch (error) {
+                console.warn('Não foi possível atualizar a interface após a tarefa do Codex:', error);
+            }
+        }
+
+        panel.addEventListener('show.bs.offcanvas', () => {
+            workspace = currentWorkspace();
+            workspaceLabel.textContent = `Pasta: ${workspace}`;
+            clearTimeout(reconnectTimer);
+            connect();
+            if (ready) loadThreads().catch(showError);
+        });
+        panel.addEventListener('hidden.bs.offcanvas', () => clearTimeout(reconnectTimer));
+        resizeHandle.addEventListener('pointerdown', beginPanelResize);
+        resizeHandle.addEventListener('pointermove', movePanelResize);
+        resizeHandle.addEventListener('pointerup', endPanelResize);
+        resizeHandle.addEventListener('pointercancel', endPanelResize);
+        resizeHandle.addEventListener('keydown', resizePanelWithKeyboard);
+        resizeHandle.addEventListener('dblclick', () => setPanelWidth(defaultPanelWidth, true));
+        window.addEventListener('resize', () => {
+            const current = Number.parseFloat(panel.style.getPropertyValue('--codex-panel-width')) || defaultPanelWidth;
+            setPanelWidth(current);
+        });
+        prompt.addEventListener('input', updateControls);
+        timeline.addEventListener('click', (event) => {
+            const link = event.target instanceof Element
+                ? event.target.closest('a.codex-local-file-link')
+                : null;
+            if (!link || !timeline.contains(link)) return;
+            event.preventDefault();
+            if (link.getAttribute('aria-busy') === 'true') return;
+            link.setAttribute('aria-busy', 'true');
+            openLocalFileReference({
+                filePath: link.dataset.filePath || '',
+                line: Number.parseInt(link.dataset.fileLine || '1', 10),
+                column: Number.parseInt(link.dataset.fileColumn || '1', 10),
+            }).catch(showError).finally(() => link.removeAttribute('aria-busy'));
+        });
+        prompt.addEventListener('paste', handlePromptPaste);
+        permissionModeSelect.addEventListener('change', async () => {
+            const selectedMode = permissionMode();
+            if (selectedMode === 'agent-full') {
+                const confirmation = await Swal.fire({
+                    target: panel,
+                    title: 'Ativar Agente full?',
+                    text: 'Este modo remove o sandbox e as aprovações. O Codex poderá alterar arquivos fora do projeto e acessar a rede.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Ativar acesso total',
+                    cancelButtonText: 'Cancelar',
+                    confirmButtonColor: '#dc3545',
+                    background: '#1c2438',
+                    color: '#fff',
+                });
+                if (!confirmation.isConfirmed) {
+                    permissionModeSelect.value = savedPermissionMode;
+                    updatePermissionModeUi();
+                    return;
+                }
+            }
+            savedPermissionMode = selectedMode;
+            localStorage.setItem(permissionModeStorageKey, selectedMode);
+            updatePermissionModeUi();
+        });
+        prompt.addEventListener('keydown', (event) => {
+            if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+                event.preventDefault();
+                sendPrompt();
+            }
+        });
+        sendButton.addEventListener('click', sendPrompt);
+        stopButton.addEventListener('click', async () => {
+            try {
+                setActivityLabel('Interrompendo a tarefa…');
+                await request('turn.interrupt', { threadId: currentThreadId });
+            } catch (error) {
+                showError(error);
+            }
+        });
+        newThreadButton.addEventListener('click', async () => {
+            try {
+                await startThread();
+            } catch (error) {
+                showError(error);
+            }
+        });
+        renameButton.addEventListener('click', async () => {
+            if (!currentThreadId) return;
+            const selected = threadSelect.selectedOptions[0]?.textContent || '';
+            const currentName = threadNames.get(currentThreadId)
+                || (selected.startsWith('Nova conversa') ? '' : selected);
+            const result = await Swal.fire({
+                target: panel,
+                title: 'Nome da conversa',
+                input: 'text',
+                inputValue: currentName,
+                inputAttributes: { maxlength: '120', autocomplete: 'off' },
+                showCancelButton: true,
+                confirmButtonText: 'Salvar',
+                cancelButtonText: 'Cancelar',
+                background: '#1c2438',
+                color: '#fff',
+                inputValidator: (value) => value.trim() ? null : 'Digite um nome para a conversa.',
+                didOpen: () => Swal.getInput()?.focus(),
+            });
+            if (!result.isConfirmed) return;
+            try {
+                const name = result.value.trim();
+                await request('thread.rename', { threadId: currentThreadId, name });
+                updateThreadName(currentThreadId, name);
+            } catch (error) {
+                showError(error);
+            }
+        });
+        threadSelect.addEventListener('change', () => selectThread(threadSelect.value).catch(showError));
+        archiveButton.addEventListener('click', async () => {
+            if (!currentThreadId) return;
+            const confirmed = await Swal.fire({
+                target: panel,
+                title: 'Arquivar conversa?',
+                text: 'Ela deixará de aparecer nesta lista.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Arquivar',
+                cancelButtonText: 'Cancelar',
+                background: '#1c2438',
+                color: '#fff',
+            });
+            if (!confirmed.isConfirmed) return;
+            try {
+                const archivedThreadId = currentThreadId;
+                await request('thread.archive', { threadId: currentThreadId });
+                tokenUsageByThread.delete(archivedThreadId);
+                localStorage.removeItem(selectedThreadStorageKey());
+                currentThreadId = null;
+                await loadThreads();
+            } catch (error) {
+                showError(error);
+            }
+        });
+        restorePanelWidth();
+        restorePermissionMode();
+        updateControls();
+    })();
+</script>

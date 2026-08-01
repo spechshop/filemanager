@@ -259,6 +259,14 @@
         <i class="fa-regular fa-file-signature"></i>&nbsp;
         Localizar conteúdo
     </button>
+    <button class="btn btn-outline-light" data-bs-toggle="modal" data-bs-target="#fileManagerSettingsModal"
+            type="button">
+        <i class="fa-duotone fa-gears"></i>&nbsp;Configurações
+    </button>
+    <button class="btn btn-outline-info" data-bs-toggle="offcanvas" data-bs-target="#codexAgentPanel"
+            aria-controls="codexAgentPanel" type="button">
+        <i class="fa-duotone fa-robot"></i>&nbsp;Codex Agent
+    </button>
     <!-- Offcanvas de Pesquisa -->
     <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasExample"
          aria-labelledby="offcanvasExampleLabel">
@@ -470,6 +478,9 @@ max-height: calc(-2px + 57vh);"></div>
 @import(bypassFontAwesome)
 @import(angryPart)
 @import(modalErrorToken)
+@import(fileManagerSettings)
+@import(codexAgentStyle)
+@import(codexAgent)
 @import(makeTable/preloadScripts)
 @import(modalEditCode)
 @import(compressFile/module)

@@ -1,0 +1,786 @@
+<style>
+    #codexAgentPanel {
+        --codex-border: rgba(255, 255, 255, .09);
+        --codex-panel-width: 620px;
+        background: #171b27;
+        color: #e9edf5;
+        max-width: 100vw;
+        width: min(var(--codex-panel-width), 100vw);
+    }
+
+    #codexAgentPanel .codex-resize-handle {
+        align-items: center;
+        background: transparent;
+        border: 0;
+        bottom: 0;
+        cursor: ew-resize;
+        display: flex;
+        justify-content: center;
+        left: 0;
+        padding: 0;
+        position: absolute;
+        top: 0;
+        touch-action: none;
+        transform: translateX(-50%);
+        width: 14px;
+        z-index: 4;
+    }
+
+    #codexAgentPanel .codex-resize-handle::after {
+        background: rgba(110, 184, 255, .35);
+        border-radius: 4px;
+        content: '';
+        height: 64px;
+        opacity: .32;
+        transition: height .16s ease, opacity .16s ease, background-color .16s ease;
+        width: 3px;
+    }
+
+    #codexAgentPanel .codex-resize-handle:hover::after,
+    #codexAgentPanel .codex-resize-handle:focus-visible::after,
+    #codexAgentPanel.is-resizing .codex-resize-handle::after {
+        background: #6eb8ff;
+        height: 92px;
+        opacity: 1;
+    }
+
+    #codexAgentPanel .codex-resize-handle:focus-visible {
+        outline: none;
+    }
+
+    body.codex-panel-resizing {
+        cursor: ew-resize !important;
+        user-select: none !important;
+    }
+
+    #codexAgentPanel .offcanvas-header {
+        border-bottom: 1px solid var(--codex-border);
+    }
+
+    #codexAgentPanel .codex-toolbar,
+    #codexAgentPanel .codex-composer {
+        background: #1d2230;
+        border-bottom: 1px solid var(--codex-border);
+    }
+
+    #codexAgentPanel .codex-composer {
+        border-bottom: 0;
+        border-top: 1px solid var(--codex-border);
+    }
+
+    #codexAgentPanel .codex-context {
+        align-items: center;
+        background: linear-gradient(135deg, rgba(110, 184, 255, .07), rgba(126, 87, 194, .045));
+        border-bottom: 1px solid var(--codex-border);
+        display: flex;
+        gap: .85rem;
+        min-height: 88px;
+        padding: .65rem .85rem;
+    }
+
+    #codexAgentPanel .codex-context-donut {
+        --codex-context-color: #78dba9;
+        flex: 0 0 64px;
+        height: 64px;
+        position: relative;
+        width: 64px;
+    }
+
+    #codexAgentPanel .codex-context-donut svg {
+        display: block;
+        height: 100%;
+        transform: rotate(-90deg);
+        width: 100%;
+    }
+
+    #codexAgentPanel .codex-context-track {
+        fill: none;
+        stroke: rgba(255, 255, 255, .09);
+        stroke-width: 6;
+    }
+
+    #codexAgentPanel .codex-context-progress {
+        fill: none;
+        stroke: var(--codex-context-color);
+        stroke-linecap: round;
+        stroke-width: 6;
+        transition: stroke .2s ease, stroke-dashoffset .35s ease;
+    }
+
+    #codexAgentPanel .codex-context-percent {
+        color: #f3f7ff;
+        font-size: .86rem;
+        font-variant-numeric: tabular-nums;
+        font-weight: 700;
+        left: 50%;
+        line-height: 1;
+        position: absolute;
+        top: 50%;
+        transform: translate(-50%, -50%);
+    }
+
+    #codexAgentPanel .codex-context-copy {
+        min-width: 0;
+    }
+
+    #codexAgentPanel .codex-context-heading {
+        align-items: baseline;
+        display: flex;
+        gap: .5rem;
+        justify-content: space-between;
+    }
+
+    #codexAgentPanel .codex-context-title {
+        color: #dce9ff;
+        font-size: .78rem;
+        font-weight: 650;
+    }
+
+    #codexAgentPanel .codex-context-value {
+        color: #8993a7;
+        font-size: .7rem;
+        font-variant-numeric: tabular-nums;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    #codexAgentPanel .codex-context-events {
+        align-items: stretch;
+        background: rgba(255, 255, 255, .055);
+        border-radius: 5px;
+        display: flex;
+        gap: 2px;
+        height: 14px;
+        margin-top: .45rem;
+        overflow: hidden;
+        padding: 2px;
+    }
+
+    #codexAgentPanel .codex-context-event {
+        background: #667085;
+        border: 0;
+        border-radius: 2px;
+        flex-basis: 0;
+        min-width: 3px;
+        opacity: .92;
+        padding: 0;
+    }
+
+    #codexAgentPanel .codex-context-event.is-user {
+        box-shadow: inset 0 -2px rgba(110, 184, 255, .75);
+    }
+
+    #codexAgentPanel .codex-context-event.is-agent {
+        box-shadow: inset 0 -2px rgba(199, 146, 234, .78);
+    }
+
+    #codexAgentPanel .codex-context-event.is-tool {
+        box-shadow: inset 0 -2px rgba(110, 223, 246, .72);
+    }
+
+    #codexAgentPanel .codex-context-event.is-approval {
+        box-shadow: inset 0 -2px rgba(255, 211, 91, .9);
+    }
+
+    #codexAgentPanel .codex-context-event.is-error,
+    #codexAgentPanel .codex-context-event.is-interruption {
+        box-shadow: inset 0 -2px rgba(255, 120, 133, .95);
+    }
+
+    #codexAgentPanel .codex-context-event:focus-visible {
+        outline: 2px solid #dce9ff;
+        outline-offset: -1px;
+    }
+
+    #codexAgentPanel .codex-context-caption {
+        color: #7f8ba1;
+        display: flex;
+        font-size: .67rem;
+        gap: .6rem;
+        justify-content: space-between;
+        margin-top: .32rem;
+    }
+
+    #codexAgentPanel .codex-context-caption span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    #codexAgentPanel .codex-context.is-warning .codex-context-donut {
+        --codex-context-color: #ffd35b;
+    }
+
+    #codexAgentPanel .codex-context.is-danger .codex-context-donut {
+        --codex-context-color: #ff7885;
+    }
+
+    #codexAgentTimeline {
+        overflow-y: auto;
+        min-height: 180px;
+    }
+
+    #codexAgentPanel .codex-card {
+        background: rgba(255, 255, 255, .04);
+        border: 1px solid var(--codex-border);
+        border-radius: 9px;
+        margin-bottom: .65rem;
+        padding: .75rem;
+    }
+
+    #codexAgentPanel .codex-card-user {
+        background: rgba(13, 110, 253, .13);
+    }
+
+    #codexAgentPanel .codex-card-error {
+        border-color: rgba(220, 53, 69, .55);
+    }
+
+    #codexAgentPanel .codex-card-approval {
+        border-color: rgba(255, 193, 7, .55);
+    }
+
+    #codexAgentPanel .codex-message-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: .35rem;
+    }
+
+    #codexAgentPanel .codex-message-copy {
+        align-items: center;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 5px;
+        color: #8993a7;
+        display: inline-flex;
+        height: 28px;
+        justify-content: center;
+        padding: 0;
+        transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+        width: 28px;
+    }
+
+    #codexAgentPanel .codex-message-copy:hover,
+    #codexAgentPanel .codex-message-copy:focus-visible {
+        background: rgba(110, 184, 255, .1);
+        border-color: rgba(110, 184, 255, .25);
+        color: #dce9ff;
+        outline: none;
+    }
+
+    #codexAgentPanel .codex-message-copy.is-copied {
+        color: #78dba9;
+    }
+
+    #codexAgentPanel .codex-message-copy.is-error {
+        color: #ff7885;
+    }
+
+    #codexAgentPanel .codex-card pre {
+        color: inherit;
+        font: 12px/1.5 "JetBrains Mono", monospace;
+        margin: .45rem 0 0;
+        max-height: 360px;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    #codexAgentPanel .codex-card-command pre {
+        color: #b9f6ca;
+    }
+
+    #codexAgentPanel .codex-markdown {
+        color: #e9edf5;
+        font-size: .9rem;
+        line-height: 1.62;
+        margin-top: .45rem;
+        overflow-wrap: anywhere;
+    }
+
+    #codexAgentPanel .codex-markdown> :first-child {
+        margin-top: 0;
+    }
+
+    #codexAgentPanel .codex-markdown> :last-child {
+        margin-bottom: 0;
+    }
+
+    #codexAgentPanel .codex-markdown h1,
+    #codexAgentPanel .codex-markdown h2,
+    #codexAgentPanel .codex-markdown h3,
+    #codexAgentPanel .codex-markdown h4 {
+        color: #f2f6ff;
+        font-weight: 650;
+        line-height: 1.3;
+        margin: 1.05rem 0 .55rem;
+    }
+
+    #codexAgentPanel .codex-markdown h1 {
+        font-size: 1.35rem;
+    }
+
+    #codexAgentPanel .codex-markdown h2 {
+        font-size: 1.18rem;
+    }
+
+    #codexAgentPanel .codex-markdown h3 {
+        font-size: 1.05rem;
+    }
+
+    #codexAgentPanel .codex-markdown h4 {
+        font-size: .96rem;
+    }
+
+    #codexAgentPanel .codex-markdown p {
+        margin: 0 0 .75rem;
+    }
+
+    #codexAgentPanel .codex-markdown ul,
+    #codexAgentPanel .codex-markdown ol {
+        margin: .35rem 0 .8rem;
+        padding-left: 1.4rem;
+    }
+
+    #codexAgentPanel .codex-markdown li {
+        margin: .2rem 0;
+    }
+
+    #codexAgentPanel .codex-markdown blockquote {
+        border-left: 3px solid #6eb8ff;
+        color: #aab9cd;
+        margin: .75rem 0;
+        padding: .25rem .8rem;
+    }
+
+    #codexAgentPanel .codex-markdown blockquote> :last-child {
+        margin-bottom: 0;
+    }
+
+    #codexAgentPanel .codex-markdown code {
+        background: rgba(110, 184, 255, .11);
+        border: 1px solid rgba(110, 184, 255, .13);
+        border-radius: 4px;
+        color: #b9f6ca;
+        font: .84em/1.5 "JetBrains Mono", monospace;
+        padding: .1rem .3rem;
+    }
+
+    #codexAgentPanel .codex-markdown .codex-code-block {
+        background: #101521;
+        border: 1px solid rgba(255, 255, 255, .09);
+        border-radius: 8px;
+        margin: .75rem 0;
+        overflow: hidden;
+    }
+
+    #codexAgentPanel .codex-markdown .codex-code-toolbar {
+        align-items: center;
+        background: rgba(255, 255, 255, .025);
+        border-bottom: 1px solid rgba(255, 255, 255, .08);
+        color: #8993a7;
+        display: flex;
+        font: 11px/1.2 "JetBrains Mono", monospace;
+        justify-content: space-between;
+        min-height: 34px;
+        padding: .35rem .45rem .35rem .75rem;
+        text-transform: lowercase;
+    }
+
+    #codexAgentPanel .codex-markdown .codex-code-copy {
+        align-items: center;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 5px;
+        color: #aab4c8;
+        display: inline-flex;
+        font: 11px/1.2 "Open Sans", sans-serif;
+        gap: .35rem;
+        padding: .3rem .5rem;
+        transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+    }
+
+    #codexAgentPanel .codex-markdown .codex-code-copy:hover,
+    #codexAgentPanel .codex-markdown .codex-code-copy:focus-visible {
+        background: rgba(110, 184, 255, .1);
+        border-color: rgba(110, 184, 255, .25);
+        color: #dce9ff;
+        outline: none;
+    }
+
+    #codexAgentPanel .codex-markdown .codex-code-copy.is-copied {
+        color: #78dba9;
+    }
+
+    #codexAgentPanel .codex-markdown .codex-code-copy.is-error {
+        color: #ff7885;
+    }
+
+    #codexAgentPanel .codex-markdown pre {
+        border: 0;
+        border-radius: 0;
+        margin: 0;
+        max-height: 420px;
+        overflow: auto;
+        padding: .75rem;
+        white-space: pre;
+    }
+
+    #codexAgentPanel .codex-markdown pre code {
+        background: transparent;
+        border: 0;
+        color: #c8d3e6;
+        font-size: 12px;
+        padding: 0;
+    }
+
+    #codexAgentPanel .codex-markdown .token.comment,
+    #codexAgentPanel .codex-markdown .token.prolog,
+    #codexAgentPanel .codex-markdown .token.doctype,
+    #codexAgentPanel .codex-markdown .token.cdata {
+        color: #7f8c98;
+        font-style: italic;
+    }
+
+    #codexAgentPanel .codex-markdown .token.punctuation {
+        color: #aab4c8;
+    }
+
+    #codexAgentPanel .codex-markdown .token.namespace {
+        opacity: .8;
+    }
+
+    #codexAgentPanel .codex-markdown .token.property,
+    #codexAgentPanel .codex-markdown .token.tag,
+    #codexAgentPanel .codex-markdown .token.constant,
+    #codexAgentPanel .codex-markdown .token.symbol,
+    #codexAgentPanel .codex-markdown .token.deleted {
+        color: #ff7b9c;
+    }
+
+    #codexAgentPanel .codex-markdown .token.boolean,
+    #codexAgentPanel .codex-markdown .token.number {
+        color: #c792ea;
+    }
+
+    #codexAgentPanel .codex-markdown .token.selector,
+    #codexAgentPanel .codex-markdown .token.attr-name,
+    #codexAgentPanel .codex-markdown .token.string,
+    #codexAgentPanel .codex-markdown .token.char,
+    #codexAgentPanel .codex-markdown .token.builtin,
+    #codexAgentPanel .codex-markdown .token.inserted {
+        color: #addb67;
+    }
+
+    #codexAgentPanel .codex-markdown .token.operator,
+    #codexAgentPanel .codex-markdown .token.entity,
+    #codexAgentPanel .codex-markdown .token.url {
+        color: #89ddff;
+    }
+
+    #codexAgentPanel .codex-markdown .token.atrule,
+    #codexAgentPanel .codex-markdown .token.attr-value,
+    #codexAgentPanel .codex-markdown .token.function,
+    #codexAgentPanel .codex-markdown .token.class-name {
+        color: #82aaff;
+    }
+
+    #codexAgentPanel .codex-markdown .token.keyword {
+        color: #c792ea;
+    }
+
+    #codexAgentPanel .codex-markdown .token.regex,
+    #codexAgentPanel .codex-markdown .token.important,
+    #codexAgentPanel .codex-markdown .token.variable {
+        color: #f78c6c;
+    }
+
+    #codexAgentPanel .codex-markdown .token.important,
+    #codexAgentPanel .codex-markdown .token.bold {
+        font-weight: 700;
+    }
+
+    #codexAgentPanel .codex-markdown .token.italic {
+        font-style: italic;
+    }
+
+    #codexAgentPanel .codex-markdown a {
+        color: #6edff6;
+        text-decoration-thickness: 1px;
+    }
+
+    #codexAgentPanel .codex-markdown a:hover {
+        color: #a7efff;
+    }
+
+    #codexAgentPanel .codex-markdown a.codex-local-file-link {
+        text-decoration-style: dashed;
+    }
+
+    #codexAgentPanel .codex-markdown a.codex-local-file-link::after {
+        content: ' ↗';
+        font-size: .72em;
+        opacity: .72;
+        text-decoration: none;
+    }
+
+    #codexAgentPanel .codex-markdown hr {
+        border-color: rgba(255, 255, 255, .14);
+        margin: 1rem 0;
+    }
+
+    #codexAgentPanel .codex-markdown table {
+        border-collapse: collapse;
+        display: block;
+        margin: .75rem 0;
+        max-width: 100%;
+        overflow-x: auto;
+        width: max-content;
+    }
+
+    #codexAgentPanel .codex-markdown th,
+    #codexAgentPanel .codex-markdown td {
+        border: 1px solid rgba(255, 255, 255, .12);
+        padding: .4rem .55rem;
+    }
+
+    #codexAgentPanel .codex-markdown th {
+        background: rgba(255, 255, 255, .06);
+    }
+
+    #codexAgentPanel .codex-markdown img {
+        border-radius: 7px;
+        display: block;
+        height: auto;
+        margin: .75rem 0;
+        max-width: 100%;
+    }
+
+    #codexAgentPanel .codex-markdown input[type="checkbox"] {
+        margin-right: .35rem;
+    }
+
+    #codexAgentPanel .codex-detail-card {
+        padding: 0;
+        overflow: hidden;
+    }
+
+    #codexAgentPanel .codex-detail-card>summary {
+        align-items: center;
+        cursor: pointer;
+        display: flex;
+        gap: .5rem;
+        list-style: none;
+        padding: .7rem .75rem;
+        user-select: none;
+    }
+
+    #codexAgentPanel .codex-detail-card>summary::-webkit-details-marker {
+        display: none;
+    }
+
+    #codexAgentPanel .codex-detail-card>summary::before {
+        color: #8993a7;
+        content: '›';
+        font-size: 1rem;
+        transition: transform .18s ease;
+    }
+
+    #codexAgentPanel .codex-detail-card[open]>summary::before {
+        transform: rotate(90deg);
+    }
+
+    #codexAgentPanel .codex-detail-card>pre {
+        border-top: 1px solid var(--codex-border);
+        margin: 0;
+        padding: 0 .75rem .75rem;
+        padding-top: .65rem;
+    }
+
+    #codexAgentPanel .codex-activity {
+        background: linear-gradient(135deg, rgba(55, 125, 255, .11), rgba(126, 87, 194, .08));
+        border: 1px solid rgba(110, 184, 255, .24);
+        border-radius: 12px;
+        margin-bottom: .65rem;
+        padding: .7rem .8rem;
+    }
+
+    #codexAgentPanel .codex-activity-main {
+        align-items: center;
+        display: flex;
+        gap: .65rem;
+    }
+
+    #codexAgentPanel .codex-activity-copy {
+        min-width: 0;
+    }
+
+    #codexAgentPanel .codex-activity-label {
+        color: #dce9ff;
+        font-size: .88rem;
+        font-weight: 600;
+    }
+
+    #codexAgentPanel .codex-activity-time {
+        color: #8993a7;
+        font-size: .72rem;
+    }
+
+    #codexAgentPanel .codex-activity-dot {
+        background: #6eb8ff;
+        border-radius: 50%;
+        box-shadow: 0 0 0 0 rgba(110, 184, 255, .55);
+        flex: 0 0 auto;
+        height: 10px;
+        width: 10px;
+    }
+
+    #codexAgentPanel .codex-activity.is-active .codex-activity-dot {
+        animation: codexAgentPulse 1.35s ease-out infinite;
+    }
+
+    #codexAgentPanel .codex-activity.is-complete .codex-activity-dot {
+        background: #78dba9;
+    }
+
+    #codexAgentPanel .codex-activity.is-error .codex-activity-dot {
+        background: #ff7885;
+    }
+
+    #codexAgentPanel .codex-activity-details {
+        margin-left: 1.25rem;
+        margin-top: .45rem;
+    }
+
+    #codexAgentPanel .codex-activity-details>summary {
+        color: #9db7db;
+        cursor: pointer;
+        font-size: .75rem;
+    }
+
+    #codexAgentPanel .codex-activity-list {
+        border-left: 1px solid rgba(110, 184, 255, .2);
+        list-style: none;
+        margin: .5rem 0 0 .15rem;
+        padding: 0 0 0 .8rem;
+    }
+
+    #codexAgentPanel .codex-activity-entry {
+        color: #aab3c5;
+        font-size: .76rem;
+        line-height: 1.4;
+        margin: .35rem 0;
+        overflow-wrap: anywhere;
+        padding-left: .9rem;
+        position: relative;
+    }
+
+    #codexAgentPanel .codex-activity-entry::before {
+        color: #6eb8ff;
+        content: '●';
+        font-size: .55rem;
+        left: 0;
+        position: absolute;
+        top: .2rem;
+    }
+
+    #codexAgentPanel .codex-activity-entry.is-complete::before {
+        color: #78dba9;
+        content: '✓';
+    }
+
+    #codexAgentPanel .codex-activity-entry.is-error::before {
+        color: #ff7885;
+        content: '!';
+    }
+
+    #codexAgentPanel .codex-activity-entry-detail {
+        color: #7f8ba1;
+        display: block;
+    }
+
+    @keyframes codexAgentPulse {
+        0% {
+            box-shadow: 0 0 0 0 rgba(110, 184, 255, .55);
+            transform: scale(.9);
+        }
+
+        55% {
+            box-shadow: 0 0 0 7px rgba(110, 184, 255, 0);
+            transform: scale(1);
+        }
+
+        100% {
+            box-shadow: 0 0 0 0 rgba(110, 184, 255, 0);
+            transform: scale(.9);
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        #codexAgentPanel .codex-activity.is-active .codex-activity-dot {
+            animation: none;
+        }
+    }
+
+    @media (max-width: 575.98px) {
+        #codexAgentPanel {
+            --codex-panel-width: 100vw !important;
+        }
+
+        #codexAgentPanel .codex-resize-handle {
+            display: none;
+        }
+
+        #codexAgentPanel .codex-context {
+            gap: .65rem;
+            padding-inline: .7rem;
+        }
+
+        #codexAgentPanel .codex-context-donut {
+            flex-basis: 56px;
+            height: 56px;
+            width: 56px;
+        }
+    }
+
+    #codexAgentPanel .codex-plan-step {
+        color: #aab3c5;
+    }
+
+    #codexAgentPanel .codex-plan-step.completed {
+        color: #78dba9;
+    }
+
+    #codexAgentPanel .codex-plan-step.inProgress {
+        color: #6eb8ff;
+    }
+
+    #codexAgentPrompt {
+        max-height: min(40vh, 360px);
+        min-height: 84px;
+        overflow-y: auto !important;
+        overscroll-behavior: contain;
+        resize: vertical;
+        scrollbar-gutter: stable;
+    }
+
+    #codexAgentPermissionMode {
+        min-width: 142px;
+        width: auto;
+    }
+
+    #codexAgentPermissionMode.permission-agent-full {
+        border-color: rgba(255, 193, 7, .65);
+        box-shadow: 0 0 0 .1rem rgba(255, 193, 7, .12);
+    }
+
+    #codexAgentDiff {
+        max-height: 300px;
+        overflow: auto;
+    }
+
+    #codexAgentEmpty {
+        color: #8993a7;
+    }
+</style>

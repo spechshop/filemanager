@@ -11,11 +11,21 @@ class freeRam
     {
         security::verifyToken($request) ?: security::invalidToken($response);
         $response->header('Content-Type', 'application/json');
-        $command = 'sudo sync; echo 3 | sudo tee /proc/sys/vm/drop_caches';
-        shell_exec($command);
+        $output = [];
+        $exitCode = 0;
+
+        exec(
+            '/usr/bin/sudo -n /usr/local/sbin/filemanager-drop-caches 2>&1',
+            $output,
+            $exitCode
+        );
+
         return $response->end(json_encode([
-            'success' => true,
-            'information' => 'ok'
+            'success' => $exitCode === 0,
+            'information' => $exitCode === 0
+                ? 'Cache do sistema liberado'
+                : 'Não foi possível liberar o cache',
+            'error' => $exitCode === 0 ? null : implode("\n", $output),
         ]));
     }
 }

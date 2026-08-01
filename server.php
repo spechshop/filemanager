@@ -116,6 +116,18 @@ include 'libspech/plugins/autoloader.php';
 
 require_once __DIR__ . '/vendor/autoload.php';
 include_once 'plugins/autoload.php';
+
+function fileManagerAutoRestartEnabled(): bool
+{
+    $configPath = __DIR__ . '/plugins/configInterface.json';
+    $contents = @file_get_contents($configPath);
+    $config = is_string($contents) ? json_decode($contents, true) : null;
+
+    // Mantém o comportamento anterior quando a chave ainda não existe.
+    return !is_array($config)
+        || ($config['fileManager']['autoRestart'] ?? true) !== false;
+}
+
 for (; ;) {
     print "Starting server...\n";
     $sharedPid = null;
@@ -125,9 +137,14 @@ for (; ;) {
     });
 
     Co\run(fn() => co::sleep(3));
-    print "Restarting $sharedPid and $pidRunner...\n";
+    print "Middleware stopped ($sharedPid, $pidRunner). Cleaning up...\n";
     \plugins\terminal::pKill($sharedPid);
+
+    if (!fileManagerAutoRestartEnabled()) {
+        print "Autorestart disabled in File Manager settings. Supervisor stopped.\n";
+        break;
+    }
+
+    print "Restarting middleware...\n";
 }
-
-
 
