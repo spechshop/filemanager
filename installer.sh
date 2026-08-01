@@ -159,7 +159,7 @@ ensure_cmd screen screen
 # Ferramenta de download: pelo menos uma
 command -v curl >/dev/null 2>&1 || command -v wget >/dev/null 2>&1 || ensure_cmd curl curl || ensure_cmd wget wget
 
-# npm/node: nome do pacote varia por distro
+# npm/node básico: o runtime compatível definitivo é preparado depois do clone.
 if ! command -v npm >/dev/null 2>&1; then
     pkg_install npm >/dev/null 2>&1 || pkg_install nodejs >/dev/null 2>&1 || pkg_install nodejs-npm >/dev/null 2>&1
 fi
@@ -182,12 +182,15 @@ else
 fi
 
 # ---------------------------------------------------------------------
-# 7) Dependências Node
+# 7) Runtime Node, dependências e Codex CLI
 # ---------------------------------------------------------------------
-if command -v npm >/dev/null 2>&1; then
-    log "Instalando dependências Node..."
+if [ -f "scripts/install-codex.sh" ]; then
+    log "Preparando Node.js 22, dependências e Codex CLI..."
+    bash scripts/install-codex.sh "$(pwd)" \
+        || warn "O instalador automático do Codex falhou; use Configurações > Diagnóstico para tentar novamente."
+elif command -v npm >/dev/null 2>&1; then
+    warn "Instalador do Codex ausente; instalando somente as dependências Node."
     npm install || warn "npm install falhou (seguindo mesmo assim)."
-    npm rebuild || warn "npm rebuild falhou (seguindo mesmo assim)."
 else
     warn "npm indisponível; dependências Node não instaladas."
 fi

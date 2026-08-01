@@ -93,6 +93,7 @@ lerna-debug.log*
 !/files/.gitkeep
 !/files/README.md
 /database/codex-preferences.lotus
+/.runtime/
 /sessions-terminals.json
 /terminals.json
 /terminals.json.backup

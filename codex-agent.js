@@ -61,6 +61,8 @@ function findCodexBinary() {
         .map((directory) => path.join(directory, "codex"));
     const candidates = [
         process.env.CODEX_BIN,
+        path.join(ROOT, ".runtime", "codex", "bin", "codex"),
+        path.join(ROOT, ".runtime", "node", "bin", "codex"),
         ...pathCandidates,
         path.join(os.homedir(), ".local", "bin", "codex"),
         "/usr/local/bin/codex",
@@ -75,7 +77,7 @@ function findCodexBinary() {
             // Try the next known installation location.
         }
     }
-    throw new Error("Codex CLI não foi encontrado no PATH nem em ~/.local/bin.");
+    throw new Error("Codex CLI não foi encontrado no runtime do File Manager, no PATH nem em ~/.local/bin.");
 }
 
 function isInside(base, candidate) {
@@ -420,9 +422,14 @@ function startCodex() {
         scheduleCodexRestart();
         return;
     }
+    const managedPaths = [
+        path.join(ROOT, ".runtime", "node", "bin"),
+        path.join(ROOT, ".runtime", "codex", "bin"),
+        process.env.PATH || "",
+    ].filter(Boolean).join(path.delimiter);
     codexProcess = spawn(executable, ["app-server", "--listen", "stdio://"], {
         cwd: ROOT,
-        env: process.env,
+        env: {...process.env, PATH: managedPaths},
         stdio: ["pipe", "pipe", "pipe"],
     });
 

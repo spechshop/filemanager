@@ -44,6 +44,25 @@
         border-radius: 10px;
     }
 
+    #fileManagerSettingsModal .diagnostic-card {
+        background: rgba(255, 255, 255, 0.035);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+    }
+
+    #fileManagerSettingsModal .diagnostic-log {
+        background: #0d1320;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        color: #cbd5e1;
+        font-size: 0.76rem;
+        max-height: 190px;
+        min-height: 74px;
+        overflow: auto;
+        padding: 0.75rem;
+        white-space: pre-wrap;
+    }
+
     #fileManagerSettingsModal .service-status-dot {
         border-radius: 50%;
         display: inline-block;
@@ -82,9 +101,13 @@
                                 data-settings-pane="settingsCodexPane" type="button">
                             <i class="fa-duotone fa-robot me-2"></i>Codex
                         </button>
-                        <button class="btn settings-nav-button w-100 text-start"
+                        <button class="btn settings-nav-button w-100 text-start mb-1"
                                 data-settings-pane="settingsServicesPane" type="button">
                             <i class="fa-duotone fa-network-wired me-2"></i>Serviços
+                        </button>
+                        <button class="btn settings-nav-button w-100 text-start"
+                                data-settings-pane="settingsDiagnosticsPane" type="button">
+                            <i class="fa-duotone fa-screwdriver-wrench me-2"></i>Diagnóstico
                         </button>
                     </aside>
                     <div class="col-md-9">
@@ -160,6 +183,42 @@
                             </div>
                             <div id="fileManagerServicesList" class="d-grid gap-2" aria-live="polite"></div>
                         </section>
+
+                        <section class="p-4 settings-pane d-none" id="settingsDiagnosticsPane">
+                            <div class="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-3">
+                                <div>
+                                    <h6 class="mb-1">Diagnóstico e reparo</h6>
+                                    <p class="settings-description small mb-0">
+                                        Verifica incompatibilidades do Node.js, dependências e instalação do Codex CLI.
+                                    </p>
+                                </div>
+                                <button class="btn btn-sm btn-outline-light" id="refreshFileManagerDiagnostics"
+                                        type="button" title="Executar diagnóstico novamente">
+                                    <i class="fa-duotone fa-rotate me-1"></i>Verificar
+                                </button>
+                            </div>
+                            <div id="fileManagerDiagnosticsSummary" class="alert alert-secondary py-2 small"
+                                 aria-live="polite">Preparando diagnóstico...</div>
+                            <div id="fileManagerDiagnosticsList" class="d-grid gap-2 mb-3" aria-live="polite"></div>
+                            <div class="settings-section p-3">
+                                <div class="d-flex flex-wrap justify-content-between align-items-start gap-3">
+                                    <div>
+                                        <div class="fw-semibold">Instalador automático do Codex</div>
+                                        <div class="settings-description small mt-1">
+                                            Instala Node.js 22 em um runtime isolado quando necessário, executa
+                                            <code>npm install</code> e instala o pacote oficial
+                                            <code>@openai/codex</code>.
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-primary text-nowrap" id="installFileManagerCodex"
+                                            type="button">
+                                        <i class="fa-duotone fa-wand-magic-sparkles me-1"></i>Reparar e instalar
+                                    </button>
+                                </div>
+                                <div id="fileManagerRepairStatus" class="small text-muted mt-3"></div>
+                                <pre id="fileManagerRepairLog" class="diagnostic-log d-none mt-2 mb-0"></pre>
+                            </div>
+                        </section>
                     </div>
                 </div>
             </div>
@@ -188,8 +247,15 @@
         const codexModel = document.getElementById('fileManagerCodexModel');
         const codexReasoning = document.getElementById('fileManagerCodexReasoning');
         const codexStatus = document.getElementById('fileManagerCodexStatus');
+        const diagnosticsList = document.getElementById('fileManagerDiagnosticsList');
+        const diagnosticsSummary = document.getElementById('fileManagerDiagnosticsSummary');
+        const refreshDiagnosticsButton = document.getElementById('refreshFileManagerDiagnostics');
+        const installCodexButton = document.getElementById('installFileManagerCodex');
+        const repairStatus = document.getElementById('fileManagerRepairStatus');
+        const repairLog = document.getElementById('fileManagerRepairLog');
         const navButtons = modal.querySelectorAll('[data-settings-pane]');
         let serviceStatusInterval = null;
+        let diagnosticStatusInterval = null;
         let activePaneId = 'settingsSystemPane';
         let codexModels = [];
         let codexModelsLoading = false;
@@ -197,6 +263,12 @@
 
         function tokenBrowser() {
             return document.getElementById('fp').textContent.trim();
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>'"]/g, (character) => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+            })[character]);
         }
 
         function setBusy(busy) {
@@ -379,6 +451,131 @@
             }
         }
 
+        function renderRepair(repair = {}) {
+            const state = repair.status || 'idle';
+            const running = state === 'running';
+            installCodexButton.disabled = running;
+            refreshDiagnosticsButton.disabled = running;
+            installCodexButton.innerHTML = running
+                ? '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Instalando...'
+                : '<i class="fa-duotone fa-wand-magic-sparkles me-1"></i>Reparar e instalar';
+            const stateClass = state === 'success'
+                ? 'text-success'
+                : (state === 'failed' ? 'text-danger' : (running ? 'text-info' : 'text-muted'));
+            repairStatus.className = `small mt-3 ${stateClass}`;
+            repairStatus.textContent = repair.message || 'Nenhum reparo executado nesta instalação.';
+            repairLog.textContent = repair.log || '';
+            repairLog.classList.toggle('d-none', !repair.log);
+            if (running) startDiagnosticPolling();
+            else stopDiagnosticPolling();
+        }
+
+        function renderDiagnostics(data) {
+            const checks = Array.isArray(data.checks) ? data.checks : [];
+            const appearance = {
+                ok: {badge: 'success', icon: 'fa-circle-check', label: 'OK'},
+                warning: {badge: 'warning', icon: 'fa-triangle-exclamation', label: 'Atenção'},
+                error: {badge: 'danger', icon: 'fa-circle-xmark', label: 'Corrigir'}
+            };
+            diagnosticsList.innerHTML = checks.map((check) => {
+                const style = appearance[check.status] || appearance.warning;
+                return `
+                    <article class="diagnostic-card p-3">
+                        <div class="d-flex justify-content-between align-items-start gap-3">
+                            <div>
+                                <div class="fw-semibold">
+                                    <i class="fa-duotone ${style.icon} text-${style.badge} me-1"></i>
+                                    ${escapeHtml(check.name)}
+                                </div>
+                                <div class="small text-light mt-1">${escapeHtml(check.value)}</div>
+                                <div class="settings-description small mt-1">${escapeHtml(check.message)}</div>
+                            </div>
+                            <span class="badge text-bg-${style.badge}">${style.label}</span>
+                        </div>
+                    </article>`;
+            }).join('');
+            diagnosticsSummary.className = `alert py-2 small ${data.healthy ? 'alert-success' : 'alert-warning'}`;
+            diagnosticsSummary.textContent = data.healthy
+                ? (data.hasWarnings
+                    ? 'Ambiente técnico compatível. Revise os avisos antes de ativar o Codex Agent.'
+                    : 'Ambiente compatível. O Codex está pronto para uso.')
+                : 'Foram encontrados itens que o instalador automático pode corrigir.';
+            renderRepair(data.repair || {});
+        }
+
+        async function loadDiagnostics(showLoading = true) {
+            if (showLoading) {
+                diagnosticsSummary.className = 'alert alert-secondary py-2 small';
+                diagnosticsSummary.textContent = 'Verificando o ambiente...';
+            }
+            try {
+                const response = await fetch(
+                    `/fileManagerDiagnostics?tokenBrowser=${encodeURIComponent(tokenBrowser())}`
+                );
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Não foi possível executar o diagnóstico.');
+                }
+                renderDiagnostics(data);
+            } catch (error) {
+                diagnosticsSummary.className = 'alert alert-danger py-2 small';
+                diagnosticsSummary.textContent = error.message;
+            }
+        }
+
+        function startDiagnosticPolling() {
+            if (diagnosticStatusInterval !== null) return;
+            diagnosticStatusInterval = setInterval(() => loadDiagnostics(false), 2000);
+        }
+
+        function stopDiagnosticPolling() {
+            clearInterval(diagnosticStatusInterval);
+            diagnosticStatusInterval = null;
+        }
+
+        async function installCodex() {
+            const confirmation = await Swal.fire({
+                title: 'Reparar ambiente do Codex?',
+                text: 'O processo pode baixar o Node.js 22, reinstalar dependências npm e atualizar o Codex CLI.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Reparar e instalar',
+                cancelButtonText: 'Cancelar',
+                background: '#1c2438',
+                color: '#fff'
+            });
+            if (!confirmation.isConfirmed) return;
+
+            installCodexButton.disabled = true;
+            try {
+                const body = new URLSearchParams({
+                    tokenBrowser: tokenBrowser(),
+                    action: 'install_codex'
+                });
+                const response = await fetch('/fileManagerDiagnostics', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'},
+                    body: body.toString()
+                });
+                const data = await response.json();
+                if (data.repair) renderRepair(data.repair);
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Não foi possível iniciar o instalador.');
+                }
+                startDiagnosticPolling();
+                bootstrap.showToast({
+                    header: 'Diagnóstico',
+                    body: data.message,
+                    toastClass: 'bg-primary text-white',
+                    colorHeader: 'text-white'
+                });
+            } catch (error) {
+                installCodexButton.disabled = false;
+                repairStatus.className = 'small text-danger mt-3';
+                repairStatus.textContent = error.message;
+            }
+        }
+
         async function confirmServiceAction(service, action) {
             if (action === 'start') return true;
             const verb = action === 'stop' ? 'parar' : 'reiniciar';
@@ -451,9 +648,11 @@
             navButtons.forEach((button) => {
                 button.classList.toggle('active', button.dataset.settingsPane === paneId);
             });
-            saveButton.classList.toggle('d-none', paneId === 'settingsServicesPane');
+            const actionPane = paneId === 'settingsServicesPane' || paneId === 'settingsDiagnosticsPane';
+            saveButton.classList.toggle('d-none', actionPane);
             saveButton.disabled = formBusy || (paneId === 'settingsCodexPane' && codexModels.length === 0);
             if (paneId === 'settingsServicesPane') loadServices();
+            if (paneId === 'settingsDiagnosticsPane') loadDiagnostics();
         }
 
         toggle.addEventListener('change', updateStatus);
@@ -462,6 +661,8 @@
             button.addEventListener('click', () => selectPane(button.dataset.settingsPane));
         });
         refreshServicesButton.addEventListener('click', () => loadServices());
+        refreshDiagnosticsButton.addEventListener('click', () => loadDiagnostics());
+        installCodexButton.addEventListener('click', installCodex);
         servicesList.addEventListener('click', (event) => {
             const button = event.target.closest('[data-service-action]');
             if (!button) return;
@@ -471,6 +672,7 @@
             selectPane('settingsSystemPane');
             loadSettings();
             loadServices();
+            loadDiagnostics(false);
             clearInterval(serviceStatusInterval);
             serviceStatusInterval = setInterval(() => {
                 if (!document.getElementById('settingsServicesPane').classList.contains('d-none')) {
@@ -481,6 +683,7 @@
         modal.addEventListener('hidden.bs.modal', () => {
             clearInterval(serviceStatusInterval);
             serviceStatusInterval = null;
+            stopDiagnosticPolling();
         });
         saveButton.addEventListener('click', async function () {
             const codexPane = activePaneId === 'settingsCodexPane';

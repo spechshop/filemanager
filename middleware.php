@@ -82,6 +82,20 @@ try {
     exit(1);
 }
 
+if (!function_exists('fileManagerNodeBinary')) {
+    function fileManagerNodeBinary(): string
+    {
+        $managed = __DIR__ . '/.runtime/node/bin/node';
+        if (is_file($managed) && is_executable($managed)) {
+            $version = trim((string) shell_exec(escapeshellarg($managed) . ' --version 2>/dev/null'));
+            if (preg_match('/^v(\d+)\./', $version, $matches) === 1 && (int) $matches[1] >= 22) {
+                return $managed;
+            }
+        }
+        return trim((string) shell_exec('command -v node 2>/dev/null'));
+    }
+}
+
 if (!function_exists('nodePtyAvailable')) {
     /**
      * Verifica se o Node e o node-pty estão realmente utilizáveis.
@@ -90,7 +104,7 @@ if (!function_exists('nodePtyAvailable')) {
      */
     function nodePtyAvailable(): bool
     {
-        $nodeBin = trim((string) shell_exec('command -v node 2>/dev/null'));
+        $nodeBin = fileManagerNodeBinary();
         if ($nodeBin === '') {
             return false;
         }
@@ -98,7 +112,10 @@ if (!function_exists('nodePtyAvailable')) {
             return false;
         }
         // Confirma que o módulo carrega (binário nativo compilado).
-        $check = trim((string) shell_exec('cd ' . escapeshellarg(__DIR__) . ' && node -e "require(\'node-pty\')" >/dev/null 2>&1 && echo ok'));
+        $check = trim((string) shell_exec(
+            'cd ' . escapeshellarg(__DIR__) . ' && ' . escapeshellarg($nodeBin)
+            . ' -e "require(\'node-pty\')" >/dev/null 2>&1 && echo ok'
+        ));
         return $check === 'ok';
     }
 }
@@ -113,11 +130,12 @@ if (!function_exists('startPtyServer')) {
     {
         $hasScreen = trim((string) shell_exec('command -v screen 2>/dev/null')) !== '';
         if (nodePtyAvailable()) {
+            $node = fileManagerNodeBinary();
             echo "Iniciando PTY via node (node-pty)...\n";
             if ($hasScreen) {
-                shell_exec('screen -dmS nodePTY node pty');
+                shell_exec('screen -dmS nodePTY ' . escapeshellarg($node) . ' ' . escapeshellarg(__DIR__ . '/pty.js'));
             } else {
-                shell_exec('nohup node ' . escapeshellarg(__DIR__ . '/pty.js') . ' >> ' . escapeshellarg(__DIR__ . '/pty.log') . ' 2>&1 &');
+                shell_exec('nohup ' . escapeshellarg($node) . ' ' . escapeshellarg(__DIR__ . '/pty.js') . ' >> ' . escapeshellarg(__DIR__ . '/pty.log') . ' 2>&1 &');
             }
             return;
         }
@@ -142,7 +160,7 @@ if (!function_exists('startLspServer')) {
      */
     function startLspServer(): void
     {
-        $node = trim((string) shell_exec('command -v node 2>/dev/null'));
+        $node = fileManagerNodeBinary();
         if ($node === '') {
             echo "node indisponível; LSP (Intelephense) não será iniciado.\n";
             return;
@@ -154,9 +172,9 @@ if (!function_exists('startLspServer')) {
         $hasScreen = trim((string) shell_exec('command -v screen 2>/dev/null')) !== '';
         echo "Iniciando LSP PHP (Intelephense) via node...\n";
         if ($hasScreen) {
-            shell_exec('screen -dmS nodeLSP node ' . escapeshellarg(__DIR__ . '/lsp.js'));
+            shell_exec('screen -dmS nodeLSP ' . escapeshellarg($node) . ' ' . escapeshellarg(__DIR__ . '/lsp.js'));
         } else {
-            shell_exec('nohup node ' . escapeshellarg(__DIR__ . '/lsp.js') . ' >> ' . escapeshellarg(__DIR__ . '/lsp.log') . ' 2>&1 &');
+            shell_exec('nohup ' . escapeshellarg($node) . ' ' . escapeshellarg(__DIR__ . '/lsp.js') . ' >> ' . escapeshellarg(__DIR__ . '/lsp.log') . ' 2>&1 &');
         }
     }
 }
@@ -182,7 +200,7 @@ if (!function_exists('fileManagerServiceEnabled')) {
 if (!function_exists('startGptServer')) {
     function startGptServer(): void
     {
-        $node = trim((string) shell_exec('command -v node 2>/dev/null'));
+        $node = fileManagerNodeBinary();
         if ($node === '' || !file_exists(__DIR__ . '/gpt.js')) {
             echo "Node.js ou gpt.js indisponível; GPT Bridge não será iniciado.\n";
             return;
@@ -190,9 +208,9 @@ if (!function_exists('startGptServer')) {
         $hasScreen = trim((string) shell_exec('command -v screen 2>/dev/null')) !== '';
         echo "Iniciando GPT Bridge via node...\n";
         if ($hasScreen) {
-            shell_exec('screen -dmS nodeGPT node ' . escapeshellarg(__DIR__ . '/gpt.js'));
+            shell_exec('screen -dmS nodeGPT ' . escapeshellarg($node) . ' ' . escapeshellarg(__DIR__ . '/gpt.js'));
         } else {
-            shell_exec('nohup node ' . escapeshellarg(__DIR__ . '/gpt.js') . ' >> ' . escapeshellarg(__DIR__ . '/gpt.log') . ' 2>&1 &');
+            shell_exec('nohup ' . escapeshellarg($node) . ' ' . escapeshellarg(__DIR__ . '/gpt.js') . ' >> ' . escapeshellarg(__DIR__ . '/gpt.log') . ' 2>&1 &');
         }
     }
 }
@@ -200,7 +218,7 @@ if (!function_exists('startGptServer')) {
 if (!function_exists('startCodexAgentServer')) {
     function startCodexAgentServer(): void
     {
-        $node = trim((string) shell_exec('command -v node 2>/dev/null'));
+        $node = fileManagerNodeBinary();
         $script = __DIR__ . '/codex-agent.js';
         if ($node === '' || !file_exists($script)) {
             echo "Node.js ou codex-agent.js indisponível; Codex Agent não será iniciado.\n";

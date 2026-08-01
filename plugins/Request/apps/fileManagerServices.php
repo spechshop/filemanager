@@ -159,7 +159,7 @@ class fileManagerServices
                 return [false, 'Node.js ou codex-agent.js não está disponível.'];
             }
             if (!self::nodeSupportsEnvFile($node)) {
-                return [false, 'O Codex Agent requer Node.js 20.12 ou mais recente.'];
+                return [false, 'O File Manager e o Codex Agent requerem Node.js 22 ou mais recente.'];
             }
             if (!self::nodeCanRequire($node, ['ws'])) {
                 return [false, 'A dependência Node.js ws não está instalada.'];
@@ -425,9 +425,8 @@ class fileManagerServices
     private static function nodeSupportsEnvFile(string $node): bool
     {
         $version = trim((string) shell_exec(escapeshellarg($node) . ' --version 2>/dev/null'));
-        return preg_match('/^v(\d+)\.(\d+)/', $version, $matches) === 1
-            && ((int) $matches[1] > 20
-                || ((int) $matches[1] === 20 && (int) $matches[2] >= 12));
+        return preg_match('/^v(\d+)\./', $version, $matches) === 1
+            && (int) $matches[1] >= 22;
     }
 
     private static function codexBinary(): ?string
@@ -442,6 +441,8 @@ class fileManagerServices
         }
         $userHome = getenv('HOME');
         $candidates = array_filter([
+            self::root() . '/.runtime/codex/bin/codex',
+            self::root() . '/.runtime/node/bin/codex',
             is_string($userHome) && $userHome !== '' ? $userHome . '/.local/bin/codex' : null,
             '/usr/local/bin/codex',
             '/usr/bin/codex',
@@ -456,7 +457,11 @@ class fileManagerServices
 
     private static function codexSupportsAccessTokens(string $binary): bool
     {
-        $output = trim((string) shell_exec(escapeshellarg($binary) . ' --version 2>/dev/null'));
+        $managedNode = self::root() . '/.runtime/node/bin';
+        $path = $managedNode . PATH_SEPARATOR . (string) getenv('PATH');
+        $output = trim((string) shell_exec(
+            'PATH=' . escapeshellarg($path) . ' ' . escapeshellarg($binary) . ' --version 2>/dev/null'
+        ));
         if (!preg_match('/\b(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)\b/', $output, $matches)) {
             return false;
         }
@@ -499,6 +504,13 @@ class fileManagerServices
 
     private static function nodeBinary(): ?string
     {
+        $managed = self::root() . '/.runtime/node/bin/node';
+        if (is_file($managed) && is_executable($managed)) {
+            $version = trim((string) shell_exec(escapeshellarg($managed) . ' --version 2>/dev/null'));
+            if (preg_match('/^v(\d+)\./', $version, $matches) === 1 && (int) $matches[1] >= 22) {
+                return $managed;
+            }
+        }
         $node = trim((string) shell_exec('command -v node 2>/dev/null'));
         return $node !== '' ? $node : null;
     }

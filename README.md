@@ -82,8 +82,8 @@ The system features:
 - PHP 8.1+ (CLI)
 - Swoole extension (matching your PHP version)
 - Composer
-- Node.js 18+ and npm
-- Node.js 20.6+ and the Codex CLI when the Codex Agent service is enabled
+- Node.js 22+ and npm (the installer can provision an isolated compatible runtime)
+- Codex CLI when the Codex Agent service is enabled (installed automatically)
 
 ### Optional
 - Git (for `importGit` functionality)
@@ -110,6 +110,12 @@ curl -sL https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newt
 The installer adds a `filemanagerctl` command to control the supervised
 process. Unlike `killall php`, it stops the process manager before terminating
 the PHP process, so the server is not immediately started again.
+
+It also verifies the Node.js version. If the system runtime is older than 22,
+it downloads a checksum-verified Node.js 22 runtime into `.runtime/`, installs
+the project dependencies, and installs the official `@openai/codex` CLI without
+replacing the system-wide Node.js. The same repair is available later under
+**Configurações > Diagnóstico**.
 
 ```bash
 filemanagerctl status
@@ -213,6 +219,11 @@ node codex-agent.js
 The File Manager starts this service automatically when `fileManager.services.codex`
 is enabled. The bridge listens only on `127.0.0.1:3091`; browsers connect through
 the authenticated Swoole WebSocket relay.
+
+If Node.js, npm dependencies, or the Codex CLI are missing or incompatible, open
+**Configurações > Diagnóstico** and select **Reparar e instalar**. Installation
+runs in the background and its progress log is shown in the same panel.
+The same repair can be run from a terminal with `bash scripts/install-codex.sh`.
 
 The permission selector below the Codex Agent composer is remembered in the browser:
 `Apenas leitura` uses a read-only sandbox, `Agente` can write only inside the current
