@@ -709,13 +709,16 @@
             // trocar o title da pagina
             document.querySelector('title').innerText = getFilename(path)
             media = `
-<div class="modern-audio-container" style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;background:linear-gradient(135deg, rgba(147,51,234,0.1) 0%, rgba(79,70,229,0.1) 100%);border-radius:20px;border:1px solid rgba(255,255,255,0.1);">
-<dotlottie-player src="https://lottie.host/ca316c43-00ba-458e-9070-f94fb0a10c1a/yBA3TkFfHx.json" background="transparent" speed="1" style="width: 300px; height: 300px; filter: drop-shadow(0 10px 20px rgba(147,51,234,0.3))" loop autoplay></dotlottie-player>
-<div style="margin-top:20px;text-align:center;">
-<p style="color:rgba(255,255,255,0.7);margin:10px 0 0 0;">${getFilename(path)}</p>
-<audio controls style="width:100%;max-width:400px;margin-top:10px;border-radius:10px;box-shadow:0 5px 15px rgba(0,0,0,0.2);">
+<div class="modern-audio-container">
+<dotlottie-player class="modern-audio-artwork" src="https://lottie.host/ca316c43-00ba-458e-9070-f94fb0a10c1a/yBA3TkFfHx.json" background="transparent" speed="1" loop autoplay></dotlottie-player>
+<div class="modern-audio-details">
+<p class="modern-audio-filename">${getFilename(path)}</p>
+<div class="native-audio-player-frame">
+<audio class="native-audio-player" controls preload="metadata">
 <source src="imageBase64?tokenBrowser=${token}&path=${encodeURI(path)}" type="audio/${ext}">
+Seu navegador não oferece suporte ao player de áudio.
 </audio>
+</div>
 </div>
 </div>
 `;
@@ -906,6 +909,55 @@
 
     .modern-audio-container {
         animation: fadeInUp 0.5s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: min(100%, 760px);
+        padding: clamp(24px, 4vw, 40px);
+        background: linear-gradient(135deg, rgba(147,51,234,0.1) 0%, rgba(79,70,229,0.1) 100%);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 20px;
+    }
+
+    .modern-audio-artwork {
+        width: clamp(180px, 32vh, 300px);
+        height: clamp(180px, 32vh, 300px);
+        filter: drop-shadow(0 10px 20px rgba(147,51,234,0.3));
+    }
+
+    .modern-audio-details {
+        width: 100%;
+        max-width: 700px;
+        margin-top: 20px;
+        text-align: center;
+    }
+
+    .modern-audio-filename {
+        margin: 0 0 18px;
+        color: rgba(255,255,255,0.82);
+        font-size: 16px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .native-audio-player-frame {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        min-height: 70px;
+    }
+
+    .native-audio-player {
+        display: block;
+        width: 78.125%;
+        height: 54px;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.28);
+        transform: scale(1.28);
+        transform-origin: center;
     }
 
     @keyframes fadeInUp {
@@ -919,15 +971,24 @@
         }
     }
 
-    .modern-audio-player audio::-webkit-media-controls-panel {
-        background: linear-gradient(135deg, rgba(147,51,234,0.2) 0%, rgba(79,70,229,0.2) 100%);
-        border-radius: 25px;
-    }
+    @media (max-width: 640px), (max-height: 650px) {
+        .modern-audio-container {
+            padding: 20px;
+        }
 
-    .modern-audio-player audio::-webkit-media-controls-play-button,
-    .modern-audio-player audio::-webkit-media-controls-pause-button {
-        background: rgba(255,255,255,0.8);
-        border-radius: 50%;
+        .modern-audio-artwork {
+            width: clamp(130px, 25vh, 200px);
+            height: clamp(130px, 25vh, 200px);
+        }
+
+        .modern-audio-details {
+            margin-top: 12px;
+        }
+
+        .native-audio-player {
+            width: 89.285%;
+            transform: scale(1.12);
+        }
     }
 
     #customImageViewer img {
