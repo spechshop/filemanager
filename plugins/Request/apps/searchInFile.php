@@ -5,15 +5,11 @@ namespace plugins\Request;
 use plugins\Start\cache;
 use Swoole\Http\Request;
 use Swoole\Http\Response;
-use Swoole\Coroutine;
 
 class searchInFile
 {
     public static function api(Request $request, Response $response)
     {
-
-
-
         if (!security::verifyToken($request)) {
             return security::invalidToken($response);
         }
@@ -59,19 +55,9 @@ class searchInFile
         }
 
         if (is_file($local)) {
-            $maxFileSize = 10 * 1024 * 1024; // 10MB limit
-            $fileSize = @filesize($local);
-
-            if ($fileSize === false || $fileSize > $maxFileSize) {
-                // Skip files that are too large or can't be read
-                return $found;
-            }
-
-            $content = @file_get_contents($local);
-            if ($content !== false && stripos($content, $string) !== false) {
+            if (self::fileContainsString($local, $string)) {
                 $found[] = $local;
             }
-            //print "Searching in file: $local\n"; // Debugging line
             return $found;
         }
 
@@ -79,41 +65,141 @@ class searchInFile
             return $found;
         }
 
-        $dir = @opendir($local);
-        if ($dir === false) {
+        try {
+            $iterator = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator(
+                    $local,
+                    \FilesystemIterator::SKIP_DOTS
+                ),
+                \RecursiveIteratorIterator::SELF_FIRST
+            );
+        } catch (\UnexpectedValueException $e) {
             return $found;
         }
 
-        $tasks = [];
-        $running = 0;
-        $maxConcurrent = 10;
+        $processed = 0;
+        foreach ($iterator as $item) {
+            if (count($found) >= $limit) {
+                return $found;
+            }
 
-        while (($file = readdir($dir)) !== false && count($found) < $limit) {
-            if (in_array($file, [".", "..", ".htaccess"])) {
+            if (!$item->isFile()) {
                 continue;
             }
 
-            $realPath = rtrim($local, "/") . "/" . $file;
-
-            // Quando atingir o máximo de corotinas, espera
-            while ($running >= $maxConcurrent) {
-                Coroutine::sleep(0.001); // ou yield para evitar busy loop
+            if (self::fileContainsString($item->getPathname(), $string)) {
+                $found[] = $item->getPathname();
             }
 
-            $running++;
-            Coroutine::create(function () use ($realPath, $string, $limit, &$found, &$running) {
-                self::searchString($realPath, $string, $limit, $found);
-                $running--;
-            });
-        }
-
-        closedir($dir);
-
-        // Aguarda todas terminarem
-        while ($running > 0) {
-            Coroutine::sleep(0.001);
+            $processed++;
+            if ($processed % 50 === 0 && function_exists('gc_collect_cycles')) {
+                gc_collect_cycles();
+            }
         }
 
         return $found;
+    }
+
+    public static function fileContainsString(string $filePath, string $needle): bool
+    {
+        $needle = trim($needle);
+        if ($needle === '') {
+            return false;
+        }
+
+        $handle = @fopen($filePath, 'rb');
+        if ($handle === false) {
+            return false;
+        }
+
+        $needleLength = strlen($needle);
+        $chunkSize = self::getSearchChunkSize();
+        $tail = '';
+
+        while (!feof($handle)) {
+            $chunk = fread($handle, $chunkSize);
+            if ($chunk === false) {
+                break;
+            }
+
+            $buffer = $tail . $chunk;
+            if (stripos($buffer, $needle) !== false) {
+                fclose($handle);
+                return true;
+            }
+
+            if ($needleLength > 1) {
+                $tail = substr($buffer, -($needleLength - 1));
+            } else {
+                $tail = '';
+            }
+
+            unset($chunk, $buffer);
+
+            if (function_exists('gc_collect_cycles')) {
+                gc_collect_cycles();
+            }
+        }
+
+        fclose($handle);
+        return false;
+    }
+
+    public static function getSearchChunkSize(): int
+    {
+        $available = self::getAvailableMemoryBytes();
+        if ($available <= 0) {
+            return 64 * 1024;
+        }
+
+        $safeChunk = (int) floor($available / 16);
+        $safeChunk = max(64 * 1024, $safeChunk);
+        return min($safeChunk, 1024 * 1024);
+    }
+
+    private static function getAvailableMemoryBytes(): int
+    {
+        $limit = ini_get('memory_limit');
+        $limitBytes = self::parseSizeToBytes($limit);
+
+        if ($limitBytes === PHP_INT_MAX) {
+            return PHP_INT_MAX;
+        }
+
+        if ($limitBytes <= 0) {
+            return 0;
+        }
+
+        $usage = function_exists('memory_get_usage') ? memory_get_usage(true) : 0;
+        return max(0, $limitBytes - $usage);
+    }
+
+    private static function parseSizeToBytes($value): int
+    {
+        $value = trim((string) $value);
+        if ($value === '' || $value === '0') {
+            return 0;
+        }
+
+        if ($value === '-1') {
+            return PHP_INT_MAX;
+        }
+
+        if (!preg_match('/^(\d+)([KMGTP]?)$/i', $value, $matches)) {
+            return (int) $value;
+        }
+
+        $number = (int) $matches[1];
+        $unit = strtoupper($matches[2] ?? '');
+        $multiplier = match ($unit) {
+            'K' => 1024,
+            'M' => 1024 * 1024,
+            'G' => 1024 * 1024 * 1024,
+            'T' => 1024 * 1024 * 1024 * 1024,
+            'P' => 1024 * 1024 * 1024 * 1024 * 1024,
+            default => 1,
+        };
+
+        return $number * $multiplier;
     }
 }

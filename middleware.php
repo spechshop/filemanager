@@ -307,6 +307,7 @@ if (cacheLibSpech::get('interface')['ssl']) {
 $server->set($serverSettings);
 $server->on('open', '\plugins\server::open');
 $server->on('message', '\plugins\server::message');
+$server->on('close', '\plugins\server::close');
 $server->on('Start', '\plugins\Start\server::start');
 $server->on('Request', '\plugins\Request\server::request');
 $server->start();

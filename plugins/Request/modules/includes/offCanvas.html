@@ -1,5 +1,186 @@
 <script src="https://unpkg.com/@dotlottie/player-component@latest/dist/dotlottie-player.mjs" type="module"></script>
+<style>
+    #offcanvasExample {
+        --search-panel-width: 400px;
+        --search-border: rgba(255, 255, 255, .09);
+        --bs-offcanvas-width: min(var(--search-panel-width), 100vw);
+        background: #1a1b26;
+        color: #e9edf5;
+        display: flex;
+        flex-direction: column;
+        max-width: 100vw;
+        overflow: hidden;
+        width: min(var(--search-panel-width), 100vw);
+    }
+
+    #offcanvasExample .search-resize-handle {
+        align-items: center;
+        background: transparent;
+        border: 0;
+        bottom: 0;
+        cursor: ew-resize;
+        display: flex;
+        justify-content: center;
+        padding: 0;
+        position: absolute;
+        right: 0;
+        top: 0;
+        touch-action: none;
+        width: 14px;
+        z-index: 4;
+    }
+
+    #offcanvasExample .search-resize-handle::after {
+        background: rgba(110, 184, 255, .35);
+        border-radius: 4px;
+        content: '';
+        height: 64px;
+        opacity: .32;
+        transition: height .16s ease, opacity .16s ease, background-color .16s ease;
+        width: 3px;
+    }
+
+    #offcanvasExample .search-resize-handle:hover::after,
+    #offcanvasExample .search-resize-handle:focus-visible::after,
+    #offcanvasExample.is-resizing .search-resize-handle::after {
+        background: #6eb8ff;
+        height: 92px;
+        opacity: 1;
+    }
+
+    #offcanvasExample .search-resize-handle:focus-visible {
+        outline: none;
+    }
+
+    body.search-panel-resizing {
+        cursor: ew-resize !important;
+        user-select: none !important;
+    }
+
+    #offcanvasExample .offcanvas-header {
+        border-bottom: 1px solid var(--search-border);
+        flex: 0 0 auto;
+    }
+
+    #offcanvasExample .offcanvas-body {
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    #offcanvasExample .search-results-list {
+        min-height: 0;
+        overflow: auto;
+    }
+
+    #offcanvasExample .search-result-item {
+        background: #1c2f48;
+        border-color: rgba(255, 255, 255, .06);
+        color: #fff;
+        cursor: pointer;
+    }
+
+    #offcanvasExample .search-result-item:hover {
+        background: #243b5a;
+    }
+
+    #offcanvasExample .search-folder-group {
+        background: transparent;
+        border: 0;
+        color: #fff;
+        padding: 0;
+    }
+
+    #offcanvasExample .search-folder-header {
+        align-items: center;
+        background: #152338;
+        border: 1px solid rgba(255, 255, 255, .08);
+        border-radius: 8px;
+        color: #e9edf5;
+        cursor: pointer;
+        display: flex;
+        gap: .55rem;
+        justify-content: space-between;
+        margin-bottom: .35rem;
+        padding: .55rem .7rem;
+        text-align: left;
+        width: 100%;
+    }
+
+    #offcanvasExample .search-folder-header:hover {
+        background: #1a2c44;
+    }
+
+    #offcanvasExample .search-folder-header-left {
+        align-items: center;
+        display: flex;
+        gap: .5rem;
+        min-width: 0;
+    }
+
+    #offcanvasExample .search-folder-header-left i {
+        color: #6eb8ff;
+        flex: 0 0 auto;
+    }
+
+    #offcanvasExample .search-folder-title {
+        font-size: .84rem;
+        font-weight: 600;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    #offcanvasExample .search-folder-count {
+        background: rgba(110, 184, 255, .16);
+        border-radius: 999px;
+        color: #9fd0ff;
+        flex: 0 0 auto;
+        font-size: .72rem;
+        font-weight: 700;
+        padding: .15rem .45rem;
+    }
+
+    #offcanvasExample .search-folder-items {
+        display: none;
+        list-style: none;
+        margin: 0 0 .55rem;
+        padding: 0 0 0 .35rem;
+    }
+
+    #offcanvasExample .search-folder-group.is-open > .search-folder-items {
+        display: block;
+    }
+
+    #offcanvasExample .search-folder-group.is-open > .search-folder-header .search-folder-chevron {
+        transform: rotate(90deg);
+    }
+
+    #offcanvasExample .search-folder-chevron {
+        color: #8993a7;
+        flex: 0 0 auto;
+        transition: transform .16s ease;
+    }
+
+    #offcanvasExample .search-folder-items .search-result-item {
+        border-radius: 8px;
+        margin-bottom: .3rem;
+    }
+</style>
 <script>
+    let searchSocket = null;
+    let searchSession = {
+        active: false,
+        paused: false,
+        token: null,
+        query: '',
+        found: 0,
+        scanned: 0,
+        results: [],
+    };
+    const searchGroupByFolderStorageKey = 'searchPanelGroupByFolder';
+    const searchPanelWidthStorageKey = 'searchPanelWidth';
+    const searchDefaultPanelWidth = 400;
+    const searchFolderOpenState = new Map();
 
     function goToPathFile(namefile) {
         const split = namefile.split('/');
@@ -9,13 +190,320 @@
     }
 
     function getFilename(path) {
-
         const split = path.split('/');
         return split[split.length - 1];
     }
-    function sanitizeFullNamefile(namefile) {
-         return namefile.replace(/\s\d+(\.\d+)?\s?(B|KB|MB|GB|TB)$/i, '').trim();
 
+    function sanitizeFullNamefile(namefile) {
+        return namefile.replace(/\s\d+(\.\d+)?\s?(B|KB|MB|GB|TB)$/i, '').trim();
+    }
+
+    function getSearchSocketUrl(token) {
+        const hostname = window.location.port
+            ? `${window.location.hostname}:${window.location.port}`
+            : window.location.hostname;
+        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        return `${protocol}://${hostname}/${token}`;
+    }
+
+    function escapeHtml(value) {
+        return $('<div>').text(value ?? '').html();
+    }
+
+    function setSearchControls() {
+        $('#searchPauseBtn').prop('disabled', !searchSession.active);
+        $('#searchCancelBtn').prop('disabled', !searchSession.active);
+        $('#searchStartBtn').prop('disabled', false);
+        $('#searchPauseBtn').text(searchSession.paused ? 'Retomar' : 'Pausar');
+    }
+
+    function setSearchStatus(message) {
+        $('#searchStatus').text(message);
+    }
+
+    function isSearchGroupedByFolder() {
+        return $('#searchGroupByFolder').is(':checked');
+    }
+
+    function getSearchResultDirectory(filePath) {
+        if (!filePath) return '(sem pasta)';
+        if (!filePath.includes('/')) return '.';
+        const directory = filePath.slice(0, filePath.lastIndexOf('/'));
+        return directory || '/';
+    }
+
+    function openSearchResult(item) {
+        const filePath = item.path || '';
+        const directory = filePath.includes('/') ? filePath.slice(0, filePath.lastIndexOf('/')) : '';
+        if (directory) {
+            setPath(directory);
+        }
+        $('#hiddenFileEdit').text(filePath);
+        $('#namefilemodaledit').text(filePath);
+        $('#nameFileForEdit').text(sanitizeFullNamefile(`${filePath} ${item.sizeLabel || ''}`));
+        $('#edit-code').modal('show');
+    }
+
+    function createSearchResultItem(item) {
+        const filePath = item.path || '';
+        const fileName = filePath.split('/').pop() || filePath;
+        const iconHtml = getIconFile(fileName);
+        const li = $('<li>')
+            .addClass('list-group-item search-result-item')
+            .attr('data-bs-dismiss', 'offcanvas');
+
+        const row = $('<div>').addClass('d-flex align-items-center justify-content-between gap-2');
+        const left = $('<div>').addClass('d-flex align-items-center gap-2 flex-grow-1 min-w-0');
+        const icon = $('<span>').html(iconHtml);
+        const textWrap = $('<div>').addClass('d-flex flex-column text-truncate min-w-0');
+        const title = $('<span>').addClass('text-truncate').text(fileName);
+        const subtitle = $('<small>').addClass('text-light opacity-75 text-truncate').text(filePath);
+        textWrap.append(title, subtitle);
+        left.append(icon, textWrap);
+
+        const meta = $('<small>').addClass('text-info text-nowrap').text(item.sizeLabel || '');
+        row.append(left, meta);
+        li.append(row);
+
+        li.on('click', function () {
+            openSearchResult(item);
+        });
+
+        return li;
+    }
+
+    function ensureSearchFolderGroup(directory) {
+        const list = $('#listFoundSearch');
+        let group = list.children('.search-folder-group').filter(function () {
+            return this.getAttribute('data-folder') === directory;
+        });
+        if (group.length) {
+            return group.first();
+        }
+
+        // Pastas começam recolhidas para não poluir a tela em buscas grandes.
+        const isOpen = searchFolderOpenState.has(directory)
+            ? searchFolderOpenState.get(directory)
+            : false;
+
+        group = $('<li>')
+            .addClass('list-group-item search-folder-group')
+            .attr('data-folder', directory)
+            .toggleClass('is-open', isOpen);
+
+        const header = $('<button>')
+            .attr('type', 'button')
+            .addClass('search-folder-header');
+
+        const left = $('<span>').addClass('search-folder-header-left');
+        left.append(
+            $('<i>').addClass('fa-duotone fa-folder-open'),
+            $('<span>').addClass('search-folder-title').attr('title', directory).text(directory)
+        );
+
+        const right = $('<span>').addClass('d-flex align-items-center gap-2');
+        right.append(
+            $('<span>').addClass('search-folder-count').text('0'),
+            $('<i>').addClass('fa-duotone fa-chevron-right search-folder-chevron')
+        );
+
+        header.append(left, right);
+        header.on('click', function (event) {
+            event.preventDefault();
+            event.stopPropagation();
+            const nextOpen = !group.hasClass('is-open');
+            group.toggleClass('is-open', nextOpen);
+            searchFolderOpenState.set(directory, nextOpen);
+        });
+
+        const items = $('<ul>').addClass('search-folder-items list-unstyled mb-0');
+        group.append(header, items);
+        list.append(group);
+        return group;
+    }
+
+    function updateSearchFolderCount(group) {
+        const count = group.find('.search-folder-items > .search-result-item').length;
+        group.find('.search-folder-count').first().text(String(count));
+    }
+
+    function resetSearchList() {
+        $('#listFoundSearch').empty();
+        searchSession.results = [];
+        searchFolderOpenState.clear();
+    }
+
+    function appendSearchResult(item, options = {}) {
+        const { track = true } = options;
+        if (track) {
+            searchSession.results.push(item);
+        }
+
+        if (!isSearchGroupedByFolder()) {
+            $('#listFoundSearch').append(createSearchResultItem(item));
+            return;
+        }
+
+        const directory = getSearchResultDirectory(item.path || '');
+        const group = ensureSearchFolderGroup(directory);
+        group.find('.search-folder-items').append(createSearchResultItem(item));
+        updateSearchFolderCount(group);
+    }
+
+    function renderSearchResults() {
+        const results = Array.isArray(searchSession.results) ? searchSession.results.slice() : [];
+        $('#listFoundSearch').empty();
+        results.forEach((item) => appendSearchResult(item, { track: false }));
+    }
+
+    function handleSearchSocketMessage(event) {
+        let data;
+        try {
+            data = JSON.parse(event.data);
+        } catch (e) {
+            return;
+        }
+
+        if (!data || !data.searchInFile || !data.payload) {
+            return;
+        }
+
+        const payload = data.payload;
+        if (typeof payload.found === 'number') {
+            searchSession.found = payload.found;
+        }
+        if (typeof payload.scanned === 'number') {
+            searchSession.scanned = payload.scanned;
+        }
+
+        if (payload.type === 'status') {
+            if (payload.status === 'running') {
+                searchSession.active = true;
+                searchSession.paused = false;
+                setSearchStatus(`${payload.message || 'Busca em andamento'} | encontrados: ${searchSession.found} | analisados: ${searchSession.scanned}`);
+                setSearchControls();
+                return;
+            }
+            if (payload.status === 'paused') {
+                searchSession.active = true;
+                searchSession.paused = true;
+                setSearchStatus(`${payload.message || 'Busca pausada'} | encontrados: ${searchSession.found} | analisados: ${searchSession.scanned}`);
+                setSearchControls();
+                return;
+            }
+            if (payload.status === 'cancelled') {
+                searchSession.active = false;
+                searchSession.paused = false;
+                setSearchStatus(payload.message || 'Busca cancelada.');
+                setSearchControls();
+                return;
+            }
+            if (payload.status === 'complete') {
+                searchSession.active = false;
+                searchSession.paused = false;
+                setSearchStatus(`${payload.message || 'Busca concluída.'} | encontrados: ${searchSession.found} | analisados: ${searchSession.scanned}`);
+                setSearchControls();
+                return;
+            }
+            if (payload.status === 'error') {
+                searchSession.active = false;
+                searchSession.paused = false;
+                setSearchStatus(payload.message || 'Erro na busca.');
+                setSearchControls();
+                return;
+            }
+        }
+
+        if (payload.type === 'progress') {
+            setSearchStatus(`Buscando... encontrados: ${searchSession.found} | analisados: ${searchSession.scanned}`);
+            return;
+        }
+
+        if (payload.type === 'result' && payload.item) {
+            appendSearchResult(payload.item);
+            setSearchStatus(`Resultados aparecendo ao vivo | encontrados: ${searchSession.found} | analisados: ${searchSession.scanned}`);
+        }
+    }
+
+    function ensureSearchSocket(token) {
+        return new Promise((resolve, reject) => {
+            if (searchSocket && [WebSocket.OPEN, WebSocket.CONNECTING].includes(searchSocket.readyState)) {
+                if (searchSocket.readyState === WebSocket.OPEN) {
+                    return resolve(searchSocket);
+                }
+                searchSocket.addEventListener('open', () => resolve(searchSocket), { once: true });
+                searchSocket.addEventListener('error', reject, { once: true });
+                return;
+            }
+
+            searchSocket = new WebSocket(getSearchSocketUrl(`${token}-search`));
+            searchSocket.onopen = () => resolve(searchSocket);
+            searchSocket.onmessage = handleSearchSocketMessage;
+            searchSocket.onerror = (error) => {
+                searchSession.active = false;
+                searchSession.paused = false;
+                setSearchControls();
+                setSearchStatus('Não foi possível conectar ao websocket de busca.');
+                reject(error);
+            };
+            searchSocket.onclose = () => {
+                searchSession.active = false;
+                searchSession.paused = false;
+                setSearchControls();
+            };
+        });
+    }
+
+    function sendSearchCommand(action, payload = {}) {
+        if (!searchSocket || searchSocket.readyState !== WebSocket.OPEN) {
+            return;
+        }
+
+        searchSocket.send(JSON.stringify({
+            searchInFile: true,
+            action,
+            token: searchSession.token,
+            ...payload,
+        }));
+    }
+
+    function beginSearch(query) {
+        searchSession = {
+            active: true,
+            paused: false,
+            token: $('#fp').text(),
+            query,
+            found: 0,
+            scanned: 0,
+            results: [],
+        };
+
+        resetSearchList();
+        setSearchStatus('Conectando ao websocket de busca...');
+        setSearchControls();
+
+        ensureSearchSocket(searchSession.token)
+            .then(() => {
+                setSearchStatus('Pesquisando em tempo real...');
+                searchSocket.send(JSON.stringify({
+                    searchInFile: true,
+                    action: 'start',
+                    token: searchSession.token,
+                    search: searchSession.query,
+                    path: $('#pathInvisible').text(),
+                    limit: 1000,
+                }));
+            })
+            .catch(() => {
+                searchSession.active = false;
+                searchSession.paused = false;
+                setSearchControls();
+                Swal.fire({
+                    icon: 'error',
+                    background: '#1c2f48',
+                    html: `<center><h3 style="color: white;">Não foi possível iniciar a busca.</h3></center>`,
+                });
+            });
     }
 
     function searchInternal() {
@@ -27,58 +515,154 @@
                 html: `<center><h3 style="color: white;">Digite algo para pesquisar!</h3></center>`,
             });
         }
-        Swal.fire({
-            title: `<center><dotlottie-player src="https://lottie.host/10e0cc29-b4c2-4e7c-9fa8-cd52457fd11c/zAX4joQTLX.json" background="transparent" speed="1" style="width: 300px; height: 300px;" loop autoplay></dotlottie-player></center>`,
-            allowEscapeKey: false,
-            allowOutsideClick: false,
-            showConfirmButton: false,
-            background: '#1c2f48',
-            html: `<center><h3 style="color: white;">Pesquisando...</h3></center>`,
-            showCloseButton: false,
-            showCancelButton: false,
-            focusConfirm: false,
-        });
-        $.ajax({
-            url: 'searchInFile',
-            type: 'POST',
-            dataType: 'json',
-            data: {
-                tokenBrowser: $('#fp').text(),
-                search: $('#contentOffCanvasSearch').val(),
-                path: $('#pathInvisible').text(),
-            },
-            success: function (data) {
-                Swal.close();
-                if (data.success) {
-                    if (data['information'].length === 0) {
-                        return Swal.fire({
-                            icon: 'error',
-                            background: '#1c2f48',
-                            html: `<center><h3 style="color: white;">Nenhum resultado encontrado!</h3></center>`,
-                        });
-                    } else {
-                        $('#listFoundSearch').html('');
-                        for (let i = 0; i < data['information'].length; i++) {
-                            let addressPathOfSearch = data['information'][i].replaceAll(getFilename(data['information'][i]), '');
-                            $('#listFoundSearch').append(`
-                            <li onclick="
-                            setPath('${addressPathOfSearch}');
-                            $('#hiddenFileEdit').html('${data['information'][i].split(' ')[0]}');
-                            $('#namefilemodaledit').html('${data['information'][i].split(' ')[0]}');
-                            $('#nameFileForEdit').html('${sanitizeFullNamefile(data['information'][i])}');
-                            $('#edit-code').modal('show');
-                            
-                            
-                            
-                            
-                            " class="list-group-item" data-bs-dismiss="offcanvas" style="background-color: #1c2f48; color: white;">${getFilename(data['information'][i])} &nbsp; ${getIconFile(data['information'][i])}</li>`);
-                        }
-                    }
-                }
-            }
-        });
+
+        if (searchSession.active) {
+            sendSearchCommand('cancel');
+            setSearchStatus('Cancelando busca anterior...');
+            setTimeout(() => beginSearch(valueInScriptSearch), 250);
+            return;
+        }
+
+        beginSearch(valueInScriptSearch);
     }
 
+    function toggleSearchPause() {
+        if (!searchSocket || searchSocket.readyState !== WebSocket.OPEN || !searchSession.active) {
+            return;
+        }
 
+        if (searchSession.paused) {
+            sendSearchCommand('resume');
+            searchSession.paused = false;
+            setSearchStatus('Retomando busca...');
+        } else {
+            sendSearchCommand('pause');
+            searchSession.paused = true;
+            setSearchStatus('Pausa solicitada...');
+        }
+        setSearchControls();
+    }
+
+    function cancelSearch() {
+        if (!searchSocket || searchSocket.readyState !== WebSocket.OPEN || !searchSession.active) {
+            resetSearchList();
+            setSearchStatus('Aguardando pesquisa.');
+            setSearchControls();
+            return;
+        }
+
+        sendSearchCommand('cancel');
+        searchSession.active = false;
+        searchSession.paused = false;
+        setSearchControls();
+        setSearchStatus('Cancelando busca...');
+    }
+
+    (function initSearchPanelUi() {
+        const panel = document.getElementById('offcanvasExample');
+        const resizeHandle = document.getElementById('searchPanelResize');
+        const groupToggle = document.getElementById('searchGroupByFolder');
+        if (!panel || !resizeHandle) {
+            return;
+        }
+
+        let resizePointerId = null;
+        let resizeStartX = 0;
+        let resizeStartWidth = 0;
+
+        function panelWidthLimits() {
+            const maximum = Math.max(240, window.innerWidth - 16);
+            return { minimum: Math.min(280, maximum), maximum };
+        }
+
+        function setPanelWidth(value, persist = false) {
+            const { minimum, maximum } = panelWidthLimits();
+            const width = Math.round(Math.min(maximum, Math.max(minimum, Number(value) || searchDefaultPanelWidth)));
+            panel.style.setProperty('--search-panel-width', `${width}px`);
+            panel.style.setProperty('--bs-offcanvas-width', `${width}px`);
+            resizeHandle.setAttribute('aria-valuemin', String(minimum));
+            resizeHandle.setAttribute('aria-valuemax', String(maximum));
+            resizeHandle.setAttribute('aria-valuenow', String(width));
+            resizeHandle.setAttribute('aria-valuetext', `${width} pixels`);
+            if (persist) {
+                localStorage.setItem(searchPanelWidthStorageKey, String(width));
+            }
+            return width;
+        }
+
+        function restorePanelWidth() {
+            const saved = Number.parseInt(localStorage.getItem(searchPanelWidthStorageKey) || '', 10);
+            setPanelWidth(Number.isFinite(saved) ? saved : searchDefaultPanelWidth);
+        }
+
+        function beginPanelResize(event) {
+            if (event.pointerType === 'mouse' && event.button !== 0) return;
+            resizePointerId = event.pointerId;
+            resizeStartX = event.clientX;
+            resizeStartWidth = panel.getBoundingClientRect().width;
+            resizeHandle.setPointerCapture(event.pointerId);
+            panel.classList.add('is-resizing');
+            document.body.classList.add('search-panel-resizing');
+            event.preventDefault();
+        }
+
+        function movePanelResize(event) {
+            if (event.pointerId !== resizePointerId) return;
+            // Painel à esquerda: arrastar para a direita aumenta a largura.
+            setPanelWidth(resizeStartWidth + event.clientX - resizeStartX);
+            event.preventDefault();
+        }
+
+        function endPanelResize(event) {
+            if (event.pointerId !== resizePointerId) return;
+            const pointerId = resizePointerId;
+            resizePointerId = null;
+            panel.classList.remove('is-resizing');
+            document.body.classList.remove('search-panel-resizing');
+            setPanelWidth(panel.getBoundingClientRect().width, true);
+            if (resizeHandle.hasPointerCapture(pointerId)) {
+                resizeHandle.releasePointerCapture(pointerId);
+            }
+        }
+
+        function resizePanelWithKeyboard(event) {
+            const current = panel.getBoundingClientRect().width;
+            const step = event.shiftKey ? 60 : 20;
+            let next = null;
+            if (event.key === 'ArrowRight') next = current + step;
+            else if (event.key === 'ArrowLeft') next = current - step;
+            else if (event.key === 'Home') next = searchDefaultPanelWidth;
+            if (next === null) return;
+            event.preventDefault();
+            setPanelWidth(next, true);
+        }
+
+        function restoreGroupByFolderPreference() {
+            if (!groupToggle) return;
+            groupToggle.checked = localStorage.getItem(searchGroupByFolderStorageKey) === '1';
+        }
+
+        resizeHandle.tabIndex = 0;
+        resizeHandle.setAttribute('aria-controls', 'offcanvasExample');
+        resizeHandle.addEventListener('pointerdown', beginPanelResize);
+        resizeHandle.addEventListener('pointermove', movePanelResize);
+        resizeHandle.addEventListener('pointerup', endPanelResize);
+        resizeHandle.addEventListener('pointercancel', endPanelResize);
+        resizeHandle.addEventListener('keydown', resizePanelWithKeyboard);
+        resizeHandle.addEventListener('dblclick', () => setPanelWidth(searchDefaultPanelWidth, true));
+        window.addEventListener('resize', () => {
+            const current = Number.parseFloat(panel.style.getPropertyValue('--search-panel-width')) || searchDefaultPanelWidth;
+            setPanelWidth(current);
+        });
+
+        if (groupToggle) {
+            groupToggle.addEventListener('change', () => {
+                localStorage.setItem(searchGroupByFolderStorageKey, groupToggle.checked ? '1' : '0');
+                renderSearchResults();
+            });
+        }
+
+        restorePanelWidth();
+        restoreGroupByFolderPreference();
+    })();
 </script>
-

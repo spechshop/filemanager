@@ -55,6 +55,202 @@
 
     #codexAgentPanel .offcanvas-header {
         border-bottom: 1px solid var(--codex-border);
+        flex: 0 0 auto;
+    }
+
+    #codexAgentPanel .codex-panel-content {
+        display: grid;
+        flex: 1 1 auto;
+        grid-template-columns: 0 minmax(0, 1fr);
+        min-height: 0;
+        overflow: hidden;
+        position: relative;
+        transition: grid-template-columns .2s ease;
+    }
+
+    #codexAgentPanel.threads-open .codex-panel-content {
+        grid-template-columns: 228px minmax(0, 1fr);
+    }
+
+    #codexAgentPanel .codex-thread-sidebar {
+        background: #111621;
+        border-right: 1px solid var(--codex-border);
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        opacity: 0;
+        overflow: hidden;
+        padding: .75rem .55rem;
+        transform: translateX(-100%);
+        transition: opacity .16s ease, transform .2s ease;
+        width: 228px;
+        z-index: 3;
+    }
+
+    #codexAgentPanel.threads-open .codex-thread-sidebar {
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    #codexAgentPanel .codex-thread-sidebar-header {
+        align-items: center;
+        color: #f0f4fb;
+        display: flex;
+        font-size: .84rem;
+        font-weight: 700;
+        justify-content: space-between;
+        letter-spacing: .01em;
+        margin: 0 .25rem .55rem;
+    }
+
+    #codexAgentPanel .codex-thread-sidebar-close {
+        align-items: center;
+        background: transparent;
+        border: 0;
+        border-radius: 7px;
+        color: #8993a7;
+        display: inline-flex;
+        height: 30px;
+        justify-content: center;
+        padding: 0;
+        width: 30px;
+    }
+
+    #codexAgentPanel .codex-thread-sidebar-close:hover,
+    #codexAgentPanel .codex-thread-sidebar-close:focus-visible {
+        background: rgba(255, 255, 255, .07);
+        color: #f1f5fb;
+        outline: none;
+    }
+
+    #codexAgentPanel .codex-new-thread {
+        align-items: center;
+        background: rgba(255, 255, 255, .075);
+        border: 1px solid transparent;
+        border-radius: 10px;
+        color: #f3f6fb;
+        display: flex;
+        font-size: .84rem;
+        font-weight: 600;
+        gap: .65rem;
+        min-height: 42px;
+        padding: .55rem .7rem;
+        text-align: left;
+        transition: background-color .15s ease, border-color .15s ease;
+        width: 100%;
+    }
+
+    #codexAgentPanel .codex-new-thread:hover,
+    #codexAgentPanel .codex-new-thread:focus-visible {
+        background: rgba(255, 255, 255, .115);
+        border-color: rgba(255, 255, 255, .08);
+        outline: none;
+    }
+
+    #codexAgentPanel .codex-new-thread:disabled {
+        cursor: not-allowed;
+        opacity: .5;
+    }
+
+    #codexAgentPanel .codex-thread-section-heading {
+        align-items: center;
+        color: #7f8ba1;
+        display: flex;
+        font-size: .69rem;
+        font-weight: 700;
+        justify-content: space-between;
+        letter-spacing: .06em;
+        margin: 1rem .55rem .4rem;
+        text-transform: uppercase;
+    }
+
+    #codexAgentPanel .codex-thread-list {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        gap: 2px;
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding: 0 .1rem .5rem;
+        scrollbar-gutter: stable;
+    }
+
+    #codexAgentPanel .codex-thread-item {
+        align-items: center;
+        background: transparent;
+        border: 0;
+        border-radius: 9px;
+        color: #cbd3df;
+        display: flex;
+        flex: 0 0 auto;
+        font-size: .79rem;
+        gap: .58rem;
+        min-height: 38px;
+        padding: .48rem .62rem;
+        text-align: left;
+        transition: background-color .12s ease, color .12s ease;
+        width: 100%;
+    }
+
+    #codexAgentPanel .codex-thread-item-label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    #codexAgentPanel .codex-thread-item:hover,
+    #codexAgentPanel .codex-thread-item:focus-visible {
+        background: rgba(255, 255, 255, .065);
+        color: #f2f5fa;
+        outline: none;
+    }
+
+    #codexAgentPanel .codex-thread-item.is-active {
+        background: rgba(110, 184, 255, .13);
+        color: #f5f8fc;
+        font-weight: 600;
+    }
+
+    #codexAgentPanel .codex-thread-item:disabled {
+        cursor: not-allowed;
+        opacity: .55;
+    }
+
+    #codexAgentPanel .codex-thread-list-empty {
+        color: #707d91;
+        font-size: .76rem;
+        line-height: 1.45;
+        padding: .75rem .6rem;
+    }
+
+    #codexAgentPanel .codex-chat-pane {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    #codexAgentPanel .codex-chat-pane > .offcanvas-body {
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+
+    #codexAgentPanel .codex-current-thread-title {
+        color: #dce3ed;
+        flex: 1 1 auto;
+        font-size: .82rem;
+        font-weight: 600;
+        min-width: 0;
+        overflow: hidden;
+        padding-inline: .2rem;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    #codexAgentPanel .codex-thread-backdrop {
+        display: none;
     }
 
     #codexAgentPanel .codex-toolbar,
@@ -66,6 +262,37 @@
     #codexAgentPanel .codex-composer {
         border-bottom: 0;
         border-top: 1px solid var(--codex-border);
+    }
+
+    #codexAgentPanel.threads-compact .codex-panel-content,
+    #codexAgentPanel.threads-compact.threads-open .codex-panel-content {
+        display: block;
+    }
+
+    #codexAgentPanel.threads-compact .codex-thread-sidebar {
+        bottom: 0;
+        left: 0;
+        max-width: calc(100% - 54px);
+        position: absolute;
+        top: 0;
+        width: 270px;
+    }
+
+    #codexAgentPanel.threads-compact .codex-chat-pane {
+        height: 100%;
+    }
+
+    #codexAgentPanel.threads-compact.threads-open .codex-thread-backdrop {
+        background: rgba(5, 8, 13, .62);
+        border: 0;
+        bottom: 0;
+        display: block;
+        left: 0;
+        padding: 0;
+        position: absolute;
+        right: 0;
+        top: 0;
+        z-index: 2;
     }
 
     #codexAgentPanel .codex-context {

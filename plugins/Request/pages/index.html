@@ -270,19 +270,37 @@
     <!-- Offcanvas de Pesquisa -->
     <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasExample"
          aria-labelledby="offcanvasExampleLabel">
+        <button class="search-resize-handle" id="searchPanelResize" type="button" role="separator"
+                aria-label="Redimensionar painel de pesquisa" aria-orientation="vertical"
+                title="Arraste para redimensionar; clique duas vezes para restaurar"></button>
         <div class="offcanvas-header">
-            <h5 class="offcanvas-title">Pesquisar Arquivos</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
+            <h5 class="offcanvas-title" id="offcanvasExampleLabel">Pesquisar Arquivos</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Fechar"></button>
         </div>
-        <div class="offcanvas-body">
+        <div class="offcanvas-body d-flex flex-column">
             <div class="input-group mb-3">
                 <span class="input-group-text"><i class="fa-duotone fa-search"></i></span>
                 <input type="text" id="contentOffCanvasSearch" class="form-control" placeholder="Pesquisar...">
             </div>
-            <button class="btn btn-primary w-100 mb-2" onclick="searchInternal()">
-                <i class="fa-regular fa-file-lines"></i>&nbsp;Conteúdo Interno
-            </button>
-            <ul class="list-group" id="listFoundSearch"></ul>
+            <div class="d-flex gap-2 mb-2">
+                <button class="btn btn-primary flex-fill" id="searchStartBtn" onclick="searchInternal()">
+                    <i class="fa-regular fa-file-lines"></i>&nbsp;Iniciar busca
+                </button>
+                <button class="btn btn-outline-warning" id="searchPauseBtn" onclick="toggleSearchPause()" disabled>
+                    Pausar
+                </button>
+                <button class="btn btn-outline-danger" id="searchCancelBtn" onclick="cancelSearch()" disabled>
+                    Cancelar
+                </button>
+            </div>
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" role="switch" id="searchGroupByFolder">
+                <label class="form-check-label small text-light" for="searchGroupByFolder">
+                    Agrupar resultados por pasta
+                </label>
+            </div>
+            <div class="small text-light mb-2" id="searchStatus">Aguardando pesquisa.</div>
+            <ul class="list-group search-results-list flex-grow-1" id="listFoundSearch"></ul>
         </div>
     </div>
     @import(utils/chat4o)

@@ -17,21 +17,70 @@ error_reporting(E_ALL);
 
 class server extends OpenConnection
 {
+    public static function close(\Swoole\Server $server, int $fd): void
+    {
+        unset($GLOBALS['fdToToken'][$fd], $GLOBALS['websocketConnections'][$fd]);
+
+        if (!empty($GLOBALS['searchInFileJobs'][$fd])) {
+            $GLOBALS['searchInFileJobs'][$fd]['cancelled'] = true;
+            $GLOBALS['searchInFileJobs'][$fd]['paused'] = false;
+        }
+
+        if (!empty($GLOBALS['coroutinesProcess'])) {
+            foreach ($GLOBALS['coroutinesProcess'] as $token => $process) {
+                if (($process['fd'] ?? null) === $fd) {
+                    $GLOBALS['coroutinesProcess'][$token]['fd'] = null;
+                }
+            }
+        }
+
+        if (!empty($GLOBALS['xterm'])) {
+            foreach ($GLOBALS['xterm'] as $token => $terminal) {
+                if (($terminal['fd'] ?? null) === $fd) {
+                    $GLOBALS['xterm'][$token]['fd'] = null;
+                }
+            }
+        }
+
+        if (!empty($GLOBALS['lsp'])) {
+            foreach ($GLOBALS['lsp'] as $token => $session) {
+                if (($session['fd'] ?? null) === $fd) {
+                    $GLOBALS['lsp'][$token]['fd'] = null;
+                }
+            }
+        }
+
+        if (!empty($GLOBALS['codexAgent'])) {
+            foreach ($GLOBALS['codexAgent'] as $token => $session) {
+                if (($session['fd'] ?? null) === $fd) {
+                    $GLOBALS['codexAgent'][$token]['fd'] = null;
+                }
+            }
+        }
+    }
+
     public static function message(\Swoole\Server $server, Frame $frame)
     {
         $object = json_decode($frame->data, true);
         if (empty($object)) {
             return $server->close($frame->fd);
         }
+        $socketToken = self::socketTokenForFd($frame->fd);
         $tokenBrowser = !empty($object["token"]) && is_string($object["token"])
             ? $object["token"]
-            : '';
+            : $socketToken;
         if (array_key_exists('codexAgent', $object) && str_ends_with($tokenBrowser, '-codex-agent')) {
             $tokenClient = substr($tokenBrowser, 0, -strlen('-codex-agent'));
         } elseif ($tokenBrowser !== '' && str_contains($tokenBrowser, '-')) {
             $tokenClient = explode("-", $tokenBrowser)[0];
         } else {
             $tokenClient = $tokenBrowser;
+        }
+        if ($tokenBrowser === '' && $socketToken !== '') {
+            $tokenBrowser = $socketToken;
+        }
+        if ($tokenClient === '' && $socketToken !== '') {
+            $tokenClient = self::clientTokenFromSocketToken($socketToken);
         }
         if (!empty($GLOBALS["coroutinesProcess"][$tokenBrowser])) {
             $GLOBALS["coroutinesProcess"][$tokenBrowser]["fd"] = $frame->fd;
@@ -76,86 +125,97 @@ class server extends OpenConnection
         }
 
         if (array_key_exists("isCodex", $object)) {
-            if (!key_exists($tokenClient, cache::global()["dataKeys"])) {
+            if (!key_exists($tokenClient, cache::global()["dataKeys"] ?? [])) {
                 return $server->close($frame->fd);
             }
 
-
             if (!empty($tokenBrowser)) {
                 $GLOBALS["xterm"][$tokenBrowser]["fd"] = $frame->fd;
-                if (empty($GLOBALS["xterm"][$tokenBrowser]["wsClient"])) {
-                    Coroutine::create(function () use (&$tokenBrowser, $server, $object) {
-                        $wsClient = self::getWsClient($tokenBrowser);
-                        while (true) {
-                            $message = $wsClient->recv();
-                            if (!empty($message->data) or $message->data !== null) {
-                                if ($message->data === '__NOT_EXISTS_SESSION_SIGNAL__') {
-                                    //var_dump($message->data, $tokenBrowser);
-                                    //var_dump($server->exists($GLOBALS["xterm"][$tokenBrowser]["fd"]));
-                                }
-                                if (!$server->exist($GLOBALS["xterm"][$tokenBrowser]["fd"])) {
-                                    continue;
-                                }
-                                $server->push($GLOBALS["xterm"][$tokenBrowser]["fd"], "{$message->data}");
-                            } else {
-                                print $tokenBrowser." false agora".PHP_EOL;
-                                if ($server->exist($GLOBALS["xterm"][$tokenBrowser]["fd"])) {
-                                    //$server->push($GLOBALS["xterm"][$tokenBrowser]["fd"], '__SIGNAL_OFF__');
-                                }
-                                //$GLOBALS["xterm"][$tokenBrowser]["wsClient"] = false;
-                                break;
-                            }
-                        }
-                    });
-                } else {
-                    if (!$GLOBALS["xterm"][$tokenBrowser]["wsClient"]->connected) {
-                        Coroutine::create(function () use (&$tokenBrowser, $server) {
-                            $wsClient = self::getWsClient($tokenBrowser);
 
-                            while (true) {
-                                $message = $wsClient->recv();
-                                if ($message && $message->data) {
-                                    print $message->data;
-                                    if (!$server->exist($GLOBALS["xterm"][$tokenBrowser]["fd"])) {
-                                        continue;
-                                    }
-                                    $server->push($GLOBALS["xterm"][$tokenBrowser]["fd"], $message->data);
-                                } else {
-                                    $GLOBALS["xterm"][$tokenBrowser]["wsClient"] = false;
-                                    break;
-                                }
-                            }
-                        });
+                // Conecta no PTY de forma síncrona nesta corrotina para o push
+                // logo abaixo já ter wsClient pronto (evita race "foi fechado").
+                $wsClient = $GLOBALS["xterm"][$tokenBrowser]["wsClient"] ?? null;
+                if (!($wsClient instanceof Client) || !$wsClient->connected) {
+                    try {
+                        $wsClient = self::getWsClient($tokenBrowser);
+                    } catch (Throwable) {
+                        print $tokenBrowser . " foi fechado" . PHP_EOL;
+                        $GLOBALS["xterm"][$tokenBrowser]["wsClient"] = false;
+                        return $server->close($frame->fd);
                     }
                 }
 
+                if (empty($GLOBALS["xterm"][$tokenBrowser]["relay"])) {
+                    $GLOBALS["xterm"][$tokenBrowser]["relay"] = true;
+                    Coroutine::create(function () use ($tokenBrowser, $server, $wsClient) {
+                        try {
+                            while (true) {
+                                $message = $wsClient->recv();
+                                if ($message === false) {
+                                    print $tokenBrowser . " false agora" . PHP_EOL;
+                                    break;
+                                }
+                                // recv() devolve "" em timeout — não derruba o PTY.
+                                if ($message === '' || $message === null) {
+                                    if (!$wsClient->connected) {
+                                        print $tokenBrowser . " false agora" . PHP_EOL;
+                                        break;
+                                    }
+                                    continue;
+                                }
+                                if (!is_object($message) || $message->data === null) {
+                                    print $tokenBrowser . " false agora" . PHP_EOL;
+                                    break;
+                                }
 
+                                $fd = $GLOBALS["xterm"][$tokenBrowser]["fd"] ?? null;
+                                if (!is_int($fd) || !$server->exist($fd)) {
+                                    // Browser saiu temporariamente; mantém a sessão PTY.
+                                    continue;
+                                }
 
-                if (!empty($GLOBALS["xterm"][$tokenBrowser]["wsClient"])) {
-                       //var_dump($object);
-                    if (empty($object["command"])) {
-                        if (!empty($object["dirCurrent"])) {
-                            $dirCurrent = appController::baseDir() . "files" . $object["dirCurrent"];
-                            try {
-                                $GLOBALS["xterm"][$tokenBrowser]["wsClient"]->push('cd "' . $dirCurrent . '"' . PHP_EOL);
-                            } catch (Exception $e) {
+                                $server->push($fd, (string) $message->data);
                             }
-                        } else {
-                            $GLOBALS["xterm"][$tokenBrowser]["wsClient"]->push("0");
+                        } finally {
+                            $GLOBALS["xterm"][$tokenBrowser]["relay"] = false;
+                            if (($GLOBALS["xterm"][$tokenBrowser]["wsClient"] ?? null) === $wsClient) {
+                                $GLOBALS["xterm"][$tokenBrowser]["wsClient"] = false;
+                            }
+                            try {
+                                if ($wsClient->connected) {
+                                    $wsClient->close();
+                                }
+                            } catch (Throwable) {
+                            }
+                        }
+                    });
+                }
+
+                $wsClient = $GLOBALS["xterm"][$tokenBrowser]["wsClient"] ?? null;
+                if (!($wsClient instanceof Client) || !$wsClient->connected) {
+                    print $tokenBrowser . " foi fechado" . PHP_EOL;
+                    return $server->close($frame->fd);
+                }
+
+                if (empty($object["command"])) {
+                    if (!empty($object["dirCurrent"])) {
+                        $dirCurrent = appController::baseDir() . "files" . $object["dirCurrent"];
+                        try {
+                            $wsClient->push('cd "' . $dirCurrent . '"' . PHP_EOL);
+                        } catch (Exception $e) {
                         }
                     } else {
-                        try {
-                            $GLOBALS["xterm"][$tokenBrowser]["wsClient"]->push("{$object["command"]}");
-                            if ($object['command'] == 'resizeXtermHandlerCommand') {
-                                $GLOBALS["xterm"][$tokenBrowser]["wsClient"]->push("{$object["cols"]}");
-                                $GLOBALS["xterm"][$tokenBrowser]["wsClient"]->push("{$object["rows"]}");
-                            }
-                        } catch (Throwable $e) {
-                        }
+                        $wsClient->push("0");
                     }
                 } else {
-                    print $tokenBrowser." foi fechado".PHP_EOL;
-                    return $server->close($frame->fd);
+                    try {
+                        $wsClient->push("{$object["command"]}");
+                        if ($object['command'] == 'resizeXtermHandlerCommand') {
+                            $wsClient->push("{$object["cols"]}");
+                            $wsClient->push("{$object["rows"]}");
+                        }
+                    } catch (Throwable $e) {
+                    }
                 }
             }
         } elseif (array_key_exists("lsp", $object)) {
@@ -188,7 +248,18 @@ class server extends OpenConnection
                 $GLOBALS["lsp"][$tokenBrowser]["chan"]->push($object["payload"]);
             }
             return;
+        } elseif (array_key_exists("searchInFile", $object)) {
+            if (!self::validBrowserToken($tokenClient)) {
+                return $server->close($frame->fd);
+            }
+
+            self::handleSearchMessage($server, $frame->fd, $object, $socketToken, $tokenClient);
+            return;
         } else {
+            // Métricas da máquina: exige token válido (pode vir no path ou no payload).
+            if (!self::validBrowserToken($tokenClient)) {
+                return $server->close($frame->fd);
+            }
             if (!$server->exist($frame->fd)) {
                 return;
             }
@@ -206,10 +277,11 @@ class server extends OpenConnection
 
     private static function validBrowserToken(string $token): bool
     {
-        if ($token === '' || !key_exists($token, cache::global()["dataKeys"])) {
+        $dataKeys = cache::global()["dataKeys"] ?? [];
+        if ($token === '' || !key_exists($token, $dataKeys)) {
             return false;
         }
-        $expires = cache::global()["dataKeys"][$token]["expire"] ?? 0;
+        $expires = $dataKeys[$token]["expire"] ?? 0;
         return time() < (int) $expires;
     }
 
@@ -226,6 +298,291 @@ class server extends OpenConnection
                 'message' => $message,
             ],
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    }
+
+    private static function socketTokenForFd(int $fd): string
+    {
+        return (string) ($GLOBALS['websocketConnections'][$fd]['token'] ?? $GLOBALS['fdToToken'][$fd] ?? '');
+    }
+
+    private static function pushSearchEvent(\Swoole\Server $server, int $fd, array $payload): void
+    {
+        if (!$server->exist($fd)) {
+            return;
+        }
+
+        $server->push($fd, json_encode([
+            'searchInFile' => true,
+            'payload' => $payload,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+    }
+
+    private static function normalizeSearchPath(string $path): string
+    {
+        $path = trim($path);
+        if ($path === '') {
+            return appController::baseDir();
+        }
+
+        $normalized = is_file($path) ? dirname($path) : $path;
+        $normalized = str_replace('//', '/', $normalized);
+
+        return rtrim($normalized, '/') ?: '/';
+    }
+
+    private static function handleSearchMessage(\Swoole\Server $server, int $fd, array $object, string $socketToken, string $clientToken): void
+    {
+        if (!isset($GLOBALS['searchInFileJobs'])) {
+            $GLOBALS['searchInFileJobs'] = [];
+        }
+
+        $action = strtolower(trim((string) ($object['action'] ?? 'start')));
+        $job =& $GLOBALS['searchInFileJobs'][$fd];
+
+        if ($action === 'cancel') {
+            if (!empty($job)) {
+                $job['cancelled'] = true;
+                $job['paused'] = false;
+                $job['status'] = 'cancelled';
+            }
+            self::pushSearchEvent($server, $fd, [
+                'type' => 'status',
+                'status' => 'cancelled',
+                'message' => 'Busca cancelada.',
+            ]);
+            return;
+        }
+
+        if ($action === 'pause') {
+            if (!empty($job) && ($job['status'] ?? '') === 'running') {
+                $job['paused'] = true;
+                $job['status'] = 'paused';
+                self::pushSearchEvent($server, $fd, [
+                    'type' => 'status',
+                    'status' => 'paused',
+                    'message' => 'Busca pausada.',
+                    'found' => (int) ($job['found'] ?? 0),
+                    'scanned' => (int) ($job['scanned'] ?? 0),
+                ]);
+            }
+            return;
+        }
+
+        if ($action === 'resume') {
+            if (!empty($job) && ($job['status'] ?? '') === 'paused') {
+                $job['paused'] = false;
+                $job['status'] = 'running';
+                self::pushSearchEvent($server, $fd, [
+                    'type' => 'status',
+                    'status' => 'running',
+                    'message' => 'Busca retomada.',
+                    'found' => (int) ($job['found'] ?? 0),
+                    'scanned' => (int) ($job['scanned'] ?? 0),
+                ]);
+            }
+            return;
+        }
+
+        $search = trim((string) ($object['search'] ?? ''));
+        if ($search === '') {
+            self::pushSearchEvent($server, $fd, [
+                'type' => 'status',
+                'status' => 'error',
+                'message' => 'O texto de busca não pode ficar vazio.',
+            ]);
+            return;
+        }
+
+        $path = self::normalizeSearchPath((string) ($object['path'] ?? appController::baseDir()));
+        $limit = max(1, (int) ($object['limit'] ?? 1000));
+
+        if (!empty($job)) {
+            $job['cancelled'] = true;
+            $job['paused'] = false;
+        }
+
+        $jobId = bin2hex(random_bytes(8));
+        $job = [
+            'fd' => $fd,
+            'id' => $jobId,
+            'socketToken' => $socketToken,
+            'clientToken' => $clientToken,
+            'search' => $search,
+            'path' => $path,
+            'limit' => $limit,
+            'status' => 'running',
+            'paused' => false,
+            'cancelled' => false,
+            'pauseNotified' => false,
+            'found' => 0,
+            'scanned' => 0,
+            'startedAt' => time(),
+        ];
+
+        self::pushSearchEvent($server, $fd, [
+            'type' => 'status',
+            'status' => 'running',
+            'message' => 'Busca iniciada.',
+            'path' => $path,
+            'search' => $search,
+            'limit' => $limit,
+        ]);
+
+        Coroutine::create(function () use ($server, $fd, $jobId) {
+            self::runSearchJob($server, $fd, $jobId);
+        });
+    }
+
+    private static function runSearchJob(\Swoole\Server $server, int $fd, string $jobId): void
+    {
+        if (empty($GLOBALS['searchInFileJobs'][$fd])) {
+            return;
+        }
+
+        $job =& $GLOBALS['searchInFileJobs'][$fd];
+        if (($job['id'] ?? null) !== $jobId) {
+            return;
+        }
+        $path = $job['path'];
+        $needle = $job['search'];
+        $limit = (int) $job['limit'];
+
+        try {
+            $iterator = new \RecursiveIteratorIterator(
+                new \RecursiveDirectoryIterator(
+                    $path,
+                    \FilesystemIterator::SKIP_DOTS
+                ),
+                \RecursiveIteratorIterator::SELF_FIRST
+            );
+        } catch (\UnexpectedValueException) {
+            self::pushSearchEvent($server, $fd, [
+                'type' => 'status',
+                'status' => 'error',
+                'message' => 'Não foi possível abrir o diretório informado.',
+            ]);
+            unset($GLOBALS['searchInFileJobs'][$fd]);
+            return;
+        }
+
+        $batch = 0;
+        foreach ($iterator as $item) {
+            if (!isset($GLOBALS['searchInFileJobs'][$fd])) {
+                return;
+            }
+            if (($job['id'] ?? null) !== $jobId) {
+                return;
+            }
+
+            if (!empty($job['cancelled'])) {
+                self::pushSearchEvent($server, $fd, [
+                    'type' => 'status',
+                    'status' => 'cancelled',
+                    'message' => 'Busca cancelada.',
+                    'found' => (int) $job['found'],
+                    'scanned' => (int) $job['scanned'],
+                ]);
+                unset($GLOBALS['searchInFileJobs'][$fd]);
+                return;
+            }
+
+            while (!empty($job['paused'])) {
+                if (($job['id'] ?? null) !== $jobId) {
+                    return;
+                }
+                if (!empty($job['cancelled'])) {
+                    break;
+                }
+                if (empty($job['pauseNotified'])) {
+                    $job['pauseNotified'] = true;
+                    self::pushSearchEvent($server, $fd, [
+                        'type' => 'status',
+                        'status' => 'paused',
+                        'message' => 'Busca pausada.',
+                        'found' => (int) $job['found'],
+                        'scanned' => (int) $job['scanned'],
+                    ]);
+                }
+                Coroutine::sleep(0.25);
+            }
+
+            if (!empty($job['cancelled'])) {
+                continue;
+            }
+            if (($job['id'] ?? null) !== $jobId) {
+                return;
+            }
+
+            if (!empty($job['pauseNotified'])) {
+                $job['pauseNotified'] = false;
+                self::pushSearchEvent($server, $fd, [
+                    'type' => 'status',
+                    'status' => 'running',
+                    'message' => 'Busca retomada.',
+                    'found' => (int) $job['found'],
+                    'scanned' => (int) $job['scanned'],
+                ]);
+            }
+
+            if (!$item->isFile()) {
+                $batch++;
+                if ($batch % 40 === 0) {
+                    Coroutine::sleep(0);
+                }
+                continue;
+            }
+
+            $pathFile = $item->getPathname();
+            $job['scanned']++;
+
+            if (\plugins\Request\searchInFile::fileContainsString($pathFile, $needle)) {
+                $job['found']++;
+                $size = @filesize($pathFile);
+                self::pushSearchEvent($server, $fd, [
+                    'type' => 'result',
+                    'item' => [
+                        'path' => $pathFile,
+                        'sizeBytes' => $size === false ? null : $size,
+                        'sizeLabel' => $size === false ? 'N/A' : utilsFunction::formatBytes($size),
+                    ],
+                    'found' => (int) $job['found'],
+                    'scanned' => (int) $job['scanned'],
+                ]);
+                if ($job['found'] >= $limit) {
+                    self::pushSearchEvent($server, $fd, [
+                        'type' => 'status',
+                        'status' => 'complete',
+                        'message' => 'Limite de resultados atingido.',
+                        'found' => (int) $job['found'],
+                        'scanned' => (int) $job['scanned'],
+                    ]);
+                    unset($GLOBALS['searchInFileJobs'][$fd]);
+                    return;
+                }
+            }
+
+            if ($job['scanned'] % 25 === 0) {
+                self::pushSearchEvent($server, $fd, [
+                    'type' => 'progress',
+                    'found' => (int) $job['found'],
+                    'scanned' => (int) $job['scanned'],
+                    'path' => $path,
+                ]);
+                if (function_exists('gc_collect_cycles')) {
+                    gc_collect_cycles();
+                }
+                Coroutine::sleep(0);
+            }
+        }
+
+        self::pushSearchEvent($server, $fd, [
+            'type' => 'status',
+            'status' => 'complete',
+            'message' => 'Busca concluída.',
+            'found' => (int) $job['found'],
+            'scanned' => (int) $job['scanned'],
+        ]);
+        unset($GLOBALS['searchInFileJobs'][$fd]);
     }
 
     /**
@@ -382,7 +739,15 @@ class server extends OpenConnection
     public static function getWsClient(mixed $tokenBrowser): Client
     {
         $wsClient = new Client("127.0.0.1", 6060);
-        $wsClient->upgrade("/$tokenBrowser");
+        // Cliente WS deve mascarar frames (RFC 6455); timeout alto evita
+        // cortar sessões ociosas do terminal entre teclas.
+        $wsClient->set([
+            'websocket_mask' => true,
+            'timeout' => 60,
+        ]);
+        if (!$wsClient->upgrade("/$tokenBrowser")) {
+            throw new Exception('Falha ao conectar no PTY local em 127.0.0.1:6060');
+        }
         $GLOBALS["xterm"][$tokenBrowser]["wsClient"] = $wsClient;
 
         Coroutine::create(function () use ($wsClient) {

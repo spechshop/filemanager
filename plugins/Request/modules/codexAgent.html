@@ -17,24 +17,48 @@
         </div>
     </div>
 
-    <div class="codex-toolbar p-2 d-flex gap-2">
-        <button class="btn btn-sm btn-primary" id="codexAgentNewThread" type="button" title="Nova conversa">
-            <i class="fa-duotone fa-plus"></i>
-        </button>
-        <select class="form-select form-select-sm" id="codexAgentThreads" aria-label="Conversas do Codex">
-            <option value="">Nova conversa</option>
-        </select>
-        <button class="btn btn-sm btn-outline-info" id="codexAgentRename" type="button"
-                title="Renomear conversa" disabled>
-            <i class="fa-duotone fa-pen"></i>
-        </button>
-        <button class="btn btn-sm btn-outline-danger" id="codexAgentArchive" type="button"
-                title="Arquivar conversa" disabled>
-            <i class="fa-duotone fa-box-archive"></i>
-        </button>
-    </div>
+    <div class="codex-panel-content">
+        <button class="codex-thread-backdrop" id="codexAgentThreadBackdrop" type="button"
+                aria-label="Fechar histórico de conversas" tabindex="-1"></button>
+        <aside class="codex-thread-sidebar" id="codexAgentThreadSidebar" aria-label="Histórico de conversas">
+            <div class="codex-thread-sidebar-header">
+                <span>Conversas</span>
+                <button class="codex-thread-sidebar-close" id="codexAgentThreadClose" type="button"
+                        title="Recolher histórico" aria-label="Recolher histórico de conversas">
+                    <i class="fa-duotone fa-sidebar-flip"></i>
+                </button>
+            </div>
+            <button class="codex-new-thread" id="codexAgentNewThread" type="button">
+                <i class="fa-duotone fa-pen-to-square" aria-hidden="true"></i>
+                <span>Nova conversa</span>
+            </button>
+            <div class="codex-thread-section-heading">
+                <span>Recentes</span>
+                <span id="codexAgentThreadCount">0</span>
+            </div>
+            <div class="codex-thread-list" id="codexAgentThreads" role="listbox"
+                 aria-label="Conversas recentes do Codex"></div>
+        </aside>
 
-    <section class="codex-context" id="codexAgentContext" aria-labelledby="codexAgentContextTitle">
+        <div class="codex-chat-pane">
+            <div class="codex-toolbar p-2 d-flex align-items-center gap-2">
+                <button class="btn btn-sm btn-outline-secondary codex-thread-toggle" id="codexAgentThreadToggle"
+                        type="button" title="Mostrar histórico" aria-label="Mostrar histórico de conversas"
+                        aria-controls="codexAgentThreadSidebar" aria-expanded="true">
+                    <i class="fa-duotone fa-sidebar"></i>
+                </button>
+                <div class="codex-current-thread-title" id="codexAgentCurrentThread">Nova conversa</div>
+                <button class="btn btn-sm btn-outline-info" id="codexAgentRename" type="button"
+                        title="Renomear conversa" disabled>
+                    <i class="fa-duotone fa-pen"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" id="codexAgentArchive" type="button"
+                        title="Arquivar conversa" disabled>
+                    <i class="fa-duotone fa-box-archive"></i>
+                </button>
+            </div>
+
+            <section class="codex-context" id="codexAgentContext" aria-labelledby="codexAgentContextTitle">
         <div class="codex-context-donut" id="codexAgentContextDonut" role="progressbar"
              aria-valuemin="0" aria-valuemax="100" aria-valuetext="Uso de contexto ainda não medido"
              title="O uso de contexto será informado depois da primeira resposta do modelo.">
@@ -57,42 +81,44 @@
                 <span id="codexAgentContextRisk">Sem medição ainda</span>
             </div>
         </div>
-    </section>
+            </section>
 
-    <div class="offcanvas-body p-0 d-flex flex-column">
-        <div class="p-3 flex-grow-1" id="codexAgentTimeline" aria-live="polite">
-            <div class="text-center py-5" id="codexAgentEmpty">
-                <i class="fa-duotone fa-sparkles fa-2x mb-3"></i>
-                <div>Descreva uma tarefa para o Codex executar nesta pasta.</div>
-            </div>
-        </div>
-
-        <details class="mx-3 mb-2 d-none" id="codexAgentDiffBox">
-            <summary class="small text-info mb-1">Alterações desta tarefa</summary>
-            <pre class="codex-card p-2" id="codexAgentDiff"></pre>
-        </details>
-
-        <div class="codex-composer p-3">
-            <textarea class="form-control mb-2" id="codexAgentPrompt" maxlength="65536"
-                      placeholder="Ex.: revise este projeto, corrija o problema e execute os testes"></textarea>
-            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                <div class="d-flex flex-wrap align-items-center gap-2">
-                    <label class="small text-muted" for="codexAgentPermissionMode">Modo</label>
-                    <select class="form-select form-select-sm" id="codexAgentPermissionMode"
-                            aria-label="Modo de permissão do Codex">
-                        <option value="read-only">Apenas leitura</option>
-                        <option value="agent" selected>Agente</option>
-                        <option value="agent-full">Agente full</option>
-                    </select>
-                    <small class="text-muted" id="codexAgentHint">As alterações ficam limitadas à pasta atual.</small>
+            <div class="offcanvas-body p-0 d-flex flex-column">
+                <div class="p-3 flex-grow-1" id="codexAgentTimeline" aria-live="polite">
+                    <div class="text-center py-5" id="codexAgentEmpty">
+                        <i class="fa-duotone fa-sparkles fa-2x mb-3"></i>
+                        <div>Descreva uma tarefa para o Codex executar nesta pasta.</div>
+                    </div>
                 </div>
-                <div class="d-flex gap-2">
-                    <button class="btn btn-outline-danger d-none" id="codexAgentStop" type="button">
-                        <i class="fa-duotone fa-stop me-1"></i>Parar
-                    </button>
-                    <button class="btn btn-success" id="codexAgentSend" type="button">
-                        <i class="fa-duotone fa-paper-plane me-1"></i>Enviar
-                    </button>
+
+                <details class="mx-3 mb-2 d-none" id="codexAgentDiffBox">
+                    <summary class="small text-info mb-1">Alterações desta tarefa</summary>
+                    <pre class="codex-card p-2" id="codexAgentDiff"></pre>
+                </details>
+
+                <div class="codex-composer p-3">
+                    <textarea class="form-control mb-2" id="codexAgentPrompt" maxlength="65536"
+                              placeholder="Ex.: revise este projeto, corrija o problema e execute os testes"></textarea>
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <label class="small text-muted" for="codexAgentPermissionMode">Modo</label>
+                            <select class="form-select form-select-sm" id="codexAgentPermissionMode"
+                                    aria-label="Modo de permissão do Codex">
+                                <option value="read-only">Apenas leitura</option>
+                                <option value="agent" selected>Agente</option>
+                                <option value="agent-full">Agente full</option>
+                            </select>
+                            <small class="text-muted" id="codexAgentHint">As alterações ficam limitadas à pasta atual.</small>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-outline-danger d-none" id="codexAgentStop" type="button">
+                                <i class="fa-duotone fa-stop me-1"></i>Parar
+                            </button>
+                            <button class="btn btn-success" id="codexAgentSend" type="button">
+                                <i class="fa-duotone fa-paper-plane me-1"></i>Enviar
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -109,7 +135,12 @@
         const empty = document.getElementById('codexAgentEmpty');
         const statusBadge = document.getElementById('codexAgentStatus');
         const workspaceLabel = document.getElementById('codexAgentWorkspace');
-        const threadSelect = document.getElementById('codexAgentThreads');
+        const threadList = document.getElementById('codexAgentThreads');
+        const threadCount = document.getElementById('codexAgentThreadCount');
+        const currentThreadTitle = document.getElementById('codexAgentCurrentThread');
+        const threadToggleButton = document.getElementById('codexAgentThreadToggle');
+        const threadCloseButton = document.getElementById('codexAgentThreadClose');
+        const threadBackdrop = document.getElementById('codexAgentThreadBackdrop');
         const newThreadButton = document.getElementById('codexAgentNewThread');
         const renameButton = document.getElementById('codexAgentRename');
         const archiveButton = document.getElementById('codexAgentArchive');
@@ -136,6 +167,9 @@
         let currentThreadId = null;
         let activeTurnId = null;
         let ready = false;
+        let panelActive = false;
+        let panelHistoryLoadStarted = false;
+        let threadsLoadPromise = null;
         let changedPaths = new Set();
         let activityNode = null;
         let activityStartedAt = 0;
@@ -149,6 +183,8 @@
         const contextEventIndexes = new Map();
         const panelWidthStorageKey = 'codexAgentPanelWidth';
         const permissionModeStorageKey = 'codexAgentPermissionMode';
+        const threadStorageMigrationKey = 'codexAgentThreadStorageMigrated';
+        const threadSidebarStorageKey = 'codexAgentThreadSidebar';
         const permissionModes = new Set(['read-only', 'agent', 'agent-full']);
         const defaultPanelWidth = 620;
         let savedPermissionMode = 'agent';
@@ -156,6 +192,7 @@
         let resizeStartX = 0;
         let resizeStartWidth = 0;
         let currentTokenUsage = null;
+        let activeTurnWorkspace = null;
 
         function browserToken() {
             return document.getElementById('fp')?.textContent?.trim() || '';
@@ -168,7 +205,22 @@
         }
 
         function selectedThreadStorageKey() {
-            return `codexAgentThread:${workspace}`;
+            return 'codexAgentThread';
+        }
+
+        function selectedThreadId() {
+            const globalThreadId = localStorage.getItem(selectedThreadStorageKey());
+            if (globalThreadId) return globalThreadId;
+            if (localStorage.getItem(threadStorageMigrationKey) === '1') return null;
+            const legacyThreadId = localStorage.getItem(`codexAgentThread:${workspace}`);
+            if (legacyThreadId) localStorage.setItem(selectedThreadStorageKey(), legacyThreadId);
+            localStorage.setItem(threadStorageMigrationKey, '1');
+            return legacyThreadId;
+        }
+
+        function syncWorkspaceFromExplorer() {
+            workspace = currentWorkspace();
+            workspaceLabel.textContent = `Pasta de trabalho: ${workspace}`;
         }
 
         function permissionMode() {
@@ -201,7 +253,11 @@
         function setPanelWidth(value, persist = false) {
             const { minimum, maximum } = panelWidthLimits();
             const width = Math.round(Math.min(maximum, Math.max(minimum, Number(value) || defaultPanelWidth)));
+            const wasCompact = panel.classList.contains('threads-compact');
+            const compact = width < 560;
             panel.style.setProperty('--codex-panel-width', `${width}px`);
+            panel.classList.toggle('threads-compact', compact);
+            if (compact && !wasCompact) setThreadSidebar(false, false);
             resizeHandle.setAttribute('aria-valuemin', String(minimum));
             resizeHandle.setAttribute('aria-valuemax', String(maximum));
             resizeHandle.setAttribute('aria-valuenow', String(width));
@@ -213,6 +269,21 @@
         function restorePanelWidth() {
             const saved = Number.parseInt(localStorage.getItem(panelWidthStorageKey) || '', 10);
             setPanelWidth(Number.isFinite(saved) ? saved : defaultPanelWidth);
+        }
+
+        function setThreadSidebar(open, persist = true) {
+            panel.classList.toggle('threads-open', Boolean(open));
+            threadToggleButton.setAttribute('aria-expanded', String(Boolean(open)));
+            threadToggleButton.title = open ? 'Recolher histórico' : 'Mostrar histórico';
+            threadToggleButton.setAttribute('aria-label', open
+                ? 'Recolher histórico de conversas'
+                : 'Mostrar histórico de conversas');
+            if (persist) localStorage.setItem(threadSidebarStorageKey, open ? 'open' : 'closed');
+        }
+
+        function restoreThreadSidebar() {
+            const saved = localStorage.getItem(threadSidebarStorageKey);
+            setThreadSidebar(saved !== 'closed' && !panel.classList.contains('threads-compact'), false);
         }
 
         function beginPanelResize(event) {
@@ -274,7 +345,9 @@
         function updateControls() {
             sendButton.disabled = !ready || !prompt.value.trim();
             newThreadButton.disabled = !ready || Boolean(activeTurnId);
-            threadSelect.disabled = !ready || Boolean(activeTurnId);
+            threadList.querySelectorAll('.codex-thread-item').forEach((button) => {
+                button.disabled = !ready || Boolean(activeTurnId);
+            });
             renameButton.disabled = !ready || !currentThreadId || Boolean(activeTurnId);
             archiveButton.disabled = !ready || !currentThreadId || Boolean(activeTurnId);
             permissionModeSelect.disabled = Boolean(activeTurnId);
@@ -579,7 +652,9 @@
                 const url = new URL(anchor.href, location.href);
                 if (!['http:', 'https:'].includes(url.protocol) || url.origin !== location.origin) return null;
                 let filePath = decodeURIComponent(url.pathname);
-                let line = 0;
+                // File citations without an explicit location should still open in
+                // the editor instead of falling back to the browser's new tab.
+                let line = 1;
                 let column = 1;
                 const hashLocation = url.hash.match(/^#L(\d+)(?:C(\d+))?$/i);
                 const pathLocation = filePath.match(/:(\d+)(?::(\d+))?$/);
@@ -1120,7 +1195,7 @@
                     const health = await request('health');
                     setStatus(health.ready ? 'ready' : 'starting',
                         health.ready ? 'Codex Enterprise conectado.' : 'Codex ainda está inicializando.');
-                    if (health.ready && panel.classList.contains('show')) await loadThreads();
+                    if (health.ready && panelActive) await loadPanelHistory();
                 } catch (error) {
                     setStatus('error', error.message);
                 }
@@ -1138,7 +1213,7 @@
                 rejectPending('A conexão com o Codex foi encerrada.');
                 if (activeTurnId) finishActivity('Conexão interrompida', true);
                 setStatus('disconnected', 'A conexão com o Codex foi encerrada.');
-                if (panel.classList.contains('show')) {
+                if (panelActive) {
                     clearTimeout(reconnectTimer);
                     reconnectTimer = setTimeout(connect, 2000);
                 }
@@ -1188,7 +1263,7 @@
             }
             if (message.type === 'status') {
                 setStatus(message.status, message.message);
-                if (message.status === 'ready' && panel.classList.contains('show')) loadThreads().catch(showError);
+                if (message.status === 'ready' && panelActive) loadPanelHistory().catch(showError);
                 return;
             }
             if (message.type === 'server.request') {
@@ -1210,47 +1285,124 @@
             return title.length > 70 ? title.slice(0, 67) + '…' : title;
         }
 
+        function findThreadItem(threadId) {
+            return [...threadList.querySelectorAll('.codex-thread-item')]
+                .find((entry) => entry.dataset.threadId === threadId) || null;
+        }
+
+        function refreshThreadCount() {
+            const count = threadList.querySelectorAll('.codex-thread-item').length;
+            threadCount.textContent = String(count);
+            if (!count && !threadList.querySelector('.codex-thread-list-empty')) {
+                const emptyState = document.createElement('div');
+                emptyState.className = 'codex-thread-list-empty';
+                emptyState.textContent = 'Suas conversas aparecerão aqui.';
+                threadList.appendChild(emptyState);
+            }
+        }
+
+        function upsertThreadItem(thread, prepend = false) {
+            if (!thread?.id) return null;
+            threadList.querySelector('.codex-thread-list-empty')?.remove();
+            let button = findThreadItem(thread.id);
+            if (!button) {
+                button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'codex-thread-item';
+                button.dataset.threadId = thread.id;
+                button.setAttribute('role', 'option');
+                const label = document.createElement('span');
+                label.className = 'codex-thread-item-label';
+                button.appendChild(label);
+                if (prepend) threadList.prepend(button);
+                else threadList.appendChild(button);
+            }
+            const label = threadLabel(thread);
+            button.querySelector('.codex-thread-item-label').textContent = label;
+            button.title = thread.cwd ? `${label}\nPasta: ${thread.cwd}` : label;
+            button.disabled = !ready || Boolean(activeTurnId);
+            refreshThreadCount();
+            return button;
+        }
+
+        function setActiveThreadItem(threadId) {
+            threadList.querySelectorAll('.codex-thread-item').forEach((entry) => {
+                const active = Boolean(threadId) && entry.dataset.threadId === threadId;
+                entry.classList.toggle('is-active', active);
+                entry.setAttribute('aria-selected', String(active));
+            });
+            currentThreadTitle.textContent = threadId
+                ? threadNames.get(threadId) || 'Nova conversa'
+                : 'Nova conversa';
+        }
+
         function updateThreadName(threadId, name) {
             threadNames.set(threadId, name);
-            const option = [...threadSelect.options].find((entry) => entry.value === threadId);
-            if (option) option.textContent = threadLabel({ name });
+            const item = findThreadItem(threadId);
+            if (item) {
+                const label = threadLabel({ name });
+                item.querySelector('.codex-thread-item-label').textContent = label;
+                item.title = label;
+            }
+            if (threadId === currentThreadId) currentThreadTitle.textContent = name;
         }
 
         async function loadThreads() {
-            const result = await request('thread.list', { workspace });
+            const result = await request('thread.list');
             const threads = Array.isArray(result.data) ? result.data : [];
             threadNames.clear();
-            threadSelect.replaceChildren(new Option('Nova conversa', ''));
+            threadList.replaceChildren();
             threads.forEach((thread) => {
                 threadNames.set(thread.id, thread.name || thread.preview || 'Conversa sem título');
-                threadSelect.add(new Option(threadLabel(thread), thread.id));
+                upsertThreadItem(thread);
             });
+            refreshThreadCount();
 
-            const saved = localStorage.getItem(selectedThreadStorageKey());
+            const saved = selectedThreadId();
             if (saved && threads.some((thread) => thread.id === saved)) {
                 await selectThread(saved);
             } else if (currentThreadId && threads.some((thread) => thread.id === currentThreadId)) {
-                threadSelect.value = currentThreadId;
+                setActiveThreadItem(currentThreadId);
             } else if (currentThreadId) {
-                threadSelect.add(new Option('Nova conversa (ainda sem mensagens)', currentThreadId));
-                threadSelect.value = currentThreadId;
+                threadNames.set(currentThreadId, 'Nova conversa');
+                upsertThreadItem({ id: currentThreadId, name: 'Nova conversa' }, true);
+                setActiveThreadItem(currentThreadId);
             } else {
                 currentThreadId = null;
                 activeTurnId = null;
+                setActiveThreadItem(null);
                 clearTimeline();
                 showEmpty();
                 updateControls();
             }
         }
 
+        function ensureThreadsLoaded() {
+            if (threadsLoadPromise) return threadsLoadPromise;
+            threadsLoadPromise = loadThreads().finally(() => {
+                threadsLoadPromise = null;
+            });
+            return threadsLoadPromise;
+        }
+
+        function loadPanelHistory() {
+            if (!panelActive || !ready || panelHistoryLoadStarted) {
+                return threadsLoadPromise || Promise.resolve();
+            }
+            panelHistoryLoadStarted = true;
+            return ensureThreadsLoaded();
+        }
+
         async function startThread() {
+            syncWorkspaceFromExplorer();
             const result = await request('thread.start', { workspace, permissionMode: permissionMode() });
             currentThreadId = result.thread.id;
             activeTurnId = null;
             localStorage.setItem(selectedThreadStorageKey(), currentThreadId);
             clearTimeline();
-            threadSelect.add(new Option('Nova conversa (ainda sem mensagens)', currentThreadId));
-            threadSelect.value = currentThreadId;
+            threadNames.set(currentThreadId, 'Nova conversa');
+            upsertThreadItem({ id: currentThreadId, name: 'Nova conversa' }, true);
+            setActiveThreadItem(currentThreadId);
             updateControls();
             return currentThreadId;
         }
@@ -1260,11 +1412,13 @@
                 currentThreadId = null;
                 activeTurnId = null;
                 localStorage.removeItem(selectedThreadStorageKey());
+                setActiveThreadItem(null);
                 clearTimeline();
                 showEmpty();
                 updateControls();
                 return;
             }
+            syncWorkspaceFromExplorer();
             const resumed = await request('thread.resume', {
                 threadId,
                 workspace,
@@ -1272,10 +1426,16 @@
             });
             currentThreadId = resumed.thread.id;
             localStorage.setItem(selectedThreadStorageKey(), currentThreadId);
-            threadSelect.value = currentThreadId;
+            if (!threadNames.has(currentThreadId)) {
+                threadNames.set(currentThreadId,
+                    resumed.thread.name || resumed.thread.preview || 'Conversa sem título');
+                upsertThreadItem(resumed.thread, true);
+            }
+            setActiveThreadItem(currentThreadId);
             const result = await request('thread.read', { threadId: currentThreadId }, 60000);
             renderThread(result.thread, result.tokenUsage);
             updateControls();
+            if (panel.classList.contains('threads-compact')) setThreadSidebar(false, false);
         }
 
         function itemText(item) {
@@ -1512,7 +1672,7 @@
                 activeTurnId = null;
                 updateControls();
                 refreshFilesAfterTurn();
-                loadThreads().catch((error) => console.warn('Não foi possível atualizar as conversas:', error));
+                ensureThreadsLoaded().catch((error) => console.warn('Não foi possível atualizar as conversas:', error));
             }
         }
 
@@ -1623,15 +1783,19 @@
                 if (activeTurnId) {
                     await request('turn.steer', { threadId: currentThreadId, text });
                 } else {
+                    syncWorkspaceFromExplorer();
+                    activeTurnWorkspace = workspace;
                     const result = await request('turn.start', {
                         threadId: currentThreadId,
                         text,
+                        workspace,
                         permissionMode: permissionMode(),
                     });
                     activeTurnId = result.turn?.id || activeTurnId;
                 }
                 updateControls();
             } catch (error) {
+                activeTurnWorkspace = null;
                 finishActivity('Não foi possível enviar', true);
                 showError(error);
                 updateControls();
@@ -1640,6 +1804,7 @@
 
         async function refreshFilesAfterTurn() {
             try {
+                const completedWorkspace = activeTurnWorkspace || workspace;
                 if (typeof window.FileManagerEditorBridge?.refreshChangedFiles === 'function') {
                     const result = await window.FileManagerEditorBridge.refreshChangedFiles([...changedPaths]);
                     if (result?.conflicts?.length) {
@@ -1648,25 +1813,36 @@
                     }
                 }
                 if (typeof window.setItemsInTbody === 'function' && typeof window.asyncGet === 'function'
-                    && currentWorkspace() === workspace) {
+                    && currentWorkspace() === completedWorkspace) {
                     const data = await window.asyncGet(
-                        `/syncPath?tokenBrowser=${encodeURIComponent(browserToken())}&path=${encodeURIComponent(workspace)}`
+                        `/syncPath?tokenBrowser=${encodeURIComponent(browserToken())}&path=${encodeURIComponent(completedWorkspace)}`
                     );
                     if (data?.information) window.setItemsInTbody(data.information, 'filesList');
                 }
             } catch (error) {
                 console.warn('Não foi possível atualizar a interface após a tarefa do Codex:', error);
+            } finally {
+                activeTurnWorkspace = null;
             }
         }
 
         panel.addEventListener('show.bs.offcanvas', () => {
-            workspace = currentWorkspace();
-            workspaceLabel.textContent = `Pasta: ${workspace}`;
+            panelActive = true;
+            panelHistoryLoadStarted = false;
+            syncWorkspaceFromExplorer();
             clearTimeout(reconnectTimer);
             connect();
-            if (ready) loadThreads().catch(showError);
+            if (ready) loadPanelHistory().catch(showError);
         });
-        panel.addEventListener('hidden.bs.offcanvas', () => clearTimeout(reconnectTimer));
+        panel.addEventListener('shown.bs.offcanvas', () => {
+            panelActive = true;
+            if (ready) loadPanelHistory().catch(showError);
+        });
+        panel.addEventListener('hidden.bs.offcanvas', () => {
+            panelActive = false;
+            panelHistoryLoadStarted = false;
+            clearTimeout(reconnectTimer);
+        });
         resizeHandle.addEventListener('pointerdown', beginPanelResize);
         resizeHandle.addEventListener('pointermove', movePanelResize);
         resizeHandle.addEventListener('pointerup', endPanelResize);
@@ -1676,6 +1852,12 @@
         window.addEventListener('resize', () => {
             const current = Number.parseFloat(panel.style.getPropertyValue('--codex-panel-width')) || defaultPanelWidth;
             setPanelWidth(current);
+        });
+        const workspaceNode = document.getElementById('pathInvisible');
+        if (workspaceNode) new MutationObserver(syncWorkspaceFromExplorer).observe(workspaceNode, {
+            childList: true,
+            characterData: true,
+            subtree: true,
         });
         prompt.addEventListener('input', updateControls);
         timeline.addEventListener('click', (event) => {
@@ -1736,15 +1918,15 @@
         newThreadButton.addEventListener('click', async () => {
             try {
                 await startThread();
+                if (panel.classList.contains('threads-compact')) setThreadSidebar(false, false);
             } catch (error) {
                 showError(error);
             }
         });
         renameButton.addEventListener('click', async () => {
             if (!currentThreadId) return;
-            const selected = threadSelect.selectedOptions[0]?.textContent || '';
-            const currentName = threadNames.get(currentThreadId)
-                || (selected.startsWith('Nova conversa') ? '' : selected);
+            const selected = threadNames.get(currentThreadId) || '';
+            const currentName = selected.startsWith('Nova conversa') ? '' : selected;
             const result = await Swal.fire({
                 target: panel,
                 title: 'Nome da conversa',
@@ -1768,7 +1950,16 @@
                 showError(error);
             }
         });
-        threadSelect.addEventListener('change', () => selectThread(threadSelect.value).catch(showError));
+        threadList.addEventListener('click', (event) => {
+            const item = event.target instanceof Element ? event.target.closest('.codex-thread-item') : null;
+            if (!item || !threadList.contains(item) || item.disabled) return;
+            selectThread(item.dataset.threadId || '').catch(showError);
+        });
+        threadToggleButton.addEventListener('click', () => {
+            setThreadSidebar(!panel.classList.contains('threads-open'));
+        });
+        threadCloseButton.addEventListener('click', () => setThreadSidebar(false));
+        threadBackdrop.addEventListener('click', () => setThreadSidebar(false, false));
         archiveButton.addEventListener('click', async () => {
             if (!currentThreadId) return;
             const confirmed = await Swal.fire({
@@ -1789,12 +1980,13 @@
                 tokenUsageByThread.delete(archivedThreadId);
                 localStorage.removeItem(selectedThreadStorageKey());
                 currentThreadId = null;
-                await loadThreads();
+                await ensureThreadsLoaded();
             } catch (error) {
                 showError(error);
             }
         });
         restorePanelWidth();
+        restoreThreadSidebar();
         restorePermissionMode();
         updateControls();
     })();

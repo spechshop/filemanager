@@ -47,19 +47,29 @@
 
     function wsConnect() {
         const hostname = window.location.port ? `${window.location.hostname}:${parseInt(window.location.port)}` : window.location.hostname;
-        const ws = new WebSocket(`wss://${hostname}`);
+        const token = ($('#fp').text() || '').trim();
+        // Inclui o token no path para o handshake autenticar; o payload
+        // continua enviando token por compatibilidade com o handler de métricas.
+        const wsPath = token ? `/${encodeURIComponent(token)}` : '/';
+        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+        const ws = new WebSocket(`${protocol}://${hostname}${wsPath}`);
         ws.onopen = function (event) {
             toast('Conectado ao servidor', 'Bem vindo', 3000, 'success');
 
             ws.send(JSON.stringify({
-                token: $('#fp').text()
+                token: token || $('#fp').text()
             }));
         };
         ws.onmessage = function (event) {
-            const data = JSON.parse(event.data);
-            if (data.success) {
+            let data;
+            try {
+                data = JSON.parse(event.data);
+            } catch (e) {
+                return;
+            }
+            if (data.success && data.disk && data.memory && data.cpu) {
                 ws.send(JSON.stringify({
-                    token: $('#fp').text()
+                    token: token || $('#fp').text()
                 }));
                 $('#totalDisk').html(`${data['disk']['total_space']} ${data['disk']['unit']}`);
                 $('#diskUsed').html(`${data['disk']['used_space']} ${data['disk']['unit']}`);
@@ -80,8 +90,10 @@
                 $('#progressCpu').attr('class', `progress-bar ${data['cpu']['background']}`);
             }
         };
-        ws.onerror = function (error) {
+        ws.onclose = function () {
             setTimeout(wsConnect, 3000);
+        };
+        ws.onerror = function (error) {
             return bootstrap.showToast({
                 header: 'Erro',
                 body: 'Não foi possível conectar ao servidor',

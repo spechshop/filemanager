@@ -111,11 +111,14 @@ function resolveWorkspace(value) {
         } catch {
             continue;
         }
-        if (!isInside(ROOT, real) || !fs.statSync(real).isDirectory()) continue;
+        // The explorer path chooses the cwd for the next turn. It may point to
+        // another project on the same machine; the selected permission mode
+        // still defines the sandbox applied to that directory.
+        if (!fs.statSync(real).isDirectory()) continue;
         return real;
     }
 
-    throw new Error("A pasta selecionada não existe ou está fora do projeto do File Manager.");
+    throw new Error("A pasta selecionada não existe ou não é um diretório acessível.");
 }
 
 function resolveEditorFile(workspace, value) {
@@ -470,13 +473,6 @@ function requireThread(client, threadId) {
     return threadWorkspaces.get(threadId);
 }
 
-async function verifyThreadWorkspace(threadId, workspace) {
-    const result = await rpc("thread/read", { threadId, includeTurns: false });
-    const cwd = result?.thread?.cwd ? fs.realpathSync(result.thread.cwd) : null;
-    if (!cwd || cwd !== workspace) throw new Error("A conversa pertence a outra pasta.");
-    return result.thread;
-}
-
 function checkTurnRate(client) {
     const now = Date.now();
     client.turnStarts = (client.turnStarts || []).filter((time) => now - time < 60_000);
@@ -581,10 +577,8 @@ async function performAction(client, message) {
     }
 
     if (action === "thread.list") {
-        const workspace = resolveWorkspace(message.workspace);
         return rpc("thread/list", {
-            cwd: workspace,
-            limit: 50,
+            limit: 200,
             sortKey: "updated_at",
             sortDirection: "desc",
             // Threads opened through this embedded app-server are persisted as
@@ -608,20 +602,18 @@ async function performAction(client, message) {
 
     if (action === "thread.resume") {
         const workspace = resolveWorkspace(message.workspace);
-        const thread = await verifyThreadWorkspace(message.threadId, workspace);
         const result = await rpc("thread/resume", {
-            threadId: thread.id,
+            threadId: message.threadId,
             cwd: workspace,
             ...threadPolicy(message),
             ...threadPreferenceOverrides(message),
         });
-        rememberThread(client, result?.thread || thread, workspace);
+        rememberThread(client, result?.thread, workspace);
         return result;
     }
 
     if (action === "thread.read") {
-        const workspace = requireThread(client, message.threadId);
-        await verifyThreadWorkspace(message.threadId, workspace);
+        requireThread(client, message.threadId);
         const result = await rpc("thread/read", { threadId: message.threadId, includeTurns: true });
         return { ...result, tokenUsage: threadTokenUsage.get(message.threadId) || null };
     }
@@ -654,9 +646,13 @@ async function performAction(client, message) {
     }
 
     if (action === "turn.start") {
-        const workspace = requireThread(client, message.threadId);
+        const previousWorkspace = requireThread(client, message.threadId);
+        const workspace = message.workspace === undefined
+            ? previousWorkspace
+            : resolveWorkspace(message.workspace);
         if (activeTurns.has(message.threadId)) throw new Error("Esta conversa já possui uma tarefa ativa.");
         checkTurnRate(client);
+        threadWorkspaces.set(message.threadId, workspace);
         await applyThreadPreferences(message.threadId, message);
         const result = await rpc("turn/start", {
             threadId: message.threadId,
