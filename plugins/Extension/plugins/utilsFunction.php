@@ -4,108 +4,163 @@ namespace plugins\Extension;
 
 class utilsFunction
 {
+    private const CPU_CACHE_TTL = 0.5;
+    private const MEMORY_CACHE_TTL = 1.0;
+    private const DISK_CACHE_TTL = 10.0;
+
+    private static ?string $processorName = null;
+    private static ?array $cpuSnapshot = null;
+    private static float $cpuUsage = 0.0;
+    private static float $cpuSampledAt = 0.0;
+    private static ?array $memoryCache = null;
+    private static float $memorySampledAt = 0.0;
+    private static array $diskCache = [];
+
     public static function getProcessorName(): ?array
     {
-        $cpuinfo = file_get_contents("/proc/cpuinfo");
-        $lines = explode("\n", $cpuinfo);
-        $processorName = "";
-        foreach ($lines as $line) {
-            if (strpos($line, "model name") !== false) {
-                $parts = explode(":", $line);
-                $processorName = trim($parts[1]);
-                break;
+        if (self::$processorName === null) {
+            self::$processorName = "Unknown processor";
+            $cpuInfo = @fopen("/proc/cpuinfo", "r");
+
+            if ($cpuInfo !== false) {
+                while (($line = fgets($cpuInfo)) !== false) {
+                    if (str_starts_with($line, "model name")) {
+                        self::$processorName = trim(substr($line, strpos($line, ":") + 1));
+                        break;
+                    }
+                }
+                fclose($cpuInfo);
             }
         }
-        $usage = round(self::getCpuUsage(), 2);
-        if ($usage >= 0 && $usage <= 25) {
-            $backgroundColor = "bg-success";
-        } elseif ($usage > 25 && $usage <= 50) {
-            $backgroundColor = "bg-info";
-        } elseif ($usage > 50 && $usage <= 75) {
-            $backgroundColor = "bg-warning";
-        } elseif ($usage > 75 && $usage <= 100) {
-            $backgroundColor = "bg-danger";
-        }
+
+        $usage = (float) self::getCpuUsage();
+
         return [
             "usage" => $usage,
-            "name" => $processorName,
-            "background" => $backgroundColor
+            "name" => self::$processorName,
+            "background" => self::usageBackground($usage)
         ];
     }
-     
+
     public static function getCpuUsage(): ?string
     {
-       try {
-         $cont = file("/proc/stat");
-        $cpuloadtmp = explode(" ", $cont[0]);
-        $cpuload0[0] = $cpuloadtmp[2] + $cpuloadtmp[4];
-        $cpuload0[1] = $cpuloadtmp[2] + $cpuloadtmp[4] + $cpuloadtmp[5];
-        sleep(1);
-        $cont = file("/proc/stat");
-        $cpuloadtmp = explode(" ", $cont[0]);
-        $cpuload1[0] = $cpuloadtmp[2] + $cpuloadtmp[4];
-        $cpuload1[1] = $cpuloadtmp[2] + $cpuloadtmp[4] + $cpuloadtmp[5];
-        return ($cpuload1[0] - $cpuload0[0]) * 100 / ($cpuload1[1] - $cpuload0[1]);
-       } catch(\Throwable $e) {
-        return '??';
-       }
+        $now = microtime(true);
+        if (self::$cpuSnapshot !== null && ($now - self::$cpuSampledAt) < self::CPU_CACHE_TTL) {
+            return number_format(self::$cpuUsage, 2, ".", "");
+        }
+
+        $current = self::readCpuStat();
+        if ($current === null) {
+            return number_format(self::$cpuUsage, 2, ".", "");
+        }
+
+        if (self::$cpuSnapshot !== null) {
+            $totalDelta = $current["total"] - self::$cpuSnapshot["total"];
+            $idleDelta = $current["idle"] - self::$cpuSnapshot["idle"];
+
+            if ($totalDelta > 0) {
+                self::$cpuUsage = max(0.0, min(100.0, (($totalDelta - $idleDelta) / $totalDelta) * 100));
+            }
+        }
+
+        self::$cpuSnapshot = $current;
+        self::$cpuSampledAt = $now;
+
+        return number_format(self::$cpuUsage, 2, ".", "");
     }
-    private static function readCpuStat(): array
+
+    private static function readCpuStat(): ?array
     {
-        $line = file_get_contents("/proc/stat");
-        $parts = preg_split("/\\s+/", trim(explode("\n", $line)[0]));
+        $stat = @fopen("/proc/stat", "r");
+        if ($stat === false) {
+            return null;
+        }
+
+        $line = fgets($stat);
+        fclose($stat);
+        if ($line === false || !str_starts_with($line, "cpu ")) {
+            return null;
+        }
+
+        $parts = preg_split("/\\s+/", trim($line));
         array_shift($parts);
-        // remove 'cpu'
-        return array_map("intval", $parts);
+        $times = array_map("intval", $parts);
+        if (count($times) < 4) {
+            return null;
+        }
+
+        return [
+            "total" => array_sum($times),
+            "idle" => $times[3] + ($times[4] ?? 0)
+        ];
     }
+
     public static function getMemoryUsage(): ?array
     {
-        try {
-            $output = @shell_exec("free -m 2>/dev/null");
-            if (!$output) {
-                return null;
+        $now = microtime(true);
+        if (self::$memoryCache !== null && ($now - self::$memorySampledAt) < self::MEMORY_CACHE_TTL) {
+            return self::$memoryCache;
+        }
+
+        $memInfo = @fopen("/proc/meminfo", "r");
+        if ($memInfo === false) {
+            return self::$memoryCache;
+        }
+
+        $values = [];
+        while (($line = fgets($memInfo)) !== false) {
+            if (preg_match('/^(MemTotal|MemFree|MemAvailable):\\s+(\\d+)/', $line, $matches)) {
+                $values[$matches[1]] = (int) $matches[2];
+                if (count($values) === 3) {
+                    break;
+                }
             }
-            $lines = array_filter(explode("\n", $output));
-            if (count($lines) < 2) {
-                return null;
-            }
-            $memLine = array_values($lines)[1];
-            $parts = preg_split('/\s+/', trim($memLine));
-            if (count($parts) < 7) {
-                return null;
-            }
-            $totalMem = (int) $parts[1];
-            $usedMem = $totalMem - (int) $parts[6];
-            $freeMem = (int) $parts[3];
-            $usedPercentage = $usedMem / $totalMem * 100;
-            $unit = $totalMem >= 1024 ? "GB" : "MB";
-            $divider = $unit === "GB" ? 1024 : 1;
-            $usage = round($usedPercentage, 2);
-            if ($usage <= 25) {
-                $backgroundColor = "bg-success";
-            } elseif ($usage <= 50) {
-                $backgroundColor = "bg-warning";
-            } elseif ($usage <= 75) {
-                $backgroundColor = "bg-warning";
-            } else {
-                $backgroundColor = "bg-danger";
-            }
-            return [
+        }
+        fclose($memInfo);
+
+        $totalMem = $values["MemTotal"] ?? 0;
+        $freeMem = $values["MemFree"] ?? 0;
+        $availableMem = $values["MemAvailable"] ?? $freeMem;
+        if ($totalMem <= 0) {
+            return self::$memoryCache;
+        }
+
+        // /proc/meminfo usa kB. Mantemos MB/GB no contrato público existente.
+        $totalMem /= 1024;
+        $freeMem /= 1024;
+        $usedMem = $totalMem - ($availableMem / 1024);
+        $usedPercentage = ($usedMem / $totalMem) * 100;
+        $unit = $totalMem >= 1024 ? "GB" : "MB";
+        $divider = $unit === "GB" ? 1024 : 1;
+        $usage = round($usedPercentage, 2);
+
+        self::$memoryCache = [
             "total_mem" => round($totalMem / $divider, 2),
             "used_mem" => round($usedMem / $divider, 2),
             "free_mem" => round($freeMem / $divider, 2),
-            "used_percentage" => round($usedPercentage, 2),
+            "used_percentage" => $usage,
             "unit" => $unit,
-            "background" => $backgroundColor
+            "background" => self::usageBackground($usage)
         ];
-        } catch (\Throwable $e) {
-            return null;
-        }
+        self::$memorySampledAt = $now;
+
+        return self::$memoryCache;
     }
+
     public static function getDiskUsage($path = "/"): ?array
     {
-        $totalSpace = disk_total_space($path);
-        $freeSpace = disk_free_space($path);
+        $path = (string) $path;
+        $now = microtime(true);
+        if (isset(self::$diskCache[$path]) && ($now - self::$diskCache[$path]["sampled_at"]) < self::DISK_CACHE_TTL) {
+            return self::$diskCache[$path]["value"];
+        }
+
+        $totalSpace = @disk_total_space($path);
+        $freeSpace = @disk_free_space($path);
+        if ($totalSpace === false || $freeSpace === false || $totalSpace <= 0) {
+            return self::$diskCache[$path]["value"] ?? null;
+        }
+
         $usedSpace = $totalSpace - $freeSpace;
         $usedPercentage = $usedSpace / $totalSpace * 100;
         $unit = $totalSpace >= 1024 ** 3 ? "GB" : "MB";
@@ -114,24 +169,32 @@ class utilsFunction
         $usedSpaceFormatted = round($usedSpace / $divider, 2);
         $freeSpaceFormatted = round($freeSpace / $divider, 2);
         $usedPercentage = round($usedPercentage, 2);
-        $usage = $usedPercentage;
-        if ($usage >= 0 && $usage <= 25) {
-            $backgroundColor = "bg-success";
-        } elseif ($usage > 25 && $usage <= 50) {
-            $backgroundColor = "bg-info";
-        } elseif ($usage > 50 && $usage <= 75) {
-            $backgroundColor = "bg-warning";
-        } elseif ($usage > 75 && $usage <= 100) {
-            $backgroundColor = "bg-danger";
-        }
-        return [
+        $value = [
             "total_space" => $totalSpaceFormatted,
             "used_space" => $usedSpaceFormatted,
             "free_space" => $freeSpaceFormatted,
             "used_percentage" => $usedPercentage,
             "unit" => $unit,
-            "background" => $backgroundColor
+            "background" => self::usageBackground($usedPercentage)
         ];
+        self::$diskCache[$path] = ["sampled_at" => $now, "value" => $value];
+
+        return $value;
+    }
+
+    private static function usageBackground(float $usage): string
+    {
+        if ($usage <= 25) {
+            return "bg-success";
+        }
+        if ($usage <= 50) {
+            return "bg-info";
+        }
+        if ($usage <= 75) {
+            return "bg-warning";
+        }
+
+        return "bg-danger";
     }
     public static function toggleServer(string $idScreen, string $code): ?array
     {
