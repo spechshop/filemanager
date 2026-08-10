@@ -13,6 +13,8 @@ fi
 APP_DIR="$(cd -- "$(dirname -- "$SCRIPT_PATH")" 2>/dev/null && pwd -P)"
 SERVER="$APP_DIR/server.php"
 SERVICE="filemanager.service"
+SYSTEM_CONTROLLER="/usr/local/bin/filemanagerctl"
+SELF_PID="${BASHPID:-$$}"
 
 log()  { printf '\033[1;34m[filemanager]\033[0m %s\n' "$*"; }
 ok()   { printf '\033[1;32m[filemanager][ok]\033[0m %s\n' "$*"; }
@@ -36,6 +38,17 @@ run_systemctl() {
         systemctl "$@"
     elif command -v sudo >/dev/null 2>&1; then
         sudo systemctl "$@"
+    else
+        err "O serviço é do sistema. Execute este comando com sudo."
+        return 1
+    fi
+}
+
+run_systemd_run() {
+    if [ "$(id -u 2>/dev/null)" = "0" ]; then
+        systemd-run "$@"
+    elif command -v sudo >/dev/null 2>&1; then
+        sudo systemd-run "$@"
     else
         err "O serviço é do sistema. Execute este comando com sudo."
         return 1
@@ -67,7 +80,7 @@ processes_alive() {
 }
 
 stop_processes() {
-    local roots pids="" root attempt
+    local roots pids="" root pid attempt
     roots="$(server_pids)"
     [ -z "$roots" ] && return 0
 
@@ -77,7 +90,18 @@ stop_processes() {
         pids="$pids $(descendant_pids "$root") $root"
     done
 
-    kill $pids 2>/dev/null
+    # Quando o comando parte do terminal do próprio painel, este script é
+    # um descendente de server.php. Não o inclua na árvore a encerrar, ou
+    # o restart morre no stop e nunca alcança start_server.
+    roots="$pids"
+    pids=""
+    for pid in $roots; do
+        [ "$pid" = "$SELF_PID" ] && continue
+        [ "$pid" = "$$" ] && continue
+        pids="$pids $pid"
+    done
+
+    [ -n "$pids" ] && kill $pids 2>/dev/null
     for attempt in 1 2 3 4 5; do
         processes_alive "$pids" || break
         sleep 1
@@ -86,6 +110,34 @@ stop_processes() {
     processes_alive "$pids" && kill -KILL $pids 2>/dev/null
     sleep 1
     ! is_running
+}
+
+inside_service_cgroup() {
+    [ -r "/proc/$SELF_PID/cgroup" ] || return 1
+    grep -Eq "(^|/)$SERVICE(/|$)" "/proc/$SELF_PID/cgroup" 2>/dev/null
+}
+
+schedule_system_restart() {
+    local unit="filemanager-restart-$SELF_PID" systemctl_bin
+    systemctl_bin="$(command -v systemctl)" || return 1
+
+    # Um processo iniciado pelo painel pertence ao cgroup de filemanager.service.
+    # O helper transitório fica em outra unidade e, por isso, sobrevive ao stop
+    # para concluir o start depois que a resposta do comando for entregue.
+    run_systemd_run --quiet --collect --unit="$unit" --on-active=2s \
+        "$systemctl_bin" restart "$SERVICE" || return 1
+
+    ok "Reinício agendado. O painel pode desconectar por alguns segundos."
+}
+
+schedule_user_restart() {
+    local unit="filemanager-restart-$SELF_PID" systemctl_bin
+    systemctl_bin="$(command -v systemctl)" || return 1
+
+    systemd-run --user --quiet --collect --unit="$unit" --on-active=2s \
+        "$systemctl_bin" --user restart "$SERVICE" || return 1
+
+    ok "Reinício agendado. O painel pode desconectar por alguns segundos."
 }
 
 stop_server() {
@@ -158,6 +210,87 @@ start_server() {
         ok "FileManager iniciado."
     else
         err "O FileManager não iniciou. Consulte $APP_DIR/filemanager.log ou o journalctl."
+        return 1
+    fi
+}
+
+restart_server() {
+    local stopped
+
+    log "Reiniciando o FileManager..."
+
+    if system_unit_matches; then
+        if inside_service_cgroup; then
+            schedule_system_restart
+            return $?
+        fi
+        run_systemctl restart "$SERVICE" >/dev/null || return 1
+    elif user_unit_matches; then
+        if inside_service_cgroup; then
+            schedule_user_restart
+            return $?
+        fi
+        systemctl --user restart "$SERVICE" >/dev/null || return 1
+    else
+        # Se o shell/PTY pai for encerrado junto com server.php, ele pode mandar
+        # SIGHUP a este controlador. Ignore-o somente durante o stop e restaure
+        # os sinais antes de iniciar o novo servidor.
+        trap '' HUP TERM
+        stop_server
+        stopped=$?
+        trap - HUP TERM
+        [ "$stopped" -eq 0 ] || return "$stopped"
+        start_server
+        return $?
+    fi
+
+    sleep 1
+    if is_running; then
+        ok "FileManager reiniciado."
+    else
+        err "O FileManager não reiniciou. Consulte $APP_DIR/filemanager.log ou o journalctl."
+        return 1
+    fi
+}
+
+update_system_controller() {
+    local source="$APP_DIR/filemanagerctl" resolved_target
+
+    if [ ! -f "$source" ] || [ ! -f "$SERVER" ]; then
+        err "Execute o filemanagerctl novo a partir do diretório do FileManager."
+        return 1
+    fi
+
+    chmod +x "$source" 2>/dev/null || {
+        err "Não foi possível tornar $source executável."
+        return 1
+    }
+
+    resolved_target="$(readlink -f "$SYSTEM_CONTROLLER" 2>/dev/null)"
+    if [ -L "$SYSTEM_CONTROLLER" ] && [ "$resolved_target" = "$source" ]; then
+        ok "O controlador do sistema já aponta para a versão atual."
+        return 0
+    fi
+
+    if [ -d "$SYSTEM_CONTROLLER" ]; then
+        err "$SYSTEM_CONTROLLER é um diretório; não foi possível atualizá-lo."
+        return 1
+    fi
+
+    log "Atualizando $SYSTEM_CONTROLLER..."
+    if [ "$(id -u 2>/dev/null)" = "0" ]; then
+        ln -sfn "$source" "$SYSTEM_CONTROLLER"
+    elif command -v sudo >/dev/null 2>&1; then
+        sudo ln -sfn "$source" "$SYSTEM_CONTROLLER"
+    else
+        err "Permissão de administrador necessária; execute: sudo $source update"
+        return 1
+    fi
+
+    if [ "$(readlink -f "$SYSTEM_CONTROLLER" 2>/dev/null)" = "$source" ]; then
+        ok "Controlador do sistema atualizado: $SYSTEM_CONTROLLER -> $source"
+    else
+        err "Não foi possível atualizar $SYSTEM_CONTROLLER."
         return 1
     fi
 }
@@ -244,17 +377,19 @@ show_status() {
 }
 
 usage() {
-    printf 'Uso: %s {start|stop|restart|status|disable|enable}\n' "${0##*/}"
+    printf 'Uso: %s {start|stop|restart|status|disable|enable|update}\n' "${0##*/}"
     printf '  stop     desliga agora; continua habilitado para o próximo boot\n'
     printf '  disable  desliga e também remove/desativa o autostart\n'
+    printf '  update   atualiza o filemanagerctl do sistema (/usr/local/bin)\n'
 }
 
 case "${1:-}" in
     start)   start_server ;;
     stop)    stop_server ;;
-    restart) stop_server && start_server ;;
+    restart) restart_server ;;
     status)  show_status ;;
     disable) disable_autostart ;;
     enable)  enable_autostart ;;
+    update|--update|update-system|--update-system) update_system_controller ;;
     *)       usage; exit 2 ;;
 esac

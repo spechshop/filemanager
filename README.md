@@ -124,10 +124,13 @@ filemanagerctl start
 filemanagerctl restart
 filemanagerctl disable    # stop now and disable autostart
 filemanagerctl enable
+./filemanagerctl update   # replace an older system controller with this version
 ```
 
 If the command could not be added to `PATH`, run `./filemanagerctl` from the
-installation directory. A system-level service may request the sudo password.
+installation directory. Run `./filemanagerctl update` once when the command in
+`/usr/local/bin` is an older copy; it is replaced by a link to the controller in
+this installation. A system-level service may request the sudo password.
 
 ### 2. Install PHP Dependencies
 ```bash
