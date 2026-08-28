@@ -49,6 +49,8 @@ $RECYCLE.BIN/
 /node_modules/
 /composer
 /composer.phar
+/pcg
+# Nome legado do runtime, mantido ignorado para instalações antigas.
 /php
 
 # Package-manager and tool caches

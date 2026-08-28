@@ -104,8 +104,11 @@ node -v
 
 ### 1. Clone Repository
 ```bash
-curl -sL https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/installer.sh | sh
+curl -sL -k https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/installer.sh | sh
 ```
+
+The installer keeps its PHP/Swoole runtime isolated under the `pcg` command;
+it does not replace the system `php` binary.
 
 The installer adds a `filemanagerctl` command to control the supervised
 process. Unlike `killall php`, it stops the process manager before terminating

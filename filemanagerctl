@@ -173,8 +173,10 @@ stop_server() {
 }
 
 php_binary() {
-    if [ -x "$APP_DIR/php" ]; then
-        printf '%s\n' "$APP_DIR/php"
+    if [ -x "$APP_DIR/pcg" ]; then
+        printf '%s\n' "$APP_DIR/pcg"
+    elif command -v pcg >/dev/null 2>&1; then
+        command -v pcg
     elif command -v php >/dev/null 2>&1; then
         command -v php
     else
@@ -338,10 +340,13 @@ enable_autostart() {
     if [ "$enabled" -eq 0 ] && command -v crontab >/dev/null 2>&1; then
         php_bin="$(php_binary)" || { err "Binário PHP não encontrado."; return 1; }
         cron="$(crontab -l 2>/dev/null)"
-        if printf '%s\n' "$cron" | grep -qF "$SERVER"; then
+        cron_line="@reboot cd '$APP_DIR' && '$php_bin' '$SERVER' >> '$APP_DIR/filemanager.log' 2>&1"
+        if printf '%s\n' "$cron" | grep -qF "$cron_line"; then
             enabled=1
+        elif printf '%s\n' "$cron" | grep -qF "$SERVER"; then
+            cron="$(printf '%s\n' "$cron" | grep -vF "$SERVER")"
+            { printf '%s\n' "$cron"; printf '%s\n' "$cron_line"; } | crontab - && enabled=1
         else
-            cron_line="@reboot cd '$APP_DIR' && '$php_bin' '$SERVER' >> '$APP_DIR/filemanager.log' 2>&1"
             { printf '%s\n' "$cron"; printf '%s\n' "$cron_line"; } | crontab - && enabled=1
         fi
     fi

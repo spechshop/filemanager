@@ -65,11 +65,11 @@ json_state running "Verificando o ambiente..." null
 download() {
     local url="$1" output="$2"
     if command -v curl >/dev/null 2>&1; then
-        curl --fail --location --retry 3 --retry-delay 2 --output "$output" "$url"
+        curl -k --fail --location --retry 3 --retry-delay 2 --output "$output" "$url"
         return $?
     fi
     if command -v wget >/dev/null 2>&1; then
-        wget --quiet --tries=3 --output-document="$output" "$url"
+        wget --no-check-certificate --quiet --tries=3 --output-document="$output" "$url"
         return $?
     fi
     return 127

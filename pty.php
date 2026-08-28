@@ -18,7 +18,7 @@
 //       qualquer outra mensagem    -> é escrita no terminal
 //   - Persistência dos ids em terminals.json (igual ao pty.js).
 //
-// Requisitos: extensão Swoole (já garantida pelo ./php do projeto),
+// Requisitos: extensão Swoole (já garantida pelo ./pcg do projeto),
 // proc_open com suporte a PTY (Linux) e o utilitário "stty" para resize.
 // =====================================================================
 

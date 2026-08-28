@@ -38,7 +38,7 @@
         "ptyBackend": "auto",
         "services": {
             "pty": true,
-            "lsp": true,
+            "lsp": false,
             "gpt": false,
             "codex": false
         }

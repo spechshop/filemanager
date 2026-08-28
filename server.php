@@ -12,54 +12,24 @@
     }
 
     $cwd      = __DIR__;
-    $localPhp = $cwd . '/php';
+    $localPhp = $cwd . '/pcg';
 
-    // Verifica se o ./php local existe e tem Swoole
+    // Verifica se o runtime ./pcg local existe e tem Swoole.
     if (!file_exists($localPhp) || !is_executable($localPhp)) {
-        fwrite(STDERR, "[server.php] Swoole não encontrado e ./php não está disponível. Instale o Swoole ou adicione-o ao PATH.\n");
+        fwrite(STDERR, "[server.php] Swoole não encontrado e o runtime ./pcg não está disponível. Execute o installer.sh.\n");
         exit(1);
     }
 
     $hasSwoole = trim((string) shell_exec(escapeshellarg($localPhp) . ' --ri swoole 2>/dev/null'));
     if (empty($hasSwoole)) {
-        fwrite(STDERR, "[server.php] ./php também não possui Swoole. Não é possível continuar.\n");
+        fwrite(STDERR, "[server.php] O runtime ./pcg não possui Swoole. Não é possível continuar.\n");
         exit(1);
     }
 
-    // ---------------------------------------------------------
-    // Persistência: nas próximas vezes que o usuário entrar
-    // nesta pasta e rodar "php ...", o ./php local será usado.
-    // ---------------------------------------------------------
-    $escapedCwd = str_replace('"', '\\"', $cwd);
-    $marker     = '# filemanager-local-php';
-    $rcBlock    = "\n$marker\n"
-        . "if [ \"\$PWD\" = \"$escapedCwd\" ] || echo \"\$PWD\" | grep -q \"^$escapedCwd\"; then\n"
-        . "  export PATH=\"$escapedCwd:\$PATH\"\n"
-        . "fi\n";
-
-    // .bashrc / .zshrc / .profile
-    $home = getenv('HOME') ?: '/root';
-    foreach (['.bashrc', '.zshrc', '.profile'] as $rc) {
-        $rcPath = "$home/$rc";
-        if (file_exists($rcPath)) {
-            $content = file_get_contents($rcPath);
-            if (strpos($content, $marker) === false) {
-                file_put_contents($rcPath, $content . $rcBlock);
-            }
-        }
-    }
-
-    // .envrc para quem usa direnv
-    $envrc = $cwd . '/.envrc';
-    $envrcLine = "export PATH=\"$escapedCwd:\$PATH\"\n";
-    if (!file_exists($envrc) || strpos((string) file_get_contents($envrc), $envrcLine) === false) {
-        file_put_contents($envrc, $envrcLine, FILE_APPEND);
-    }
-
-    fwrite(STDOUT, "[server.php] Sistema PHP sem Swoole. Re-executando com ./php local e persistindo PATH...\n");
+    fwrite(STDOUT, "[server.php] PHP atual sem Swoole. Re-executando com o runtime isolado ./pcg...\n");
 
     // ---------------------------------------------------------
-    // Re-executa este mesmo script com o ./php local.
+    // Re-executa este mesmo script com o ./pcg local.
     // pcntl_exec substitui o processo atual (sem fork).
     // ---------------------------------------------------------
     if (function_exists('pcntl_exec')) {

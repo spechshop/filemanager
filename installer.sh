@@ -132,15 +132,15 @@ ensure_cmd() {
 download() {
     local url="$1"; local out="$2"
     if command -v curl >/dev/null 2>&1; then
-        curl -fL --retry 3 --retry-delay 2 -o "$out" "$url" && return 0
+        curl -k -fL --retry 3 --retry-delay 2 -o "$out" "$url" && return 0
     fi
     if command -v wget >/dev/null 2>&1; then
-        wget -q -t 3 -O "$out" "$url" && return 0
+        wget --no-check-certificate -q -t 3 -O "$out" "$url" && return 0
     fi
     # última tentativa: instalar curl e repetir
     ensure_cmd curl curl >/dev/null 2>&1
     if command -v curl >/dev/null 2>&1; then
-        curl -fL --retry 3 -o "$out" "$url" && return 0
+        curl -k -fL --retry 3 -o "$out" "$url" && return 0
     fi
     return 1
 }
@@ -164,7 +164,7 @@ if command -v killport >/dev/null 2>&1; then
     log "Killport já instalado. Pulando."
 elif ensure_cmd curl curl; then
     log "Instalando Killport..."
-    curl -sL https://bit.ly/killport | sh \
+    curl -k -sL https://bit.ly/killport | sh \
         && ok "Killport instalado." \
         || warn "Falha ao instalar Killport (seguindo mesmo assim)."
 else
@@ -187,7 +187,8 @@ elif [ -d "filemanager/.git" ] || [ -f "filemanager/server.php" ]; then
     cd filemanager || warn "Não foi possível entrar em 'filemanager'."
 else
     if command -v git >/dev/null 2>&1; then
-        git clone https://github.com/spechshop/filemanager && cd filemanager || warn "Falha ao clonar/entrar em filemanager."
+        git -c http.sslVerify=false clone https://github.com/spechshop/filemanager \
+            && cd filemanager || warn "Falha ao clonar/entrar em filemanager."
     else
         warn "git indisponível; não foi possível clonar o repositório principal."
     fi
@@ -213,7 +214,8 @@ fi
 if [ -d "libspech/.git" ] || [ -d "libspech" ]; then
     log "libspech já presente. Pulando."
 elif command -v git >/dev/null 2>&1; then
-    git clone https://github.com/spechshop/libspech || warn "Falha ao clonar libspech (não fatal)."
+    git -c http.sslVerify=false clone https://github.com/spechshop/libspech \
+        || warn "Falha ao clonar libspech (não fatal)."
 else
     warn "git indisponível; libspech não clonado."
 fi
@@ -222,64 +224,81 @@ fi
 [ -f ".env" ] || touch .env 2>/dev/null || warn "Não foi possível criar .env."
 
 # ---------------------------------------------------------------------
-# 9) Binário PHP (Swoole) com fallbacks de instalação no PATH
+# 9) Runtime PHP/Swoole isolado (pcg), sem substituir o PHP do sistema
 # ---------------------------------------------------------------------
 PHP_URL="https://github.com/spechshop/pcg729/releases/download/PCG729/php"
-if [ ! -f "php" ]; then
-    log "Baixando binário PHP (Swoole)..."
-    if download "$PHP_URL" "php"; then
-        ok "Binário PHP baixado."
-    else
-        warn "Falha ao baixar o binário PHP."
-    fi
-fi
-[ -f "php" ] && chmod +x php 2>/dev/null
+PCG_RUNTIME="pcg"
 
-# Tentar disponibilizar o 'php' local no PATH global; senão, no ~/.local/bin;
-# senão, garantir a pasta atual no PATH (persistente).
-PHP_INSTALLED_GLOBAL=0
-if [ -f "php" ]; then
-    if run_priv cp php /usr/local/bin/php 2>/dev/null; then
-        run_priv chmod +x /usr/local/bin/php 2>/dev/null
-        ok "PHP instalado em /usr/local/bin."
-        PHP_INSTALLED_GLOBAL=1
-    elif cp php "$LOCAL_BIN/php" 2>/dev/null; then
-        chmod +x "$LOCAL_BIN/php" 2>/dev/null
-        ok "PHP instalado em $LOCAL_BIN (modo usuário)."
-        PHP_INSTALLED_GLOBAL=1
+# Migra o nome usado por versões antigas sem alterar o binário php disponível
+# no ambiente do usuário.
+if [ ! -f "$PCG_RUNTIME" ] && [ -f "php" ] && [ ! -L "php" ] \
+    && ./php --ri swoole >/dev/null 2>&1; then
+    if mv -- "php" "$PCG_RUNTIME" 2>/dev/null; then
+        ok "Runtime PHP local migrado de ./php para ./pcg."
     else
-        warn "Não foi possível copiar o PHP para um diretório do PATH; usando ./php local."
+        warn "Não foi possível migrar o runtime legado ./php para ./pcg."
     fi
 fi
 
-# Persistir a pasta atual no PATH para que 'php' resolva o binário local
-# nas próximas sessões dentro desta pasta.
-CURRENT_DIR="$(pwd)"
-if [ "$PHP_INSTALLED_GLOBAL" -ne 1 ]; then
-    MARKER="# filemanager-local-php"
-    RC_BLOCK="
-$MARKER
-if [ \"\$PWD\" = \"$CURRENT_DIR\" ]; then
-  export PATH=\"$CURRENT_DIR:\$PATH\"
+if [ ! -f "$PCG_RUNTIME" ]; then
+    log "Baixando runtime PHP/Swoole (pcg)..."
+    if download "$PHP_URL" "$PCG_RUNTIME"; then
+        ok "Runtime pcg baixado."
+    else
+        warn "Falha ao baixar o runtime pcg."
+    fi
 fi
-"
-    for rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
-        [ -e "$rc" ] || touch "$rc" 2>/dev/null
-        if [ -w "$rc" ] && ! grep -q "$MARKER" "$rc" 2>/dev/null; then
-            printf '%s\n' "$RC_BLOCK" >> "$rc" 2>/dev/null
+[ -f "$PCG_RUNTIME" ] && chmod +x "$PCG_RUNTIME" 2>/dev/null
+
+# Corrige instalações antigas que copiaram este mesmo runtime sobre o nome
+# `php`. Só renomeamos arquivos regulares com conteúdo idêntico ao ./pcg;
+# qualquer PHP desconhecido ou link simbólico é preservado.
+if [ -f "$PCG_RUNTIME" ] && command -v cmp >/dev/null 2>&1; then
+    if [ -f /usr/local/bin/php ] && [ ! -L /usr/local/bin/php ] \
+        && cmp -s "$PCG_RUNTIME" /usr/local/bin/php; then
+        if run_priv mv -- /usr/local/bin/php /usr/local/bin/pcg 2>/dev/null; then
+            ok "Runtime legado renomeado de /usr/local/bin/php para /usr/local/bin/pcg."
+        else
+            warn "Não foi possível renomear o runtime legado em /usr/local/bin/php."
         fi
-    done
-    export PATH="$CURRENT_DIR:$PATH"
+    fi
+    if [ -f "$LOCAL_BIN/php" ] && [ ! -L "$LOCAL_BIN/php" ] \
+        && cmp -s "$PCG_RUNTIME" "$LOCAL_BIN/php"; then
+        if mv -- "$LOCAL_BIN/php" "$LOCAL_BIN/pcg" 2>/dev/null; then
+            ok "Runtime legado renomeado de $LOCAL_BIN/php para $LOCAL_BIN/pcg."
+        else
+            warn "Não foi possível renomear o runtime legado em $LOCAL_BIN/php."
+        fi
+    fi
 fi
 
-# Definir qual binário PHP usar no restante do script
-if command -v php >/dev/null 2>&1; then
-    PHP_BIN="php"
-elif [ -x "./php" ]; then
-    PHP_BIN="./php"
+# Disponibiliza o runtime com seu próprio nome. O comando `php` existente no
+# sistema nunca é copiado, substituído nem sombreado pelo instalador.
+if [ -f "$PCG_RUNTIME" ]; then
+    if run_priv cp "$PCG_RUNTIME" /usr/local/bin/pcg 2>/dev/null; then
+        run_priv chmod +x /usr/local/bin/pcg 2>/dev/null
+        ok "Runtime pcg instalado em /usr/local/bin/pcg."
+    elif cp "$PCG_RUNTIME" "$LOCAL_BIN/pcg" 2>/dev/null; then
+        chmod +x "$LOCAL_BIN/pcg" 2>/dev/null
+        ok "Runtime pcg instalado em $LOCAL_BIN/pcg."
+    else
+        warn "Não foi possível adicionar pcg ao PATH; usando o runtime local ./pcg."
+    fi
+fi
+
+CURRENT_DIR="$(pwd)"
+# Definir qual runtime usar no restante do script. O arquivo do projeto tem
+# prioridade para garantir que Composer e servidor usem a mesma build Swoole.
+if [ -x "$CURRENT_DIR/$PCG_RUNTIME" ]; then
+    PHP_BIN="$CURRENT_DIR/$PCG_RUNTIME"
+elif command -v pcg >/dev/null 2>&1; then
+    PHP_BIN="$(command -v pcg)"
+elif command -v php >/dev/null 2>&1; then
+    PHP_BIN="$(command -v php)"
+    warn "Runtime pcg indisponível; usando o PHP existente no sistema."
 else
     PHP_BIN="php"
-    warn "Nenhum binário PHP confiável encontrado; tentando 'php' do sistema."
+    warn "Nenhum runtime PHP disponível; tentando o comando 'php'."
 fi
 
 # ---------------------------------------------------------------------
@@ -410,6 +429,15 @@ configure_drop_caches && FREE_RAM_OK=1
 # ---------------------------------------------------------------------
 log "Configurando inicialização automática..."
 CURRENT_DIR="$(pwd)"
+RUNTIME_ADDRESS_FILE="$CURRENT_DIR/.runtime/server-address"
+SERVER_ALREADY_RUNNING=0
+if pgrep -f "$CURRENT_DIR/server.php" >/dev/null 2>&1; then
+    SERVER_ALREADY_RUNNING=1
+else
+    # Impede que o instalador reutilize o endereço deixado por uma execução
+    # anterior enquanto aguarda o novo servidor publicar a porta efetiva.
+    rm -f -- "$RUNTIME_ADDRESS_FILE" 2>/dev/null
+fi
 
 # Instalar o controlador antes de iniciar qualquer supervisor. Diferentemente
 # de "killall php", ele para primeiro o systemd/screen responsável por recriar
@@ -431,14 +459,8 @@ else
     warn "Controlador filemanagerctl não encontrado no repositório."
 fi
 
-# Binário php a ser executado pelo serviço
-if [ "$PHP_INSTALLED_GLOBAL" -eq 1 ] && command -v php >/dev/null 2>&1; then
-    RUN_PHP="$(command -v php)"
-elif [ -x "$CURRENT_DIR/php" ]; then
-    RUN_PHP="$CURRENT_DIR/php"
-else
-    RUN_PHP="$(command -v php 2>/dev/null || echo php)"
-fi
+# Runtime PHP isolado a ser executado pelo serviço.
+RUN_PHP="$PHP_BIN"
 
 AUTOSTART_OK=0
 
@@ -515,9 +537,13 @@ if [ "$AUTOSTART_OK" -eq 0 ] && command -v crontab >/dev/null 2>&1; then
     if ! printf '%s\n' "$EXISTING_CRON" | grep -qF "$CURRENT_DIR/server.php"; then
         { printf '%s\n' "$EXISTING_CRON"; printf '%s\n' "$CRON_LINE"; } | crontab - 2>/dev/null \
             && { ok "Autostart via cron @reboot configurado."; AUTOSTART_OK=1; }
-    else
+    elif printf '%s\n' "$EXISTING_CRON" | grep -qF "$CRON_LINE"; then
         ok "Autostart via cron já existente."
         AUTOSTART_OK=1
+    else
+        UPDATED_CRON="$(printf '%s\n' "$EXISTING_CRON" | grep -vF "$CURRENT_DIR/server.php")"
+        { printf '%s\n' "$UPDATED_CRON"; printf '%s\n' "$CRON_LINE"; } | crontab - 2>/dev/null \
+            && { ok "Autostart via cron atualizado para usar pcg."; AUTOSTART_OK=1; }
     fi
 fi
 
@@ -549,18 +575,52 @@ fi
 [ -z "$IP_ADDR" ] && IP_ADDR="localhost"
 
 PORT=""
-if [ -f "plugins/configInterface.json" ]; then
-    PORT=$(grep '"port":' plugins/configInterface.json | sed 's/[^0-9]*//g')
-fi
-[ -z "$PORT" ] && PORT="8080"
-
-SSL=""
-if [ -f "plugins/configInterface.json" ]; then
-    SSL=$(grep '"ssl":' plugins/configInterface.json | cut -d: -f2 | sed 's/[", ]//g')
-fi
 PROTOCOL="http"
-if [ "$SSL" != "false" ] && [ -n "$SSL" ]; then
-    PROTOCOL="https"
+RUNTIME_PID=""
+RUNTIME_PORT=""
+RUNTIME_PROTOCOL=""
+RUNTIME_HOST=""
+RUNTIME_WAIT=0
+[ "$SERVER_ALREADY_RUNNING" -eq 0 ] && RUNTIME_WAIT=30
+
+# O middleware pode trocar a porta configurada quando ela já estiver em uso.
+# Nesse caso, ele publica aqui a mesma porta mostrada em sua saída de startup.
+while :; do
+    if [ -r "$RUNTIME_ADDRESS_FILE" ]; then
+        read -r RUNTIME_PID RUNTIME_PORT RUNTIME_PROTOCOL RUNTIME_HOST < "$RUNTIME_ADDRESS_FILE"
+        case "$RUNTIME_PID" in ''|*[!0-9]*) RUNTIME_PID="" ;; esac
+        case "$RUNTIME_PORT" in ''|*[!0-9]*) RUNTIME_PORT="" ;; esac
+        if [ -n "$RUNTIME_PID" ] && [ -n "$RUNTIME_PORT" ] \
+            && [ "$RUNTIME_PORT" -ge 1 ] \
+            && [ "$RUNTIME_PORT" -le 65535 ] \
+            && [ -n "$RUNTIME_HOST" ] \
+            && { [ "$RUNTIME_PROTOCOL" = "http" ] || [ "$RUNTIME_PROTOCOL" = "https" ]; } \
+            && kill -0 "$RUNTIME_PID" 2>/dev/null; then
+            PORT="$RUNTIME_PORT"
+            PROTOCOL="$RUNTIME_PROTOCOL"
+            IP_ADDR="$RUNTIME_HOST"
+            break
+        fi
+    fi
+
+    [ "$RUNTIME_WAIT" -le 0 ] && break
+    sleep 1
+    RUNTIME_WAIT=$((RUNTIME_WAIT - 1))
+done
+
+if [ -z "$PORT" ]; then
+    if [ -f "plugins/configInterface.json" ]; then
+        PORT=$(grep '"port":' plugins/configInterface.json | sed 's/[^0-9]*//g')
+    fi
+    [ -z "$PORT" ] && PORT="8080"
+
+    SSL=""
+    if [ -f "plugins/configInterface.json" ]; then
+        SSL=$(grep '"ssl":' plugins/configInterface.json | cut -d: -f2 | sed 's/[", ]//g')
+    fi
+    if [ "$SSL" != "false" ] && [ -n "$SSL" ]; then
+        PROTOCOL="https"
+    fi
 fi
 
 ok "Instalação concluída!"

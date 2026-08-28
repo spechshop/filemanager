@@ -13,6 +13,35 @@ use Swoole\Timer;
 
 class server
 {
+    private static function publishRuntimeAddress(
+        \Swoole\Http\Server $server,
+        string $protocol,
+        string $host
+    ): void
+    {
+        $runtimeDir = dirname(__DIR__, 3) . '/.runtime';
+        if (!is_dir($runtimeDir) && !@mkdir($runtimeDir, 0775, true) && !is_dir($runtimeDir)) {
+            error_log("[filemanager] Não foi possível criar o diretório de estado do servidor: {$runtimeDir}");
+            return;
+        }
+
+        $addressFile = $runtimeDir . '/server-address';
+        $temporaryFile = $addressFile . '.tmp.' . getmypid();
+        $contents = sprintf(
+            "%d %d %s %s\n",
+            getmypid(),
+            $server->port,
+            rtrim($protocol, ':/'),
+            trim($host)
+        );
+
+        if (@file_put_contents($temporaryFile, $contents, LOCK_EX) === false
+            || !@rename($temporaryFile, $addressFile)) {
+            @unlink($temporaryFile);
+            error_log("[filemanager] Não foi possível registrar o endereço real do servidor em {$addressFile}");
+        }
+    }
+
     private static function autoRestartEnabled(): bool
     {
         $configPath = dirname(__DIR__, 2) . '/configInterface.json';
@@ -98,6 +127,8 @@ class server
         if (!empty($server->setting["ssl_cert_file"])) {
             $prefix = "https://";
         }
+        $localIp = (string) \libspech\Network\network::getLocalIp();
+        self::publishRuntimeAddress($server, $prefix, $localIp);
         Timer::tick(1000, function () {
             $dataKeys = \plugins\Database\call::data();
             $listRoutes = \plugins\Request\controller::listPages();                   
@@ -111,7 +142,7 @@ class server
             cache::global()['cachePages'] = $cachePages;
         });
         print $cli->color(sprintf("O servidor está sendo executado no endereço => %s%s:%s%s", $prefix, $server->host, $server->port, PHP_EOL), "yellow");
-         print $cli->color(sprintf("O servidor está sendo executado no endereço => %s%s:%s%s", $prefix, \libspech\Network\network::getLocalIp(), $server->port, PHP_EOL), "yellow");
+        print $cli->color(sprintf("O servidor está sendo executado no endereço => %s%s:%s%s", $prefix, $localIp, $server->port, PHP_EOL), "yellow");
         
         self::tick($server, 10000, $tableServer);
     }
