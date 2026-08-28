@@ -426,29 +426,28 @@ export HOME="${HOME:-/root}"
 export COMPOSER_HOME="${COMPOSER_HOME:-$HOME/.composer}"
 mkdir -p "$COMPOSER_HOME" 2>/dev/null
 
-# Localizar um composer utilizável: ./composer -> composer no PATH -> baixar
-COMPOSER_CMD=""
-if [ -f "./composer" ]; then
-    chmod +x ./composer 2>/dev/null
-    COMPOSER_CMD="$PHP_BIN ./composer"
-elif command -v composer >/dev/null 2>&1; then
-    COMPOSER_CMD="composer"
+# Sempre preparar um Composer local. O binário do sistema nunca participa do
+# fluxo, nem mesmo como fallback quando o download falha.
+COMPOSER_BIN="$CURRENT_DIR/composer"
+COMPOSER_DOWNLOAD="$CURRENT_DIR/.composer-download.$$"
+COMPOSER_READY=0
+log "Baixando o Composer local..."
+if download "https://getcomposer.org/composer-stable.phar" "$COMPOSER_DOWNLOAD" \
+    && "$PHP_BIN" "$COMPOSER_DOWNLOAD" --version >/dev/null 2>&1 \
+    && chmod +x "$COMPOSER_DOWNLOAD" 2>/dev/null \
+    && mv -f -- "$COMPOSER_DOWNLOAD" "$COMPOSER_BIN"; then
+    COMPOSER_READY=1
+    ok "Composer local preparado em ./composer."
 else
-    log "Composer não encontrado; tentando baixar composer.phar..."
-    if download "https://getcomposer.org/composer-stable.phar" "composer" ; then
-        chmod +x composer 2>/dev/null
-        COMPOSER_CMD="$PHP_BIN ./composer"
-        ok "Composer baixado."
-    else
-        warn "Não foi possível obter o Composer; dependências PHP podem não ser instaladas."
-    fi
+    rm -f -- "$COMPOSER_DOWNLOAD"
+    warn "Não foi possível preparar o Composer local; o Composer do sistema não será usado."
 fi
 
-if [ -n "$COMPOSER_CMD" ]; then
+if [ "$COMPOSER_READY" -eq 1 ]; then
     log "Instalando dependências PHP (Composer)..."
-    if ! $COMPOSER_CMD install --no-interaction; then
+    if ! "$PHP_BIN" "$COMPOSER_BIN" install --no-interaction; then
         warn "composer install falhou. Tentando com --ignore-platform-reqs..."
-        $COMPOSER_CMD install --no-interaction --ignore-platform-reqs \
+        "$PHP_BIN" "$COMPOSER_BIN" install --no-interaction --ignore-platform-reqs \
             || warn "composer install falhou mesmo com fallbacks."
     else
         ok "Dependências PHP instaladas."
