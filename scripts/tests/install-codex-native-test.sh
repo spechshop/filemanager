@@ -238,6 +238,50 @@ case_classifier_signatures() {
     ! npm_log_has_native_toolchain_failure "$log_file"
 }
 
+case_micromamba_certificate_retry() {
+    source "$HELPER"
+    quiet_callbacks
+    local fixture calls
+    fixture="$(new_fixture)" || return 1
+    calls="$fixture/micromamba-calls"
+    RUNTIME_DIR="$fixture/project/.runtime"
+    TOOLCHAIN_DIR="$RUNTIME_DIR/native-toolchain"
+    TOOLCHAIN_GCC_PACKAGE=gcc_linux-64=14
+    TOOLCHAIN_GXX_PACKAGE=gxx_linux-64=14
+    TOOLCHAIN_SYSROOT_PACKAGE=sysroot_linux-64=2.17
+    mkdir -p "$RUNTIME_DIR" "$fixture/bin"
+    configure_native_toolchain_paths
+    MICROMAMBA_BIN="$fixture/bin/micromamba"
+    printf '%s\n' 'Download error (28) Operation timed out' > "$MICROMAMBA_TOOLCHAIN_LOG"
+    ! micromamba_log_has_certificate_failure "$MICROMAMBA_TOOLCHAIN_LOG" || return 1
+    printf '%s\n' \
+        '#!/usr/bin/env bash' \
+        'printf "%s\n" "$*" >> "'"$calls"'"' \
+        'case " $* " in' \
+        '  *" --ssl-verify false "*) exit 0 ;;' \
+        'esac' \
+        'printf "%s\n" "Download error (60) SSL peer certificate was not OK" >&2' \
+        'printf "%s\n" "SSL certificate OpenSSL verify result: unable to get local issuer certificate" >&2' \
+        'exit 1' > "$MICROMAMBA_BIN"
+    chmod +x "$MICROMAMBA_BIN"
+
+    native_platform_packages() { :; }
+    install_micromamba() { :; }
+    locate_native_toolchain() {
+        grep -Fq -- '--ssl-verify false' "$calls" 2>/dev/null || return 1
+        TOOLCHAIN_GCC_VERSION=14.4.0
+        TOOLCHAIN_PYTHON="$TOOLCHAIN_BIN/python"
+        TOOLCHAIN_CC="$TOOLCHAIN_BIN/native-gcc"
+        TOOLCHAIN_CXX="$TOOLCHAIN_BIN/native-g++"
+        TOOLCHAIN_MAKE="$TOOLCHAIN_BIN/make"
+    }
+
+    prepare_native_toolchain || return 1
+    assert_eq "$(wc -l < "$calls")" 2 || return 1
+    assert_contains "$calls" "--ssl-verify false" || return 1
+    assert_contains "$MICROMAMBA_TOOLCHAIN_LOG" "unable to get local issuer certificate"
+}
+
 case_arm64_package_mapping() {
     source "$HELPER"
     local fixture fake_bin old_path
@@ -279,6 +323,7 @@ run_case "C/D: GCC antigo aciona fallback local sem root" case_old_compiler_fall
 run_case "E: toolchain existente e reutilizado" case_existing_toolchain_reused
 run_case "F: erro de rede nao aciona fallback" case_network_failure_does_not_fallback
 run_case "assinaturas do classificador" case_classifier_signatures
+run_case "erro de certificado repete micromamba com TLS excepcional" case_micromamba_certificate_retry
 run_case "mapeamento Linux aarch64" case_arm64_package_mapping
 run_case "G: validacao real do node-pty" case_node_pty_validation
 
