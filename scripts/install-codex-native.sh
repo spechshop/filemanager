@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-# Suporte isolado para addons Node.js nativos. Este arquivo é carregado por
-# install-codex.sh depois que o runtime Node e o npm já foram selecionados.
+# Suporte isolado para runtimes Linux antigos e addons Node.js nativos. Este
+# arquivo é carregado por install-codex.sh antes da seleção do runtime Node.
 
 configure_native_toolchain_paths() {
     MICROMAMBA_DIR="$RUNTIME_DIR/micromamba"
@@ -11,6 +11,43 @@ configure_native_toolchain_paths() {
     TOOLCHAIN_BIN="$TOOLCHAIN_DIR/bin"
     SYSTEM_NPM_INSTALL_LOG="$RUNTIME_DIR/npm-install-system.log"
     export MAMBA_ROOT_PREFIX
+}
+
+version_is_older_than() {
+    local current="$1" required="$2" current_major current_minor required_major required_minor
+    current_major="${current%%.*}"
+    current_minor="${current#*.}"
+    current_minor="${current_minor%%.*}"
+    required_major="${required%%.*}"
+    required_minor="${required#*.}"
+    required_minor="${required_minor%%.*}"
+    [[ "$current_major" =~ ^[0-9]+$ && "$current_minor" =~ ^[0-9]+$ ]] || return 1
+    [[ "$required_major" =~ ^[0-9]+$ && "$required_minor" =~ ^[0-9]+$ ]] || return 1
+    [ "$current_major" -lt "$required_major" ] \
+        || { [ "$current_major" -eq "$required_major" ] && [ "$current_minor" -lt "$required_minor" ]; }
+}
+
+system_glibc_version() {
+    local version
+    if command -v getconf >/dev/null 2>&1; then
+        version="$(getconf GNU_LIBC_VERSION 2>/dev/null | awk '{ print $2; exit }')"
+        [[ "$version" =~ ^[0-9]+\.[0-9]+ ]] && { printf '%s\n' "$version"; return 0; }
+    fi
+    if command -v ldd >/dev/null 2>&1; then
+        version="$(ldd --version 2>/dev/null | sed -n '1s/.* \([0-9][0-9]*\.[0-9][0-9]*\).*/\1/p')"
+        [[ "$version" =~ ^[0-9]+\.[0-9]+ ]] && { printf '%s\n' "$version"; return 0; }
+    fi
+    return 1
+}
+
+select_compatible_node_version() {
+    local index_file="$1" target_major="$2"
+    awk -F '\t' -v prefix="v${target_major}." '
+        index($1, prefix) == 1 && ("," $3 ",") ~ /,linux-x64-glibc-217,/ {
+            print $1
+            exit
+        }
+    ' "$index_file"
 }
 
 python_version_fields() {

@@ -76,6 +76,15 @@ download() {
     return 127
 }
 
+NATIVE_TOOLCHAIN_HELPER="$SCRIPT_DIR/install-codex-native.sh"
+if [ ! -r "$NATIVE_TOOLCHAIN_HELPER" ]; then
+    LAST_MESSAGE="O suporte de instalação para runtimes antigos e addons Node.js nativos não foi encontrado."
+    exit 1
+fi
+# shellcheck source=install-codex-native.sh
+source "$NATIVE_TOOLCHAIN_HELPER"
+configure_native_toolchain_paths
+
 node_major() {
     "$1" --version 2>/dev/null | sed -n 's/^v\([0-9][0-9]*\).*/\1/p'
 }
@@ -95,6 +104,8 @@ fi
 
 install_managed_node() {
     local target_major="$1" machine platform release_path sums archive filename checksum temp_dir extracted
+    local force_compat="${2:-0}" download_base="https://nodejs.org/dist"
+    local archive_suffix archive_extension glibc_version node_error release_index
     machine="$(uname -m 2>/dev/null)"
     platform="$(uname -s 2>/dev/null | tr '[:upper:]' '[:lower:]')"
     case "$machine" in
@@ -113,16 +124,46 @@ install_managed_node() {
     }
 
     temp_dir="$(mktemp -d "$RUNTIME_DIR/node-install.XXXXXX")" || return 1
-    release_path="latest-v${target_major}.x"
+    archive_suffix="linux-$machine"
+    archive_extension="tar.gz"
+    command -v xz >/dev/null 2>&1 && archive_extension="tar.xz"
+    glibc_version="$(system_glibc_version 2>/dev/null || true)"
+    if [ "$machine" = "x64" ] && { [ "$force_compat" -eq 1 ] \
+        || { [ -n "$glibc_version" ] && version_is_older_than "$glibc_version" 2.28; }; }; then
+        if [ "$force_compat" -ne 1 ] && [ -n "$glibc_version" ]; then
+            log "glibc $glibc_version detectada; selecionando Node.js compatível com glibc 2.17."
+        else
+            log "Selecionando Node.js compatível com glibc 2.17."
+        fi
+        download_base="https://unofficial-builds.nodejs.org/download/release"
+        archive_suffix="linux-x64-glibc-217"
+    fi
+
+    if [ "$archive_suffix" = "linux-x64-glibc-217" ]; then
+        release_index="$temp_dir/index.tab"
+        if ! download "$download_base/index.tab" "$release_index"; then
+            LAST_MESSAGE="Não foi possível obter o índice de builds Node.js compatíveis com glibc 2.17."
+            rm -rf -- "$temp_dir"
+            return 1
+        fi
+        release_path="$(select_compatible_node_version "$release_index" "$target_major")"
+        if [ -z "$release_path" ]; then
+            LAST_MESSAGE="Não existe build Node.js ${target_major} compatível com glibc 2.17 para esta plataforma."
+            rm -rf -- "$temp_dir"
+            return 1
+        fi
+    else
+        release_path="latest-v${target_major}.x"
+    fi
     sums="$temp_dir/SHASUMS256.txt"
     json_state running "Baixando a versão mais recente do Node.js ${target_major}..." null
     log "Preparando o runtime gerenciado Node.js ${target_major}."
-    if ! download "https://nodejs.org/dist/$release_path/SHASUMS256.txt" "$sums"; then
-        LAST_MESSAGE="Não foi possível obter a lista oficial de versões do Node.js."
+    if ! download "$download_base/$release_path/SHASUMS256.txt" "$sums"; then
+        LAST_MESSAGE="Não foi possível obter a lista verificada de versões do Node.js."
         rm -rf -- "$temp_dir"
         return 1
     fi
-    filename="$(awk -v suffix="linux-$machine.tar.gz" '$2 ~ suffix "$" { print $2; exit }' "$sums")"
+    filename="$(awk -v suffix="$archive_suffix.$archive_extension" '$2 ~ suffix "$" { print $2; exit }' "$sums")"
     checksum="$(awk -v file="$filename" '$2 == file { print $1; exit }' "$sums")"
     if [ -z "$filename" ] || [ -z "$checksum" ]; then
         LAST_MESSAGE="Não foi encontrado um pacote Node.js ${target_major} para esta arquitetura."
@@ -130,7 +171,7 @@ install_managed_node() {
         return 1
     fi
     archive="$temp_dir/$filename"
-    if ! download "https://nodejs.org/dist/$release_path/$filename" "$archive"; then
+    if ! download "$download_base/$release_path/$filename" "$archive"; then
         LAST_MESSAGE="Falha ao baixar o Node.js ${target_major}."
         rm -rf -- "$temp_dir"
         return 1
@@ -146,14 +187,29 @@ install_managed_node() {
         rm -rf -- "$temp_dir"
         return 1
     fi
-    if ! tar -xzf "$archive" -C "$temp_dir"; then
+    if { [ "$archive_extension" = "tar.xz" ] && ! tar -xJf "$archive" -C "$temp_dir"; } \
+        || { [ "$archive_extension" = "tar.gz" ] && ! tar -xzf "$archive" -C "$temp_dir"; }; then
         LAST_MESSAGE="Não foi possível extrair o pacote Node.js."
         rm -rf -- "$temp_dir"
         return 1
     fi
-    extracted="$temp_dir/${filename%.tar.gz}"
-    if [ ! -x "$extracted/bin/node" ]; then
-        LAST_MESSAGE="O pacote Node.js baixado não contém um executável válido."
+    extracted="$temp_dir/${filename%.tar.*}"
+    if [ ! -x "$extracted/bin/node" ] \
+        || [ ! -f "$extracted/lib/node_modules/npm/bin/npm-cli.js" ]; then
+        LAST_MESSAGE="O pacote Node.js baixado não contém executáveis Node.js e npm válidos."
+        rm -rf -- "$temp_dir"
+        return 1
+    fi
+    node_error="$temp_dir/node-runtime-error.log"
+    if ! "$extracted/bin/node" --version > /dev/null 2> "$node_error"; then
+        if [ "$machine" = "x64" ] && [ "$archive_suffix" != "linux-x64-glibc-217" ]; then
+            warn "O Node.js oficial não executa neste sistema; tentando build compatível com glibc 2.17."
+            rm -rf -- "$temp_dir"
+            install_managed_node "$target_major" 1
+            return $?
+        fi
+        LAST_MESSAGE="O pacote Node.js foi extraído, mas o binário não executa neste sistema."
+        [ -s "$node_error" ] && sed -n '1,8p' "$node_error" >&2
         rm -rf -- "$temp_dir"
         return 1
     fi
@@ -190,15 +246,6 @@ run_npm() {
         "$NPM_CLI" "$@"
     fi
 }
-
-NATIVE_TOOLCHAIN_HELPER="$SCRIPT_DIR/install-codex-native.sh"
-if [ ! -r "$NATIVE_TOOLCHAIN_HELPER" ]; then
-    LAST_MESSAGE="O suporte de instalação para addons Node.js nativos não foi encontrado."
-    exit 1
-fi
-# shellcheck source=install-codex-native.sh
-source "$NATIVE_TOOLCHAIN_HELPER"
-configure_native_toolchain_paths
 
 log "Instalando dependências com Node.js $($NODE_BIN --version)..."
 if ! install_filemanager_node_dependencies; then

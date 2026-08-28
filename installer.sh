@@ -255,10 +255,47 @@ fi
 # ---------------------------------------------------------------------
 # 7) Runtime Node, dependências e Codex CLI
 # ---------------------------------------------------------------------
+# Atualiza apenas os scripts de runtime antes de uma reparação. Isso permite
+# que uma segunda execução do instalador corrija instalações obtidas sem Git,
+# sem sobrescrever configurações ou outros arquivos do FileManager.
+refresh_codex_installer_scripts() {
+    local refresh_dir refreshed_main refreshed_native
+    refresh_dir="$(mktemp -d "${TMPDIR:-/tmp}/filemanager-codex-scripts.XXXXXX" 2>/dev/null)" || return 1
+    refreshed_main="$refresh_dir/install-codex.sh"
+    refreshed_native="$refresh_dir/install-codex-native.sh"
+
+    if ! download "https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/scripts/install-codex.sh" "$refreshed_main" \
+        || ! download "https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/scripts/install-codex-native.sh" "$refreshed_native" \
+        || ! bash -n "$refreshed_main" "$refreshed_native"; then
+        rm -rf -- "$refresh_dir"
+        return 1
+    fi
+    mkdir -p scripts || { rm -rf -- "$refresh_dir"; return 1; }
+    if ! mv -f -- "$refreshed_native" scripts/install-codex-native.sh \
+        || ! mv -f -- "$refreshed_main" scripts/install-codex.sh; then
+        rm -rf -- "$refresh_dir"
+        return 1
+    fi
+    chmod +x scripts/install-codex.sh 2>/dev/null
+    rm -rf -- "$refresh_dir"
+    return 0
+}
+
+if [ ! -e .git ]; then
+    if refresh_codex_installer_scripts; then
+        log "Scripts do runtime Node.js atualizados para a branch newterm."
+    else
+        warn "Não foi possível atualizar os scripts do runtime; usando a cópia local."
+    fi
+fi
+
 if [ -f "scripts/install-codex.sh" ]; then
-    log "Preparando Node.js 22, dependências e Codex CLI..."
-    bash scripts/install-codex.sh "$(pwd)" \
-        || warn "O instalador automático do Codex falhou; use Configurações > Diagnóstico para tentar novamente."
+    log "Preparando Node.js compatível, dependências e Codex CLI..."
+    if bash scripts/install-codex.sh "$(pwd)"; then
+        ok "Runtime Node.js, node-pty e Codex CLI preparados."
+    else
+        warn "O instalador automático do Codex falhou; use Configurações > Diagnóstico para tentar novamente."
+    fi
 elif command -v npm >/dev/null 2>&1; then
     warn "Instalador do Codex ausente; instalando somente as dependências Node."
     npm install || warn "npm install falhou (seguindo mesmo assim)."

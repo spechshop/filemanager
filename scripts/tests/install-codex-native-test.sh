@@ -91,6 +91,33 @@ case_python_priority() {
     assert_eq "$PYTHON" "$fake_bin/custom-python"
 }
 
+case_legacy_node_selection() {
+    source "$HELPER"
+    local fixture index_file fake_bin old_path
+    fixture="$(new_fixture)" || return 1
+    index_file="$fixture/index.tab"
+    fake_bin="$fixture/bin"
+    mkdir -p "$fake_bin"
+    printf '%s\n' \
+        $'version\tdate\tfiles' \
+        $'v26.8.1\t2026-08-26\theaders,linux-x64-glibc-217' \
+        $'v24.20.0\t2026-08-26\theaders,linux-x64-glibc-217,linux-x64-musl' \
+        $'v24.19.0\t2026-08-05\theaders,linux-x64-glibc-217' \
+        $'v22.23.2\t2026-07-29\theaders,linux-x64-glibc-217' > "$index_file"
+    printf '%s\n' '#!/bin/sh' "printf 'glibc 2.17\\n'" > "$fake_bin/getconf"
+    chmod +x "$fake_bin/getconf"
+    old_path="$PATH"
+    PATH="$fake_bin:$old_path"
+
+    assert_eq "$(system_glibc_version)" 2.17 || return 1
+    version_is_older_than 2.17 2.28 || return 1
+    ! version_is_older_than 2.28 2.28 || return 1
+    ! version_is_older_than 2.39 2.28 || return 1
+    assert_eq "$(select_compatible_node_version "$index_file" 22)" v22.23.2 || return 1
+    assert_eq "$(select_compatible_node_version "$index_file" 24)" v24.20.0 || return 1
+    assert_eq "$(select_compatible_node_version "$index_file" 26)" v26.8.1
+}
+
 case_old_compiler_fallback() {
     source "$HELPER"
     quiet_callbacks
@@ -247,6 +274,7 @@ case_node_pty_validation() {
 
 run_case "A: npm normal nao prepara micromamba" case_modern_system_toolchain
 run_case "B: Python 3.12 tem prioridade sobre python3 antigo" case_python_priority
+run_case "runtime Node para glibc antiga" case_legacy_node_selection
 run_case "C/D: GCC antigo aciona fallback local sem root" case_old_compiler_fallback
 run_case "E: toolchain existente e reutilizado" case_existing_toolchain_reused
 run_case "F: erro de rede nao aciona fallback" case_network_failure_does_not_fallback
