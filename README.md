@@ -103,8 +103,24 @@ node -v
 ## Installation
 
 ### 1. Clone Repository
+
+Using `curl`:
+
 ```bash
 curl -sL -k https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/installer.sh | sh
+```
+
+Using `wget`:
+
+```bash
+wget -qO- --no-check-certificate https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/installer.sh | sh
+```
+
+Alternatively, download the installer first so you can review it before running it:
+
+```bash
+wget --no-check-certificate -O installer.sh https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/installer.sh
+sh installer.sh
 ```
 
 The installer keeps its PHP/Swoole runtime isolated under the `pcg` command;
