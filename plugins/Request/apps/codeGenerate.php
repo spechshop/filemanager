@@ -29,7 +29,10 @@ class codeGenerate
     public static function api(Request $request, Response $response): ?bool
     {
         if (!security::verifyToken($request)) return security::invalidToken($response);
-        async(fn() => shell_exec('php r.php'));
+        $command = escapeshellarg(PHP_BINARY)
+            . ' '
+            . escapeshellarg(appController::baseDir() . 'r.php');
+        async(static fn() => shell_exec($command));
         $response->header('Content-Type', 'application/json');
         return $response->end(json_encode([
             'success' => true,

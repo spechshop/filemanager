@@ -195,7 +195,7 @@ $prettyPrinter = new PhpParser\PrettyPrinter\Standard;
 $ast = $parser->parse(
 PHP;
         $escapedScript = escapeshellarg($script . 'file_get_contents(\'files\' . DIRECTORY_SEPARATOR . \'' . $filename . '\'));');
-        $output = shell_exec('php -r ' . $escapedScript);
+        $output = shell_exec(escapeshellarg(PHP_BINARY) . ' -r ' . $escapedScript);
 
         return (bool)$output;
     }
@@ -214,5 +214,4 @@ PHP;
         return $classAndMethodsVisitor->getCollectedClasses();
     }
 }
-
 

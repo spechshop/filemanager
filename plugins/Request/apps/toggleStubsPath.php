@@ -25,7 +25,10 @@ class toggleStubsPath
         }
         if (file_put_contents('stubs-paths.json', json_encode($stubsPaths, JSON_PRETTY_PRINT))) {
             sleep(1);
-            \co::exec('php r.php');
+            $command = escapeshellarg(PHP_BINARY)
+                . ' '
+                . escapeshellarg(appController::baseDir() . 'r.php');
+            \co::exec($command);
             
             return $response->end(json_encode([
                 'success' => true,

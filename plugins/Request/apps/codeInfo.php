@@ -60,7 +60,7 @@ $ast = $parser->parse(
 PHP;
       $escapedScript = escapeshellarg($script . 'file_get_contents(\'' . $filename . '\'));');
 
-        $output = shell_exec('php -r ' . $escapedScript);
+        $output = shell_exec(escapeshellarg(PHP_BINARY) . ' -r ' . $escapedScript);
 
         return (bool)$output;
     }

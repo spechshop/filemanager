@@ -111,7 +111,7 @@ class formatCode
         $tmp = tempnam(sys_get_temp_dir(), 'csfix_') . '.php';
         file_put_contents($tmp, $code);
 
-        $cmd = 'php ' . escapeshellarg($fixer) . ' fix ' . escapeshellarg($tmp)
+        $cmd = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($fixer) . ' fix ' . escapeshellarg($tmp)
             . ' --using-cache=no --quiet --rules=@PSR12 2>/dev/null';
         @shell_exec($cmd);
 

@@ -55,8 +55,8 @@ Co\run(function () {
         return !$return_code;
     }
 
-
-    executeCommand('php novo.php');
-    //executeCommand('php zz.php files');
-    //executeCommand('php zz.php files yes');
+    $php = escapeshellarg(PHP_BINARY);
+    executeCommand($php . ' ' . escapeshellarg(__DIR__ . '/novo.php'));
+    //executeCommand($php . ' ' . escapeshellarg(__DIR__ . '/zz.php') . ' ' . escapeshellarg('files'));
+    //executeCommand($php . ' ' . escapeshellarg(__DIR__ . '/zz.php') . ' ' . escapeshellarg('files') . ' ' . escapeshellarg('yes'));
 });

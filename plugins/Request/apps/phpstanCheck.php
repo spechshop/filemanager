@@ -78,7 +78,7 @@ class phpstanCheck
         }
         file_put_contents($tmpConf, $conf);
 
-        $cmd = 'php ' . escapeshellarg($phpstan) . ' analyse'
+        $cmd = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($phpstan) . ' analyse'
             . ' --no-progress --error-format=json'
             . ' --configuration=' . escapeshellarg($tmpConf)
             . ' ' . escapeshellarg($target) . ' 2>/dev/null';

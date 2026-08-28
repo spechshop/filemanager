@@ -21,6 +21,7 @@ const COLOR_BLUE = "\033[34m";
 const COLOR_RESET = "\033[0m";
 
 $projectRoot = __DIR__;
+$phpBinary = escapeshellarg(PHP_BINARY);
 $testsRun = 0;
 $testsPassed = 0;
 $testsFailed = 0;
@@ -93,7 +94,7 @@ $syntaxErrors = [];
 
 foreach ($phpFiles as $file) {
     $testsRun++;
-    $output = shell_exec("php -l " . escapeshellarg($file) . " 2>&1");
+    $output = shell_exec($phpBinary . ' -l ' . escapeshellarg($file) . ' 2>&1');
 
     if (strpos($output, 'No syntax errors') !== false) {
         $testsPassed++;
@@ -108,7 +109,7 @@ foreach ($phpFiles as $file) {
                 'file' => str_replace($projectRoot . '/', '', $file),
                 'description' => 'Erro de sintaxe PHP',
                 'commands' => [
-                        "php -l " . escapeshellarg($file) . " # Verificar erro específico",
+                        $phpBinary . ' -l ' . escapeshellarg($file) . ' # Verificar erro específico',
                         "# Corrija o erro de sintaxe manualmente no arquivo"
                 ]
         ];
@@ -228,17 +229,27 @@ if ($composerCheck) {
     $composerPhar = $projectRoot . '/composer.phar';
 
     echo "  → Baixando instalador do Composer...\n";
-    shell_exec("php -r \"copy('https://getcomposer.org/installer', '$setupFile');\" 2>&1");
+    $downloadCode = 'copy('
+        . var_export('https://getcomposer.org/installer', true)
+        . ', '
+        . var_export($setupFile, true)
+        . ');';
+    shell_exec($phpBinary . ' -r ' . escapeshellarg($downloadCode) . ' 2>&1');
 
     if (file_exists($setupFile)) {
         echo "  → Instalando Composer...\n";
-        shell_exec("php $setupFile --quiet 2>&1");
+        shell_exec($phpBinary . ' ' . escapeshellarg($setupFile) . ' --quiet 2>&1');
 
         if (file_exists($composerPhar)) {
             echo "  → Movendo para /usr/local/bin/composer...\n";
             file_put_contents('composer', file_get_contents($composerPhar));
             shell_exec('chmod -R 777 composer');
-            shell_exec('./composer install');
+            shell_exec(
+                $phpBinary
+                . ' '
+                . escapeshellarg($projectRoot . '/composer')
+                . ' install'
+            );
             chmod('composer', 0755);
 
 
@@ -251,7 +262,12 @@ if ($composerCheck) {
 
             $verifyComposer = shell_exec("which composer 2>/dev/null");
             if (!empty(trim($verifyComposer))) {
-                $versionOutput = shell_exec("composer --version 2>/dev/null");
+                $versionOutput = shell_exec(
+                    $phpBinary
+                    . ' '
+                    . escapeshellarg(trim($verifyComposer))
+                    . ' --version 2>/dev/null'
+                );
                 $testsPassed++;
                 $composerExists = true;
                 printSuccess("Composer instalado com sucesso: " . trim($versionOutput));
