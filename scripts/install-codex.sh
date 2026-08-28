@@ -38,6 +38,7 @@ json_state() {
 
 log()  { printf '[Codex] %s\n' "$*"; }
 ok()   { printf '[Codex][ok] %s\n' "$*"; }
+warn() { printf '[Codex][aviso] %s\n' "$*" >&2; }
 fail() { printf '[Codex][erro] %s\n' "$*" >&2; }
 
 LAST_MESSAGE="Instalação interrompida. Consulte o log para ver o motivo."
@@ -190,10 +191,17 @@ run_npm() {
     fi
 }
 
-json_state running "Instalando as dependências do File Manager..." null
+NATIVE_TOOLCHAIN_HELPER="$SCRIPT_DIR/install-codex-native.sh"
+if [ ! -r "$NATIVE_TOOLCHAIN_HELPER" ]; then
+    LAST_MESSAGE="O suporte de instalação para addons Node.js nativos não foi encontrado."
+    exit 1
+fi
+# shellcheck source=install-codex-native.sh
+source "$NATIVE_TOOLCHAIN_HELPER"
+configure_native_toolchain_paths
+
 log "Instalando dependências com Node.js $($NODE_BIN --version)..."
-if ! (cd "$PROJECT_ROOT" && run_npm install --no-audit --no-fund); then
-    LAST_MESSAGE="npm install falhou. Consulte o log do instalador."
+if ! install_filemanager_node_dependencies; then
     exit 1
 fi
 
