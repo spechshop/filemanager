@@ -9,6 +9,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" 2>/dev/null && pwd -P)"
 PROJECT_ROOT="${1:-$(cd -- "$SCRIPT_DIR/.." 2>/dev/null && pwd -P)}"
 NODE_TARGET="${2:-preserve}"
 RUNTIME_DIR="$PROJECT_ROOT/.runtime"
+NPM_CACHE_DIR="$RUNTIME_DIR/npm-cache"
 MANAGED_NODE_DIR="$RUNTIME_DIR/node"
 CODEX_PREFIX="$RUNTIME_DIR/codex"
 STATE_FILE="$RUNTIME_DIR/codex-installer.json"
@@ -51,6 +52,12 @@ finish() {
     fi
 }
 trap finish EXIT
+
+mkdir -p "$NPM_CACHE_DIR" || {
+    LAST_MESSAGE="Não foi possível criar o cache local do npm."
+    exit 1
+}
+export NPM_CONFIG_CACHE="$NPM_CACHE_DIR"
 
 if command -v flock >/dev/null 2>&1; then
     exec 9>"$LOCK_FILE"
