@@ -145,6 +145,34 @@ download() {
     return 1
 }
 
+# download_github_archive <owner/repo> <branch> <destination>
+# Fallback para sistemas antigos onde o gerenciador de pacotes não consegue
+# instalar Git. Extrai em diretório temporário e só então move para o destino.
+download_github_archive() {
+    local repository="$1" branch="$2" destination="$3"
+    local repository_name archive_dir archive_file extracted_dir
+
+    if ! command -v tar >/dev/null 2>&1; then
+        ensure_cmd tar tar >/dev/null 2>&1 || return 1
+    fi
+
+    repository_name="${repository##*/}"
+    archive_dir="$(mktemp -d "${TMPDIR:-/tmp}/filemanager-archive.XXXXXX" 2>/dev/null)" || return 1
+    archive_file="$archive_dir/source.tar.gz"
+    extracted_dir="$archive_dir/$repository_name-$branch"
+
+    if ! download "https://github.com/$repository/archive/refs/heads/$branch.tar.gz" "$archive_file" \
+        || ! tar -xzf "$archive_file" -C "$archive_dir" \
+        || [ ! -d "$extracted_dir" ] \
+        || ! mv -- "$extracted_dir" "$destination"; then
+        rm -rf -- "$archive_dir"
+        return 1
+    fi
+
+    rm -rf -- "$archive_dir"
+    return 0
+}
+
 # ---------------------------------------------------------------------
 # 5) Atualização do sistema e dependências básicas (best-effort)
 # ---------------------------------------------------------------------
@@ -182,16 +210,46 @@ fi
 # Se já estivermos dentro do repositório (server.php presente), não clonamos.
 if [ -f "server.php" ] && [ -f "composer.json" ]; then
     log "Repositório já presente no diretório atual. Pulando clone do filemanager."
-elif [ -d "filemanager/.git" ] || [ -f "filemanager/server.php" ]; then
+elif [ -f "filemanager/server.php" ] && [ -f "filemanager/composer.json" ]; then
     log "Diretório 'filemanager' já existe. Reutilizando."
-    cd filemanager || warn "Não foi possível entrar em 'filemanager'."
+    cd filemanager || { err "Não foi possível entrar em 'filemanager'."; exit 1; }
 else
-    if command -v git >/dev/null 2>&1; then
-        git -c http.sslVerify=false clone https://github.com/spechshop/filemanager \
-            && cd filemanager || warn "Falha ao clonar/entrar em filemanager."
-    else
-        warn "git indisponível; não foi possível clonar o repositório principal."
+    if [ -e "filemanager" ]; then
+        err "O diretório 'filemanager' já existe, mas não contém uma instalação válida."
+        exit 1
     fi
+
+    FILEMANAGER_OBTAINED=0
+    if command -v git >/dev/null 2>&1; then
+        if git -c http.sslVerify=false clone --branch newterm --single-branch \
+            https://github.com/spechshop/filemanager filemanager; then
+            FILEMANAGER_OBTAINED=1
+        else
+            warn "Clone via Git falhou; tentando baixar o arquivo da branch newterm."
+            rm -rf -- filemanager
+        fi
+    fi
+    if [ "$FILEMANAGER_OBTAINED" -eq 0 ]; then
+        log "Baixando o código do FileManager sem Git..."
+        if download_github_archive spechshop/filemanager newterm filemanager; then
+            FILEMANAGER_OBTAINED=1
+            ok "Código do FileManager extraído."
+        fi
+    fi
+    if [ "$FILEMANAGER_OBTAINED" -ne 1 ] \
+        || [ ! -f "filemanager/server.php" ] \
+        || [ ! -f "filemanager/composer.json" ]; then
+        err "Não foi possível obter uma cópia válida do FileManager. Instalação interrompida."
+        exit 1
+    fi
+    cd filemanager || { err "Não foi possível entrar em 'filemanager'."; exit 1; }
+fi
+
+# Nunca prossiga no diretório de onde o instalador foi chamado. Isso evita
+# criar pcg, Composer e serviços inválidos em /root após uma falha de download.
+if [ ! -f "server.php" ] || [ ! -f "composer.json" ] || [ ! -f "installer.sh" ]; then
+    err "O diretório atual não é uma instalação válida do FileManager."
+    exit 1
 fi
 
 # ---------------------------------------------------------------------
@@ -209,15 +267,37 @@ else
 fi
 
 # ---------------------------------------------------------------------
-# 8) libspech (clone idempotente, não fatal)
+# 8) libspech (clone ou arquivo, obrigatório para iniciar o servidor)
 # ---------------------------------------------------------------------
-if [ -d "libspech/.git" ] || [ -d "libspech" ]; then
+if [ -f "libspech/plugins/autoloader.php" ]; then
     log "libspech já presente. Pulando."
-elif command -v git >/dev/null 2>&1; then
-    git -c http.sslVerify=false clone https://github.com/spechshop/libspech \
-        || warn "Falha ao clonar libspech (não fatal)."
 else
-    warn "git indisponível; libspech não clonado."
+    if [ -e "libspech" ]; then
+        err "O diretório 'libspech' existe, mas está incompleto."
+        exit 1
+    fi
+
+    LIBSPECH_OBTAINED=0
+    if command -v git >/dev/null 2>&1; then
+        if git -c http.sslVerify=false clone --branch spech --single-branch \
+            https://github.com/spechshop/libspech libspech; then
+            LIBSPECH_OBTAINED=1
+        else
+            warn "Clone do libspech falhou; tentando baixar o arquivo da branch spech."
+            rm -rf -- libspech
+        fi
+    fi
+    if [ "$LIBSPECH_OBTAINED" -eq 0 ]; then
+        log "Baixando libspech sem Git..."
+        if download_github_archive spechshop/libspech spech libspech; then
+            LIBSPECH_OBTAINED=1
+            ok "libspech extraído."
+        fi
+    fi
+    if [ "$LIBSPECH_OBTAINED" -ne 1 ] || [ ! -f "libspech/plugins/autoloader.php" ]; then
+        err "Não foi possível obter o libspech. Instalação interrompida."
+        exit 1
+    fi
 fi
 
 # .env
@@ -486,7 +566,7 @@ WantedBy=multi-user.target
     if printf '%s' "$SERVICE_CONTENT" | run_priv tee "$SERVICE_FILE" >/dev/null 2>&1; then
         run_priv systemctl daemon-reload 2>/dev/null
         run_priv systemctl enable filemanager.service 2>/dev/null
-        if run_priv systemctl start filemanager.service 2>/dev/null; then
+        if run_priv systemctl restart filemanager.service 2>/dev/null; then
             ok "Serviço systemd (sistema) configurado e iniciado."
             AUTOSTART_OK=1
         else
@@ -520,7 +600,7 @@ EOF
     if [ -f "$USER_UNIT_DIR/filemanager.service" ]; then
         systemctl --user daemon-reload 2>/dev/null
         systemctl --user enable filemanager.service 2>/dev/null
-        if systemctl --user start filemanager.service 2>/dev/null; then
+        if systemctl --user restart filemanager.service 2>/dev/null; then
             command -v loginctl >/dev/null 2>&1 && run_priv loginctl enable-linger "$(id -un)" 2>/dev/null
             ok "Serviço systemd (usuário) configurado e iniciado."
             AUTOSTART_OK=1
