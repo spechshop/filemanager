@@ -527,7 +527,7 @@ class server extends OpenConnection
             if (!$item->isFile()) {
                 $batch++;
                 if ($batch % 40 === 0) {
-                    Coroutine::sleep(0);
+                    Coroutine::sleep(0.02);
                 }
                 continue;
             }
@@ -571,7 +571,7 @@ class server extends OpenConnection
                 if (function_exists('gc_collect_cycles')) {
                     gc_collect_cycles();
                 }
-                Coroutine::sleep(0);
+                Coroutine::sleep(0.02);
             }
         }
 
