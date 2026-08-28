@@ -149,7 +149,7 @@ case_old_compiler_fallback() {
             printf "g++: error: unrecognized command-line option '-std=gnu++20'\n" >&2
             return 1
         fi
-        printf '%s|%s|%s|%s\n' "$PYTHON" "$CC" "$CXX" "$MAKE" > "$retry_env"
+        printf '%s|%s|%s|%s|%s\n' "$PYTHON" "$CC" "$CXX" "$MAKE" "$PATH" > "$retry_env"
         return 0
     }
     validate_node_pty() { return 0; }
@@ -159,6 +159,7 @@ case_old_compiler_fallback() {
     [ -e "$fallback" ] || return 1
     assert_contains "$retry_env" "$RUNTIME_DIR/native-toolchain/bin/python" || return 1
     assert_contains "$retry_env" "$RUNTIME_DIR/native-toolchain/bin/x86_64-conda-linux-gnu-g++" || return 1
+    assert_contains "$retry_env" "$RUNTIME_DIR/native-toolchain/bin:" || return 1
     case "$(cat "$retry_env")" in
         "$RUNTIME_DIR"/*) ;;
         *) return 1 ;;
@@ -241,7 +242,7 @@ case_classifier_signatures() {
 case_micromamba_certificate_retry() {
     source "$HELPER"
     quiet_callbacks
-    local fixture calls
+    local fixture calls first_call second_call
     fixture="$(new_fixture)" || return 1
     calls="$fixture/micromamba-calls"
     RUNTIME_DIR="$fixture/project/.runtime"
@@ -256,10 +257,22 @@ case_micromamba_certificate_retry() {
     ! micromamba_log_has_certificate_failure "$MICROMAMBA_TOOLCHAIN_LOG" || return 1
     printf '%s\n' \
         '#!/usr/bin/env bash' \
+        'set -u' \
         'printf "%s\n" "$*" >> "'"$calls"'"' \
+        'prefix=""' \
+        'previous=""' \
+        'for argument in "$@"; do' \
+        '  [ "$previous" != "--prefix" ] || prefix="$argument"' \
+        '  previous="$argument"' \
+        'done' \
         'case " $* " in' \
-        '  *" --ssl-verify false "*) exit 0 ;;' \
+        '  *" --ssl-verify false "*)' \
+        '    [ ! -e "$prefix/conda-meta/history" ] || exit 2' \
+        '    exit 0' \
+        '    ;;' \
         'esac' \
+        'mkdir -p "$prefix/conda-meta"' \
+        ': > "$prefix/conda-meta/history"' \
         'printf "%s\n" "Download error (60) SSL peer certificate was not OK" >&2' \
         'printf "%s\n" "SSL certificate OpenSSL verify result: unable to get local issuer certificate" >&2' \
         'exit 1' > "$MICROMAMBA_BIN"
@@ -278,8 +291,52 @@ case_micromamba_certificate_retry() {
 
     prepare_native_toolchain || return 1
     assert_eq "$(wc -l < "$calls")" 2 || return 1
+    first_call="$(sed -n '1p' "$calls")"
+    second_call="$(sed -n '2p' "$calls")"
+    case " $first_call " in *" create "*) ;; *) return 1 ;; esac
+    case " $second_call " in *" create "*) ;; *) return 1 ;; esac
+    case " $first_call " in *" --ssl-verify "*) return 1 ;; esac
+    case " $first_call " in *" --override-channels --channel conda-forge --strict-channel-priority "*) ;; *) return 1 ;; esac
+    assert_contains "$calls" "python=3.12 make gcc_linux-64=14 gxx_linux-64=14 sysroot_linux-64=2.17" || return 1
     assert_contains "$calls" "--ssl-verify false" || return 1
     assert_contains "$MICROMAMBA_TOOLCHAIN_LOG" "unable to get local issuer certificate"
+}
+
+case_existing_incomplete_toolchain_uses_install() {
+    source "$HELPER"
+    quiet_callbacks
+    local fixture calls
+    fixture="$(new_fixture)" || return 1
+    calls="$fixture/micromamba-calls"
+    RUNTIME_DIR="$fixture/project/.runtime"
+    mkdir -p "$RUNTIME_DIR/native-toolchain/conda-meta" "$fixture/bin"
+    : > "$RUNTIME_DIR/native-toolchain/conda-meta/history"
+    configure_native_toolchain_paths
+    MICROMAMBA_BIN="$fixture/bin/micromamba"
+    printf '%s\n' \
+        '#!/usr/bin/env bash' \
+        'printf "%s\n" "$*" >> "'"$calls"'"' > "$MICROMAMBA_BIN"
+    chmod +x "$MICROMAMBA_BIN"
+
+    native_platform_packages() {
+        TOOLCHAIN_GCC_PACKAGE=gcc_linux-64=14
+        TOOLCHAIN_GXX_PACKAGE=gxx_linux-64=14
+        TOOLCHAIN_SYSROOT_PACKAGE=sysroot_linux-64=2.17
+    }
+    install_micromamba() { :; }
+    locate_native_toolchain() {
+        grep -Fq -- 'install --yes' "$calls" 2>/dev/null || return 1
+        TOOLCHAIN_GCC_VERSION=14.4.0
+        TOOLCHAIN_PYTHON="$TOOLCHAIN_BIN/python"
+        TOOLCHAIN_CC="$TOOLCHAIN_BIN/native-gcc"
+        TOOLCHAIN_CXX="$TOOLCHAIN_BIN/native-g++"
+        TOOLCHAIN_MAKE="$TOOLCHAIN_BIN/make"
+    }
+
+    prepare_native_toolchain || return 1
+    assert_eq "$(wc -l < "$calls")" 1 || return 1
+    assert_contains "$calls" "install --yes" || return 1
+    [ -f "$TOOLCHAIN_DIR/conda-meta/history" ]
 }
 
 case_arm64_package_mapping() {
@@ -324,6 +381,7 @@ run_case "E: toolchain existente e reutilizado" case_existing_toolchain_reused
 run_case "F: erro de rede nao aciona fallback" case_network_failure_does_not_fallback
 run_case "assinaturas do classificador" case_classifier_signatures
 run_case "erro de certificado repete micromamba com TLS excepcional" case_micromamba_certificate_retry
+run_case "ambiente incompleto existente usa micromamba install" case_existing_incomplete_toolchain_uses_install
 run_case "mapeamento Linux aarch64" case_arm64_package_mapping
 run_case "G: validacao real do node-pty" case_node_pty_validation
 
