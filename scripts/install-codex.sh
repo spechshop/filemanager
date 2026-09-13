@@ -100,14 +100,15 @@ json_state running "Verificando o ambiente..." null
 download() {
     local url="$1" output="$2"
     if command -v curl >/dev/null 2>&1; then
-        curl -k --fail --location --retry 3 --retry-delay 2 --output "$output" "$url"
-        return $?
+        curl -k --fail --location --retry 3 --retry-delay 2 --output "$output" "$url" \
+            && return 0
+        warn "curl falhou; repetindo o download com wget quando disponível."
     fi
     if command -v wget >/dev/null 2>&1; then
-        wget --no-check-certificate --quiet --tries=3 --output-document="$output" "$url"
-        return $?
+        wget --no-check-certificate --quiet --tries=3 --output-document="$output" "$url" \
+            && return 0
     fi
-    return 127
+    return 1
 }
 
 NATIVE_TOOLCHAIN_HELPER="$SCRIPT_DIR/install-codex-native.sh"
