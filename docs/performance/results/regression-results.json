@@ -1,0 +1,1746 @@
+[
+  {
+    "case": "create",
+    "seconds": 13.736158879999493,
+    "old": 254076,
+    "new": 254927,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33284,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 254927,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37292,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 254982,
+        "ppid": 254927,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 254984,
+        "ppid": 254982,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22932,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "case": "modify",
+    "seconds": 14.333746016000077,
+    "old": 254927,
+    "new": 255668,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33284,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 255668,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37248,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 255841,
+        "ppid": 255668,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 255843,
+        "ppid": 255841,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22996,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "case": "rapid-saves",
+    "seconds": 14.347134608000488,
+    "old": 255668,
+    "new": 256277,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33284,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 256277,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37256,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 256304,
+        "ppid": 256277,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 256306,
+        "ppid": 256304,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22932,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "case": "several-files",
+    "seconds": 14.337649274999421,
+    "old": 256277,
+    "new": 256816,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33284,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 256816,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37396,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 256863,
+        "ppid": 256816,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 256865,
+        "ppid": 256863,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22932,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "case": "rename",
+    "seconds": 14.352472415999728,
+    "old": 256816,
+    "new": 257374,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33284,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 257374,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37296,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 257507,
+        "ppid": 257374,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 257509,
+        "ppid": 257507,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22932,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "case": "delete",
+    "seconds": 14.336276440999427,
+    "old": 257374,
+    "new": 258607,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 258607,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37184,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 258692,
+        "ppid": 258607,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 258694,
+        "ppid": 258692,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22932,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "case": "ignored-files",
+    "seconds": 11.004548910999802,
+    "old": 258607,
+    "new": 258607,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 258607,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37184,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 258692,
+        "ppid": 258607,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 258694,
+        "ppid": 258692,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22932,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "case": "ignored-plugins/Request/node_modules",
+    "seconds": 11.004443330999493,
+    "old": 258607,
+    "new": 258607,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 258607,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37184,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 258692,
+        "ppid": 258607,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 258694,
+        "ppid": 258692,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22932,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "case": "ignored-plugins/Request/vendor",
+    "seconds": 11.004591187998813,
+    "old": 258607,
+    "new": 258607,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 258607,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37184,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 258692,
+        "ppid": 258607,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 258694,
+        "ppid": 258692,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22932,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "case": "ignored-plugins/Request/stubs",
+    "seconds": 11.004755584999657,
+    "old": 258607,
+    "new": 258607,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 258607,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37184,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 258692,
+        "ppid": 258607,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 258694,
+        "ppid": 258692,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22932,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "case": "http-and-websocket",
+    "seconds": 10.527247616999375,
+    "old": 258607,
+    "new": 260729,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 260729,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 18,
+        "rss_kb": 37440,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 260765,
+        "ppid": 260729,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 260767,
+        "ppid": 260765,
+        "state": "R",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 23308,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 1,
+    "seconds": 4.267292339000051,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 260919,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37164,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 260976,
+        "ppid": 260919,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 260978,
+        "ppid": 260976,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22932,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 2,
+    "seconds": 4.271572544999799,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 261018,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37204,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 261035,
+        "ppid": 261018,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 261037,
+        "ppid": 261035,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22932,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 3,
+    "seconds": 4.267546799999764,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 261102,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37196,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 261158,
+        "ppid": 261102,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 261160,
+        "ppid": 261158,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22996,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 4,
+    "seconds": 4.265129137998883,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 261216,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37380,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 261262,
+        "ppid": 261216,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 261264,
+        "ppid": 261262,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22932,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 5,
+    "seconds": 4.268178614000135,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 261339,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37204,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 261356,
+        "ppid": 261339,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19160,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 261358,
+        "ppid": 261356,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22892,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 6,
+    "seconds": 4.266598467998847,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 261444,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37372,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 261461,
+        "ppid": 261444,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19072,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 261463,
+        "ppid": 261461,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22932,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 7,
+    "seconds": 4.271969114999592,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 261498,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37068,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 261688,
+        "ppid": 261498,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 261690,
+        "ppid": 261688,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22932,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 8,
+    "seconds": 4.265607359999194,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 261724,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37128,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 261779,
+        "ppid": 261724,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19144,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 261781,
+        "ppid": 261779,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 23004,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 9,
+    "seconds": 4.267921276999914,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 261871,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37312,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 261888,
+        "ppid": 261871,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 261890,
+        "ppid": 261888,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22932,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 10,
+    "seconds": 4.268887320999056,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 261946,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37160,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 261981,
+        "ppid": 261946,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 261983,
+        "ppid": 261981,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22932,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 11,
+    "seconds": 4.266004592000172,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 262038,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37180,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 262055,
+        "ppid": 262038,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 262057,
+        "ppid": 262055,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22996,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 12,
+    "seconds": 4.265530310000031,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 262152,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37280,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 262186,
+        "ppid": 262152,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 262188,
+        "ppid": 262186,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22932,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 13,
+    "seconds": 4.266205471998546,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 262242,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37344,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 262279,
+        "ppid": 262242,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19072,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 262281,
+        "ppid": 262279,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22948,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 14,
+    "seconds": 4.264966601998822,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 262340,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37268,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 262399,
+        "ppid": 262340,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 262401,
+        "ppid": 262399,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22932,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 15,
+    "seconds": 4.265171160001046,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 262454,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37264,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 262481,
+        "ppid": 262454,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 262483,
+        "ppid": 262481,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22996,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 16,
+    "seconds": 4.27190870099912,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 262539,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37240,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 262574,
+        "ppid": 262539,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 262576,
+        "ppid": 262574,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22868,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 17,
+    "seconds": 4.271860437000214,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 262805,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37160,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 262848,
+        "ppid": 262805,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 262850,
+        "ppid": 262848,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22996,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 18,
+    "seconds": 4.2670546019999165,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 262954,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37088,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 262971,
+        "ppid": 262954,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 262973,
+        "ppid": 262971,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22932,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 19,
+    "seconds": 4.266973632000372,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 263074,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37216,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 263091,
+        "ppid": 263074,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 263093,
+        "ppid": 263091,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22996,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 20,
+    "seconds": 4.2668359959989175,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 263133,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37272,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 263189,
+        "ppid": 263133,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 263191,
+        "ppid": 263189,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22932,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 21,
+    "seconds": 4.269376979000299,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 263226,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37536,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 263263,
+        "ppid": 263226,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19072,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 263265,
+        "ppid": 263263,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22996,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 22,
+    "seconds": 4.266887860001589,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 263320,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37472,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 263338,
+        "ppid": 263320,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 263340,
+        "ppid": 263338,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22932,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 23,
+    "seconds": 4.266718261000278,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 263398,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37276,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 263470,
+        "ppid": 263398,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 263472,
+        "ppid": 263470,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22932,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 24,
+    "seconds": 4.266107085999465,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 263527,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37176,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 263561,
+        "ppid": 263527,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 263563,
+        "ppid": 263561,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22932,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 25,
+    "seconds": 4.267871068999739,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 263656,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37356,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 263674,
+        "ppid": 263656,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 263676,
+        "ppid": 263674,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22996,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 26,
+    "seconds": 4.276093782998942,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 263762,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37184,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 263814,
+        "ppid": 263762,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 263816,
+        "ppid": 263814,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22932,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 27,
+    "seconds": 4.269710560000021,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 263875,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37364,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 263930,
+        "ppid": 263875,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 263932,
+        "ppid": 263930,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22932,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 28,
+    "seconds": 4.271217257999524,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 263970,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37408,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 263989,
+        "ppid": 263970,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 263991,
+        "ppid": 263989,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22932,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 29,
+    "seconds": 4.268106302000888,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 264065,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37068,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 264083,
+        "ppid": 264065,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19200,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 264085,
+        "ppid": 264083,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 22996,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  },
+  {
+    "cycle": 30,
+    "seconds": 4.2661269799991715,
+    "processes": [
+      {
+        "pid": 254075,
+        "ppid": 254052,
+        "state": "S",
+        "threads": 1,
+        "fds": 7,
+        "rss_kb": 33412,
+        "cmd": "php server.php --fix "
+      },
+      {
+        "pid": 264141,
+        "ppid": 254075,
+        "state": "S",
+        "threads": 18,
+        "fds": 14,
+        "rss_kb": 37164,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 264176,
+        "ppid": 264141,
+        "state": "S",
+        "threads": 1,
+        "fds": 9,
+        "rss_kb": 19272,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      },
+      {
+        "pid": 264178,
+        "ppid": 264176,
+        "state": "S",
+        "threads": 1,
+        "fds": 12,
+        "rss_kb": 23068,
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/regression/middleware.php "
+      }
+    ]
+  }
+]

@@ -1,0 +1,8 @@
+291952 node pty.js  n= 595 mean= 0.002 p95= 0.0 p99= 0.0 fds= (22, 22)
+291959 node codex-agent.js  n= 595 mean= 0.003 p95= 0.0 p99= 0.0 fds= (25, 25)
+292029 node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio://  n= 595 mean= 0.002 p95= 0.0 p99= 0.0 fds= (20, 20)
+292055 /home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio://  n= 595 mean= 0.023 p95= 0.0 p99= 0.988 fds= (29, 34)
+292370 php server.php --fix  n= 595 mean= 0.0 p95= 0.0 p99= 0.0 fds= (7, 7)
+292415 /usr/local/bin/php /tmp/filemanager-perf/fullstack/middleware.php  n= 595 mean= 0.013 p95= 0.0 p99= 0.989 fds= (14, 14)
+292512 /usr/local/bin/php /tmp/filemanager-perf/fullstack/middleware.php  n= 595 mean= 0.0 p95= 0.0 p99= 0.0 fds= (9, 9)
+292514 /usr/local/bin/php /tmp/filemanager-perf/fullstack/middleware.php  n= 595 mean= 0.0 p95= 0.0 p99= 0.0 fds= (12, 12)

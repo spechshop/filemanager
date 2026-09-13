@@ -1,0 +1,6566 @@
+{
+  "after-browse": {
+    "seconds": 60.3,
+    "processes": [
+      {
+        "pid": "253438",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 1.3927551401568665,
+        "cpu_p95": 1.9912182496290791,
+        "cpu_p99": 1.9913672517070071,
+        "fds": [
+          13,
+          14
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          37316,
+          39028
+        ]
+      },
+      {
+        "pid": "253455",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19196,
+          19196
+        ]
+      },
+      {
+        "pid": "253457",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 30.298297202403575,
+        "cpu_p95": 35.99716691496053,
+        "cpu_p99": 36.82674364969727,
+        "fds": [
+          13,
+          13
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          34796,
+          39560
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 31.69105234256044,
+    "cpu_sample_p95": 37.53992642843283,
+    "cpu_sample_p99": 38.80916416274158
+  },
+  "after-browser-cpu": {
+    "seconds": 145.765,
+    "processes": [
+      {
+        "pid": "253438",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 145,
+        "cpu_mean": 0.027484287946184172,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.9949631809736673,
+        "fds": [
+          13,
+          16
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          37724,
+          37904
+        ]
+      },
+      {
+        "pid": "253455",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 145,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19196,
+          19196
+        ]
+      },
+      {
+        "pid": "253457",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 145,
+        "cpu_mean": 0.08239931935961335,
+        "cpu_p95": 0.988436496901738,
+        "cpu_p99": 0.9955903313061593,
+        "fds": [
+          13,
+          13
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          38752,
+          39072
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 0.10988360730579752,
+    "cpu_sample_p95": 0.9920797383532063,
+    "cpu_sample_p99": 0.9957126257260123
+  },
+  "after-codex-active": {
+    "seconds": 90.442,
+    "processes": [
+      {
+        "pid": "253477",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 90,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          13,
+          14
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          37528,
+          37528
+        ]
+      },
+      {
+        "pid": "253578",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 90,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19200,
+          19200
+        ]
+      },
+      {
+        "pid": "253586",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 90,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          12,
+          12
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          23140,
+          23140
+        ]
+      },
+      {
+        "pid": "257385",
+        "role": "Codex bridge",
+        "cmd": "node codex-agent.js ",
+        "samples": 90,
+        "cpu_mean": 0.011110380370276406,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          26,
+          26
+        ],
+        "threads": [
+          7,
+          7
+        ],
+        "rss_kb": [
+          52984,
+          52984
+        ]
+      },
+      {
+        "pid": "257438",
+        "role": "Codex launcher",
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// ",
+        "samples": 90,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          20,
+          20
+        ],
+        "threads": [
+          7,
+          7
+        ],
+        "rss_kb": [
+          48196,
+          48196
+        ]
+      },
+      {
+        "pid": "257445",
+        "role": "Codex native",
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// ",
+        "samples": 90,
+        "cpu_mean": 0.01105712288420406,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          32,
+          33
+        ],
+        "threads": [
+          27,
+          28
+        ],
+        "rss_kb": [
+          81180,
+          81320
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 0.022167503254480466,
+    "cpu_sample_p95": 0.0,
+    "cpu_sample_p99": 0.9951410595783654
+  },
+  "after-codex-disabled": {
+    "seconds": 90.552,
+    "processes": [
+      {
+        "pid": "253477",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 90,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          13,
+          13
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          36664,
+          36664
+        ]
+      },
+      {
+        "pid": "253578",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 90,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19200,
+          19200
+        ]
+      },
+      {
+        "pid": "253586",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 90,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          11,
+          11
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          20292,
+          20292
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 0.0,
+    "cpu_sample_p95": 0.0,
+    "cpu_sample_p99": 0.0
+  },
+  "after-codex-idle": {
+    "seconds": 90.502,
+    "processes": [
+      {
+        "pid": "253477",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 90,
+        "cpu_mean": 0.011061481275470372,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          13,
+          13
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          36664,
+          36792
+        ]
+      },
+      {
+        "pid": "253578",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 90,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19200,
+          19200
+        ]
+      },
+      {
+        "pid": "253586",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 90,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          11,
+          11
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          20292,
+          20292
+        ]
+      },
+      {
+        "pid": "257385",
+        "role": "Codex bridge",
+        "cmd": "node codex-agent.js ",
+        "samples": 90,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          25,
+          25
+        ],
+        "threads": [
+          7,
+          7
+        ],
+        "rss_kb": [
+          52856,
+          52856
+        ]
+      },
+      {
+        "pid": "257438",
+        "role": "Codex launcher",
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// ",
+        "samples": 90,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          20,
+          20
+        ],
+        "threads": [
+          7,
+          7
+        ],
+        "rss_kb": [
+          48196,
+          48196
+        ]
+      },
+      {
+        "pid": "257445",
+        "role": "Codex native",
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// ",
+        "samples": 90,
+        "cpu_mean": 0.16591923968045047,
+        "cpu_p95": 0.0,
+        "cpu_p99": 1.9907262455786654,
+        "fds": [
+          32,
+          33
+        ],
+        "threads": [
+          27,
+          27
+        ],
+        "rss_kb": [
+          81320,
+          102024
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 0.17698072095592085,
+    "cpu_sample_p95": 0.0,
+    "cpu_sample_p99": 1.9907262455786654
+  },
+  "after-editor-ui-cpu": {
+    "seconds": 120.699,
+    "processes": [
+      {
+        "pid": "253438",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 120,
+        "cpu_mean": 0.04132948654458466,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.9937038190696021,
+        "fds": [
+          13,
+          16
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          37584,
+          38736
+        ]
+      },
+      {
+        "pid": "253455",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 120,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19196,
+          19196
+        ]
+      },
+      {
+        "pid": "253457",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 120,
+        "cpu_mean": 1.0604692210735316,
+        "cpu_p95": 5.97360217410485,
+        "cpu_p99": 7.954043509209515,
+        "fds": [
+          13,
+          15
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          38768,
+          59368
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 1.1017987076181162,
+    "cpu_sample_p95": 5.974306098640449,
+    "cpu_sample_p99": 7.954043509209515
+  },
+  "after-editor": {
+    "seconds": 60.264,
+    "processes": [
+      {
+        "pid": "253438",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.09955648462595969,
+        "cpu_p95": 0.9956008559779409,
+        "cpu_p99": 0.995657818765739,
+        "fds": [
+          13,
+          14
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          37904,
+          37904
+        ]
+      },
+      {
+        "pid": "253455",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19196,
+          19196
+        ]
+      },
+      {
+        "pid": "253457",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.4315610763445596,
+        "cpu_p95": 0.9957913287753056,
+        "cpu_p99": 1.9914893186192506,
+        "fds": [
+          13,
+          13
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          37384,
+          37996
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 0.5311175609705193,
+    "cpu_sample_p95": 0.9958493070591128,
+    "cpu_sample_p99": 1.9914893186192506
+  },
+  "after-idle-no-autorestart": {
+    "seconds": 180.94,
+    "processes": [
+      {
+        "pid": "253474",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 180,
+        "cpu_mean": 0.005532257416057377,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          13,
+          13
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          36316,
+          36444
+        ]
+      },
+      {
+        "pid": "253576",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 180,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19120,
+          19120
+        ]
+      },
+      {
+        "pid": "253587",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 180,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          11,
+          11
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          20296,
+          20296
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 0.005532257416057377,
+    "cpu_sample_p95": 0.0,
+    "cpu_sample_p99": 0.0
+  },
+  "after-idle": {
+    "seconds": 180.943,
+    "processes": [
+      {
+        "pid": "253478",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 180,
+        "cpu_mean": 0.011064347760076174,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          13,
+          13
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          36584,
+          36712
+        ]
+      },
+      {
+        "pid": "253577",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 180,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19072,
+          19072
+        ]
+      },
+      {
+        "pid": "253585",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 180,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          11,
+          11
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          20288,
+          20288
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 0.011064347760076174,
+    "cpu_sample_p95": 0.0,
+    "cpu_sample_p99": 0.0
+  },
+  "after-large-runtime": {
+    "seconds": 180.964,
+    "processes": [
+      {
+        "pid": "209370",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 180,
+        "cpu_mean": 0.06629054467269632,
+        "cpu_p95": 0.0,
+        "cpu_p99": 1.9890044551855728,
+        "fds": [
+          13,
+          13
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          36640,
+          36896
+        ]
+      },
+      {
+        "pid": "209389",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 180,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19080,
+          19080
+        ]
+      },
+      {
+        "pid": "209391",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 180,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          11,
+          11
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          20172,
+          20172
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 0.06629054467269632,
+    "cpu_sample_p95": 0.0,
+    "cpu_sample_p99": 1.9890044551855728
+  },
+  "after-panel": {
+    "seconds": 120.672,
+    "processes": [
+      {
+        "pid": "253438",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 120,
+        "cpu_mean": 0.03312226806047031,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.9921898811072427,
+        "fds": [
+          13,
+          14
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          37160,
+          37160
+        ]
+      },
+      {
+        "pid": "253455",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 120,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19196,
+          19196
+        ]
+      },
+      {
+        "pid": "253457",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 120,
+        "cpu_mean": 0.0662814941434291,
+        "cpu_p95": 0.9917754737762596,
+        "cpu_p99": 0.9955897861440504,
+        "fds": [
+          13,
+          13
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          23632,
+          23760
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 0.0994037622038994,
+    "cpu_sample_p95": 0.9953690207467669,
+    "cpu_sample_p99": 0.9958217321704511
+  },
+  "after-terminal-active": {
+    "seconds": 60.324,
+    "processes": [
+      {
+        "pid": "253475",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.06622368839272645,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.9956121322362339,
+        "fds": [
+          13,
+          14
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          37448,
+          37448
+        ]
+      },
+      {
+        "pid": "253476",
+        "role": "PTY Node",
+        "cmd": "node pty.js ",
+        "samples": 60,
+        "cpu_mean": 0.21539115938013267,
+        "cpu_p95": 0.9955532102633834,
+        "cpu_p99": 0.9955920659063513,
+        "fds": [
+          24,
+          24
+        ],
+        "threads": [
+          12,
+          12
+        ],
+        "rss_kb": [
+          52904,
+          54644
+        ]
+      },
+      {
+        "pid": "253579",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19208,
+          19208
+        ]
+      },
+      {
+        "pid": "253584",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.08295971595352072,
+        "cpu_p95": 0.995505957589225,
+        "cpu_p99": 0.9955920659063513,
+        "fds": [
+          12,
+          12
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          23084,
+          23084
+        ]
+      },
+      {
+        "pid": "253782",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 60,
+        "cpu_mean": 0.2817496589070007,
+        "cpu_p95": 0.9955967533314269,
+        "cpu_p99": 1.9908762362742514,
+        "fds": [
+          4,
+          4
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5172,
+          5172
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 0.6463242226333805,
+    "cpu_sample_p95": 1.9908762362742514,
+    "cpu_sample_p99": 1.991484874692084
+  },
+  "after-terminal-disconnected": {
+    "seconds": 60.308,
+    "processes": [
+      {
+        "pid": "253475",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.016584059443299767,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          13,
+          13
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          37672,
+          37672
+        ]
+      },
+      {
+        "pid": "253476",
+        "role": "PTY Node",
+        "cmd": "node pty.js ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          38,
+          38
+        ],
+        "threads": [
+          19,
+          19
+        ],
+        "rss_kb": [
+          55028,
+          55028
+        ]
+      },
+      {
+        "pid": "253579",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19208,
+          19208
+        ]
+      },
+      {
+        "pid": "253584",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          19,
+          19
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          23340,
+          23340
+        ]
+      },
+      {
+        "pid": "253782",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          4,
+          4
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5172,
+          5172
+        ]
+      },
+      {
+        "pid": "259334",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          5,
+          5
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5384,
+          5384
+        ]
+      },
+      {
+        "pid": "259338",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          6,
+          6
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5516,
+          5516
+        ]
+      },
+      {
+        "pid": "259344",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          7,
+          7
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5516,
+          5516
+        ]
+      },
+      {
+        "pid": "259349",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5516,
+          5516
+        ]
+      },
+      {
+        "pid": "259354",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          9,
+          9
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5460,
+          5460
+        ]
+      },
+      {
+        "pid": "259360",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          10,
+          10
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5568,
+          5568
+        ]
+      },
+      {
+        "pid": "259366",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          11,
+          11
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5388,
+          5388
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 0.016584059443299767,
+    "cpu_sample_p95": 0.0,
+    "cpu_sample_p99": 0.0
+  },
+  "after-terminal-idle": {
+    "seconds": 60.402,
+    "processes": [
+      {
+        "pid": "253475",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          13,
+          14
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          37320,
+          37320
+        ]
+      },
+      {
+        "pid": "253476",
+        "role": "PTY Node",
+        "cmd": "node pty.js ",
+        "samples": 60,
+        "cpu_mean": 0.01666525413639221,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          24,
+          24
+        ],
+        "threads": [
+          8,
+          8
+        ],
+        "rss_kb": [
+          52904,
+          52904
+        ]
+      },
+      {
+        "pid": "253579",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19208,
+          19208
+        ]
+      },
+      {
+        "pid": "253584",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          12,
+          12
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          23084,
+          23084
+        ]
+      },
+      {
+        "pid": "253782",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 59,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          4,
+          4
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5172,
+          5172
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 0.01666525413639221,
+    "cpu_sample_p95": 0.0,
+    "cpu_sample_p99": 0.0
+  },
+  "after-terminal-multi": {
+    "seconds": 60.344,
+    "processes": [
+      {
+        "pid": "253475",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.03322974142092389,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.9938510248260249,
+        "fds": [
+          13,
+          21
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          37672,
+          37960
+        ]
+      },
+      {
+        "pid": "253476",
+        "role": "PTY Node",
+        "cmd": "node pty.js ",
+        "samples": 60,
+        "cpu_mean": 0.033331115347646954,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          38,
+          38
+        ],
+        "threads": [
+          19,
+          19
+        ],
+        "rss_kb": [
+          55028,
+          55028
+        ]
+      },
+      {
+        "pid": "253579",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19208,
+          19208
+        ]
+      },
+      {
+        "pid": "253584",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          19,
+          19
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          23340,
+          23340
+        ]
+      },
+      {
+        "pid": "253782",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          4,
+          4
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5172,
+          5172
+        ]
+      },
+      {
+        "pid": "259334",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 59,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          5,
+          5
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5384,
+          5384
+        ]
+      },
+      {
+        "pid": "259338",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 59,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          6,
+          6
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5516,
+          5516
+        ]
+      },
+      {
+        "pid": "259344",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 59,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          7,
+          7
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5516,
+          5516
+        ]
+      },
+      {
+        "pid": "259349",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 59,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5516,
+          5516
+        ]
+      },
+      {
+        "pid": "259354",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 59,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          9,
+          9
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5460,
+          5460
+        ]
+      },
+      {
+        "pid": "259360",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 59,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          10,
+          10
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5568,
+          5568
+        ]
+      },
+      {
+        "pid": "259366",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 59,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          11,
+          11
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5388,
+          5388
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 0.06656085676857085,
+    "cpu_sample_p95": 0.0,
+    "cpu_sample_p99": 0.9938510248260249
+  },
+  "before-browse": {
+    "seconds": 60.734,
+    "processes": [
+      {
+        "pid": "170189",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 9.553705707602813,
+        "cpu_p95": 55.49900064242934,
+        "cpu_p99": 63.82865708026279,
+        "fds": [
+          13,
+          24
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          63180,
+          67420
+        ]
+      },
+      {
+        "pid": "170206",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19084,
+          19084
+        ]
+      },
+      {
+        "pid": "170208",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 47.19010695663257,
+        "cpu_p95": 56.56653887128995,
+        "cpu_p99": 61.935690528766834,
+        "fds": [
+          13,
+          13
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          35000,
+          37204
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 56.74381266423538,
+    "cpu_sample_p95": 96.01561830825327,
+    "cpu_sample_p99": 120.07984567414184
+  },
+  "before-browser-cpu": {
+    "seconds": 150.434,
+    "processes": [
+      {
+        "pid": "170189",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 149,
+        "cpu_mean": 27.61544821326881,
+        "cpu_p95": 71.65331632023822,
+        "cpu_p99": 106.39970890384878,
+        "fds": [
+          13,
+          24
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          62996,
+          64052
+        ]
+      },
+      {
+        "pid": "170206",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 149,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19084,
+          19084
+        ]
+      },
+      {
+        "pid": "170208",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 149,
+        "cpu_mean": 25.81546142177402,
+        "cpu_p95": 31.83900346815926,
+        "cpu_p99": 32.83659031732527,
+        "fds": [
+          13,
+          13
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          38300,
+          39488
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 53.43090963504283,
+    "cpu_sample_p95": 100.51367983811194,
+    "cpu_sample_p99": 132.99963612981097
+  },
+  "before-codex-active": {
+    "seconds": 90.464,
+    "processes": [
+      {
+        "pid": "170189",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 90,
+        "cpu_mean": 0.06632612842544935,
+        "cpu_p95": 0.993658864601293,
+        "cpu_p99": 0.9953374541686292,
+        "fds": [
+          13,
+          14
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          63616,
+          63872
+        ]
+      },
+      {
+        "pid": "170206",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 90,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19084,
+          19084
+        ]
+      },
+      {
+        "pid": "170208",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 90,
+        "cpu_mean": 0.011056858698956598,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          14,
+          14
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          39192,
+          39192
+        ]
+      },
+      {
+        "pid": "189878",
+        "role": "Codex bridge",
+        "cmd": "node codex-agent.js ",
+        "samples": 90,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          26,
+          26
+        ],
+        "threads": [
+          7,
+          7
+        ],
+        "rss_kb": [
+          53100,
+          53100
+        ]
+      },
+      {
+        "pid": "189931",
+        "role": "Codex launcher",
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// ",
+        "samples": 90,
+        "cpu_mean": 0.011057134415774264,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          20,
+          20
+        ],
+        "threads": [
+          7,
+          7
+        ],
+        "rss_kb": [
+          47944,
+          47944
+        ]
+      },
+      {
+        "pid": "189938",
+        "role": "Codex native",
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// ",
+        "samples": 90,
+        "cpu_mean": 0.011059104290801315,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          30,
+          30
+        ],
+        "threads": [
+          26,
+          27
+        ],
+        "rss_kb": [
+          79856,
+          80152
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 0.09949922583098153,
+    "cpu_sample_p95": 0.9951172829060939,
+    "cpu_sample_p99": 0.9953374541686292
+  },
+  "before-codex-disabled": {
+    "seconds": 90.423,
+    "processes": [
+      {
+        "pid": "170189",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 90,
+        "cpu_mean": 0.08847449172283414,
+        "cpu_p95": 0.9956178804924485,
+        "cpu_p99": 0.9957854158990628,
+        "fds": [
+          13,
+          13
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          63488,
+          63616
+        ]
+      },
+      {
+        "pid": "170206",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 90,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19084,
+          19084
+        ]
+      },
+      {
+        "pid": "170208",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 90,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          13,
+          13
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          39192,
+          39192
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 0.08847449172283414,
+    "cpu_sample_p95": 0.9956178804924485,
+    "cpu_sample_p99": 0.9957854158990628
+  },
+  "before-codex-idle": {
+    "seconds": 90.465,
+    "processes": [
+      {
+        "pid": "170189",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 90,
+        "cpu_mean": 0.06634485131614248,
+        "cpu_p95": 0.9946925997952495,
+        "cpu_p99": 0.9954245390704457,
+        "fds": [
+          13,
+          13
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          63616,
+          63616
+        ]
+      },
+      {
+        "pid": "170206",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 90,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19084,
+          19084
+        ]
+      },
+      {
+        "pid": "170208",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 90,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          13,
+          13
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          39192,
+          39192
+        ]
+      },
+      {
+        "pid": "189878",
+        "role": "Codex bridge",
+        "cmd": "node codex-agent.js ",
+        "samples": 90,
+        "cpu_mean": 0.011057713369027028,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          25,
+          25
+        ],
+        "threads": [
+          7,
+          7
+        ],
+        "rss_kb": [
+          52956,
+          52956
+        ]
+      },
+      {
+        "pid": "189931",
+        "role": "Codex launcher",
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// ",
+        "samples": 90,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          20,
+          20
+        ],
+        "threads": [
+          7,
+          7
+        ],
+        "rss_kb": [
+          47944,
+          47944
+        ]
+      },
+      {
+        "pid": "189938",
+        "role": "Codex native",
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// ",
+        "samples": 90,
+        "cpu_mean": 0.1987040116235836,
+        "cpu_p95": 0.9953061719243834,
+        "cpu_p99": 0.9954603811192154,
+        "fds": [
+          30,
+          31
+        ],
+        "threads": [
+          26,
+          29
+        ],
+        "rss_kb": [
+          79856,
+          99268
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 0.2761065763087531,
+    "cpu_sample_p95": 0.9953678367909438,
+    "cpu_sample_p99": 0.995525367332256
+  },
+  "before-editor-ui-cpu": {
+    "seconds": 120.686,
+    "processes": [
+      {
+        "pid": "216843",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 120,
+        "cpu_mean": 15.91483875619932,
+        "cpu_p95": 23.87288538407197,
+        "cpu_p99": 24.82593267514361,
+        "fds": [
+          13,
+          16
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          63200,
+          64068
+        ]
+      },
+      {
+        "pid": "216897",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 120,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19080,
+          19080
+        ]
+      },
+      {
+        "pid": "216899",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 120,
+        "cpu_mean": 21.83427350361708,
+        "cpu_p95": 30.8330942632726,
+        "cpu_p99": 31.82592913088117,
+        "fds": [
+          13,
+          15
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          23696,
+          84084
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 37.7491122598164,
+    "cpu_sample_p95": 52.75614705516027,
+    "cpu_sample_p99": 53.75257335718757
+  },
+  "before-editor": {
+    "seconds": 60.733,
+    "processes": [
+      {
+        "pid": "170189",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 9.055259237917504,
+        "cpu_p95": 62.699697416672834,
+        "cpu_p99": 74.99337740972092,
+        "fds": [
+          13,
+          23
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          63604,
+          63992
+        ]
+      },
+      {
+        "pid": "170206",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19084,
+          19084
+        ]
+      },
+      {
+        "pid": "170208",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.9053598320637001,
+        "cpu_p95": 1.9756732527161773,
+        "cpu_p99": 1.989624929698223,
+        "fds": [
+          13,
+          14
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          37316,
+          37948
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 9.960619069981204,
+    "cpu_sample_p95": 62.699697416672834,
+    "cpu_sample_p99": 75.9932891085172
+  },
+  "before-idle-no-autorestart": {
+    "seconds": 180.319,
+    "processes": [
+      {
+        "pid": "170189",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 178,
+        "cpu_mean": 0.15492439855273074,
+        "cpu_p95": 0.9862169329420402,
+        "cpu_p99": 0.9951385867897861,
+        "fds": [
+          13,
+          13
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          63452,
+          63848
+        ]
+      },
+      {
+        "pid": "170206",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 178,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19084,
+          19084
+        ]
+      },
+      {
+        "pid": "170208",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 178,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          13,
+          13
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          37804,
+          37804
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 0.15492439855273074,
+    "cpu_sample_p95": 0.9862169329420402,
+    "cpu_sample_p99": 0.9951385867897861
+  },
+  "before-idle": {
+    "seconds": 180.177,
+    "processes": [
+      {
+        "pid": "170189",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 178,
+        "cpu_mean": 6.179738514852403,
+        "cpu_p95": 48.04012957908799,
+        "cpu_p99": 58.90259118376622,
+        "fds": [
+          13,
+          21
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          63276,
+          63660
+        ]
+      },
+      {
+        "pid": "170206",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 178,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19084,
+          19084
+        ]
+      },
+      {
+        "pid": "170208",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 178,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          13,
+          13
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          22856,
+          22856
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 6.179738514852403,
+    "cpu_sample_p95": 48.04012957908799,
+    "cpu_sample_p99": 58.90259118376622
+  },
+  "before-large-runtime": {
+    "seconds": 180.441,
+    "processes": [
+      {
+        "pid": "205875",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 179,
+        "cpu_mean": 25.695415079044164,
+        "cpu_p95": 107.29749891806958,
+        "cpu_p99": 108.0701921647038,
+        "fds": [
+          13,
+          20
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          62624,
+          63100
+        ]
+      },
+      {
+        "pid": "205911",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 179,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          18952,
+          18952
+        ]
+      },
+      {
+        "pid": "205913",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 179,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          11,
+          11
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          20156,
+          20156
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 25.695415079044164,
+    "cpu_sample_p95": 107.29749891806958,
+    "cpu_sample_p99": 108.0701921647038
+  },
+  "before-panel": {
+    "seconds": 120.499,
+    "processes": [
+      {
+        "pid": "170189",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 119,
+        "cpu_mean": 43.69794066069329,
+        "cpu_p95": 100.4462435756782,
+        "cpu_p99": 112.30461073888333,
+        "fds": [
+          13,
+          25
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          63384,
+          63908
+        ]
+      },
+      {
+        "pid": "170206",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 119,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19084,
+          19084
+        ]
+      },
+      {
+        "pid": "170208",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 119,
+        "cpu_mean": 42.20209092343727,
+        "cpu_p95": 44.485916258687794,
+        "cpu_p99": 44.75141862367868,
+        "fds": [
+          13,
+          13
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          23796,
+          24836
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 85.90003158413056,
+    "cpu_sample_p95": 143.21048589007586,
+    "cpu_sample_p99": 155.6502499714348
+  },
+  "before-terminal-active": {
+    "seconds": 60.728,
+    "processes": [
+      {
+        "pid": "170189",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.21448895692872388,
+        "cpu_p95": 0.9905970830963537,
+        "cpu_p99": 0.9913062452207955,
+        "fds": [
+          13,
+          14
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          63568,
+          63836
+        ]
+      },
+      {
+        "pid": "170206",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19084,
+          19084
+        ]
+      },
+      {
+        "pid": "170208",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.14825379690138737,
+        "cpu_p95": 0.9898635292079637,
+        "cpu_p99": 0.9910268376817785,
+        "fds": [
+          14,
+          14
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          37932,
+          37932
+        ]
+      },
+      {
+        "pid": "179891",
+        "role": "PTY Node",
+        "cmd": "node pty.js ",
+        "samples": 60,
+        "cpu_mean": 0.3781506614462909,
+        "cpu_p95": 0.9913062452207955,
+        "cpu_p99": 0.9922503028700972,
+        "fds": [
+          24,
+          24
+        ],
+        "threads": [
+          12,
+          12
+        ],
+        "rss_kb": [
+          52536,
+          54188
+        ]
+      },
+      {
+        "pid": "179906",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 60,
+        "cpu_mean": 0.5102405599605403,
+        "cpu_p95": 0.9913821037339814,
+        "cpu_p99": 0.9922503028700972,
+        "fds": [
+          4,
+          4
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5548,
+          5548
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 1.2511339752369424,
+    "cpu_sample_p95": 2.9184475694398455,
+    "cpu_sample_p99": 2.9660299111277073
+  },
+  "before-terminal-disconnected": {
+    "seconds": 60.63,
+    "processes": [
+      {
+        "pid": "170189",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.11552791247973963,
+        "cpu_p95": 0.9904853727456556,
+        "cpu_p99": 0.9934180579914833,
+        "fds": [
+          13,
+          13
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          63428,
+          63560
+        ]
+      },
+      {
+        "pid": "170206",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19084,
+          19084
+        ]
+      },
+      {
+        "pid": "170208",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          21,
+          21
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          37932,
+          37932
+        ]
+      },
+      {
+        "pid": "179891",
+        "role": "PTY Node",
+        "cmd": "node pty.js ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          38,
+          38
+        ],
+        "threads": [
+          19,
+          19
+        ],
+        "rss_kb": [
+          54444,
+          54572
+        ]
+      },
+      {
+        "pid": "179906",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          4,
+          4
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5548,
+          5548
+        ]
+      },
+      {
+        "pid": "182257",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          5,
+          5
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5432,
+          5432
+        ]
+      },
+      {
+        "pid": "182260",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          6,
+          6
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5544,
+          5544
+        ]
+      },
+      {
+        "pid": "182271",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          7,
+          7
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5496,
+          5496
+        ]
+      },
+      {
+        "pid": "182273",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5240,
+          5240
+        ]
+      },
+      {
+        "pid": "182277",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          9,
+          9
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5536,
+          5536
+        ]
+      },
+      {
+        "pid": "182284",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          10,
+          10
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5536,
+          5536
+        ]
+      },
+      {
+        "pid": "182292",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          11,
+          11
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5552,
+          5552
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 0.11552791247973963,
+    "cpu_sample_p95": 0.9904853727456556,
+    "cpu_sample_p99": 0.9934180579914833
+  },
+  "before-terminal-idle": {
+    "seconds": 60.722,
+    "processes": [
+      {
+        "pid": "170189",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.09884083136303717,
+        "cpu_p95": 0.987890463396487,
+        "cpu_p99": 0.9909310387694689,
+        "fds": [
+          13,
+          14
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          63580,
+          63708
+        ]
+      },
+      {
+        "pid": "170206",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19084,
+          19084
+        ]
+      },
+      {
+        "pid": "170208",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          14,
+          14
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          37932,
+          37932
+        ]
+      },
+      {
+        "pid": "179891",
+        "role": "PTY Node",
+        "cmd": "node pty.js ",
+        "samples": 60,
+        "cpu_mean": 0.033330459047889095,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          24,
+          24
+        ],
+        "threads": [
+          8,
+          8
+        ],
+        "rss_kb": [
+          52536,
+          52536
+        ]
+      },
+      {
+        "pid": "179906",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 59,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          4,
+          4
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5548,
+          5548
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 0.13217129041092626,
+    "cpu_sample_p95": 0.9887657689058776,
+    "cpu_sample_p99": 0.9911339215213285
+  },
+  "before-terminal-multi": {
+    "seconds": 60.728,
+    "processes": [
+      {
+        "pid": "170189",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.18178406683347892,
+        "cpu_p95": 0.9891831477498285,
+        "cpu_p99": 0.9934992038737382,
+        "fds": [
+          13,
+          21
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          63560,
+          64208
+        ]
+      },
+      {
+        "pid": "170206",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19084,
+          19084
+        ]
+      },
+      {
+        "pid": "170208",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.03303448063796757,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.9821721156116456,
+        "fds": [
+          21,
+          21
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          37932,
+          37932
+        ]
+      },
+      {
+        "pid": "179891",
+        "role": "PTY Node",
+        "cmd": "node pty.js ",
+        "samples": 60,
+        "cpu_mean": 0.08275986373264073,
+        "cpu_p95": 0.0,
+        "cpu_p99": 1.9659016559592175,
+        "fds": [
+          38,
+          38
+        ],
+        "threads": [
+          19,
+          19
+        ],
+        "rss_kb": [
+          54444,
+          54444
+        ]
+      },
+      {
+        "pid": "179906",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          4,
+          4
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5548,
+          5548
+        ]
+      },
+      {
+        "pid": "182257",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 59,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          5,
+          5
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5432,
+          5432
+        ]
+      },
+      {
+        "pid": "182260",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 59,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          6,
+          6
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5544,
+          5544
+        ]
+      },
+      {
+        "pid": "182271",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 59,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          7,
+          7
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5496,
+          5496
+        ]
+      },
+      {
+        "pid": "182273",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 59,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5240,
+          5240
+        ]
+      },
+      {
+        "pid": "182277",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 59,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          9,
+          9
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5536,
+          5536
+        ]
+      },
+      {
+        "pid": "182284",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 59,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          10,
+          10
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5536,
+          5536
+        ]
+      },
+      {
+        "pid": "182292",
+        "role": "shell",
+        "cmd": "bash ",
+        "samples": 59,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          11,
+          11
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          5552,
+          5552
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 0.29757841120408723,
+    "cpu_sample_p95": 0.9934992038737382,
+    "cpu_sample_p99": 2.9488524839388264
+  },
+  "compression-br-0-level6.cpu": {
+    "seconds": 20.102,
+    "processes": [
+      {
+        "pid": "216777",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 2.7363724256450372,
+        "cpu_p95": 2.987636630813529,
+        "cpu_p99": 2.987636630813529,
+        "fds": [
+          29,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          64428,
+          65644
+        ]
+      },
+      {
+        "pid": "216794",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19080,
+          19080
+        ]
+      },
+      {
+        "pid": "216796",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 110.98442268209845,
+        "cpu_p95": 112.50002065807348,
+        "cpu_p99": 112.50002065807348,
+        "fds": [
+          18,
+          28
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          28808,
+          37880
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 113.7207951077435,
+    "cpu_sample_p95": 115.42207692854001,
+    "cpu_sample_p99": 115.42207692854001
+  },
+  "compression-br-0-level9.cpu": {
+    "seconds": 20.084,
+    "processes": [
+      {
+        "pid": "216419",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 1.6436546303378345,
+        "cpu_p95": 1.9917829492385755,
+        "cpu_p99": 1.9917829492385755,
+        "fds": [
+          29,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          64312,
+          65108
+        ]
+      },
+      {
+        "pid": "216474",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19080,
+          19080
+        ]
+      },
+      {
+        "pid": "216476",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 106.4519104620749,
+        "cpu_p95": 107.5495578229193,
+        "cpu_p99": 107.5495578229193,
+        "fds": [
+          23,
+          28
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          29964,
+          66964
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 108.09556509241274,
+    "cpu_sample_p95": 109.54121630112151,
+    "cpu_sample_p99": 109.54121630112151
+  },
+  "compression-gzip-0-level6.cpu": {
+    "seconds": 20.099,
+    "processes": [
+      {
+        "pid": "214401",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 1.691995562262902,
+        "cpu_p95": 2.984631576870797,
+        "cpu_p99": 2.984631576870797,
+        "fds": [
+          29,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          64836,
+          65444
+        ]
+      },
+      {
+        "pid": "214436",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19080,
+          19080
+        ]
+      },
+      {
+        "pid": "214438",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 106.07508278331277,
+        "cpu_p95": 107.48969728418726,
+        "cpu_p99": 107.48969728418726,
+        "fds": [
+          23,
+          28
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          26576,
+          35092
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 107.76707834557567,
+    "cpu_sample_p95": 109.48024723389443,
+    "cpu_sample_p99": 109.48024723389443
+  },
+  "compression-gzip-0-level9.cpu": {
+    "seconds": 20.096,
+    "processes": [
+      {
+        "pid": "214036",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 0.6972095403301407,
+        "cpu_p95": 1.9907639283942133,
+        "cpu_p99": 1.9907639283942133,
+        "fds": [
+          29,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          64224,
+          64912
+        ]
+      },
+      {
+        "pid": "214054",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19080,
+          19080
+        ]
+      },
+      {
+        "pid": "214056",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 101.66088357432899,
+        "cpu_p95": 102.53283671079816,
+        "cpu_p99": 102.53283671079816,
+        "fds": [
+          21,
+          28
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          27152,
+          35224
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 102.35809311465913,
+    "cpu_sample_p95": 103.50681579592552,
+    "cpu_sample_p99": 103.50681579592552
+  },
+  "compression-gzip-1-level6.cpu": {
+    "seconds": 20.099,
+    "processes": [
+      {
+        "pid": "214816",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 1.6423394176670616,
+        "cpu_p95": 2.9851566221389327,
+        "cpu_p99": 2.9851566221389327,
+        "fds": [
+          29,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          64544,
+          64988
+        ]
+      },
+      {
+        "pid": "214853",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19080,
+          19080
+        ]
+      },
+      {
+        "pid": "214855",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 106.07363421299937,
+        "cpu_p95": 107.47443924455125,
+        "cpu_p99": 107.47443924455125,
+        "fds": [
+          23,
+          27
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          26760,
+          34932
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 107.71597363066643,
+    "cpu_sample_p95": 109.46470663796886,
+    "cpu_sample_p99": 109.46470663796886
+  },
+  "compression-gzip-1-level9.cpu": {
+    "seconds": 20.104,
+    "processes": [
+      {
+        "pid": "215248",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 0.5972884666644427,
+        "cpu_p95": 0.9955624010602381,
+        "cpu_p99": 0.9955624010602381,
+        "fds": [
+          29,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          63980,
+          65008
+        ]
+      },
+      {
+        "pid": "215265",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19080,
+          19080
+        ]
+      },
+      {
+        "pid": "215267",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 101.62245335289857,
+        "cpu_p95": 102.55007824739631,
+        "cpu_p99": 102.55007824739631,
+        "fds": [
+          21,
+          28
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          25312,
+          36464
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 102.21974181956301,
+    "cpu_sample_p95": 103.50604936264182,
+    "cpu_sample_p99": 103.50604936264182
+  },
+  "compression-gzip-2-level6.cpu": {
+    "seconds": 20.079,
+    "processes": [
+      {
+        "pid": "216038",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 1.793337145402303,
+        "cpu_p95": 2.98797561224976,
+        "cpu_p99": 2.98797561224976,
+        "fds": [
+          29,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          64600,
+          65340
+        ]
+      },
+      {
+        "pid": "216055",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19080,
+          19080
+        ]
+      },
+      {
+        "pid": "216057",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 107.22371792953685,
+        "cpu_p95": 108.55562991726075,
+        "cpu_p99": 108.55562991726075,
+        "fds": [
+          22,
+          28
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          26672,
+          37324
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 109.01705507493915,
+    "cpu_sample_p95": 110.55043702991603,
+    "cpu_sample_p99": 110.55043702991603
+  },
+  "compression-gzip-2-level9.cpu": {
+    "seconds": 20.085,
+    "processes": [
+      {
+        "pid": "215675",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 0.7471706412875235,
+        "cpu_p95": 1.9927400196674132,
+        "cpu_p99": 1.9927400196674132,
+        "fds": [
+          29,
+          30
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          64280,
+          64684
+        ]
+      },
+      {
+        "pid": "215711",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19080,
+          19080
+        ]
+      },
+      {
+        "pid": "215713",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 101.91423719101496,
+        "cpu_p95": 102.61484779034508,
+        "cpu_p99": 102.61484779034508,
+        "fds": [
+          22,
+          27
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          26388,
+          35280
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 102.66140783230249,
+    "cpu_sample_p95": 104.57633074780601,
+    "cpu_sample_p99": 104.57633074780601
+  },
+  "compression-gzip-3-level3.cpu": {
+    "seconds": 20.083,
+    "processes": [
+      {
+        "pid": "241018",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 3.2866969180754957,
+        "cpu_p95": 3.983271962596345,
+        "cpu_p99": 3.983271962596345,
+        "fds": [
+          29,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          64328,
+          65048
+        ]
+      },
+      {
+        "pid": "241129",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19080,
+          19080
+        ]
+      },
+      {
+        "pid": "241131",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 112.03333823571417,
+        "cpu_p95": 113.43055739039731,
+        "cpu_p99": 113.43055739039731,
+        "fds": [
+          19,
+          28
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          25928,
+          35100
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 115.32003515378966,
+    "cpu_sample_p95": 116.5107049059431,
+    "cpu_sample_p99": 116.5107049059431
+  },
+  "compression-gzip-3-level6.cpu": {
+    "seconds": 20.084,
+    "processes": [
+      {
+        "pid": "242131",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 1.9918740232090988,
+        "cpu_p95": 2.9879092667924936,
+        "cpu_p99": 2.9879092667924936,
+        "fds": [
+          29,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          64368,
+          65164
+        ]
+      },
+      {
+        "pid": "242169",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19080,
+          19080
+        ]
+      },
+      {
+        "pid": "242171",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 20,
+        "cpu_mean": 107.20044514530649,
+        "cpu_p95": 108.54973429098149,
+        "cpu_p99": 108.54973429098149,
+        "fds": [
+          23,
+          28
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          26988,
+          33872
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 109.19231916851558,
+    "cpu_sample_p95": 110.54147253485272,
+    "cpu_sample_p99": 110.54147253485272
+  },
+  "fixed-after.cpu": {
+    "seconds": 60.477,
+    "processes": [
+      {
+        "pid": "268471",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.14887672490833043,
+        "cpu_p95": 0.9955179660716218,
+        "cpu_p99": 0.9958235667478798,
+        "fds": [
+          14,
+          14
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          37276,
+          37964
+        ]
+      },
+      {
+        "pid": "268488",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19200,
+          19200
+        ]
+      },
+      {
+        "pid": "268490",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 11.390626503104333,
+        "cpu_p95": 13.94501897370294,
+        "cpu_p99": 14.87904029142549,
+        "fds": [
+          13,
+          14
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          23912,
+          24700
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 11.539503228012663,
+    "cpu_sample_p95": 14.86646275649835,
+    "cpu_sample_p99": 14.936708907393271
+  },
+  "fixed-before.cpu": {
+    "seconds": 60.407,
+    "processes": [
+      {
+        "pid": "267140",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.23180314940564645,
+        "cpu_p95": 0.9958508085186167,
+        "cpu_p99": 0.9960693569228966,
+        "fds": [
+          14,
+          14
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          63288,
+          63888
+        ]
+      },
+      {
+        "pid": "267344",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19152,
+          19152
+        ]
+      },
+      {
+        "pid": "267346",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 60,
+        "cpu_mean": 24.97710670108581,
+        "cpu_p95": 28.6499118293983,
+        "cpu_p99": 28.7007567261548,
+        "fds": [
+          13,
+          14
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          23104,
+          23596
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 25.208909850491455,
+    "cpu_sample_p95": 28.67705636946241,
+    "cpu_sample_p99": 28.713041120484416
+  },
+  "http-after-h2-api.cpu": {
+    "seconds": 30.125,
+    "processes": [
+      {
+        "pid": "264795",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 46.737943992009214,
+        "cpu_p95": 48.80161309765546,
+        "cpu_p99": 49.79347146896525,
+        "fds": [
+          14,
+          14
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          37248,
+          37248
+        ]
+      },
+      {
+        "pid": "264830",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19200,
+          19200
+        ]
+      },
+      {
+        "pid": "264832",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 96.16376325229852,
+        "cpu_p95": 97.6038170294978,
+        "cpu_p99": 98.58482185285416,
+        "fds": [
+          13,
+          13
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          25152,
+          26272
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 142.90170724430774,
+    "cpu_sample_p95": 146.393504447358,
+    "cpu_sample_p99": 146.4000546256733
+  },
+  "http-after-h2-html.cpu": {
+    "seconds": 30.135,
+    "processes": [
+      {
+        "pid": "264795",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 2.223406289544492,
+        "cpu_p95": 2.9871577220467675,
+        "cpu_p99": 2.999789171813701,
+        "fds": [
+          14,
+          14
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          36988,
+          37780
+        ]
+      },
+      {
+        "pid": "264830",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19200,
+          19200
+        ]
+      },
+      {
+        "pid": "264832",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 107.68046674790183,
+        "cpu_p95": 108.53766687609739,
+        "cpu_p99": 108.545357877021,
+        "fds": [
+          20,
+          28
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          28592,
+          31528
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 109.90387303744632,
+    "cpu_sample_p95": 111.47954736541045,
+    "cpu_sample_p99": 111.4858521114284
+  },
+  "http-after-identity-html.cpu": {
+    "seconds": 30.15,
+    "processes": [
+      {
+        "pid": "263722",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 37.345047700796,
+        "cpu_p95": 41.63240344641797,
+        "cpu_p99": 41.76002077888771,
+        "fds": [
+          13,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          37900,
+          40160
+        ]
+      },
+      {
+        "pid": "263779",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19200,
+          19200
+        ]
+      },
+      {
+        "pid": "263781",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 152.17178576812668,
+        "cpu_p95": 154.3034673590298,
+        "cpu_p99": 154.31264610639894,
+        "fds": [
+          13,
+          28
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          24556,
+          31564
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 189.5168334689227,
+    "cpu_sample_p95": 193.29330171551197,
+    "cpu_sample_p99": 193.4118362287438
+  },
+  "http-after-identity-large.cpu": {
+    "seconds": 30.166,
+    "processes": [
+      {
+        "pid": "263722",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 99.41537562238007,
+        "cpu_p95": 100.53596599411976,
+        "cpu_p99": 101.09761251704023,
+        "fds": [
+          13,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          37308,
+          42292
+        ]
+      },
+      {
+        "pid": "263779",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19200,
+          19200
+        ]
+      },
+      {
+        "pid": "263781",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 142.34550158718193,
+        "cpu_p95": 149.9867800560415,
+        "cpu_p99": 151.26894562420253,
+        "fds": [
+          13,
+          16
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          24556,
+          28584
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 241.760877209562,
+    "cpu_sample_p95": 249.76664705169148,
+    "cpu_sample_p99": 251.78317922975816
+  },
+  "http-after-level6-api.cpu": {
+    "seconds": 30.137,
+    "processes": [
+      {
+        "pid": "259454",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 42.738336346052094,
+        "cpu_p95": 45.77434770863604,
+        "cpu_p99": 45.78928380589911,
+        "fds": [
+          13,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          37972,
+          38604
+        ]
+      },
+      {
+        "pid": "259513",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19200,
+          19200
+        ]
+      },
+      {
+        "pid": "259515",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 98.01875979199002,
+        "cpu_p95": 100.57478940244188,
+        "cpu_p99": 100.57844215580701,
+        "fds": [
+          11,
+          11
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          23228,
+          23720
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 140.75709613804213,
+    "cpu_sample_p95": 143.39375914803594,
+    "cpu_sample_p99": 144.33578590989936
+  },
+  "http-after-level6-css.cpu": {
+    "seconds": 30.141,
+    "processes": [
+      {
+        "pid": "259454",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 12.04313873250982,
+        "cpu_p95": 13.930463999387442,
+        "cpu_p99": 13.936265985520707,
+        "fds": [
+          13,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          37636,
+          38292
+        ]
+      },
+      {
+        "pid": "259513",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19200,
+          19200
+        ]
+      },
+      {
+        "pid": "259515",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 122.82077073525684,
+        "cpu_p95": 125.4474953594836,
+        "cpu_p99": 126.42888482145435,
+        "fds": [
+          13,
+          20
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          25640,
+          25924
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 134.86390946776666,
+    "cpu_sample_p95": 137.3896882138833,
+    "cpu_sample_p99": 137.3948758699106
+  },
+  "http-after-level6-html.cpu": {
+    "seconds": 30.132,
+    "processes": [
+      {
+        "pid": "259454",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 1.8256736798657884,
+        "cpu_p95": 2.987168614232091,
+        "cpu_p99": 2.987202486992404,
+        "fds": [
+          25,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          38720,
+          39372
+        ]
+      },
+      {
+        "pid": "259513",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19200,
+          19200
+        ]
+      },
+      {
+        "pid": "259515",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 107.0955627932194,
+        "cpu_p95": 108.53502369405734,
+        "cpu_p99": 108.5357064973985,
+        "fds": [
+          21,
+          28
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          27208,
+          36336
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 108.92123647308519,
+    "cpu_sample_p95": 110.52718735056177,
+    "cpu_sample_p99": 110.52874081845934
+  },
+  "http-after-level6-js-real.cpu": {
+    "seconds": 30.131,
+    "processes": [
+      {
+        "pid": "259454",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 4.380875102566399,
+        "cpu_p95": 4.978535006487848,
+        "cpu_p99": 4.978950971925724,
+        "fds": [
+          13,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          37784,
+          38868
+        ]
+      },
+      {
+        "pid": "259513",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19200,
+          19200
+        ]
+      },
+      {
+        "pid": "259515",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 107.23013433996792,
+        "cpu_p95": 109.48366725189146,
+        "cpu_p99": 109.49459288731754,
+        "fds": [
+          13,
+          28
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          25544,
+          25980
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 111.61100944253431,
+    "cpu_sample_p95": 113.52008215990651,
+    "cpu_sample_p99": 114.46015577190273
+  },
+  "http-after-level6-large.cpu": {
+    "seconds": 30.138,
+    "processes": [
+      {
+        "pid": "259454",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 2.4223153409135696,
+        "cpu_p95": 2.9869013116855987,
+        "cpu_p99": 2.987062161554237,
+        "fds": [
+          29,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          38056,
+          40044
+        ]
+      },
+      {
+        "pid": "259513",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19200,
+          19200
+        ]
+      },
+      {
+        "pid": "259515",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 101.82975327577644,
+        "cpu_p95": 102.54457799480056,
+        "cpu_p99": 102.55584458472792,
+        "fds": [
+          25,
+          28
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          38168,
+          46344
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 104.25206861669001,
+    "cpu_sample_p95": 105.52012612239832,
+    "cpu_sample_p99": 105.5228112851637
+  },
+  "http-after-workers2-api.cpu": {
+    "seconds": 30.163,
+    "processes": [
+      {
+        "pid": "265920",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 79.60245329576114,
+        "cpu_p95": 88.61703713176028,
+        "cpu_p99": 88.61929178836655,
+        "fds": [
+          16,
+          32
+        ],
+        "threads": [
+          19,
+          19
+        ],
+        "rss_kb": [
+          37628,
+          38728
+        ]
+      },
+      {
+        "pid": "265937",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          10,
+          10
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19196,
+          19196
+        ]
+      },
+      {
+        "pid": "265940",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 83.24737111481528,
+        "cpu_p95": 90.61073654765569,
+        "cpu_p99": 92.58453154392853,
+        "fds": [
+          15,
+          15
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          25744,
+          26428
+        ]
+      },
+      {
+        "pid": "265941",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 83.2471235937885,
+        "cpu_p95": 90.60843122460882,
+        "cpu_p99": 91.23164408280846,
+        "fds": [
+          15,
+          15
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          27748,
+          28488
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 246.09694800436492,
+    "cpu_sample_p95": 268.8147845930398,
+    "cpu_sample_p99": 271.8252936738265
+  },
+  "http-after-workers2-html.cpu": {
+    "seconds": 30.139,
+    "processes": [
+      {
+        "pid": "265920",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 3.6501859753143657,
+        "cpu_p95": 4.974610810180493,
+        "cpu_p99": 4.976468495020409,
+        "fds": [
+          16,
+          32
+        ],
+        "threads": [
+          19,
+          19
+        ],
+        "rss_kb": [
+          38484,
+          39372
+        ]
+      },
+      {
+        "pid": "265937",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          10,
+          10
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19196,
+          19196
+        ]
+      },
+      {
+        "pid": "265940",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 106.70413238578114,
+        "cpu_p95": 107.54070954560565,
+        "cpu_p99": 108.51382075430942,
+        "fds": [
+          15,
+          22
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          25448,
+          29544
+        ]
+      },
+      {
+        "pid": "265941",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 106.63769790210071,
+        "cpu_p95": 107.54070954560565,
+        "cpu_p99": 107.54184067903576,
+        "fds": [
+          15,
+          23
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          25320,
+          27880
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 216.9920162631962,
+    "cpu_sample_p95": 218.96461378089802,
+    "cpu_sample_p99": 219.01872078851443
+  },
+  "http-before-level3-api.cpu": {
+    "seconds": 30.343,
+    "processes": [
+      {
+        "pid": "184902",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 51.24597841070043,
+        "cpu_p95": 54.42810722239373,
+        "cpu_p99": 54.59160663254288,
+        "fds": [
+          13,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          63700,
+          64340
+        ]
+      },
+      {
+        "pid": "184919",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19080,
+          19080
+        ]
+      },
+      {
+        "pid": "184921",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 151.85776769407386,
+        "cpu_p95": 158.2706115309634,
+        "cpu_p99": 162.0956719743433,
+        "fds": [
+          13,
+          19
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          22580,
+          23384
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 203.1037461047743,
+    "cpu_sample_p95": 211.06926082219871,
+    "cpu_sample_p99": 212.92381575135485
+  },
+  "http-before-level3-css.cpu": {
+    "seconds": 30.22,
+    "processes": [
+      {
+        "pid": "184902",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 21.248942916770496,
+        "cpu_p95": 22.88745569718261,
+        "cpu_p99": 22.998171277425133,
+        "fds": [
+          13,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          63580,
+          64292
+        ]
+      },
+      {
+        "pid": "184919",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19080,
+          19080
+        ]
+      },
+      {
+        "pid": "184921",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 121.90776955459248,
+        "cpu_p95": 124.38936415284523,
+        "cpu_p99": 125.36242413607862,
+        "fds": [
+          13,
+          20
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          25040,
+          25584
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 143.15671247136297,
+    "cpu_sample_p95": 147.6337059963902,
+    "cpu_sample_p99": 148.24604124028343
+  },
+  "http-before-level3-html.cpu": {
+    "seconds": 30.387,
+    "processes": [
+      {
+        "pid": "184902",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 2.7332495231005693,
+        "cpu_p95": 2.97412935439008,
+        "cpu_p99": 3.8959364669660683,
+        "fds": [
+          13,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          64492,
+          65564
+        ]
+      },
+      {
+        "pid": "184919",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19080,
+          19080
+        ]
+      },
+      {
+        "pid": "184921",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 109.45441750610935,
+        "cpu_p95": 110.67028764044338,
+        "cpu_p99": 111.03416256389633,
+        "fds": [
+          15,
+          29
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          27428,
+          33816
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 112.18766702920992,
+    "cpu_sample_p95": 113.42961977246746,
+    "cpu_sample_p99": 114.00829191828642
+  },
+  "http-before-level3-js-real.cpu": {
+    "seconds": 30.128,
+    "processes": [
+      {
+        "pid": "257328",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 6.273607912522556,
+        "cpu_p95": 6.969854341473475,
+        "cpu_p99": 6.970313407309058,
+        "fds": [
+          13,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          63712,
+          64304
+        ]
+      },
+      {
+        "pid": "257355",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19024,
+          19024
+        ]
+      },
+      {
+        "pid": "257357",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 112.98280865869125,
+        "cpu_p95": 114.51160559719769,
+        "cpu_p99": 114.51938869405323,
+        "fds": [
+          13,
+          27
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          22976,
+          24576
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 119.2564165712138,
+    "cpu_sample_p95": 121.45977086682078,
+    "cpu_sample_p99": 121.466274033745
+  },
+  "http-before-level3-js.cpu": {
+    "seconds": 30.447,
+    "processes": [
+      {
+        "pid": "184902",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 53.66380585367578,
+        "cpu_p95": 57.290161776059385,
+        "cpu_p99": 58.093849006117715,
+        "fds": [
+          13,
+          30
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          63400,
+          64876
+        ]
+      },
+      {
+        "pid": "184919",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19080,
+          19080
+        ]
+      },
+      {
+        "pid": "184921",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 150.2211259178424,
+        "cpu_p95": 158.95061193023662,
+        "cpu_p99": 159.462043103877,
+        "fds": [
+          13,
+          19
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          25092,
+          25836
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 203.88493177151815,
+    "cpu_sample_p95": 215.56905827005593,
+    "cpu_sample_p99": 216.20620183731324
+  },
+  "http-before-level3-large.cpu": {
+    "seconds": 30.168,
+    "processes": [
+      {
+        "pid": "184902",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 3.9114643744949475,
+        "cpu_p95": 4.975296023354739,
+        "cpu_p99": 4.975635417947733,
+        "fds": [
+          29,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          64264,
+          65264
+        ]
+      },
+      {
+        "pid": "184919",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19080,
+          19080
+        ]
+      },
+      {
+        "pid": "184921",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 102.75630601104342,
+        "cpu_p95": 104.02043004041437,
+        "cpu_p99": 104.39483452325345,
+        "fds": [
+          25,
+          28
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          38664,
+          50520
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 106.66777038553838,
+    "cpu_sample_p95": 108.40947386548939,
+    "cpu_sample_p99": 108.46145330913332
+  },
+  "http-before-level6-api.cpu": {
+    "seconds": 30.407,
+    "processes": [
+      {
+        "pid": "181674",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 50.28705921326522,
+        "cpu_p95": 53.04433694106234,
+        "cpu_p99": 53.205734159311625,
+        "fds": [
+          13,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          63176,
+          64388
+        ]
+      },
+      {
+        "pid": "181704",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19080,
+          19080
+        ]
+      },
+      {
+        "pid": "181706",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 150.58511961551778,
+        "cpu_p95": 157.1049287099864,
+        "cpu_p99": 157.16840575129584,
+        "fds": [
+          13,
+          19
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          22624,
+          23528
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 200.872178828783,
+    "cpu_sample_p95": 209.62459892436652,
+    "cpu_sample_p99": 209.86706251728475
+  },
+  "http-before-level6-css.cpu": {
+    "seconds": 30.262,
+    "processes": [
+      {
+        "pid": "181674",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 15.762296271920182,
+        "cpu_p95": 17.8512140050059,
+        "cpu_p99": 17.996494930672323,
+        "fds": [
+          13,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          63560,
+          64540
+        ]
+      },
+      {
+        "pid": "181704",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19080,
+          19080
+        ]
+      },
+      {
+        "pid": "181706",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 117.93633225134491,
+        "cpu_p95": 121.98329570087365,
+        "cpu_p99": 122.25021097196097,
+        "fds": [
+          13,
+          21
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          26208,
+          26592
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 133.69862852326509,
+    "cpu_sample_p95": 138.15267743985834,
+    "cpu_sample_p99": 139.14985160602112
+  },
+  "http-before-level6-html.cpu": {
+    "seconds": 30.291,
+    "processes": [
+      {
+        "pid": "181674",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 1.651537582855593,
+        "cpu_p95": 2.966731602848719,
+        "cpu_p99": 2.9844523640917604,
+        "fds": [
+          13,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          64196,
+          64936
+        ]
+      },
+      {
+        "pid": "181704",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19080,
+          19080
+        ]
+      },
+      {
+        "pid": "181706",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 106.03621578662818,
+        "cpu_p95": 108.22756751269586,
+        "cpu_p99": 108.43510256200062,
+        "fds": [
+          20,
+          28
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          28132,
+          36696
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 107.68775336948377,
+    "cpu_sample_p95": 110.21339443953431,
+    "cpu_sample_p99": 110.39857923114283
+  },
+  "http-before-level6-js-real.cpu": {
+    "seconds": 30.131,
+    "processes": [
+      {
+        "pid": "255995",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 4.016077280438584,
+        "cpu_p95": 4.977879448643237,
+        "cpu_p99": 4.978676730831597,
+        "fds": [
+          13,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          63152,
+          64304
+        ]
+      },
+      {
+        "pid": "256054",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19080,
+          19080
+        ]
+      },
+      {
+        "pid": "256056",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 107.63117731647081,
+        "cpu_p95": 109.51979316283203,
+        "cpu_p99": 109.53088807829513,
+        "fds": [
+          13,
+          26
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          23032,
+          24328
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 111.64725459690939,
+    "cpu_sample_p95": 113.46929469083867,
+    "cpu_sample_p99": 113.4956514290658
+  },
+  "http-before-level6-js.cpu": {
+    "seconds": 30.441,
+    "processes": [
+      {
+        "pid": "181674",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 54.20501832560615,
+        "cpu_p95": 57.46017436062674,
+        "cpu_p99": 57.62668099111969,
+        "fds": [
+          13,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          63772,
+          64836
+        ]
+      },
+      {
+        "pid": "181704",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19080,
+          19080
+        ]
+      },
+      {
+        "pid": "181706",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 155.76317564730527,
+        "cpu_p95": 166.36035483822357,
+        "cpu_p99": 166.38256433600992,
+        "fds": [
+          13,
+          19
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          25764,
+          26440
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 209.96819397291142,
+    "cpu_sample_p95": 221.51524837634457,
+    "cpu_sample_p99": 221.81380645096476
+  },
+  "http-before-level6-large.cpu": {
+    "seconds": 30.276,
+    "processes": [
+      {
+        "pid": "181674",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 2.3127527403192074,
+        "cpu_p95": 2.9787925519562495,
+        "cpu_p99": 2.978929480683638,
+        "fds": [
+          13,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          63480,
+          64504
+        ]
+      },
+      {
+        "pid": "181704",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19080,
+          19080
+        ]
+      },
+      {
+        "pid": "181706",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 101.56583189432035,
+        "cpu_p95": 103.19678014207874,
+        "cpu_p99": 103.24764555760015,
+        "fds": [
+          21,
+          28
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          37188,
+          48852
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 103.87858463463957,
+    "cpu_sample_p95": 105.18133360634948,
+    "cpu_sample_p99": 105.25550831748855
+  },
+  "http-before-level9-api.cpu": {
+    "seconds": 30.368,
+    "processes": [
+      {
+        "pid": "179081",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 50.24989191938711,
+        "cpu_p95": 52.640411611113635,
+        "cpu_p99": 53.7055251405479,
+        "fds": [
+          13,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          63316,
+          64108
+        ]
+      },
+      {
+        "pid": "179099",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19080,
+          19080
+        ]
+      },
+      {
+        "pid": "179101",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 152.08953971195177,
+        "cpu_p95": 159.14800044811486,
+        "cpu_p99": 159.2156314107809,
+        "fds": [
+          13,
+          19
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          22592,
+          23548
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 202.33943163133887,
+    "cpu_sample_p95": 210.63931360556728,
+    "cpu_sample_p99": 211.55486175787178
+  },
+  "http-before-level9-css.cpu": {
+    "seconds": 30.309,
+    "processes": [
+      {
+        "pid": "179081",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 10.36101086931135,
+        "cpu_p95": 11.893131307246623,
+        "cpu_p99": 12.844667521802537,
+        "fds": [
+          13,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          63684,
+          64112
+        ]
+      },
+      {
+        "pid": "179099",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19080,
+          19080
+        ]
+      },
+      {
+        "pid": "179101",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 110.5598562845616,
+        "cpu_p95": 113.91651417473044,
+        "cpu_p99": 113.91929221714445,
+        "fds": [
+          13,
+          20
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          27080,
+          27480
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 120.92086715387296,
+    "cpu_sample_p95": 125.80345478426753,
+    "cpu_sample_p99": 125.86897300169342
+  },
+  "http-before-level9-html.cpu": {
+    "seconds": 30.28,
+    "processes": [
+      {
+        "pid": "179081",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.661925149481323,
+        "cpu_p95": 0.9914956778347388,
+        "cpu_p99": 0.9921854629587415,
+        "fds": [
+          15,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          64032,
+          64888
+        ]
+      },
+      {
+        "pid": "179099",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19080,
+          19080
+        ]
+      },
+      {
+        "pid": "179101",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 101.61608205345384,
+        "cpu_p95": 103.05389230639804,
+        "cpu_p99": 103.18728814770913,
+        "fds": [
+          20,
+          28
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          28244,
+          34628
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 102.27800720293516,
+    "cpu_sample_p95": 103.99108276466066,
+    "cpu_sample_p99": 104.01774885151899
+  },
+  "http-before-level9-js-real.cpu": {
+    "seconds": 30.128,
+    "processes": [
+      {
+        "pid": "254089",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 2.2571031220690254,
+        "cpu_p95": 2.9871470173215235,
+        "cpu_p99": 2.987160503087397,
+        "fds": [
+          13,
+          30
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          63664,
+          64356
+        ]
+      },
+      {
+        "pid": "254452",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19080,
+          19080
+        ]
+      },
+      {
+        "pid": "254454",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 103.59039288357451,
+        "cpu_p95": 104.55554743716654,
+        "cpu_p99": 104.56182509787186,
+        "fds": [
+          13,
+          27
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          23912,
+          24328
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 105.84749600564353,
+    "cpu_sample_p95": 106.55972770573258,
+    "cpu_sample_p99": 107.53187460822232
+  },
+  "http-before-level9-js.cpu": {
+    "seconds": 30.392,
+    "processes": [
+      {
+        "pid": "179081",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 50.087788891667195,
+        "cpu_p95": 57.39986245386368,
+        "cpu_p99": 57.450805402788,
+        "fds": [
+          13,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          63484,
+          64820
+        ]
+      },
+      {
+        "pid": "179099",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19080,
+          19080
+        ]
+      },
+      {
+        "pid": "179101",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 149.59122204910065,
+        "cpu_p95": 164.64405698430434,
+        "cpu_p99": 166.40922944255834,
+        "fds": [
+          13,
+          24
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          27072,
+          28848
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 199.67901094076785,
+    "cpu_sample_p95": 221.82582527825434,
+    "cpu_sample_p99": 223.86003484534635
+  },
+  "http-before-level9-large.cpu": {
+    "seconds": 30.299,
+    "processes": [
+      {
+        "pid": "179081",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 1.7833339944386033,
+        "cpu_p95": 2.973484239745411,
+        "cpu_p99": 2.9771907650257092,
+        "fds": [
+          29,
+          29
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          64240,
+          66140
+        ]
+      },
+      {
+        "pid": "179099",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19080,
+          19080
+        ]
+      },
+      {
+        "pid": "179101",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 30,
+        "cpu_mean": 100.82650032068511,
+        "cpu_p95": 104.10336180472007,
+        "cpu_p99": 104.81787387135563,
+        "fds": [
+          23,
+          28
+        ],
+        "threads": [
+          17,
+          17
+        ],
+        "rss_kb": [
+          34108,
+          59624
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 102.60983431512372,
+    "cpu_sample_p95": 105.7944566149639,
+    "cpu_sample_p99": 105.80672173806653
+  },
+  "long-idle": {
+    "seconds": 600.921,
+    "processes": [
+      {
+        "pid": "291952",
+        "role": "PTY Node",
+        "cmd": "node pty.js ",
+        "samples": 595,
+        "cpu_mean": 0.0016588308839094008,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          22,
+          22
+        ],
+        "threads": [
+          7,
+          7
+        ],
+        "rss_kb": [
+          51956,
+          51956
+        ]
+      },
+      {
+        "pid": "291959",
+        "role": "Codex bridge",
+        "cmd": "node codex-agent.js ",
+        "samples": 595,
+        "cpu_mean": 0.0033144679272080085,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          25,
+          25
+        ],
+        "threads": [
+          7,
+          7
+        ],
+        "rss_kb": [
+          52352,
+          52352
+        ]
+      },
+      {
+        "pid": "292029",
+        "role": "Codex launcher",
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// ",
+        "samples": 595,
+        "cpu_mean": 0.0016620765311858715,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          20,
+          20
+        ],
+        "threads": [
+          7,
+          7
+        ],
+        "rss_kb": [
+          47724,
+          47724
+        ]
+      },
+      {
+        "pid": "292055",
+        "role": "Codex native",
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// ",
+        "samples": 595,
+        "cpu_mean": 0.023247974062500367,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.9883749151203113,
+        "fds": [
+          29,
+          34
+        ],
+        "threads": [
+          26,
+          28
+        ],
+        "rss_kb": [
+          81248,
+          85352
+        ]
+      },
+      {
+        "pid": "292370",
+        "role": "supervisor",
+        "cmd": "php server.php --fix ",
+        "samples": 595,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          7,
+          7
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          33252,
+          33252
+        ]
+      },
+      {
+        "pid": "292415",
+        "role": "master/reactor",
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/fullstack/middleware.php ",
+        "samples": 595,
+        "cpu_mean": 0.013348642138655763,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.9894193728355032,
+        "fds": [
+          14,
+          14
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          37020,
+          37160
+        ]
+      },
+      {
+        "pid": "292512",
+        "role": "manager",
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/fullstack/middleware.php ",
+        "samples": 595,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          9,
+          9
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19116,
+          19116
+        ]
+      },
+      {
+        "pid": "292514",
+        "role": "worker",
+        "cmd": "/usr/local/bin/php /tmp/filemanager-perf/fullstack/middleware.php ",
+        "samples": 595,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          12,
+          12
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          23104,
+          23104
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 0.043231991543459414,
+    "cpu_sample_p95": 0.0,
+    "cpu_sample_p99": 0.9939623239631941
+  },
+  "node-pty-failure-idle": {
+    "seconds": 45.384,
+    "processes": [
+      {
+        "pid": "226143",
+        "role": "PTY Node",
+        "cmd": "node pty.js ",
+        "samples": 45,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          22,
+          22
+        ],
+        "threads": [
+          11,
+          11
+        ],
+        "rss_kb": [
+          54864,
+          54864
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 0.0,
+    "cpu_sample_p95": 0.0,
+    "cpu_sample_p99": 0.0
+  },
+  "php-pty-failure-idle": {
+    "seconds": 45.446,
+    "processes": [
+      {
+        "pid": "228367",
+        "role": "PTY PHP",
+        "cmd": "php pty.php ",
+        "samples": 45,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          9,
+          9
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          28140,
+          28140
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 0.0,
+    "cpu_sample_p95": 0.0,
+    "cpu_sample_p99": 0.0
+  },
+  "pty-backend-dead.cpu": {
+    "seconds": 45.356,
+    "processes": [
+      {
+        "pid": "287609",
+        "role": "master/reactor",
+        "cmd": "php middleware.php ",
+        "samples": 45,
+        "cpu_mean": 0.04408465478539503,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.9878490965354328,
+        "fds": [
+          14,
+          14
+        ],
+        "threads": [
+          18,
+          18
+        ],
+        "rss_kb": [
+          37104,
+          37232
+        ]
+      },
+      {
+        "pid": "287652",
+        "role": "manager",
+        "cmd": "php middleware.php ",
+        "samples": 45,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          8,
+          8
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          19124,
+          19124
+        ]
+      },
+      {
+        "pid": "287654",
+        "role": "worker",
+        "cmd": "php middleware.php ",
+        "samples": 45,
+        "cpu_mean": 0.0,
+        "cpu_p95": 0.0,
+        "cpu_p99": 0.0,
+        "fds": [
+          11,
+          11
+        ],
+        "threads": [
+          1,
+          1
+        ],
+        "rss_kb": [
+          23156,
+          23156
+        ]
+      }
+    ],
+    "cpu_sum_of_pid_means": 0.04408465478539503,
+    "cpu_sample_p95": 0.0,
+    "cpu_sample_p99": 0.9878490965354328
+  }
+}

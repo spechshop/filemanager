@@ -41,6 +41,8 @@ let accessTokenRejected = false;
 let stopping = false;
 let restartAttempt = 0;
 let nextRpcId = 1;
+let restartTimer = null;
+const commandProcesses = new Set();
 
 const clients = new Set();
 const pendingRpc = new Map();
@@ -71,6 +73,8 @@ function runCodexCommand(executable, args, env, input = "") {
             env,
             stdio: ["pipe", "pipe", "pipe"],
         });
+        commandProcesses.add(child);
+        child.once("close", () => commandProcesses.delete(child));
         const finish = (result) => {
             if (settled) return;
             settled = true;
@@ -512,7 +516,11 @@ function scheduleCodexRestart() {
     const delays = [1_000, 2_000, 5_000, 10_000, 30_000];
     const delay = delays[Math.min(restartAttempt++, delays.length - 1)];
     broadcastStatus("restarting", `Codex indisponível; nova tentativa em ${Math.ceil(delay / 1000)}s.`);
-    setTimeout(() => void startCodex(), delay);
+    clearTimeout(restartTimer);
+    restartTimer = setTimeout(() => {
+        restartTimer = null;
+        void startCodex();
+    }, delay);
 }
 
 async function startCodex() {
@@ -579,7 +587,7 @@ async function startCodex() {
         if (text) log(text.slice(0, 2000));
     });
     current.on("error", (error) => log(`Não foi possível iniciar Codex: ${error.message}`));
-    current.on("exit", (code, signal) => {
+    current.on("close", (code, signal) => {
         if (codexProcess !== current) return;
         codexProcess = null;
         codexReady = false;
@@ -922,23 +930,42 @@ const heartbeat = setInterval(() => {
     }
 }, 30_000);
 
-function shutdown(signal) {
+async function shutdown(signal, exitCode = 0) {
     if (stopping) return;
     stopping = true;
     log(`Encerrando após ${signal}.`);
     clearInterval(heartbeat);
+    clearTimeout(restartTimer);
+    rejectPending(new Error("Codex Agent está encerrando."));
+    for (const record of pendingServerRequests.values()) clearTimeout(record.timer);
+    pendingServerRequests.clear();
     for (const client of clients) client.close(1001, "Serviço reiniciado");
-    if (codexProcess) codexProcess.kill("SIGTERM");
-    server.close(() => process.exit(0));
-    setTimeout(() => process.exit(0), 3_000).unref();
+    const children = new Set(commandProcesses);
+    if (codexProcess) children.add(codexProcess);
+    const closed = new Promise(resolve => server.close(resolve));
+    const exited = [...children].map(child => new Promise(resolve => {
+        if (child.exitCode !== null || child.signalCode !== null) return resolve();
+        child.once("close", resolve);
+        child.kill("SIGTERM");
+    }));
+    // A stuck child must not outlive its owner. Keep this deadline referenced
+    // until both the listening socket and every child have actually closed.
+    const deadline = setTimeout(() => {
+        for (const client of clients) client.terminate();
+        for (const child of children) {
+            if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
+        }
+    }, 3_000);
+    await Promise.all([closed, ...exited]);
+    clearTimeout(deadline);
+    process.exit(exitCode);
 }
 
 process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("uncaughtException", (error) => {
     log(`Erro não tratado: ${error.stack || error.message}`);
-    if (codexProcess) codexProcess.kill("SIGTERM");
-    process.exit(1);
+    void shutdown("uncaughtException", 1);
 });
 process.on("unhandledRejection", (error) => log(`Promise rejeitada: ${error?.stack || error}`));
 

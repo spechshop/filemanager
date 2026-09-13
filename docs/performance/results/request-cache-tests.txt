@@ -1,0 +1,14 @@
+PASS missing token store created
+PASS new token visible
+PASS same-second same-size replacement revokes old token
+PASS stable token snapshot
+PASS malformed data fails closed
+PASS scalar JSON fails closed
+PASS atomic save recovers
+PASS deleted store revokes tokens
+PASS empty routes
+PASS new route
+PASS same-second renamed route
+PASS stable route snapshot
+PASS deleted route
+13 assertions passed

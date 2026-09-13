@@ -1,0 +1,18 @@
+{
+  "passed": true,
+  "checks": [
+    "initial token",
+    "revoke existing token in worker",
+    "new token in worker",
+    "malformed token data fails closed",
+    "token recovery",
+    "create route with import",
+    "module edit without restart",
+    "page edit without restart",
+    "rename route in worker",
+    "old route removed",
+    "delete route in worker",
+    "same master throughout"
+  ],
+  "pid": 255373
+}

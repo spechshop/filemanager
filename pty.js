@@ -11,6 +11,7 @@ const wss = new WebSocket.Server({ server });
 
 const shell = os.platform() === 'win32' ? 'powershell.exe' : 'bash';
 const terminals = new Map();
+const terminalClients = new Map();
 const OUTPUT_CACHE_SIZE = 50000; // bytes to keep per terminal for reconnect replay
 
 const TERMINALS_FILE = './terminals.json';
@@ -89,57 +90,60 @@ wss.on('connection', (ws, req) => {
     } else {
         ptyProcess = createNewTerminal(userToken);
     }
+    if (!terminalClients.has(userToken)) terminalClients.set(userToken, new Set());
+    const clients = terminalClients.get(userToken);
+    clients.add(ws);
 
     ws.on('message', command => {
+        if (terminals.get(userToken) !== ptyProcess) {
+            ws.close(1001, 'Terminal exited');
+            return;
+        }
         const cmdStr = command.toString();
         console.log(`Command from ${userToken}: `, cmdStr.substring(0, 80));
 
-        if (cmdStr.trim() === 'startXtermHandlerCommand') {
-            ws.send(outputCache[userToken] || '');
-        } else if (cmdStr.trim() === 'closeXtermHandlerCommand') {
-            closeTerminal(userToken, ptyProcess);
-        } else if (cmdStr.trim() === 'resizeXtermHandlerCommand') {
-            termcw[userToken] = 2;
-        } else if (termcw[userToken] > 0) {
-            if (termcw[userToken] === 2) {
-                const newCols = parseInt(cmdStr.trim());
-                if (!isNaN(newCols) && newCols > 0) {
-                    ptyProcess.resize(newCols, ptyProcess.rows);
-                    console.log(`Resized ${userToken}: cols=${newCols}`);
-                    termcw[userToken] = 1;
+        try {
+            if (cmdStr.trim() === 'startXtermHandlerCommand') {
+                ws.send(outputCache[userToken] || '');
+            } else if (cmdStr.trim() === 'closeXtermHandlerCommand') {
+                closeTerminal(userToken, ptyProcess);
+            } else if (cmdStr.trim() === 'resizeXtermHandlerCommand') {
+                termcw[userToken] = 2;
+            } else if (termcw[userToken] > 0) {
+                if (termcw[userToken] === 2) {
+                    const newCols = parseInt(cmdStr.trim());
+                    if (!isNaN(newCols) && newCols > 0) {
+                        ptyProcess.resize(newCols, ptyProcess.rows);
+                        console.log(`Resized ${userToken}: cols=${newCols}`);
+                        termcw[userToken] = 1;
+                    }
+                } else if (termcw[userToken] === 1) {
+                    const newRows = parseInt(cmdStr.trim());
+                    if (!isNaN(newRows) && newRows > 0) {
+                        ptyProcess.resize(ptyProcess.cols, newRows);
+                        console.log(`Resized ${userToken}: rows=${newRows}`);
+                        termcw[userToken] = 0;
+                    }
                 }
-            } else if (termcw[userToken] === 1) {
-                const newRows = parseInt(cmdStr.trim());
-                if (!isNaN(newRows) && newRows > 0) {
-                    ptyProcess.resize(ptyProcess.cols, newRows);
-                    console.log(`Resized ${userToken}: rows=${newRows}`);
-                    termcw[userToken] = 0;
-                }
+            } else {
+                ptyProcess.write(cmdStr);
             }
-        } else {
-            ptyProcess.write(cmdStr);
-        }
-    });
-
-    ptyProcess.on('data', rawOutput => {
-        // Send to client if connected
-        if (ws.readyState === WebSocket.OPEN) {
-            ws.send(rawOutput);
-        }
-        // Append to rolling cache and trim when over limit
-        outputCache[userToken] = (outputCache[userToken] || '') + rawOutput;
-        if (outputCache[userToken].length > OUTPUT_CACHE_SIZE) {
-            outputCache[userToken] = outputCache[userToken].slice(-OUTPUT_CACHE_SIZE);
+        } catch (err) {
+            console.error(`Terminal error for ${userToken}:`, err.message);
+            ws.close(1011, 'Terminal unavailable');
         }
     });
 
     ws.on('close', () => {
+        clients.delete(ws);
         console.log(`Client ${userToken} disconnected (session kept alive)`);
         // Do NOT close the terminal on disconnect so it survives reconnects
     });
 
     ws.on('error', (err) => {
         console.error(`WebSocket error for ${userToken}:`, err.message);
+        clients.delete(ws);
+        ws.terminate();
     });
 });
 
@@ -154,6 +158,19 @@ function createNewTerminal(userToken) {
     terminals.set(userToken, ptyProcess);
     termcw[userToken] = 0;
     outputCache[userToken] = '';
+    // A terminal owns one data subscription for its entire lifetime. Browser
+    // reconnects only join/leave the client set; they never attach PTY listeners.
+    const dataSubscription = ptyProcess.onData(rawOutput => {
+        outputCache[userToken] = ((outputCache[userToken] || '') + rawOutput).slice(-OUTPUT_CACHE_SIZE);
+        for (const client of terminalClients.get(userToken) || []) {
+            if (client.readyState === WebSocket.OPEN) client.send(rawOutput);
+        }
+    });
+    const exitSubscription = ptyProcess.onExit(() => {
+        dataSubscription.dispose();
+        exitSubscription.dispose();
+        forgetTerminal(userToken, ptyProcess);
+    });
 
     if (!terminalIds.includes(userToken)) {
         terminalIds.push(userToken);
@@ -165,10 +182,27 @@ function createNewTerminal(userToken) {
 
 function closeTerminal(userToken, ptyProcess) {
     try { ptyProcess.kill(); } catch {}
+    forgetTerminal(userToken, ptyProcess);
+}
+
+function forgetTerminal(userToken, ptyProcess) {
+    if (terminals.get(userToken) !== ptyProcess) return;
     terminals.delete(userToken);
+    for (const client of terminalClients.get(userToken) || []) {
+        client.close(1000, 'Terminal exited');
+    }
+    terminalClients.delete(userToken);
     delete outputCache[userToken];
     delete termcw[userToken];
     terminalIds = terminalIds.filter(id => id !== userToken);
     saveTerminalsToFile(terminalIds);
     console.log(`Session for ${userToken} closed`);
 }
+
+function shutdown() {
+    for (const [token, process] of terminals) closeTerminal(token, process);
+    wss.close();
+    server.close();
+}
+process.once('SIGTERM', shutdown);
+process.once('SIGINT', shutdown);

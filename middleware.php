@@ -309,5 +309,7 @@ $server->on('open', '\plugins\server::open');
 $server->on('message', '\plugins\server::message');
 $server->on('close', '\plugins\server::close');
 $server->on('Start', '\plugins\Start\server::start');
+$server->on('BeforeShutdown', '\plugins\Start\server::stop');
+$server->on('WorkerExit', '\plugins\server::stopWorker');
 $server->on('Request', '\plugins\Request\server::request');
 $server->start();

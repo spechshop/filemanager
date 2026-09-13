@@ -99,17 +99,37 @@ function fileManagerAutoRestartEnabled(): bool
         || ($config['fileManager']['autoRestart'] ?? true) !== false;
 }
 
-for (; ;) {
+$stopping = false;
+$sharedPid = null;
+if (function_exists('pcntl_async_signals')) {
+    pcntl_async_signals(true);
+    $stopSupervisor = static function () use (&$stopping, &$sharedPid): void {
+        $stopping = true;
+        if (is_int($sharedPid) && $sharedPid > 1) {
+            posix_kill($sharedPid, SIGTERM);
+        }
+    };
+    pcntl_signal(SIGTERM, $stopSupervisor);
+    pcntl_signal(SIGINT, $stopSupervisor);
+}
+
+while (!$stopping) {
     print "Starting server...\n";
     $sharedPid = null;
     $pidRunner = null;
-    Co\run(function () use (&$sharedPid, &$pidRunner, $phpBinary) {
-        \plugins\terminal::asyncShell(escapeshellarg($phpBinary) . ' ' . escapeshellarg(__DIR__ . '/middleware.php'), (new consoleDeclares()), $sharedPid);
-    });
+    // Native blocking pipe IO lets pcntl deliver termination signals while the
+    // supervisor is asleep. The argv array makes the child PID the PHP process,
+    // without an intermediate shell that could leave middleware orphaned.
+    \plugins\terminal::asyncShell(
+        [$phpBinary, __DIR__ . '/middleware.php'],
+        new consoleDeclares(),
+        $sharedPid
+    );
 
+    $sharedPid = null;
+    if ($stopping) break;
     Co\run(fn() => co::sleep(3));
     print "Middleware stopped ($sharedPid, $pidRunner). Cleaning up...\n";
-    \plugins\terminal::pKill($sharedPid);
 
     $explicitRestart = \plugins\Request\fileManagerRuntime::consumeRestartRequest();
     if (!$explicitRestart && !fileManagerAutoRestartEnabled()) {

@@ -17,8 +17,32 @@ error_reporting(E_ALL);
 
 class server extends OpenConnection
 {
+    private static array $metricsPending = [];
+    private static array $metricsNextAt = [];
+    private static array $bridgeClients = [];
+
+    public static function stopWorker(): void
+    {
+        self::$metricsPending = self::$metricsNextAt = [];
+        foreach ($GLOBALS['searchInFileJobs'] ?? [] as $fd => $_) {
+            $GLOBALS['searchInFileJobs'][$fd]['cancelled'] = true;
+            $GLOBALS['searchInFileJobs'][$fd]['paused'] = false;
+        }
+        foreach ($GLOBALS['xterm'] ?? [] as $terminal) {
+            if (isset($terminal['heartbeat'])) Coroutine::cancel($terminal['heartbeat']);
+            if (($terminal['wsClient'] ?? null) instanceof Client) $terminal['wsClient']->close();
+        }
+        foreach (['codexAgent', 'lsp'] as $service) {
+            foreach ($GLOBALS[$service] ?? [] as $session) {
+                if (($session['chan'] ?? null) instanceof \Swoole\Coroutine\Channel) $session['chan']->close();
+            }
+        }
+        foreach (self::$bridgeClients as $client) $client->close();
+    }
+
     public static function close(\Swoole\Server $server, int $fd): void
     {
+        unset(self::$metricsPending[$fd], self::$metricsNextAt[$fd]);
         unset($GLOBALS['fdToToken'][$fd], $GLOBALS['websocketConnections'][$fd]);
 
         if (!empty($GLOBALS['searchInFileJobs'][$fd])) {
@@ -61,6 +85,7 @@ class server extends OpenConnection
 
     public static function message(\Swoole\Server $server, Frame $frame)
     {
+        $GLOBALS['dataKeys'] = \plugins\Database\call::data() ?? [];
         $object = json_decode($frame->data, true);
         if (empty($object)) {
             return $server->close($frame->fd);
@@ -113,6 +138,7 @@ class server extends OpenConnection
             if (empty($GLOBALS["codexAgent"][$tokenBrowser]["chan"])) {
                 $GLOBALS["codexAgent"][$tokenBrowser]["chan"] = new \Swoole\Coroutine\Channel(1024);
             }
+            $channel = $GLOBALS["codexAgent"][$tokenBrowser]["chan"];
             if (empty($GLOBALS["codexAgent"][$tokenBrowser]["worker"])) {
                 $GLOBALS["codexAgent"][$tokenBrowser]["worker"] = true;
                 Coroutine::create(function () use ($tokenBrowser, $server) {
@@ -120,7 +146,7 @@ class server extends OpenConnection
                     $GLOBALS["codexAgent"][$tokenBrowser]["worker"] = false;
                 });
             }
-            $GLOBALS["codexAgent"][$tokenBrowser]["chan"]->push($payload);
+            $channel->push($payload);
             return;
         }
 
@@ -236,6 +262,7 @@ class server extends OpenConnection
                 $GLOBALS["lsp"][$tokenBrowser]["chan"] = new \Swoole\Coroutine\Channel(2048);
             }
 
+            $channel = $GLOBALS["lsp"][$tokenBrowser]["chan"];
             if (empty($GLOBALS["lsp"][$tokenBrowser]["worker"])) {
                 $GLOBALS["lsp"][$tokenBrowser]["worker"] = true;
                 Coroutine::create(function () use (&$tokenBrowser, $server) {
@@ -245,7 +272,7 @@ class server extends OpenConnection
             }
 
             if (isset($object["payload"]) && $object["payload"] !== "") {
-                $GLOBALS["lsp"][$tokenBrowser]["chan"]->push($object["payload"]);
+                $channel->push($object["payload"]);
             }
             return;
         } elseif (array_key_exists("searchInFile", $object)) {
@@ -260,11 +287,31 @@ class server extends OpenConnection
             if (!self::validBrowserToken($tokenClient)) {
                 return $server->close($frame->fd);
             }
-            if (!$server->exist($frame->fd)) {
+            self::sendMetrics($server, $frame->fd);
+        }
+    }
+
+    private static function sendMetrics(\Swoole\Server $server, int $fd): void
+    {
+        if (isset(self::$metricsPending[$fd]) || !$server->isEstablished($fd)) {
+            return;
+        }
+        // Older panels request again on every reply. Bound that feedback loop
+        // on the server too, with at most one suspended request per connection.
+        $pending = new \stdClass();
+        self::$metricsPending[$fd] = $pending;
+        try {
+            $delay = (self::$metricsNextAt[$fd] ?? 0.0) - hrtime(true) / 1e9;
+            if ($delay > 0) {
+                Coroutine::sleep($delay);
+            }
+            // A disconnected fd may have been reused while this coroutine slept.
+            if ((self::$metricsPending[$fd] ?? null) !== $pending || !$server->isEstablished($fd)) {
                 return;
             }
+            self::$metricsNextAt[$fd] = hrtime(true) / 1e9 + 1.0;
             $server->push(
-                $frame->fd,
+                $fd,
                 json_encode([
                     "success" => true,
                     "disk" => utilsFunction::getDiskUsage(),
@@ -272,6 +319,10 @@ class server extends OpenConnection
                     "cpu" => utilsFunction::getProcessorName(),
                 ])
             );
+        } finally {
+            if ((self::$metricsPending[$fd] ?? null) === $pending) {
+                unset(self::$metricsPending[$fd]);
+            }
         }
     }
 
@@ -621,118 +672,66 @@ class server extends OpenConnection
      */
     private static function runCodexAgentWorker(string $tokenBrowser, \Swoole\Server $server): void
     {
-        $client = new Client('127.0.0.1', 3091);
-        // Clientes WebSocket devem mascarar frames enviados ao servidor (RFC 6455).
-        $client->set(['websocket_mask' => true]);
-        if (!$client->upgrade('/agent')) {
-            $fd = $GLOBALS["codexAgent"][$tokenBrowser]["fd"] ?? null;
-            if (is_int($fd)) {
-                self::pushCodexAgentError($server, $fd, 'O serviço Codex Agent não está disponível.');
-            }
-            $GLOBALS["codexAgent"][$tokenBrowser]["chan"] = null;
-            return;
-        }
-
-        Coroutine::create(function () use ($client, $tokenBrowser, $server) {
-            while ($client->connected) {
-                $message = $client->recv();
-                if ($message === false || $message === '') {
-                    if ($client->connected) {
-                        continue;
-                    }
-                    break;
-                }
-                if (empty($message->data)) {
-                    continue;
-                }
-                $payload = json_decode($message->data, true);
-                if (!is_array($payload)) {
-                    continue;
-                }
-                $fd = $GLOBALS["codexAgent"][$tokenBrowser]["fd"] ?? null;
-                if (is_int($fd) && $server->exist($fd)) {
-                    $server->push($fd, json_encode([
-                        'codexAgent' => true,
-                        'payload' => $payload,
-                    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-                }
-            }
-        });
-
-        $channel = $GLOBALS["codexAgent"][$tokenBrowser]["chan"];
-        while ($client->connected) {
-            $payload = $channel->pop();
-            if ($payload === false || !is_string($payload)) {
-                break;
-            }
-            try {
-                $client->push($payload);
-            } catch (Throwable) {
-                break;
-            }
-        }
-
-        try {
-            $client->close();
-        } catch (Throwable) {
-        }
-        $GLOBALS["codexAgent"][$tokenBrowser]["chan"] = null;
+        self::runBridgeWorker('codexAgent', 3091, '/agent', $tokenBrowser, $server);
     }
 
-    /**
-     * Worker do relay LSP: mantém um cliente WebSocket para o bridge
-     * (lsp.js em 127.0.0.1:3057), envia o que o browser produz (via canal)
-     * e devolve ao browser tudo que o language server responde.
-     */
     public static function runLspWorker(string $tokenBrowser, \Swoole\Server $server): void
     {
-        $client = new Client("127.0.0.1", 3057);
-        if (!$client->upgrade("/" . $tokenBrowser)) {
-            $GLOBALS["lsp"][$tokenBrowser]["chan"] = null;
-            return;
-        }
+        self::runBridgeWorker('lsp', 3057, '/' . $tokenBrowser, $tokenBrowser, $server);
+    }
 
-        // Leitor: language server -> browser.
-        Coroutine::create(function () use ($client, $tokenBrowser, $server) {
-            while (true) {
-                $message = $client->recv();
-                if ($message === false || $message === "") {
-                    if ($client->connected) {
-                        continue;
-                    }
-                    break;
-                }
-                if (!empty($message->data)) {
-                    $fd = $GLOBALS["lsp"][$tokenBrowser]["fd"] ?? null;
-                    if ($fd !== null && $server->exist($fd)) {
-                        $server->push($fd, json_encode([
-                            "lsp"     => true,
-                            "payload" => $message->data,
-                        ]));
-                    }
-                }
-            }
-        });
-
-        // Escritor: browser (canal) -> language server.
-        $chan = $GLOBALS["lsp"][$tokenBrowser]["chan"];
-        while (true) {
-            $payload = $chan->pop();
-            if ($payload === false) {
-                break;
-            }
-            if (!$client->connected) {
-                break;
-            }
-            try {
-                $client->push($payload);
-            } catch (Throwable $e) {
-                break;
-            }
-        }
+    private static function runBridgeWorker(string $service, int $port, string $path, string $token, \Swoole\Server $server): void
+    {
+        $channel = $GLOBALS[$service][$token]['chan'];
+        $client = new Client('127.0.0.1', $port);
+        self::$bridgeClients[spl_object_id($client)] = $client;
+        $client->set(['websocket_mask' => true, 'connect_timeout' => 2, 'timeout' => 2]);
         try {
+            if (!$client->upgrade($path)) {
+                if ($service === 'codexAgent') {
+                    $fd = $GLOBALS[$service][$token]['fd'] ?? null;
+                    if (is_int($fd) && $server->isEstablished($fd)) {
+                        self::pushCodexAgentError($server, $fd, 'O serviço Codex Agent não está disponível.');
+                    }
+                }
+                return;
+            }
+            // Bound an unresponsive HTTP upgrade; established streams may idle.
+            $client->set(['timeout' => -1]);
+            Coroutine::create(static function () use ($client, $channel, $service, $token, $server): void {
+                try {
+                    while ($client->connected) {
+                        $message = $client->recv(-1);
+                        if ($message === false || $message === '' || !is_object($message)
+                            || $message->opcode === WEBSOCKET_OPCODE_CLOSE) {
+                            break;
+                        }
+                        if ($message->data === '') continue;
+                        $payload = $service === 'codexAgent' ? json_decode($message->data, true) : $message->data;
+                        if ($service === 'codexAgent' && !is_array($payload)) continue;
+                        $fd = $GLOBALS[$service][$token]['fd'] ?? null;
+                        if (is_int($fd) && $server->isEstablished($fd)) {
+                            $server->push($fd, json_encode([$service => true, 'payload' => $payload], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+                        }
+                    }
+                } finally {
+                    // EOF must also wake the writer blocked in Channel::pop().
+                    // Otherwise the dead worker prevents every future reconnect.
+                    $channel->close();
+                }
+            });
+            while ($client->connected && ($payload = $channel->pop()) !== false) {
+                if (!is_string($payload) || !$client->push($payload)) break;
+            }
+        } catch (Throwable) {
+            // The next browser message may start a fresh bridge connection.
+        } finally {
+            $channel->close();
             $client->close();
-        } catch (Throwable $e) {
+            unset(self::$bridgeClients[spl_object_id($client)]);
+            if (($GLOBALS[$service][$token]['chan'] ?? null) === $channel) {
+                $GLOBALS[$service][$token]['chan'] = null;
+            }
         }
     }
 
@@ -750,16 +749,19 @@ class server extends OpenConnection
         }
         $GLOBALS["xterm"][$tokenBrowser]["wsClient"] = $wsClient;
 
-        Coroutine::create(function () use ($wsClient) {
-            while (true) {
-                Coroutine::sleep(30);
-                if ($wsClient->connected) {
-                    $wsClient->push("", WEBSOCKET_OPCODE_PING);
-                } else {
-                    break;
+        $heartbeat = Coroutine::create(function () use ($wsClient, $tokenBrowser) {
+            try {
+                while (true) {
+                    Coroutine::sleep(30);
+                    if (!$wsClient->connected || !$wsClient->push("", WEBSOCKET_OPCODE_PING)) break;
+                }
+            } finally {
+                if (($GLOBALS['xterm'][$tokenBrowser]['heartbeat'] ?? null) === Coroutine::getCid()) {
+                    unset($GLOBALS['xterm'][$tokenBrowser]['heartbeat']);
                 }
             }
         });
+        $GLOBALS['xterm'][$tokenBrowser]['heartbeat'] = $heartbeat;
         return $wsClient;
     }
 }

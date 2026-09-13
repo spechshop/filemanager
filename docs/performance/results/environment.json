@@ -1,0 +1,30 @@
+{
+  "date_utc": "2026-09-13",
+  "kernel": "7.0.0-31-generic",
+  "machine": "x86_64",
+  "cpu_count": 16,
+  "clock_ticks": 100,
+  "page_size": 4096,
+  "php": {
+    "php": "8.5.10",
+    "zts": true,
+    "swoole": "6.2.2",
+    "opcache_cli": "0",
+    "jit": "disable",
+    "inotify": false
+  },
+  "node": "v24.13.0",
+  "chrome": "Google Chrome 153.0.8010.36",
+  "strace": "strace -- version 6.8",
+  "perf_event_paranoid": "4",
+  "ptrace_scope": "1",
+  "baseline_commit": "ba648027bb22af83c2b7387dfa337311f9d71c1d",
+  "libspech_commit": "5a7fae100decfb212e34e40182008cbaae50f899",
+  "fixture_files": {
+    "small_directory": 10,
+    "medium_directory": 500,
+    "large_directory": 5000,
+    "ignored_files_added": 90000
+  },
+  "cpu_model": "13th Gen Intel(R) Core(TM) i5-13450HX"
+}

@@ -1,0 +1,18 @@
+[teste][ok] A: npm normal nao prepara micromamba
+[teste][ok] B: Python 3.12 tem prioridade sobre python3 antigo
+[teste][ok] runtime Node para glibc antiga
+g++: error: unrecognized command-line option '-std=gnu++20'
+[teste][ok] C/D: GCC antigo aciona fallback local sem root
+[teste][ok] E: toolchain existente e reutilizado
+npm error code ENOTFOUND
+npm error request to https://registry.npmjs.org/node-pty failed
+[teste][ok] F: erro de rede nao aciona fallback
+[teste][ok] assinaturas do classificador
+Download error (60) SSL peer certificate was not OK
+SSL certificate OpenSSL verify result: unable to get local issuer certificate
+[teste][ok] erro de certificado repete micromamba com TLS excepcional
+[teste][ok] ambiente incompleto existente usa micromamba install
+[teste][ok] mapeamento Linux aarch64
+node-pty OK
+[teste][ok] G: validacao real do node-pty
+[teste][ok] Todos os casos passaram.

@@ -3,8 +3,6 @@ declare(strict_types=1);
 
 namespace plugins;
 
-use Swoole\Coroutine;
-use Swoole\Timer;
 
 
 class terminal
@@ -17,40 +15,43 @@ class terminal
             2 => ["pipe", "w"]
         ];
         $process = proc_open($command, $descriptorSpec, $pipes);
-        stream_set_blocking($pipes[1], false);
-        stream_set_blocking($pipes[2], false);
-        if (is_resource($process)) {
-            print $cli->color("Processo iniciado com sucesso\n", 'green');
-            Timer::tick(10, function ($timerId) use (&$pipes, &$sharedPid, &$process, &$command, $cli) {
-                $outputPipes = [$pipes[1], $pipes[2]];
-                $readyPipes = $outputPipes;
-                $null = null;
-                $sharedPid = proc_get_status($process)['pid'];
-
-                if (!is_resource($pipes[1]) || !is_resource($pipes[2])) {
-                    if (is_resource($pipes[1])) fclose($pipes[1]);
-                    if (is_resource($pipes[2])) fclose($pipes[2]);
-                    if (is_resource($pipes[0])) fclose($pipes[0]);
-                    if (is_resource($process)) proc_close($process);
-                    if (is_resource($process)) proc_terminate($process, 15);
-                    self::pKill(proc_get_status($process)['pid'], 9);
-                    return Timer::clearAll();
+        if (!is_resource($process)) {
+            throw new \RuntimeException('Unable to start middleware');
+        }
+        $sharedPid = proc_get_status($process)['pid'];
+        print $cli->color("Processo iniciado com sucesso\n", 'green');
+        fclose($pipes[0]);
+        unset($pipes[0]);
+        foreach ($pipes as $pipe) {
+            stream_set_blocking($pipe, false);
+        }
+        try {
+            while ($pipes !== []) {
+                $ready = array_values($pipes);
+                $write = $except = null;
+                // Sleep in the OS until output or EOF; no 100 Hz status polling.
+                if (@stream_select($ready, $write, $except, null) === false) {
+                    break;
                 }
-                if (is_resource($process) && proc_get_status($process)['running'] === false) {
-                    if (is_resource($pipes[0])) fclose($pipes[0]);
-                    self::pKill(proc_get_status($process)['pid'], 9);
-                    return Timer::clearAll();
-                }
-                stream_select($readyPipes, $null, $null, 0);
-                foreach ($readyPipes as $pipe) {
-                    $data = fgets($pipe);
-                    if ($data === false) {
-                        $outputPipes = array_diff($outputPipes, [$pipe]);
-                    } elseif (strlen($data) > 1) {
+                foreach ($ready as $pipe) {
+                    $data = fread($pipe, 65536);
+                    if ($data !== false && $data !== '') {
                         print $cli->color($data, 'yellow');
                     }
+                    if ($data === false || feof($pipe)) {
+                        $key = array_search($pipe, $pipes, true);
+                        fclose($pipe);
+                        unset($pipes[$key]);
+                    }
                 }
-            });
+            }
+        } finally {
+            foreach ($pipes as $pipe) {
+                if (is_resource($pipe)) fclose($pipe);
+            }
+            // Reap the child before returning; EOF is not a reason to kill an
+            // already-reaped PID (which could have been reused by the OS).
+            proc_close($process);
         }
     }
 

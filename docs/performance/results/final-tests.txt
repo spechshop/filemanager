@@ -1,0 +1,63 @@
+
+[34m============================================================[0m
+[34m 1. Verificação de Sintaxe PHP[0m
+[34m============================================================[0m
+
+[32m  ✓ [0mTodos os 93 arquivos PHP passaram na verificação de sintaxe
+
+[34m============================================================[0m
+[34m 2. Validação de Arquivos JSON de Configuração[0m
+[34m============================================================[0m
+
+[32m  ✓ [0mcomposer.json - JSON válido
+[32m  ✓ [0mplugins/configInterface.json - JSON válido
+
+[34m============================================================[0m
+[34m 3. Verificação de Estrutura de Plugins[0m
+[34m============================================================[0m
+
+[32m  ✓ [0mplugins/Request/router - Diretório existe (1 arquivos PHP)
+[32m  ✓ [0mplugins/Request/views - Diretório existe (2 arquivos PHP)
+[32m  ✓ [0mplugins/Request/components - Diretório existe (5 arquivos PHP)
+[32m  ✓ [0mplugins/Request/template - Diretório existe (1 arquivos PHP)
+[32m  ✓ [0mplugins/Request/apps - Diretório existe (40 arquivos PHP)
+[32m  ✓ [0mplugins/Start/server - Diretório existe (4 arquivos PHP)
+[32m  ✓ [0mplugins/Start/console - Diretório existe (1 arquivos PHP)
+[32m  ✓ [0mplugins/Utils/cache/pages - Diretório existe (1 arquivos PHP)
+[32m  ✓ [0mplugins/Utils/cli - Diretório existe (1 arquivos PHP)
+[32m  ✓ [0mplugins/Database/call - Diretório existe (1 arquivos PHP)
+[32m  ✓ [0mplugins/Database/PDO - Diretório existe (1 arquivos PHP)
+[32m  ✓ [0mplugins/Database/lotus - Diretório existe (1 arquivos PHP)
+[32m  ✓ [0mplugins/Extension/plugins - Diretório existe (6 arquivos PHP)
+[32m  ✓ [0mplugins/OpenConnection/websocket - Diretório existe (1 arquivos PHP)
+[32m  ✓ [0mplugins/Message/server - Diretório existe (1 arquivos PHP)
+
+[34m============================================================[0m
+[34m 4. Verificação do Composer[0m
+[34m============================================================[0m
+
+
+[34m============================================================[0m
+[34m 5. Verificação de Dependências[0m
+[34m============================================================[0m
+
+[32m  ✓ [0mDependências do Composer instaladas
+
+[34m============================================================[0m
+[34m 6. Verificação de Arquivos Principais[0m
+[34m============================================================[0m
+
+[32m  ✓ [0mserver.php - Servidor principal
+[32m  ✓ [0mmiddleware.php - Middleware HTTP
+[32m  ✓ [0mplugins/autoload.php - Autoloader de plugins
+
+[34m============================================================[0m
+[34m RESUMO DOS TESTES[0m
+[34m============================================================[0m
+
+  Total de testes executados: 115
+[32m  Testes passados: 115[0m
+
+  Taxa de sucesso: 100%
+
+[32m  ✓ TODOS OS TESTES PASSARAM![0m

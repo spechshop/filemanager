@@ -1,0 +1,3752 @@
+[
+  {
+    "cycle": 0,
+    "startup_seconds": 3.371937837999212,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 52380,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 52436,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 31,
+        "threads": 27,
+        "rss_kb": 93756,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288371,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 37004,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 288441,
+        "ppid": 288371,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19056,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 288443,
+        "ppid": 288441,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23212,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 52380,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 52436,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 31,
+        "threads": 27,
+        "rss_kb": 94396,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  },
+  {
+    "cycle": 1,
+    "startup_seconds": 3.3795429050005623,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 52508,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 52564,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 31,
+        "threads": 26,
+        "rss_kb": 99880,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      },
+      {
+        "pid": 288510,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 37084,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 288579,
+        "ppid": 288510,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19056,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 288581,
+        "ppid": 288579,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23416,
+        "cmd": "php middleware.php "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 52508,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 52564,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 31,
+        "threads": 26,
+        "rss_kb": 99880,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  },
+  {
+    "cycle": 2,
+    "startup_seconds": 3.3943970009986515,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 52508,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 52564,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      },
+      {
+        "pid": 288690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 36904,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 288707,
+        "ppid": 288690,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19056,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 288709,
+        "ppid": 288707,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23420,
+        "cmd": "php middleware.php "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 52508,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 52564,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  },
+  {
+    "cycle": 3,
+    "startup_seconds": 3.3714196189994254,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 52508,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 52564,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      },
+      {
+        "pid": 288753,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 36988,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 288807,
+        "ppid": 288753,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19056,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 288809,
+        "ppid": 288807,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23480,
+        "cmd": "php middleware.php "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 52508,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 52564,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  },
+  {
+    "cycle": 4,
+    "startup_seconds": 3.376988165999137,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 52508,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 52692,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      },
+      {
+        "pid": 288844,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 37084,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 288881,
+        "ppid": 288844,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19056,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 288883,
+        "ppid": 288881,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23172,
+        "cmd": "php middleware.php "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 52508,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 52692,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  },
+  {
+    "cycle": 5,
+    "startup_seconds": 3.373292436999691,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 52508,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 52692,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      },
+      {
+        "pid": 288945,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 37192,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 288962,
+        "ppid": 288945,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19056,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 288964,
+        "ppid": 288962,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23356,
+        "cmd": "php middleware.php "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 52508,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 52692,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  },
+  {
+    "cycle": 6,
+    "startup_seconds": 3.3866736210002273,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 52508,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 52692,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      },
+      {
+        "pid": 289012,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 36972,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 289111,
+        "ppid": 289012,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19056,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 289113,
+        "ppid": 289111,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23608,
+        "cmd": "php middleware.php "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 52508,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 52692,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  },
+  {
+    "cycle": 7,
+    "startup_seconds": 3.34470301500005,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 52636,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 52692,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      },
+      {
+        "pid": 289137,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 37304,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 289176,
+        "ppid": 289137,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19056,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 289178,
+        "ppid": 289176,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23220,
+        "cmd": "php middleware.php "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 52636,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 52692,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  },
+  {
+    "cycle": 8,
+    "startup_seconds": 3.361518256000636,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 52636,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 52692,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      },
+      {
+        "pid": 289239,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 37484,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 289256,
+        "ppid": 289239,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19056,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 289258,
+        "ppid": 289256,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23480,
+        "cmd": "php middleware.php "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 52636,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 52692,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  },
+  {
+    "cycle": 9,
+    "startup_seconds": 3.3444236779996572,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 52636,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 52692,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      },
+      {
+        "pid": 289517,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 37108,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 289727,
+        "ppid": 289517,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19056,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 289730,
+        "ppid": 289727,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23300,
+        "cmd": "php middleware.php "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 52636,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 52692,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  },
+  {
+    "cycle": 10,
+    "startup_seconds": 3.370675154001219,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 52764,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 52692,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      },
+      {
+        "pid": 289937,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 37188,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 289991,
+        "ppid": 289937,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19012,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 289993,
+        "ppid": 289991,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23364,
+        "cmd": "php middleware.php "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 52892,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 52692,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  },
+  {
+    "cycle": 11,
+    "startup_seconds": 3.342872076000276,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 52892,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 52692,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      },
+      {
+        "pid": 290055,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 37296,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 290072,
+        "ppid": 290055,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19056,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 290074,
+        "ppid": 290072,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23388,
+        "cmd": "php middleware.php "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 52892,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 52692,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  },
+  {
+    "cycle": 12,
+    "startup_seconds": 3.343042042999514,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 52892,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 52692,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      },
+      {
+        "pid": 290136,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 37264,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 290190,
+        "ppid": 290136,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19056,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 290192,
+        "ppid": 290190,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23364,
+        "cmd": "php middleware.php "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 52892,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 52692,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  },
+  {
+    "cycle": 13,
+    "startup_seconds": 3.366641366999829,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 52892,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 52692,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      },
+      {
+        "pid": 290228,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 37084,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 290265,
+        "ppid": 290228,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19056,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 290267,
+        "ppid": 290265,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23488,
+        "cmd": "php middleware.php "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 53020,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 52692,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  },
+  {
+    "cycle": 14,
+    "startup_seconds": 3.366569781999715,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 53496,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 52692,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      },
+      {
+        "pid": 290346,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 37100,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 290363,
+        "ppid": 290346,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19056,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 290365,
+        "ppid": 290363,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23424,
+        "cmd": "php middleware.php "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 53496,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 52692,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  },
+  {
+    "cycle": 15,
+    "startup_seconds": 3.373040903999936,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 53624,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 52820,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      },
+      {
+        "pid": 290409,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 37296,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 290463,
+        "ppid": 290409,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19056,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 290465,
+        "ppid": 290463,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23236,
+        "cmd": "php middleware.php "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 53624,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 52820,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  },
+  {
+    "cycle": 16,
+    "startup_seconds": 3.368177608001133,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 53624,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 52820,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      },
+      {
+        "pid": 290489,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 36884,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 290526,
+        "ppid": 290489,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19056,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 290528,
+        "ppid": 290526,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23616,
+        "cmd": "php middleware.php "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 53624,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 52948,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  },
+  {
+    "cycle": 17,
+    "startup_seconds": 3.3928136079994147,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 53752,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 52948,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      },
+      {
+        "pid": 290590,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 37212,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 290607,
+        "ppid": 290590,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19056,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 290609,
+        "ppid": 290607,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23552,
+        "cmd": "php middleware.php "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 53752,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 52948,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  },
+  {
+    "cycle": 18,
+    "startup_seconds": 3.3940483589994983,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 53880,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 52948,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      },
+      {
+        "pid": 290653,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 36960,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 290707,
+        "ppid": 290653,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19056,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 290709,
+        "ppid": 290707,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23552,
+        "cmd": "php middleware.php "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 53880,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 52948,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  },
+  {
+    "cycle": 19,
+    "startup_seconds": 3.37168816600024,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 53880,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 52948,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      },
+      {
+        "pid": 290733,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 37036,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 290770,
+        "ppid": 290733,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19056,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 290772,
+        "ppid": 290770,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23236,
+        "cmd": "php middleware.php "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 53880,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 52948,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  },
+  {
+    "cycle": 20,
+    "startup_seconds": 3.3775863210012176,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 53880,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 53076,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      },
+      {
+        "pid": 290833,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 37116,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 290850,
+        "ppid": 290833,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19128,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 290852,
+        "ppid": 290850,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23496,
+        "cmd": "php middleware.php "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 54136,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 53076,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  },
+  {
+    "cycle": 21,
+    "startup_seconds": 3.3776509660001466,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 54136,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 53588,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      },
+      {
+        "pid": 290896,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 37012,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 290960,
+        "ppid": 290896,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19056,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 290962,
+        "ppid": 290960,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23364,
+        "cmd": "php middleware.php "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 54136,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 53716,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  },
+  {
+    "cycle": 22,
+    "startup_seconds": 3.382103181000275,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 54136,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 53716,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      },
+      {
+        "pid": 290987,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 37172,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 291024,
+        "ppid": 290987,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19056,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 291026,
+        "ppid": 291024,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23424,
+        "cmd": "php middleware.php "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 54136,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 53716,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  },
+  {
+    "cycle": 23,
+    "startup_seconds": 3.3826463440000225,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 54136,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 53716,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      },
+      {
+        "pid": 291090,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 37168,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 291107,
+        "ppid": 291090,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19056,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 291109,
+        "ppid": 291107,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23424,
+        "cmd": "php middleware.php "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 54136,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 53716,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  },
+  {
+    "cycle": 24,
+    "startup_seconds": 3.3820943560003798,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 54136,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 53716,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      },
+      {
+        "pid": 291170,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 37376,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 291224,
+        "ppid": 291170,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19056,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 291226,
+        "ppid": 291224,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23424,
+        "cmd": "php middleware.php "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 54136,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 53716,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  },
+  {
+    "cycle": 25,
+    "startup_seconds": 3.383275808999315,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 54136,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 53972,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      },
+      {
+        "pid": 291250,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 37232,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 291289,
+        "ppid": 291250,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19056,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 291291,
+        "ppid": 291289,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23424,
+        "cmd": "php middleware.php "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 54136,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 53972,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  },
+  {
+    "cycle": 26,
+    "startup_seconds": 3.3602883349994954,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 54136,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 53972,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      },
+      {
+        "pid": 291352,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 36928,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 291369,
+        "ppid": 291352,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19056,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 291371,
+        "ppid": 291369,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23236,
+        "cmd": "php middleware.php "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 54136,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 53972,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  },
+  {
+    "cycle": 27,
+    "startup_seconds": 3.3869546610003454,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 54136,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 53972,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      },
+      {
+        "pid": 291440,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 37064,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 291476,
+        "ppid": 291440,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19132,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 291478,
+        "ppid": 291476,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23388,
+        "cmd": "php middleware.php "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 54136,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 53972,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  },
+  {
+    "cycle": 28,
+    "startup_seconds": 3.383589455001129,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 54264,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 53972,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      },
+      {
+        "pid": 291503,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 37024,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 291540,
+        "ppid": 291503,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19056,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 291542,
+        "ppid": 291540,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23424,
+        "cmd": "php middleware.php "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 54264,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 53972,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  },
+  {
+    "cycle": 29,
+    "startup_seconds": 3.3948164919984265,
+    "running": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 24,
+        "threads": 12,
+        "rss_kb": 54264,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 26,
+        "threads": 7,
+        "rss_kb": 53972,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      },
+      {
+        "pid": 291603,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 13,
+        "threads": 18,
+        "rss_kb": 37236,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 291668,
+        "ppid": 291603,
+        "state": "S",
+        "fds": 8,
+        "threads": 1,
+        "rss_kb": 19056,
+        "cmd": "php middleware.php "
+      },
+      {
+        "pid": 291670,
+        "ppid": 291668,
+        "state": "S",
+        "fds": 13,
+        "threads": 1,
+        "rss_kb": 23488,
+        "cmd": "php middleware.php "
+      }
+    ],
+    "between": [
+      {
+        "pid": 287689,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 23,
+        "threads": 12,
+        "rss_kb": 54264,
+        "cmd": "node pty.js "
+      },
+      {
+        "pid": 287690,
+        "ppid": 287584,
+        "state": "S",
+        "fds": 25,
+        "threads": 7,
+        "rss_kb": 53972,
+        "cmd": "node codex-agent.js "
+      },
+      {
+        "pid": 287748,
+        "ppid": 287690,
+        "state": "S",
+        "fds": 20,
+        "threads": 7,
+        "rss_kb": 47624,
+        "cmd": "node /home/lotus/projetos/filemanager/.runtime/codex/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 287755,
+        "ppid": 287748,
+        "state": "S",
+        "fds": 30,
+        "threads": 26,
+        "rss_kb": 78776,
+        "cmd": "/home/lotus/projetos/filemanager/.runtime/codex/lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/vendor/x86_64-unknown-linux-musl/bin/codex app-server --listen stdio:// "
+      },
+      {
+        "pid": 288467,
+        "ppid": 287689,
+        "state": "S",
+        "fds": 4,
+        "threads": 1,
+        "rss_kb": 5316,
+        "cmd": "bash "
+      }
+    ]
+  }
+]

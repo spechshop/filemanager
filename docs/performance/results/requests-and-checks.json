@@ -1,0 +1,1130 @@
+{
+  "after-bridge-failure.json": {
+    "label": "after",
+    "initial": {
+      "pid": 192410,
+      "coroutines": 1,
+      "bridgeWorkers": 0,
+      "fds": 14,
+      "memory": 8388608
+    },
+    "active": {
+      "pid": 192410,
+      "coroutines": 81,
+      "bridgeWorkers": 40,
+      "fds": 54,
+      "memory": 14680064
+    },
+    "failed": {
+      "pid": 192410,
+      "coroutines": 1,
+      "bridgeWorkers": 0,
+      "fds": 14,
+      "memory": 14680064
+    },
+    "firstMessageRecovered": true,
+    "final": {
+      "pid": 192410,
+      "coroutines": 1,
+      "bridgeWorkers": 0,
+      "fds": 14,
+      "memory": 14680064
+    }
+  },
+  "after-codex-shutdown.json": {
+    "label": "after",
+    "agent_pid": 204255,
+    "child_pid": 204269,
+    "exit_seconds": 3.222769370999231,
+    "child_survived": false
+  },
+  "after-fs-summary.json": {
+    "seconds": 60.000070571899414,
+    "syscalls": {
+      "open": 6,
+      "lstat": 5
+    },
+    "path_mentions": {
+      "configInterface.json": 7
+    }
+  },
+  "after-pty-probe.json": {
+    "label": "after",
+    "childPid": 185646,
+    "stats": [
+      {
+        "token": "perf-leak",
+        "pid": 185732,
+        "listeners": 1
+      }
+    ],
+    "replayOccurrences": 1
+  },
+  "before-bridge-failure.json": {
+    "label": "before",
+    "initial": {
+      "pid": 191996,
+      "coroutines": 1,
+      "bridgeWorkers": 0,
+      "fds": 14,
+      "memory": 8388608
+    },
+    "active": {
+      "pid": 191996,
+      "coroutines": 81,
+      "bridgeWorkers": 40,
+      "fds": 54,
+      "memory": 14680064
+    },
+    "failed": {
+      "pid": 191996,
+      "coroutines": 41,
+      "bridgeWorkers": 40,
+      "fds": 14,
+      "memory": 14680064
+    },
+    "firstMessageRecovered": false,
+    "final": {
+      "pid": 191996,
+      "coroutines": 40,
+      "bridgeWorkers": 39,
+      "fds": 14,
+      "memory": 14680064
+    }
+  },
+  "before-codex-shutdown.json": {
+    "label": "before",
+    "agent_pid": 199545,
+    "child_pid": 199575,
+    "exit_seconds": 0.20472073299970361,
+    "child_survived": true
+  },
+  "before-fs-summary.json": {
+    "seconds": 60.00006866455078,
+    "syscalls": {
+      "open": 8802,
+      "getdents64": 26472,
+      "access": 60,
+      "lstat": 482
+    },
+    "path_mentions": {
+      "Request/pages": 546,
+      "vendor": 540,
+      "node_modules": 7380,
+      "tokens.lotus": 120,
+      "configInterface.json": 7
+    }
+  },
+  "before-pty-probe.json": {
+    "label": "before",
+    "childPid": 177198,
+    "stats": [
+      {
+        "token": "perf-leak",
+        "pid": 177221,
+        "listeners": 44
+      }
+    ],
+    "replayOccurrences": 42
+  },
+  "bridge-upgrade-failure.json": {
+    "passed": true,
+    "connections": 20,
+    "elapsedMs": [
+      2001.4674240000002,
+      2001.9089219999998,
+      2001.810436,
+      2001.7417090000001,
+      2001.8375280000002,
+      2001.9741970000002,
+      2002.1824469999997,
+      2001.940483,
+      2001.585651,
+      2001.8797339999999,
+      2001.723254,
+      2001.479394,
+      2001.7741760000001,
+      2002.5253659999998,
+      2003.1827409999999,
+      2002.543167,
+      2002.529445,
+      2002.324935,
+      2002.4581949999997,
+      2002.4144000000001
+    ],
+    "stats": {
+      "pid": 268951,
+      "coroutines": 1,
+      "bridgeWorkers": 0,
+      "fds": 14,
+      "memory": 10485760
+    }
+  },
+  "compression-br-0-level6.json": {
+    "url": "/",
+    "seconds": 20,
+    "elapsed": 20.125228883,
+    "concurrency": 16,
+    "encoding": "br",
+    "protocol": "http1",
+    "count": 1754,
+    "bytes": 181389910,
+    "errors": 0,
+    "pending": 5,
+    "rps": 87.7,
+    "p50": 182.25368600000002,
+    "p95": 201.19012799999837,
+    "p99": 211.79564899999968
+  },
+  "compression-br-0-level9.json": {
+    "url": "/",
+    "seconds": 20,
+    "elapsed": 20.125562036999998,
+    "concurrency": 16,
+    "encoding": "br",
+    "protocol": "http1",
+    "count": 808,
+    "bytes": 81158752,
+    "errors": 0,
+    "pending": 11,
+    "rps": 40.4,
+    "p50": 396.09845700000005,
+    "p95": 405.13020699999834,
+    "p99": 414.682501
+  },
+  "compression-gzip-0-level6.json": {
+    "url": "/",
+    "seconds": 20,
+    "elapsed": 20.12948948,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 976,
+    "bytes": 114053408,
+    "errors": 0,
+    "pending": 10,
+    "rps": 48.8,
+    "p50": 327.41558200000145,
+    "p95": 342.40070099999866,
+    "p99": 355.6337710000007
+  },
+  "compression-gzip-0-level9.json": {
+    "url": "/",
+    "seconds": 20,
+    "elapsed": 20.128095269000003,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 292,
+    "bytes": 33661468,
+    "errors": 0,
+    "pending": 14,
+    "rps": 14.6,
+    "p50": 1090.8151890000008,
+    "p95": 1147.127249000001,
+    "p99": 1199.3476999999998
+  },
+  "compression-gzip-1-level6.json": {
+    "url": "/",
+    "seconds": 20,
+    "elapsed": 20.125691585000002,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 988,
+    "bytes": 115455704,
+    "errors": 0,
+    "pending": 10,
+    "rps": 49.4,
+    "p50": 323.96206600000005,
+    "p95": 335.00278400000025,
+    "p99": 342.69191899999987
+  },
+  "compression-gzip-1-level9.json": {
+    "url": "/",
+    "seconds": 20,
+    "elapsed": 20.127585179,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 293,
+    "bytes": 33776747,
+    "errors": 0,
+    "pending": 14,
+    "rps": 14.65,
+    "p50": 1092.7819920000002,
+    "p95": 1147.5071639999987,
+    "p99": 1208.9910049999999
+  },
+  "compression-gzip-2-level6.json": {
+    "url": "/",
+    "seconds": 20,
+    "elapsed": 20.124601231999996,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 1030,
+    "bytes": 120363740,
+    "errors": 0,
+    "pending": 10,
+    "rps": 51.5,
+    "p50": 311.413059,
+    "p95": 316.04987699999947,
+    "p99": 329.79923599999995
+  },
+  "compression-gzip-2-level9.json": {
+    "url": "/",
+    "seconds": 20,
+    "elapsed": 20.129184234,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 304,
+    "bytes": 35044816,
+    "errors": 0,
+    "pending": 14,
+    "rps": 15.2,
+    "p50": 1050.4151710000006,
+    "p95": 1113.3632500000003,
+    "p99": 1137.069072
+  },
+  "compression-gzip-3-level3.json": {
+    "url": "/",
+    "seconds": 20,
+    "elapsed": 20.124905919999996,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 1794,
+    "bytes": 237066336,
+    "errors": 0,
+    "pending": 4,
+    "rps": 89.7,
+    "p50": 178.56593299999986,
+    "p95": 186.08383400000093,
+    "p99": 189.5548430000017
+  },
+  "compression-gzip-3-level6.json": {
+    "url": "/",
+    "seconds": 20,
+    "elapsed": 20.128597730000003,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 1002,
+    "bytes": 117091716,
+    "errors": 0,
+    "pending": 10,
+    "rps": 50.1,
+    "p50": 320.046108,
+    "p95": 331.12164699999994,
+    "p99": 350.460621000002
+  },
+  "excluded-processes.json": {
+    "197106": "Isolated diagnostic middleware on ephemeral port 41203, left by interrupted tool session; not the measured service on 18082. Raw samples retained; stopped during cleanup.",
+    "197123": "Isolated diagnostic middleware on ephemeral port 41203, left by interrupted tool session; not the measured service on 18082. Raw samples retained; stopped during cleanup.",
+    "197125": "Isolated diagnostic middleware on ephemeral port 41203, left by interrupted tool session; not the measured service on 18082. Raw samples retained; stopped during cleanup."
+  },
+  "fixed-after.json": {
+    "rate": 3,
+    "seconds": 60,
+    "count": 179,
+    "errors": 0,
+    "p50": 44.54314500000328,
+    "p95": 59.080308000000514,
+    "p99": 65.44016700000066
+  },
+  "fixed-before.json": {
+    "rate": 3,
+    "seconds": 60,
+    "count": 179,
+    "errors": 0,
+    "p50": 88.86088500000005,
+    "p95": 103.86833599999954,
+    "p99": 108.3204110000006
+  },
+  "http-after-h2-api.json": {
+    "url": "/checkToken?tokenBrowser=perf",
+    "seconds": 30,
+    "elapsed": 30.290318594,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "h2",
+    "count": 620486,
+    "bytes": 29162842,
+    "errors": 0,
+    "pending": 0,
+    "rps": 20682.866666666665,
+    "p50": 0.6459240000003774,
+    "p95": 1.8120749999998225,
+    "p99": 1.9944909999994707
+  },
+  "http-after-h2-html.json": {
+    "url": "/",
+    "seconds": 30,
+    "elapsed": 30.105521746999997,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "h2",
+    "count": 1495,
+    "bytes": 174912010,
+    "errors": 0,
+    "pending": 10,
+    "rps": 49.833333333333336,
+    "p50": 320.45667900000035,
+    "p95": 334.6535239999994,
+    "p99": 346.8484589999998
+  },
+  "http-after-identity-html.json": {
+    "url": "/",
+    "seconds": 30,
+    "elapsed": 30.13670149,
+    "concurrency": 16,
+    "encoding": "identity",
+    "protocol": "http1",
+    "count": 12931,
+    "bytes": 7611742633,
+    "errors": 0,
+    "pending": 0,
+    "rps": 431.03333333333336,
+    "p50": 36.91584200000216,
+    "p95": 40.89523899999767,
+    "p99": 44.42203100000006
+  },
+  "http-after-identity-large.json": {
+    "url": "/js/perf-large.js",
+    "seconds": 30,
+    "elapsed": 30.128655328999997,
+    "concurrency": 16,
+    "encoding": "identity",
+    "protocol": "http1",
+    "count": 10528,
+    "bytes": 22623513920,
+    "errors": 0,
+    "pending": 0,
+    "rps": 350.93333333333334,
+    "p50": 44.883068000000094,
+    "p95": 51.37335600000006,
+    "p99": 56.183789999999135
+  },
+  "http-after-level6-api.json": {
+    "url": "/checkToken?tokenBrowser=perf",
+    "seconds": 30,
+    "elapsed": 30.309213216,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 573461,
+    "bytes": 26952667,
+    "errors": 0,
+    "pending": 0,
+    "rps": 19115.366666666665,
+    "p50": 0.6040000000002692,
+    "p95": 1.7070420000000013,
+    "p99": 1.998105000002397
+  },
+  "http-after-level6-css.json": {
+    "url": "/css/buildCurl.css",
+    "seconds": 30,
+    "elapsed": 30.154391394,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 81438,
+    "bytes": 243173868,
+    "errors": 0,
+    "pending": 0,
+    "rps": 2714.6,
+    "p50": 5.8211019999998825,
+    "p95": 6.383518000000549,
+    "p99": 7.058791999999812
+  },
+  "http-after-level6-html.json": {
+    "url": "/",
+    "seconds": 30,
+    "elapsed": 30.127430073,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 1502,
+    "bytes": 175730996,
+    "errors": 0,
+    "pending": 10,
+    "rps": 50.06666666666667,
+    "p50": 319.11039000000164,
+    "p95": 334.7051510000001,
+    "p99": 347.0290160000004
+  },
+  "http-after-level6-js-real.json": {
+    "url": "/js/jquery.toast.min.js",
+    "seconds": 30,
+    "elapsed": 30.130990305,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 12068,
+    "bytes": 223692448,
+    "errors": 0,
+    "pending": 0,
+    "rps": 402.26666666666665,
+    "p50": 39.40605500000038,
+    "p95": 41.754876000002696,
+    "p99": 44.222287000000506
+  },
+  "http-after-level6-large.json": {
+    "url": "/js/perf-large.js",
+    "seconds": 30,
+    "elapsed": 30.125960345,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 349,
+    "bytes": 418260097,
+    "errors": 0,
+    "pending": 14,
+    "rps": 11.633333333333333,
+    "p50": 1376.068711,
+    "p95": 1406.5489180000004,
+    "p99": 1451.5488219999997
+  },
+  "http-after-workers2-api.json": {
+    "url": "/checkToken?tokenBrowser=perf",
+    "seconds": 30,
+    "elapsed": 30.403873105000002,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 921656,
+    "bytes": 43317832,
+    "errors": 0,
+    "pending": 0,
+    "rps": 30721.866666666665,
+    "p50": 0.37285999999949127,
+    "p95": 1.249246999999741,
+    "p99": 2.2928530000003775
+  },
+  "http-after-workers2-html.json": {
+    "url": "/",
+    "seconds": 30,
+    "elapsed": 30.125374943,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 3018,
+    "bytes": 353099964,
+    "errors": 0,
+    "pending": 4,
+    "rps": 100.6,
+    "p50": 158.48696699999982,
+    "p95": 166.3158309999999,
+    "p99": 170.657433999997
+  },
+  "http-before-level3-api.json": {
+    "url": "/checkToken?tokenBrowser=perf",
+    "seconds": 30,
+    "elapsed": 30.355232833000002,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 227964,
+    "bytes": 10714308,
+    "errors": 0,
+    "pending": 0,
+    "rps": 7598.8,
+    "p50": 1.80811199999971,
+    "p95": 4.942567000000054,
+    "p99": 6.901949999999488
+  },
+  "http-before-level3-css.json": {
+    "url": "/css/buildCurl.css",
+    "seconds": 30,
+    "elapsed": 30.170363738,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 108346,
+    "bytes": 364259252,
+    "errors": 0,
+    "pending": 0,
+    "rps": 3611.5333333333333,
+    "p50": 3.6859110000004875,
+    "p95": 9.902280000000246,
+    "p99": 13.931706999999733
+  },
+  "http-before-level3-html.json": {
+    "url": "/",
+    "seconds": 30,
+    "elapsed": 30.160944114,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 903,
+    "bytes": 119326032,
+    "errors": 0,
+    "pending": 11,
+    "rps": 30.1,
+    "p50": 532.8848910000015,
+    "p95": 591.1458109999994,
+    "p99": 616.9429
+  },
+  "http-before-level3-js-real.json": {
+    "url": "/js/jquery.toast.min.js",
+    "seconds": 30,
+    "elapsed": 30.130287107,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 22700,
+    "bytes": 466371500,
+    "errors": 0,
+    "pending": 0,
+    "rps": 756.6666666666666,
+    "p50": 21.04664899999989,
+    "p95": 22.074640999999247,
+    "p99": 23.377913000000035
+  },
+  "http-before-level3-js.json": {
+    "url": "/js/script.js",
+    "seconds": 30,
+    "elapsed": 30.444141513,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 183642,
+    "bytes": 183642,
+    "errors": 0,
+    "pending": 0,
+    "rps": 6121.4,
+    "p50": 2.405518000000484,
+    "p95": 4.946679000000586,
+    "p99": 7.049201000001631
+  },
+  "http-before-level3-large.json": {
+    "url": "/js/perf-large.js",
+    "seconds": 30,
+    "elapsed": 30.136577745000004,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 522,
+    "bytes": 646355016,
+    "errors": 0,
+    "pending": 13,
+    "rps": 17.4,
+    "p50": 921.4609259999997,
+    "p95": 948.1749889999992,
+    "p99": 960.8096250000017
+  },
+  "http-before-level6-api.json": {
+    "url": "/checkToken?tokenBrowser=perf",
+    "seconds": 30,
+    "elapsed": 30.326967356999997,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 186485,
+    "bytes": 8764795,
+    "errors": 0,
+    "pending": 0,
+    "rps": 6216.166666666667,
+    "p50": 2.346024000000398,
+    "p95": 5.062836000000971,
+    "p99": 7.349326999999903
+  },
+  "http-before-level6-css.json": {
+    "url": "/css/buildCurl.css",
+    "seconds": 30,
+    "elapsed": 30.210276260000004,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 43476,
+    "bytes": 129819336,
+    "errors": 0,
+    "pending": 0,
+    "rps": 1449.2,
+    "p50": 10.77415099999962,
+    "p95": 24.060771000000386,
+    "p99": 29.774992999999085
+  },
+  "http-before-level6-html.json": {
+    "url": "/",
+    "seconds": 30,
+    "elapsed": 30.16663811,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 709,
+    "bytes": 82852322,
+    "errors": 0,
+    "pending": 12,
+    "rps": 23.633333333333333,
+    "p50": 732.7074389999998,
+    "p95": 839.7653339999997,
+    "p99": 879.1986260000012
+  },
+  "http-before-level6-js-real.json": {
+    "url": "/js/jquery.toast.min.js",
+    "seconds": 30,
+    "elapsed": 30.133660804999998,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 12270,
+    "bytes": 227436720,
+    "errors": 0,
+    "pending": 0,
+    "rps": 409,
+    "p50": 39.00502199999937,
+    "p95": 40.48118699999986,
+    "p99": 42.31290099999933
+  },
+  "http-before-level6-js.json": {
+    "url": "/js/script.js",
+    "seconds": 30,
+    "elapsed": 30.434722177,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 238711,
+    "bytes": 238711,
+    "errors": 0,
+    "pending": 0,
+    "rps": 7957.033333333334,
+    "p50": 1.4584869999998773,
+    "p95": 5.165377999999691,
+    "p99": 7.268900999999914
+  },
+  "http-before-level6-large.json": {
+    "url": "/js/perf-large.js",
+    "seconds": 30,
+    "elapsed": 30.129890335,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 189,
+    "bytes": 226507617,
+    "errors": 0,
+    "pending": 15,
+    "rps": 6.3,
+    "p50": 2508.3920749999997,
+    "p95": 2990.811418000001,
+    "p99": 3074.105463
+  },
+  "http-before-level9-api.json": {
+    "url": "/checkToken?tokenBrowser=perf",
+    "seconds": 30,
+    "elapsed": 30.329892187000002,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 202601,
+    "bytes": 9522247,
+    "errors": 0,
+    "pending": 0,
+    "rps": 6753.366666666667,
+    "p50": 2.3035450000024866,
+    "p95": 3.8231180000002496,
+    "p99": 5.9915040000014415
+  },
+  "http-before-level9-css.json": {
+    "url": "/css/buildCurl.css",
+    "seconds": 30,
+    "elapsed": 30.181324726000003,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 23617,
+    "bytes": 69977171,
+    "errors": 0,
+    "pending": 0,
+    "rps": 787.2333333333333,
+    "p50": 19.95951199999763,
+    "p95": 25.265664000000015,
+    "p99": 38.54134399999748
+  },
+  "http-before-level9-html.json": {
+    "url": "/",
+    "seconds": 30,
+    "elapsed": 30.139805412,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 189,
+    "bytes": 21787731,
+    "errors": 0,
+    "pending": 15,
+    "rps": 6.3,
+    "p50": 2538.1403500000015,
+    "p95": 2705.7736079999995,
+    "p99": 2833.1462500000016
+  },
+  "http-before-level9-js-real.json": {
+    "url": "/js/jquery.toast.min.js",
+    "seconds": 30,
+    "elapsed": 30.12855363,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 4720,
+    "bytes": 86805520,
+    "errors": 0,
+    "pending": 0,
+    "rps": 157.33333333333334,
+    "p50": 101.67975400000068,
+    "p95": 105.0145620000003,
+    "p99": 108.34952599999997
+  },
+  "http-before-level9-js.json": {
+    "url": "/js/script.js",
+    "seconds": 30,
+    "elapsed": 30.325852454,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 193658,
+    "bytes": 193658,
+    "errors": 0,
+    "pending": 0,
+    "rps": 6455.266666666666,
+    "p50": 2.0379050000010466,
+    "p95": 4.437737000000197,
+    "p99": 6.681282000001374
+  },
+  "http-before-level9-large.json": {
+    "url": "/js/perf-large.js",
+    "seconds": 30,
+    "elapsed": 30.170739545,
+    "concurrency": 16,
+    "encoding": "gzip",
+    "protocol": "http1",
+    "count": 119,
+    "bytes": 142403254,
+    "errors": 0,
+    "pending": 16,
+    "rps": 3.966666666666667,
+    "p50": 4009.194388,
+    "p95": 4257.875016000002,
+    "p99": 4321.253626999998
+  },
+  "long-idle-cleanup.json": {
+    "adopted": [],
+    "remaining": []
+  },
+  "long-idle-health.json": {
+    "success": true,
+    "message": "Ol\u00e1 Benchmark"
+  },
+  "node-pty-failure.json": {
+    "kind": "node",
+    "checks": [
+      {
+        "name": "initial output",
+        "ok": true
+      },
+      {
+        "name": "reconnect preserves history",
+        "ok": true
+      },
+      {
+        "name": "history appended once",
+        "ok": true
+      },
+      {
+        "name": "shell death recovers",
+        "ok": true
+      },
+      {
+        "name": "multi-client output",
+        "ok": true
+      },
+      {
+        "name": "multi-client output",
+        "ok": true
+      },
+      {
+        "name": "multi-client output",
+        "ok": true
+      },
+      {
+        "name": "multi-client output",
+        "ok": true
+      },
+      {
+        "name": "multi-client output",
+        "ok": true
+      },
+      {
+        "name": "multi-client output",
+        "ok": true
+      },
+      {
+        "name": "multi-client output",
+        "ok": true
+      },
+      {
+        "name": "multi-client output",
+        "ok": true
+      }
+    ],
+    "passed": true
+  },
+  "php-pty-failure.json": {
+    "kind": "php",
+    "checks": [
+      {
+        "name": "initial output",
+        "ok": true
+      },
+      {
+        "name": "reconnect preserves history",
+        "ok": true
+      },
+      {
+        "name": "history appended once",
+        "ok": true
+      },
+      {
+        "name": "shell death recovers",
+        "ok": true
+      },
+      {
+        "name": "multi-client output",
+        "ok": true
+      },
+      {
+        "name": "multi-client output",
+        "ok": true
+      },
+      {
+        "name": "multi-client output",
+        "ok": true
+      },
+      {
+        "name": "multi-client output",
+        "ok": true
+      },
+      {
+        "name": "multi-client output",
+        "ok": true
+      },
+      {
+        "name": "multi-client output",
+        "ok": true
+      },
+      {
+        "name": "multi-client output",
+        "ok": true
+      },
+      {
+        "name": "multi-client output",
+        "ok": true
+      }
+    ],
+    "passed": true
+  },
+  "pty-backend-failure.json": {
+    "passed": true,
+    "backendDeath": true,
+    "deadIdleSeconds": 45,
+    "reconnected": true,
+    "forcedExit": false
+  },
+  "regression-http-restart.json": {
+    "url": "/checkToken?tokenBrowser=perf",
+    "seconds": 20,
+    "elapsed": 20.192799893,
+    "concurrency": 4,
+    "encoding": "identity",
+    "protocol": "http1",
+    "count": 249870,
+    "bytes": 10886563,
+    "errors": 18241,
+    "pending": 0,
+    "rps": 12493.5,
+    "p50": 0.2049719999995432,
+    "p95": 0.798903999999311,
+    "p99": 0.9496530000005805
+  },
+  "regression-ws-restart.json": {
+    "scenario": "panel",
+    "seconds": 20.024,
+    "count": 6,
+    "errors": 0,
+    "bytes": 2171,
+    "rate": 0.3,
+    "p50": 998.0499300000006,
+    "p95": 1002.7144789999998,
+    "p99": 1002.7144789999998
+  },
+  "request-cache-http.json": {
+    "passed": true,
+    "checks": [
+      "initial token",
+      "revoke existing token in worker",
+      "new token in worker",
+      "malformed token data fails closed",
+      "token recovery",
+      "create route with import",
+      "module edit without restart",
+      "page edit without restart",
+      "rename route in worker",
+      "old route removed",
+      "delete route in worker",
+      "same master throughout"
+    ],
+    "pid": 255373
+  },
+  "request-cache-ws.json": {
+    "passed": true,
+    "newHandshake": true,
+    "revokedOpenConnection": true
+  },
+  "stop-supervisor.json": {
+    "parent": 215561,
+    "middleware": 215578,
+    "passed": true,
+    "seconds": 0.015420162999362219
+  },
+  "after-browse.client": {
+    "scenario": "browse",
+    "seconds": 60.021,
+    "count": 600,
+    "errors": 0,
+    "bytes": 537906000,
+    "rate": 10,
+    "p50": 8.918976000000157,
+    "p95": 87.39712300000247,
+    "p99": 100.78084900000249
+  },
+  "after-codex-active.client": {
+    "scenario": "codex-active",
+    "seconds": 90.025,
+    "count": 2,
+    "errors": 0,
+    "bytes": 283,
+    "rate": 0.022222222222222223
+  },
+  "after-editor.client": {
+    "scenario": "editor",
+    "seconds": 60.059,
+    "count": 594,
+    "errors": 0,
+    "bytes": 37961,
+    "rate": 9.9,
+    "p50": 0.7599589999990712,
+    "p95": 1.281543000000056,
+    "p99": 1.5094370000006165
+  },
+  "after-panel.client": {
+    "scenario": "panel",
+    "seconds": 120.02,
+    "count": 120,
+    "errors": 0,
+    "bytes": 43683,
+    "rate": 1,
+    "p50": 1000.0826499999966,
+    "p95": 1001.3209019999995,
+    "p99": 1002.022066000005
+  },
+  "after-terminal-active.client": {
+    "scenario": "terminal-active",
+    "seconds": 60.021,
+    "count": 594,
+    "errors": 0,
+    "bytes": 14367,
+    "rate": 9.9
+  },
+  "after-terminal-idle.client": {
+    "scenario": "terminal-idle",
+    "seconds": 60.023,
+    "count": 2,
+    "errors": 0,
+    "bytes": 180,
+    "rate": 0.03333333333333333
+  },
+  "after-terminal-multi.client": {
+    "scenario": "terminal-multi",
+    "seconds": 60.027,
+    "count": 21,
+    "errors": 0,
+    "bytes": 15999,
+    "rate": 0.35
+  },
+  "before-browse.client": {
+    "scenario": "browse",
+    "seconds": 60.062,
+    "count": 429,
+    "errors": 0,
+    "bytes": 385390720,
+    "rate": 7.15,
+    "p50": 22.68126399999983,
+    "p95": 231.30891100000008,
+    "p99": 290.0374840000004
+  },
+  "before-codex-active.client": {
+    "scenario": "codex-active",
+    "seconds": 90.023,
+    "count": 2,
+    "errors": 0,
+    "bytes": 283,
+    "rate": 0.022222222222222223
+  },
+  "before-editor.client": {
+    "scenario": "editor",
+    "seconds": 60.048,
+    "count": 588,
+    "errors": 0,
+    "bytes": 37577,
+    "rate": 9.8,
+    "p50": 1.8583959999996296,
+    "p95": 3.2984260000012,
+    "p99": 3.920810999999958
+  },
+  "before-panel.client": {
+    "scenario": "panel",
+    "seconds": 120.431,
+    "count": 565449,
+    "errors": 0,
+    "bytes": 204571809,
+    "rate": 4712.075,
+    "p50": 0.16290699999808567,
+    "p95": 0.46572099999866623,
+    "p99": 0.7473989999998594
+  },
+  "before-terminal-active.client": {
+    "scenario": "terminal-active",
+    "seconds": 60.053,
+    "count": 589,
+    "errors": 0,
+    "bytes": 14231,
+    "rate": 9.816666666666666
+  },
+  "before-terminal-idle.client": {
+    "scenario": "terminal-idle",
+    "seconds": 60.052,
+    "count": 2,
+    "errors": 0,
+    "bytes": 164,
+    "rate": 0.03333333333333333
+  },
+  "before-terminal-multi.client": {
+    "scenario": "terminal-multi",
+    "seconds": 60.065,
+    "count": 21,
+    "errors": 0,
+    "bytes": 15855,
+    "rate": 0.35
+  },
+  "trace-panel.client": {
+    "scenario": "panel",
+    "seconds": 30.083,
+    "count": 37293,
+    "errors": 0,
+    "bytes": 13565780,
+    "rate": 1243.1,
+    "p50": 0.7255059999988589,
+    "p95": 1.31986599999982,
+    "p99": 1.8086930000026769
+  }
+}

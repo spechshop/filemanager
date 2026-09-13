@@ -45,7 +45,13 @@
         });
     }
 
+    let metricsSocket = null;
+    let metricsRequestTimer = null;
+    let metricsReconnectTimer = null;
+
     function wsConnect() {
+        if (metricsSocket && metricsSocket.readyState < WebSocket.CLOSING) return;
+        clearTimeout(metricsReconnectTimer);
         const hostname = window.location.port ? `${window.location.hostname}:${parseInt(window.location.port)}` : window.location.hostname;
         const token = ($('#fp').text() || '').trim();
         // Inclui o token no path para o handshake autenticar; o payload
@@ -53,6 +59,7 @@
         const wsPath = token ? `/${encodeURIComponent(token)}` : '/';
         const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
         const ws = new WebSocket(`${protocol}://${hostname}${wsPath}`);
+        metricsSocket = ws;
         ws.onopen = function (event) {
             toast('Conectado ao servidor', 'Bem vindo', 3000, 'success');
 
@@ -68,9 +75,12 @@
                 return;
             }
             if (data.success && data.disk && data.memory && data.cpu) {
-                ws.send(JSON.stringify({
-                    token: token || $('#fp').text()
-                }));
+                clearTimeout(metricsRequestTimer);
+                metricsRequestTimer = setTimeout(() => {
+                    if (metricsSocket === ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({token: token || $('#fp').text()}));
+                    }
+                }, 1000);
                 $('#totalDisk').html(`${data['disk']['total_space']} ${data['disk']['unit']}`);
                 $('#diskUsed').html(`${data['disk']['used_space']} ${data['disk']['unit']}`);
                 $('#freeDisk').html(`${data['disk']['free_space']} ${data['disk']['unit']}`);
@@ -91,7 +101,10 @@
             }
         };
         ws.onclose = function () {
-            setTimeout(wsConnect, 3000);
+            if (metricsSocket !== ws) return;
+            metricsSocket = null;
+            clearTimeout(metricsRequestTimer);
+            metricsReconnectTimer = setTimeout(wsConnect, 3000);
         };
         ws.onerror = function (error) {
             return bootstrap.showToast({

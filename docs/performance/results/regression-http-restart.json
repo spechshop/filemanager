@@ -1,0 +1,1 @@
+{"url":"/checkToken?tokenBrowser=perf","seconds":20,"elapsed":20.192799893,"concurrency":4,"encoding":"identity","protocol":"http1","count":249870,"bytes":10886563,"errors":18241,"pending":0,"rps":12493.5,"p50":0.2049719999995432,"p95":0.798903999999311,"p99":0.9496530000005805}

@@ -1,0 +1,3 @@
+{"phase": "sampling", "pids": [291952, 291959, 292370], "seconds": 600}
+measurement complete
+{"cleanup": [], "adopted": []}

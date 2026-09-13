@@ -6,6 +6,9 @@ use plugins\Start\cache;
 class server
 {
     public static function request($request, $response) {
+        // Worker globals are not shared with the master process. Refresh on use.
+        $GLOBALS['dataKeys'] = \plugins\Database\call::data() ?? [];
+        $GLOBALS['listRoutes'] = controller::listPages();
         $path = $request->server['path_info'];
         $response->header('Content-Type', 'application/json');
         // liberar cors

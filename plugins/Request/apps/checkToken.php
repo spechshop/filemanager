@@ -15,7 +15,7 @@ class checkToken
         if (!empty($_POST['tokenBrowser'])) $tokenBrowser = $_POST['tokenBrowser'];
 
 
-        $dataKeys = \plugins\Database\call::data();
+        $dataKeys = \plugins\Database\call::data() ?? [];
         \libspech\Cache\cache::set('dataKeys', $dataKeys);
         if (empty($tokenBrowser)) {
             return $response->end(json_encode([

@@ -53,7 +53,7 @@
         "open_tcp_keepalive": true,
         "open_tcp_nodelay": true,
         "http_compression": true,
-        "http_compression_level": 9,
+        "http_compression_level": 6,
         "compression_min_length": 1024,
         "package_max_length": 2147483648,
         "socket_buffer_size": 2147483648,

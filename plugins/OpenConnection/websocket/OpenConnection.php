@@ -10,6 +10,7 @@ class OpenConnection
 {
     public static function open(Server $server, Request $request): void
     {
+        $GLOBALS['dataKeys'] = \plugins\Database\call::data() ?? [];
         $uri = (string) ($request->server['request_uri'] ?? '/');
         $socketToken = ltrim(explode('?', $uri, 2)[0], '/');
         $clientToken = self::clientTokenFromSocketToken($socketToken);
