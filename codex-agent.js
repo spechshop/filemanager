@@ -23,7 +23,9 @@ const FILES_ROOT = fs.realpathSync(path.join(ROOT, "files"));
 const MAX_MESSAGE_BYTES = 128 * 1024;
 const MAX_PROMPT_CHARS = 64 * 1024;
 const REQUEST_TIMEOUT_MS = 30_000;
+const LOGIN_TIMEOUT_MS = 30_000;
 const TURN_LIMIT_PER_MINUTE = 10;
+const ACCESS_TOKEN_HOME = path.join(os.homedir(), ".codex", "filemanager-access-token");
 const PERMISSION_MODES = Object.freeze({
     "read-only": Object.freeze({ approvalPolicy: "on-request", sandbox: "read-only" }),
     agent: Object.freeze({ approvalPolicy: "on-request", sandbox: "workspace-write" }),
@@ -32,6 +34,10 @@ const PERMISSION_MODES = Object.freeze({
 
 let codexProcess = null;
 let codexReady = false;
+let codexStarting = false;
+let codexAuthMode = "none";
+let preparedCodexEnvironment = null;
+let accessTokenRejected = false;
 let stopping = false;
 let restartAttempt = 0;
 let nextRpcId = 1;
@@ -52,6 +58,88 @@ function redact(value) {
 
 function log(message) {
     process.stderr.write(`[codex-agent] ${redact(message)}\n`);
+}
+
+function runCodexCommand(executable, args, env, input = "") {
+    return new Promise((resolve) => {
+        let stdout = "";
+        let stderr = "";
+        let settled = false;
+        let timer;
+        const child = spawn(executable, args, {
+            cwd: ROOT,
+            env,
+            stdio: ["pipe", "pipe", "pipe"],
+        });
+        const finish = (result) => {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            resolve({ ...result, stdout, stderr });
+        };
+        timer = setTimeout(() => {
+            child.kill("SIGTERM");
+            finish({ code: null, signal: "SIGTERM", timedOut: true });
+        }, LOGIN_TIMEOUT_MS);
+        child.stdout.on("data", (chunk) => { stdout = (stdout + chunk).slice(-4000); });
+        child.stderr.on("data", (chunk) => { stderr = (stderr + chunk).slice(-4000); });
+        child.on("error", (error) => finish({ code: null, signal: null, error, timedOut: false }));
+        child.on("exit", (code, signal) => finish({ code, signal, timedOut: false }));
+        child.stdin.on("error", () => {});
+        child.stdin.end(input);
+    });
+}
+
+function baseCodexEnvironment(managedPaths) {
+    const env = { ...process.env, PATH: managedPaths };
+    // Current Codex releases import enterprise tokens through `codex login
+    // --with-access-token`. Leaving the raw variable in app-server's environment
+    // can override a healthy cached ChatGPT session with a revoked token.
+    delete env.CODEX_ACCESS_TOKEN;
+    return env;
+}
+
+async function prepareCodexEnvironment(executable, managedPaths) {
+    if (preparedCodexEnvironment) return preparedCodexEnvironment;
+
+    const localEnv = baseCodexEnvironment(managedPaths);
+    const accessToken = process.env.CODEX_ACCESS_TOKEN?.trim();
+    if (accessToken && !accessTokenRejected) {
+        try {
+            fs.mkdirSync(ACCESS_TOKEN_HOME, { recursive: true, mode: 0o700 });
+            const accessTokenEnv = { ...localEnv, CODEX_HOME: ACCESS_TOKEN_HOME };
+            const login = await runCodexCommand(
+                executable,
+                ["login", "--with-access-token"],
+                accessTokenEnv,
+                `${accessToken}\n`,
+            );
+            if (login.code === 0) {
+                codexAuthMode = "access-token";
+                preparedCodexEnvironment = accessTokenEnv;
+                log("Autenticação preparada com o token de acesso do workspace.");
+                return preparedCodexEnvironment;
+            }
+            log(`Token de acesso recusado durante o login (code=${login.code ?? "null"}); tentando a sessão ChatGPT local.`);
+        } catch (error) {
+            log(`Não foi possível preparar o token de acesso (${error.message}); tentando a sessão ChatGPT local.`);
+        }
+        accessTokenRejected = true;
+    }
+
+    const status = await runCodexCommand(executable, ["login", "status"], localEnv);
+    if (status.code === 0) {
+        codexAuthMode = "chatgpt";
+        preparedCodexEnvironment = localEnv;
+        log("Autenticação preparada com a sessão ChatGPT local.");
+        return preparedCodexEnvironment;
+    }
+
+    codexAuthMode = "none";
+    if (accessToken) {
+        throw new Error("CODEX_ACCESS_TOKEN foi recusado e não há uma sessão ChatGPT local válida. Execute `codex login` ou gere um novo token do workspace.");
+    }
+    throw new Error("Codex não está autenticado. Execute `codex login` como o usuário do serviço ou configure CODEX_ACCESS_TOKEN.");
 }
 
 function findCodexBinary() {
@@ -228,6 +316,12 @@ function containsHttpStatus(value, expected) {
     return Object.values(value).some((item) => containsHttpStatus(item, expected));
 }
 
+function containsAuthenticationRejection(value) {
+    const text = typeof value === "string" ? value : JSON.stringify(value || {});
+    return /(?:HTTP(?: error)?:?\s*|status\D*)(?:401|403)\b/i.test(text)
+        || text.includes("rejected_by_access_enforcement");
+}
+
 function ownersForThread(threadId) {
     if (!threadId) return clients;
     return threadOwners.get(threadId) || new Set();
@@ -363,9 +457,20 @@ function handleCodexMessage(message) {
 
     if (!message.method) return;
     const threadId = findThreadId(message);
-    if (message.method === "error" && containsHttpStatus(message.params?.error, 401)) {
+    const authenticationRejected = message.method === "error"
+        && (containsHttpStatus(message.params?.error, 401)
+            || containsHttpStatus(message.params?.error, 403)
+            || containsAuthenticationRejection(message.params?.error));
+    if (authenticationRejected) {
         codexReady = false;
-        message.params.error.message = "CODEX_ACCESS_TOKEN foi recusado (HTTP 401). Gere ou copie um token Codex válido do workspace e reinicie o serviço.";
+        if (codexAuthMode === "access-token") {
+            accessTokenRejected = true;
+            preparedCodexEnvironment = null;
+            message.params.error.message = "O token de acesso do workspace foi recusado. Tentando recuperar com a sessão ChatGPT local.";
+            setImmediate(() => codexProcess?.kill("SIGTERM"));
+        } else {
+            message.params.error.message = "A sessão do Codex foi recusada. Execute `codex login` como o usuário do serviço e reinicie o FileManager.";
+        }
         broadcastStatus("error", message.params.error.message);
     }
     if (message.method === "turn/started" && threadId && message.params?.turn?.id) {
@@ -392,10 +497,14 @@ async function initializeCodex() {
     });
     notification("initialized", {});
     await rpc("account/read", { refreshToken: false });
+    if (codexAuthMode === "access-token" && accessTokenRejected) {
+        throw new Error("O token do workspace foi recusado; alternando para a sessão ChatGPT local.");
+    }
     codexReady = true;
     restartAttempt = 0;
-    broadcastStatus("ready", "Codex Enterprise conectado.");
-    log("Codex app-server inicializado.");
+    const source = codexAuthMode === "access-token" ? "token do workspace" : "sessão ChatGPT local";
+    broadcastStatus("ready", `Codex conectado pela ${source}.`);
+    log(`Codex app-server inicializado com ${source}.`);
 }
 
 function scheduleCodexRestart() {
@@ -403,18 +512,12 @@ function scheduleCodexRestart() {
     const delays = [1_000, 2_000, 5_000, 10_000, 30_000];
     const delay = delays[Math.min(restartAttempt++, delays.length - 1)];
     broadcastStatus("restarting", `Codex indisponível; nova tentativa em ${Math.ceil(delay / 1000)}s.`);
-    setTimeout(startCodex, delay);
+    setTimeout(() => void startCodex(), delay);
 }
 
-function startCodex() {
-    if (stopping || codexProcess) return;
-    if (!process.env.CODEX_ACCESS_TOKEN?.trim()) {
-        log("CODEX_ACCESS_TOKEN não foi definido.");
-        broadcastStatus("error", "CODEX_ACCESS_TOKEN não foi definido no servidor.");
-        scheduleCodexRestart();
-        return;
-    }
-
+async function startCodex() {
+    if (stopping || codexProcess || codexStarting) return;
+    codexStarting = true;
     codexReady = false;
     let executable;
     try {
@@ -422,6 +525,7 @@ function startCodex() {
     } catch (error) {
         log(error.message);
         broadcastStatus("error", error.message);
+        codexStarting = false;
         scheduleCodexRestart();
         return;
     }
@@ -430,11 +534,26 @@ function startCodex() {
         path.join(ROOT, ".runtime", "codex", "bin"),
         process.env.PATH || "",
     ].filter(Boolean).join(path.delimiter);
+    let codexEnv;
+    try {
+        codexEnv = await prepareCodexEnvironment(executable, managedPaths);
+    } catch (error) {
+        log(error.message);
+        broadcastStatus("error", error.message);
+        codexStarting = false;
+        scheduleCodexRestart();
+        return;
+    }
+    if (stopping) {
+        codexStarting = false;
+        return;
+    }
     codexProcess = spawn(executable, ["app-server", "--listen", "stdio://"], {
         cwd: ROOT,
-        env: {...process.env, PATH: managedPaths},
+        env: codexEnv,
         stdio: ["pipe", "pipe", "pipe"],
     });
+    codexStarting = false;
 
     const current = codexProcess;
     const lines = readline.createInterface({ input: current.stdout });
@@ -447,6 +566,16 @@ function startCodex() {
     });
     current.stderr.on("data", (chunk) => {
         const text = redact(chunk).trim();
+        if (text && codexAuthMode === "access-token" && !accessTokenRejected
+            && containsAuthenticationRejection(text)) {
+            accessTokenRejected = true;
+            preparedCodexEnvironment = null;
+            codexReady = false;
+            log("O token do workspace foi recusado pelo backend; alternando para a sessão ChatGPT local.");
+            broadcastStatus("restarting", "Token do workspace recusado; reconectando pela sessão ChatGPT local.");
+            current.kill("SIGTERM");
+            return;
+        }
         if (text) log(text.slice(0, 2000));
     });
     current.on("error", (error) => log(`Não foi possível iniciar Codex: ${error.message}`));
@@ -569,7 +698,11 @@ async function performAction(client, message) {
     const action = message.action;
 
     if (action === "health") {
-        return { ready: codexReady, tokenConfigured: Boolean(process.env.CODEX_ACCESS_TOKEN?.trim()) };
+        return {
+            ready: codexReady,
+            tokenConfigured: Boolean(process.env.CODEX_ACCESS_TOKEN?.trim()),
+            authMode: codexAuthMode,
+        };
     }
 
     if (action === "model.list") {
@@ -729,7 +862,9 @@ wsServer.on("connection", (client) => {
     sendClient(client, {
         type: "status",
         status: codexReady ? "ready" : "starting",
-        message: codexReady ? "Codex Enterprise conectado." : "Inicializando Codex...",
+        message: codexReady
+            ? `Codex conectado pela ${codexAuthMode === "access-token" ? "token do workspace" : "sessão ChatGPT local"}.`
+            : "Inicializando Codex...",
     });
 
     client.on("pong", () => { client.isAlive = true; });
@@ -809,5 +944,5 @@ process.on("unhandledRejection", (error) => log(`Promise rejeitada: ${error?.sta
 
 server.listen(PORT, HOST, () => {
     log(`Bridge ouvindo em ws://${HOST}:${PORT}/agent.`);
-    startCodex();
+    void startCodex();
 });
