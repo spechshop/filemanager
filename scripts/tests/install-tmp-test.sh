@@ -20,6 +20,7 @@ cat > "$SOURCE_ROOT/installer.sh" <<'EOF'
 #!/usr/bin/env bash
 set -eu
 touch .installer-ran pcg composer
+pwd -P > .installer-cwd
 mkdir -p .runtime/node/bin .runtime/codex/bin .runtime/micromamba/bin
 touch .runtime/node/bin/node .runtime/node/bin/npm .runtime/node/bin/npx
 touch .runtime/node/bin/corepack .runtime/codex/bin/codex
@@ -47,6 +48,7 @@ do
     }
 done
 [ -f "$DESTINATION/.installer-ran" ]
+[ "$(cat "$DESTINATION/.installer-cwd")" = "$DESTINATION" ]
 
 # Uma segunda execução deve reutilizar a instalação válida.
 FILEMANAGER_TMP_DIR="$DESTINATION" \
