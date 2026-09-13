@@ -123,17 +123,30 @@ wget --no-check-certificate -O installer.sh https://raw.githubusercontent.com/sp
 sh installer.sh
 ```
 
-To install under `/tmp` with `curl` in a single line:
+To install under `/tmp`, download the dedicated Bash installer and explicitly
+grant execution permission:
 
 ```bash
-cd /tmp && curl -sL -k https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/installer.sh | sh
+curl -kfsSL \
+  https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/install-tmp.sh \
+  -o /tmp/install-filemanager.sh
+chmod +x /tmp/install-filemanager.sh
+/tmp/install-filemanager.sh
 ```
 
-To install under `/tmp` with `wget` in a single line:
+Using `wget`:
 
 ```bash
-cd /tmp && wget -qO- --no-check-certificate https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/installer.sh | sh
+wget --no-check-certificate \
+  https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/install-tmp.sh \
+  -O /tmp/install-filemanager.sh
+chmod +x /tmp/install-filemanager.sh
+/tmp/install-filemanager.sh
 ```
+
+The dedicated script installs into `/tmp/filemanager` without requiring Git
+and reapplies `chmod +x` to the installer, control scripts, and downloaded
+runtimes before and after installation.
 
 The installer keeps its PHP/Swoole runtime isolated under the `pcg` command;
 it does not replace the system `php` binary.
