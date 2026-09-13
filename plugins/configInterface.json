@@ -40,7 +40,7 @@
             "pty": true,
             "lsp": false,
             "gpt": false,
-            "codex": false
+            "codex": true
         }
     },
     "serverSettings": {
