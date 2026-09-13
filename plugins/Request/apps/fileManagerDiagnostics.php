@@ -46,7 +46,7 @@ class fileManagerDiagnostics
 
         try {
             $job = self::jobStatus();
-            if (($job['status'] ?? '') === 'running') {
+            if (in_array(($job['status'] ?? ''), ['starting', 'running'], true)) {
                 return self::respond($response, 409, [
                     'success' => false,
                     'message' => 'Uma instalação já está em andamento.',
@@ -55,17 +55,26 @@ class fileManagerDiagnostics
             }
             self::startInstaller($nodeTarget);
             usleep(150000);
+            $repair = self::jobStatus();
+            if (($repair['status'] ?? '') === 'failed') {
+                return self::respond($response, 500, [
+                    'success' => false,
+                    'message' => $repair['message'] ?? 'O instalador não conseguiu iniciar.',
+                    'repair' => $repair,
+                ]);
+            }
             return self::respond($response, 202, [
                 'success' => true,
                 'message' => $nodeTarget === 'preserve'
                     ? 'Reparo automático iniciado, mantendo o runtime Node.js compatível.'
                     : "Atualização para Node.js $nodeTarget e reparo iniciados.",
-                'repair' => self::jobStatus(),
+                'repair' => $repair,
             ]);
         } catch (\Throwable $exception) {
             return self::respond($response, 500, [
                 'success' => false,
                 'message' => $exception->getMessage(),
+                'repair' => self::jobStatus(),
             ]);
         }
     }
@@ -244,27 +253,99 @@ class fileManagerDiagnostics
     {
         $root = self::root();
         $script = $root . '/scripts/install-codex.sh';
-        if (!is_file($script) || !is_readable($script)) {
-            throw new \RuntimeException('O instalador scripts/install-codex.sh não está disponível.');
-        }
+        $files = self::jobFiles();
         $runtime = $root . '/.runtime';
-        if (!is_dir($runtime) && !mkdir($runtime, 0750, true) && !is_dir($runtime)) {
-            throw new \RuntimeException('Não foi possível criar o diretório .runtime.');
-        }
-        $log = $runtime . '/codex-installer.log';
-        $command = 'nohup bash ' . escapeshellarg($script) . ' ' . escapeshellarg($root)
-            . ' ' . escapeshellarg($nodeTarget)
-            . ' > ' . escapeshellarg($log) . ' 2>&1 < /dev/null & echo $!';
-        $pid = trim((string) shell_exec($command));
-        if (!ctype_digit($pid) || (int) $pid <= 1) {
-            throw new \RuntimeException('Não foi possível iniciar o instalador em segundo plano.');
+        $startedAt = gmdate('c');
+
+        self::replaceLog($files['log'], '[FileManager] Preparando o instalador em ' . $startedAt . ".\n");
+        self::writeJobState($files['state'], [
+            'status' => 'starting',
+            'message' => 'Preparando o instalador...',
+            'pid' => 0,
+            'updatedAt' => $startedAt,
+            'exitCode' => null,
+        ]);
+
+        $launcherExitCode = null;
+        try {
+            if (!is_file($script) || !is_readable($script)) {
+                throw new \RuntimeException('O instalador scripts/install-codex.sh não está disponível.');
+            }
+            if (!is_dir($runtime) && !mkdir($runtime, 0750, true) && !is_dir($runtime)) {
+                throw new \RuntimeException('Não foi possível criar o diretório .runtime.');
+            }
+            if (!is_writable($runtime)) {
+                self::appendLog(
+                    $files['log'],
+                    '[FileManager][aviso] .runtime não permite escrita para o usuário do File Manager; '
+                    . "o instalador registrará abaixo o ponto exato da falha.\n"
+                );
+            }
+
+            $command = 'nohup bash ' . escapeshellarg($script) . ' ' . escapeshellarg($root)
+                . ' ' . escapeshellarg($nodeTarget)
+                . ' >> ' . escapeshellarg($files['log']) . ' 2>&1 < /dev/null & printf "%s\\n" "$!"';
+            self::appendLog($files['log'], self::launchDiagnostics($command));
+
+            $output = [];
+            $warnings = [];
+            $exitCode = -1;
+            $launchException = null;
+            set_error_handler(
+                static function (int $severity, string $message, string $file, int $line) use (&$warnings): bool {
+                    $warnings[] = sprintf('%s em %s:%d', $message, $file, $line);
+                    return true;
+                }
+            );
+            try {
+                exec($command, $output, $exitCode);
+            } catch (\Throwable $exception) {
+                $launchException = $exception;
+            } finally {
+                restore_error_handler();
+            }
+            $launcherExitCode = $exitCode;
+
+            if ($output !== []) {
+                self::appendLog(
+                    $files['log'],
+                    "[FileManager][launcher][stdout]\n" . implode("\n", $output) . "\n"
+                );
+            }
+            foreach ($warnings as $warning) {
+                self::appendLog($files['log'], '[FileManager][launcher][aviso] ' . $warning . "\n");
+            }
+            self::appendLog($files['log'], '[FileManager][launcher] Código de saída: ' . $exitCode . ".\n");
+
+            if ($launchException instanceof \Throwable) {
+                throw new \RuntimeException(
+                    'Falha ao executar o lançador: ' . $launchException->getMessage(),
+                    0,
+                    $launchException
+                );
+            }
+            $pid = trim((string) end($output));
+            if ($exitCode !== 0 || !ctype_digit($pid) || (int) $pid <= 1) {
+                $details = $warnings !== [] ? end($warnings) : 'nenhum PID foi devolvido pelo sistema';
+                throw new \RuntimeException('Não foi possível criar o processo do instalador: ' . $details . '.');
+            }
+        } catch (\Throwable $exception) {
+            self::appendLog($files['log'], '[FileManager][erro] ' . $exception->getMessage() . "\n");
+            self::writeJobState($files['state'], [
+                'status' => 'failed',
+                'message' => $exception->getMessage(),
+                'pid' => 0,
+                'updatedAt' => gmdate('c'),
+                'exitCode' => $launcherExitCode,
+            ]);
+            throw $exception;
         }
     }
 
     private static function jobStatus(): array
     {
-        $runtime = self::root() . '/.runtime';
-        $stateFile = $runtime . '/codex-installer.json';
+        $files = self::jobFiles();
+        $stateFile = $files['state'];
         $state = [];
         if (is_file($stateFile)) {
             $decoded = json_decode((string) @file_get_contents($stateFile), true);
@@ -274,22 +355,17 @@ class fileManagerDiagnostics
         if (($state['status'] ?? '') === 'running' && !self::installerProcessRunning($pid)) {
             $state['status'] = 'failed';
             $state['message'] = 'O instalador foi encerrado antes de concluir. Consulte o log.';
+        } elseif (($state['status'] ?? '') === 'starting') {
+            $updatedAt = strtotime((string) ($state['updatedAt'] ?? '')) ?: 0;
+            if ($updatedAt > 0 && time() - $updatedAt > 5) {
+                $state['status'] = 'failed';
+                $state['message'] = 'O instalador não confirmou a inicialização. Consulte o log.';
+            }
         }
         $log = '';
-        $logFile = $runtime . '/codex-installer.log';
+        $logFile = $files['log'];
         if (is_file($logFile) && is_readable($logFile)) {
-            $size = (int) filesize($logFile);
-            $handle = @fopen($logFile, 'rb');
-            if (is_resource($handle)) {
-                if ($size > 16000) {
-                    fseek($handle, -16000, SEEK_END);
-                }
-                $log = (string) stream_get_contents($handle);
-                fclose($handle);
-                if ($size > 16000) {
-                    $log = "…\n" . substr($log, (int) strpos($log, "\n") + 1);
-                }
-            }
+            $log = (string) @file_get_contents($logFile);
         }
 
         return [
@@ -299,6 +375,154 @@ class fileManagerDiagnostics
             'exitCode' => $state['exitCode'] ?? null,
             'log' => $log,
         ];
+    }
+
+    private static function jobFiles(): array
+    {
+        $runtime = self::root() . '/.runtime';
+        $runtimeFiles = [
+            'state' => $runtime . '/codex-installer.json',
+            'log' => $runtime . '/codex-installer.log',
+            'lock' => $runtime . '/codex-installer.lock',
+        ];
+        if (self::jobFilesWritable($runtime, $runtimeFiles)) {
+            return $runtimeFiles;
+        }
+
+        $userId = function_exists('posix_geteuid') ? (string) posix_geteuid() : (string) getmyuid();
+        $directory = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR)
+            . DIRECTORY_SEPARATOR . 'lotus-filemanager-diagnostics-'
+            . substr(hash('sha256', $userId . ':' . self::root()), 0, 24);
+        if (!is_dir($directory) && !mkdir($directory, 0700, true) && !is_dir($directory)) {
+            return $runtimeFiles;
+        }
+        @chmod($directory, 0700);
+
+        return [
+            'state' => $directory . '/codex-installer.json',
+            'log' => $directory . '/codex-installer.log',
+            'lock' => $directory . '/codex-installer.lock',
+        ];
+    }
+
+    private static function jobFilesWritable(string $directory, array $files): bool
+    {
+        if (!is_dir($directory)) {
+            return is_writable(dirname($directory));
+        }
+        if (!is_writable($directory)) {
+            return false;
+        }
+        foreach ($files as $file) {
+            if (file_exists($file) && !is_writable($file)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static function replaceLog(string $file, string $message): void
+    {
+        if (@file_put_contents($file, $message, LOCK_EX) === false) {
+            throw new \RuntimeException('Não foi possível criar o log do instalador.');
+        }
+        @chmod($file, 0600);
+    }
+
+    private static function appendLog(string $file, string $message): void
+    {
+        @file_put_contents($file, $message, FILE_APPEND | LOCK_EX);
+    }
+
+    private static function launchDiagnostics(string $command): string
+    {
+        $userId = function_exists('posix_geteuid') ? posix_geteuid() : getmyuid();
+        $account = function_exists('posix_getpwuid') ? posix_getpwuid($userId) : false;
+        $accountName = is_array($account) ? $account['name'] : (string) $userId;
+        $selfStatus = (string) @file_get_contents('/proc/self/status');
+        $selfThreads = self::statusNumber($selfStatus, 'Threads');
+        [$userProcesses, $userThreads] = self::userProcessUsage($userId);
+        $limits = function_exists('posix_getrlimit') ? posix_getrlimit() : [];
+        $softMaxProcesses = is_array($limits) ? ($limits['soft maxproc'] ?? 'indisponível') : 'indisponível';
+        $hardMaxProcesses = is_array($limits) ? ($limits['hard maxproc'] ?? 'indisponível') : 'indisponível';
+        [$cgroupCurrent, $cgroupMaximum] = self::cgroupProcessLimits();
+        $loadAverage = trim((string) @file_get_contents('/proc/loadavg'));
+        $memoryInfo = (string) @file_get_contents('/proc/meminfo');
+        $availableMemory = self::statusNumber($memoryInfo, 'MemAvailable');
+
+        return implode("\n", [
+            '[FileManager][launcher] PHP ' . PHP_VERSION . ' (' . PHP_SAPI . '), PID ' . getmypid()
+                . ', usuário ' . $accountName . ' (' . $userId . ').',
+            '[FileManager][launcher] Processo PHP: ' . $selfThreads . ' thread(s).',
+            '[FileManager][launcher] Usuário: ' . $userProcesses . ' processo(s), '
+                . $userThreads . ' thread(s) visíveis em /proc.',
+            '[FileManager][launcher] Limite RLIMIT_NPROC: soft=' . $softMaxProcesses
+                . ', hard=' . $hardMaxProcesses . '.',
+            '[FileManager][launcher] Cgroup pids: atual=' . $cgroupCurrent
+                . ', máximo=' . $cgroupMaximum . '.',
+            '[FileManager][launcher] /proc/loadavg: ' . ($loadAverage !== '' ? $loadAverage : 'indisponível') . '.',
+            '[FileManager][launcher] MemAvailable: '
+                . ($availableMemory > 0 ? $availableMemory . ' kB' : 'indisponível') . '.',
+            '[FileManager][launcher] Comando: ' . $command,
+        ]) . "\n";
+    }
+
+    private static function userProcessUsage(int $userId): array
+    {
+        $processes = 0;
+        $threads = 0;
+        foreach (glob('/proc/[0-9]*/status') ?: [] as $statusFile) {
+            $status = @file_get_contents($statusFile);
+            if (!is_string($status)
+                || preg_match('/^Uid:\s+(\d+)/m', $status, $matches) !== 1
+                || (int) $matches[1] !== $userId) {
+                continue;
+            }
+            $processes++;
+            $threads += self::statusNumber($status, 'Threads');
+        }
+        return [$processes, $threads];
+    }
+
+    private static function cgroupProcessLimits(): array
+    {
+        $directories = ['/sys/fs/cgroup'];
+        $cgroup = (string) @file_get_contents('/proc/self/cgroup');
+        if (preg_match('/^0::(.+)$/m', $cgroup, $matches) === 1) {
+            $directories[] = '/sys/fs/cgroup' . rtrim($matches[1], '/');
+        }
+
+        foreach (array_reverse(array_unique($directories)) as $directory) {
+            $current = @file_get_contents($directory . '/pids.current');
+            $maximum = @file_get_contents($directory . '/pids.max');
+            if (is_string($current) || is_string($maximum)) {
+                return [
+                    is_string($current) ? trim($current) : 'indisponível',
+                    is_string($maximum) ? trim($maximum) : 'indisponível',
+                ];
+            }
+        }
+        return ['indisponível', 'indisponível'];
+    }
+
+    private static function statusNumber(string $contents, string $name): int
+    {
+        return preg_match('/^' . preg_quote($name, '/') . ':\s+(\d+)/m', $contents, $matches) === 1
+            ? (int) $matches[1]
+            : 0;
+    }
+
+    private static function writeJobState(string $file, array $state): void
+    {
+        $encoded = json_encode($state, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $temporary = $file . '.tmp.' . getmypid();
+        if ($encoded === false
+            || @file_put_contents($temporary, $encoded . PHP_EOL, LOCK_EX) === false
+            || !@rename($temporary, $file)) {
+            @unlink($temporary);
+            throw new \RuntimeException('Não foi possível registrar o estado do instalador.');
+        }
+        @chmod($file, 0600);
     }
 
     private static function installerProcessRunning(int $pid): bool

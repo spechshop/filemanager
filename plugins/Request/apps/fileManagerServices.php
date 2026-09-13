@@ -95,6 +95,12 @@ class fileManagerServices
         }
 
         if ($action === 'restart') {
+            if ($service === 'pty'
+                && self::portAlive(self::SERVICES['pty']['port'])
+                && self::serviceProcessIds('pty') === []) {
+                fileManagerConfig::setServiceEnabled('pty', true);
+                return 'Terminal PTY já está ativo; conexão recuperada pelo painel.';
+            }
             self::stop($service);
         }
 
@@ -357,7 +363,70 @@ class fileManagerServices
             }
         }
 
+        if ($service === 'pty') {
+            $pids = array_merge($pids, self::ptyListenerProcessIds());
+        }
+
         return array_values(array_unique($pids));
+    }
+
+    private static function ptyListenerProcessIds(): array
+    {
+        $port = strtoupper(str_pad(dechex(self::SERVICES['pty']['port']), 4, '0', STR_PAD_LEFT));
+        $socketInodes = [];
+        foreach (['/proc/net/tcp', '/proc/net/tcp6'] as $table) {
+            foreach (@file($table, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [] as $line) {
+                $fields = preg_split('/\s+/', trim($line));
+                if (!is_array($fields)
+                    || count($fields) < 10
+                    || ($fields[3] ?? '') !== '0A'
+                    || !str_ends_with((string) ($fields[1] ?? ''), ':' . $port)
+                    || !ctype_digit((string) ($fields[9] ?? ''))) {
+                    continue;
+                }
+                $socketInodes[(string) $fields[9]] = true;
+            }
+        }
+        if ($socketInodes === []) {
+            return [];
+        }
+
+        $currentUser = function_exists('posix_geteuid') ? posix_geteuid() : getmyuid();
+        $pids = [];
+        foreach (glob('/proc/[0-9]*', GLOB_ONLYDIR) ?: [] as $processDirectory) {
+            $pid = (int) basename($processDirectory);
+            $status = @file_get_contents($processDirectory . '/status');
+            if ($pid <= 1
+                || !is_string($status)
+                || preg_match('/^Uid:\s+(\d+)/m', $status, $uidMatch) !== 1
+                || (int) $uidMatch[1] !== $currentUser) {
+                continue;
+            }
+
+            $ownsSocket = false;
+            foreach (glob($processDirectory . '/fd/*') ?: [] as $descriptor) {
+                $target = @readlink($descriptor);
+                if (is_string($target)
+                    && preg_match('/^socket:\[(\d+)]$/', $target, $socketMatch) === 1
+                    && isset($socketInodes[$socketMatch[1]])) {
+                    $ownsSocket = true;
+                    break;
+                }
+            }
+            if (!$ownsSocket) {
+                continue;
+            }
+
+            $command = str_replace("\0", ' ', (string) @file_get_contents($processDirectory . '/cmdline'));
+            if (str_contains($command, 'pty.js')
+                || str_contains($command, 'pty.php')
+                || self::parentCommandContains($pid, 'nodePTY')
+                || self::parentCommandContains($pid, 'phpPTY')) {
+                $pids[] = $pid;
+            }
+        }
+
+        return $pids;
     }
 
     private static function parentCommandContains(int $pid, string $needle): bool
