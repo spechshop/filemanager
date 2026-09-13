@@ -147,4 +147,4 @@ if [ "$INSTALL_STATUS" -ne 0 ]; then
 fi
 
 ok "FileManager instalado em $INSTALL_DIR."
-printf 'Controle: %s/filemanagerctl status\n' "$INSTALL_DIR"
+printf 'Controle: bash %s/filemanagerctl status\n' "$INSTALL_DIR"

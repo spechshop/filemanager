@@ -107,13 +107,13 @@ node -v
 Using `curl`:
 
 ```bash
-curl -kfsSL https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/installer.sh -o installer.sh && chmod +x installer.sh && ./installer.sh
+curl -kfsSL https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/installer.sh -o installer.sh && chmod +x installer.sh && bash ./installer.sh
 ```
 
 Using `wget`:
 
 ```bash
-wget --no-check-certificate -qO installer.sh https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/installer.sh && chmod +x installer.sh && ./installer.sh
+wget --no-check-certificate -qO installer.sh https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/installer.sh && chmod +x installer.sh && bash ./installer.sh
 ```
 
 Alternatively, download the installer first so you can review it before running it:
@@ -126,13 +126,13 @@ To install under `/tmp`, download the dedicated Bash installer and explicitly
 grant execution permission:
 
 ```bash
-curl -kfsSL https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/install-tmp.sh -o /tmp/install-filemanager.sh && chmod +x /tmp/install-filemanager.sh && /tmp/install-filemanager.sh
+curl -kfsSL https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/install-tmp.sh -o /tmp/install-filemanager.sh && chmod +x /tmp/install-filemanager.sh && bash /tmp/install-filemanager.sh
 ```
 
 Using `wget`:
 
 ```bash
-wget --no-check-certificate -O /tmp/install-filemanager.sh https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/install-tmp.sh && chmod +x /tmp/install-filemanager.sh && /tmp/install-filemanager.sh
+wget --no-check-certificate -O /tmp/install-filemanager.sh https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/install-tmp.sh && chmod +x /tmp/install-filemanager.sh && bash /tmp/install-filemanager.sh
 ```
 
 The dedicated script installs into `/tmp/filemanager` without requiring Git
