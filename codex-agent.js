@@ -104,6 +104,14 @@ async function prepareCodexEnvironment(executable, managedPaths) {
 
     const localEnv = baseCodexEnvironment(managedPaths);
     const accessToken = process.env.CODEX_ACCESS_TOKEN?.trim();
+    const status = await runCodexCommand(executable, ["login", "status"], localEnv);
+    if (status.code === 0) {
+        codexAuthMode = "chatgpt";
+        preparedCodexEnvironment = localEnv;
+        log("Autenticação preparada com a sessão ChatGPT local.");
+        return preparedCodexEnvironment;
+    }
+
     if (accessToken && !accessTokenRejected) {
         try {
             fs.mkdirSync(ACCESS_TOKEN_HOME, { recursive: true, mode: 0o700 });
@@ -120,24 +128,16 @@ async function prepareCodexEnvironment(executable, managedPaths) {
                 log("Autenticação preparada com o token de acesso do workspace.");
                 return preparedCodexEnvironment;
             }
-            log(`Token de acesso recusado durante o login (code=${login.code ?? "null"}); tentando a sessão ChatGPT local.`);
+            log(`Token de acesso recusado durante o login (code=${login.code ?? "null"}).`);
         } catch (error) {
-            log(`Não foi possível preparar o token de acesso (${error.message}); tentando a sessão ChatGPT local.`);
+            log(`Não foi possível preparar o token de acesso (${error.message}).`);
         }
         accessTokenRejected = true;
     }
 
-    const status = await runCodexCommand(executable, ["login", "status"], localEnv);
-    if (status.code === 0) {
-        codexAuthMode = "chatgpt";
-        preparedCodexEnvironment = localEnv;
-        log("Autenticação preparada com a sessão ChatGPT local.");
-        return preparedCodexEnvironment;
-    }
-
     codexAuthMode = "none";
     if (accessToken) {
-        throw new Error("CODEX_ACCESS_TOKEN foi recusado e não há uma sessão ChatGPT local válida. Execute `codex login` ou gere um novo token do workspace.");
+        throw new Error("CODEX_ACCESS_TOKEN foi recusado. Execute `codex login` ou gere um novo token do workspace.");
     }
     throw new Error("Codex não está autenticado. Execute `codex login` como o usuário do serviço ou configure CODEX_ACCESS_TOKEN.");
 }

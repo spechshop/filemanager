@@ -30,7 +30,7 @@ class fileManagerServices
         ],
         'codex' => [
             'name' => 'Codex Agent',
-            'description' => 'Agente de tarefas autenticado pelo workspace ChatGPT Enterprise.',
+            'description' => 'Agente de tarefas autenticado por uma sessão ChatGPT local ou token Enterprise.',
             'port' => 3091,
             'log' => 'codex-agent.log',
         ],
@@ -184,11 +184,9 @@ class fileManagerServices
             if ($codex === null) {
                 return [false, 'O Codex CLI não está instalado ou não está no PATH.'];
             }
-            if (!self::codexSupportsAccessTokens($codex)) {
+            $tokenConfigured = self::envHasValue($root . '/.env', 'CODEX_ACCESS_TOKEN');
+            if ($tokenConfigured && !self::codexSupportsAccessTokens($codex)) {
                 return [false, 'O token do workspace requer Codex CLI 0.138.0-alpha.6 ou mais recente.'];
-            }
-            if (!self::envHasValue($root . '/.env', 'CODEX_ACCESS_TOKEN')) {
-                return [false, 'CODEX_ACCESS_TOKEN não foi definido no arquivo .env.'];
             }
             return [true, null];
         }

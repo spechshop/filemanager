@@ -232,10 +232,10 @@ Provides AI refactoring on port 3090.
 **Codex Agent (ChatGPT Business/Enterprise):**
 
 Authenticate the operating-system user that runs the service with `codex login`.
-For trusted ChatGPT Enterprise automation, you may instead create a Codex access
-token in the workspace admin console and keep it in the ignored `.env` file. If
-that token is rejected, the bridge falls back to the cached local ChatGPT session.
-Do not expose this port publicly.
+The bridge uses that cached session when it is available. For trusted ChatGPT
+Enterprise automation without a cached login, you may instead create a Codex
+access token in the workspace admin console and keep it in the ignored `.env`
+file. Do not expose this port publicly.
 
 ```bash
 CODEX_ACCESS_TOKEN=your-access-token # optional when `codex login` is active

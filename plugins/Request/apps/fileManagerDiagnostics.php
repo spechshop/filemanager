@@ -93,6 +93,7 @@ class fileManagerDiagnostics
         $codexVersion = self::versionOutput($codex);
         $dependencies = self::dependencyStatus();
         $tokenConfigured = self::envHasValue(self::root() . '/.env', 'CODEX_ACCESS_TOKEN');
+        $localLoginActive = self::codexLoginActive($codex);
 
         $checks = [
             [
@@ -184,12 +185,14 @@ class fileManagerDiagnostics
             ],
             [
                 'id' => 'token',
-                'name' => 'Token do Codex',
-                'status' => $tokenConfigured ? 'ok' : 'warning',
-                'value' => $tokenConfigured ? 'Configurado' : 'Pendente',
-                'message' => $tokenConfigured
-                    ? 'CODEX_ACCESS_TOKEN foi encontrado sem expor seu conteúdo.'
-                    : 'Defina CODEX_ACCESS_TOKEN no arquivo .env para conectar o agente.',
+                'name' => 'Autenticação do Codex',
+                'status' => ($localLoginActive || $tokenConfigured) ? 'ok' : 'warning',
+                'value' => $localLoginActive ? 'Sessão ChatGPT local' : ($tokenConfigured ? 'Token configurado' : 'Pendente'),
+                'message' => $localLoginActive
+                    ? 'Uma sessão criada por codex login está disponível para o serviço.'
+                    : ($tokenConfigured
+                        ? 'CODEX_ACCESS_TOKEN foi encontrado sem expor seu conteúdo.'
+                        : 'Execute codex login como o usuário do serviço ou configure CODEX_ACCESS_TOKEN.'),
             ],
         ];
 
@@ -447,6 +450,18 @@ class fileManagerDiagnostics
     private static function majorVersion(string $version): int
     {
         return preg_match('/(?:^|\s)v?(\d+)\./', $version, $matches) === 1 ? (int) $matches[1] : 0;
+    }
+
+    private static function codexLoginActive(?string $binary): bool
+    {
+        if ($binary === null) {
+            return false;
+        }
+        $path = self::root() . '/.runtime/node/bin' . PATH_SEPARATOR . (string) getenv('PATH');
+        $command = 'env -u CODEX_ACCESS_TOKEN PATH=' . escapeshellarg($path) . ' '
+            . escapeshellarg($binary) . ' login status >/dev/null 2>&1';
+        exec($command, $output, $exitCode);
+        return $exitCode === 0;
     }
 
     private static function envHasValue(string $file, string $name): bool
