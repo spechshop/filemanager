@@ -111,10 +111,13 @@ for (; ;) {
     print "Middleware stopped ($sharedPid, $pidRunner). Cleaning up...\n";
     \plugins\terminal::pKill($sharedPid);
 
-    if (!fileManagerAutoRestartEnabled()) {
+    $explicitRestart = \plugins\Request\fileManagerRuntime::consumeRestartRequest();
+    if (!$explicitRestart && !fileManagerAutoRestartEnabled()) {
         print "Autorestart disabled in File Manager settings. Supervisor stopped.\n";
         break;
     }
 
-    print "Restarting middleware...\n";
+    print $explicitRestart
+        ? "Explicit restart requested. Restarting middleware...\n"
+        : "Restarting middleware...\n";
 }

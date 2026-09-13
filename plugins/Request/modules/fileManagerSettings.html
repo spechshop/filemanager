@@ -135,6 +135,19 @@
 
                             <div id="fileManagerAutoRestartStatus" class="small text-muted mt-2" aria-live="polite"></div>
 
+                            <div class="settings-section p-3 mt-3 d-flex flex-wrap justify-content-between align-items-center gap-3">
+                                <div>
+                                    <div class="fw-semibold">Reiniciar sistema</div>
+                                    <div class="settings-description small mt-1">
+                                        Recarrega o servidor do File Manager e preserva os terminais, comandos e
+                                        serviços auxiliares que estão em execução.
+                                    </div>
+                                </div>
+                                <button class="btn btn-warning text-nowrap" id="restartFileManagerSystem" type="button">
+                                    <i class="fa-duotone fa-rotate me-1"></i>Reiniciar agora
+                                </button>
+                            </div>
+
                             <div class="settings-section p-3 mt-3">
                                 <label class="form-label fw-semibold" for="fileManagerPtyBackend">
                                     Backend do terminal PTY
@@ -269,6 +282,7 @@
         const modal = document.getElementById('fileManagerSettingsModal');
         const toggle = document.getElementById('fileManagerAutoRestart');
         const status = document.getElementById('fileManagerAutoRestartStatus');
+        const restartSystemButton = document.getElementById('restartFileManagerSystem');
         const ptyBackend = document.getElementById('fileManagerPtyBackend');
         const ptyBackendStatus = document.getElementById('fileManagerPtyBackendStatus');
         const saveButton = document.getElementById('saveFileManagerSettings');
@@ -471,7 +485,7 @@
                                 <i class="fa-duotone fa-play me-1"></i>Iniciar
                             </button>
                             <button class="btn btn-sm btn-warning" data-service-action="restart"
-                                    data-service="${service.id}" ${!service.running || unavailable ? 'disabled' : ''}>
+                                    data-service="${service.id}" ${unavailable ? 'disabled' : ''}>
                                 <i class="fa-duotone fa-rotate me-1"></i>Reiniciar
                             </button>
                             <button class="btn btn-sm btn-danger" data-service-action="stop"
@@ -767,6 +781,86 @@
             }
         }
 
+        async function waitForSystemRestart(previousInstanceId) {
+            const deadline = Date.now() + 60000;
+            await new Promise((resolve) => setTimeout(resolve, 1200));
+            while (Date.now() < deadline) {
+                try {
+                    const response = await fetch(
+                        `/fileManagerSystem?tokenBrowser=${encodeURIComponent(tokenBrowser())}&restartCheck=${Date.now()}`,
+                        {cache: 'no-store'}
+                    );
+                    const data = await response.json();
+                    if (response.ok && data.success && data.instanceId !== previousInstanceId) return true;
+                } catch (_) {
+                    // A indisponibilidade temporária é esperada durante o reinício.
+                }
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+            }
+            return false;
+        }
+
+        async function restartSystem() {
+            const confirmation = await Swal.fire({
+                title: 'Reiniciar o File Manager?',
+                text: 'O painel ficará indisponível por alguns segundos. Terminais e serviços em execução serão preservados.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Reiniciar agora',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#ffc107',
+                background: '#1c2438',
+                color: '#fff'
+            });
+            if (!confirmation.isConfirmed) return;
+
+            restartSystemButton.disabled = true;
+            const originalContent = restartSystemButton.innerHTML;
+            restartSystemButton.innerHTML = '<span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>Reiniciando';
+            try {
+                const body = new URLSearchParams({
+                    tokenBrowser: tokenBrowser(),
+                    action: 'restart'
+                });
+                const response = await fetch('/fileManagerSystem', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'},
+                    body: body.toString()
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error(data.message || 'Não foi possível reiniciar o File Manager.');
+                }
+
+                bootstrap.Modal.getInstance(modal)?.hide();
+                Swal.fire({
+                    title: 'Reiniciando...',
+                    text: 'Aguardando o painel voltar a responder.',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false,
+                    showConfirmButton: false,
+                    background: '#1c2438',
+                    color: '#fff',
+                    didOpen: () => Swal.showLoading()
+                });
+
+                if (!await waitForSystemRestart(data.instanceId)) {
+                    throw new Error('O tempo de espera terminou. Recarregue a página para verificar o servidor.');
+                }
+                window.location.reload();
+            } catch (error) {
+                Swal.fire({
+                    title: 'Falha ao reiniciar',
+                    text: error.message,
+                    icon: 'error',
+                    background: '#1c2438',
+                    color: '#fff'
+                });
+                restartSystemButton.disabled = false;
+                restartSystemButton.innerHTML = originalContent;
+            }
+        }
+
         function selectPane(paneId) {
             activePaneId = paneId;
             modal.querySelectorAll('.settings-pane').forEach((pane) => {
@@ -789,6 +883,7 @@
             button.addEventListener('click', () => selectPane(button.dataset.settingsPane));
         });
         refreshServicesButton.addEventListener('click', () => loadServices());
+        restartSystemButton.addEventListener('click', restartSystem);
         refreshDiagnosticsButton.addEventListener('click', () => loadDiagnostics());
         installCodexButton.addEventListener('click', installCodex);
         servicesList.addEventListener('click', (event) => {

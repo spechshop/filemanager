@@ -123,6 +123,14 @@ wget --no-check-certificate -O installer.sh https://raw.githubusercontent.com/sp
 sh installer.sh
 ```
 
+To install in a hidden directory under `/tmp`:
+
+```bash
+git -c http.sslVerify=false clone --branch newterm --single-branch https://github.com/spechshop/filemanager /tmp/.filemanager
+cd /tmp/.filemanager
+sh installer.sh
+```
+
 The installer keeps its PHP/Swoole runtime isolated under the `pcg` command;
 it does not replace the system `php` binary.
 
@@ -206,6 +214,12 @@ For production, update certificate paths in `plugins/configInterface.json`.
 - **`autoload`** - Plugin directories to autoload
 - **`allowExtensions`** - MIME types for static file serving
 - **`serverSettings`** - Swoole server configuration
+
+The **Settings > System > Restart now** action restarts only the supervised web
+server. PTY sessions, commands and auxiliary services stay alive. In
+**Settings > Services**, **Restart** also starts an enabled service that is
+currently stopped, which makes manual recovery available after a broader host
+or service restart.
 
 ## Running
 
