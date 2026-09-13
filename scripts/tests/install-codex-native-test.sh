@@ -295,6 +295,8 @@ case_micromamba_certificate_retry() {
     second_call="$(sed -n '2p' "$calls")"
     case " $first_call " in *" create "*) ;; *) return 1 ;; esac
     case " $second_call " in *" create "*) ;; *) return 1 ;; esac
+    case " $first_call " in *" --no-rc "*) ;; *) return 1 ;; esac
+    case " $second_call " in *" --no-rc "*) ;; *) return 1 ;; esac
     case " $first_call " in *" --ssl-verify "*) return 1 ;; esac
     case " $first_call " in *" --override-channels --channel conda-forge --strict-channel-priority "*) ;; *) return 1 ;; esac
     assert_contains "$calls" "python=3.12 make gcc_linux-64=14 gxx_linux-64=14 sysroot_linux-64=2.17" || return 1
@@ -335,6 +337,7 @@ case_existing_incomplete_toolchain_uses_install() {
 
     prepare_native_toolchain || return 1
     assert_eq "$(wc -l < "$calls")" 1 || return 1
+    assert_contains "$calls" "--no-rc install --yes" || return 1
     assert_contains "$calls" "install --yes" || return 1
     [ -f "$TOOLCHAIN_DIR/conda-meta/history" ]
 }

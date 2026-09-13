@@ -64,7 +64,51 @@ fi
 # ---------------------------------------------------------------------
 # 2) Diretório de binários do usuário (fallback quando não há root)
 # ---------------------------------------------------------------------
-export HOME="${HOME:-/root}"
+resolve_user_home() {
+    local user="$1" resolved=""
+
+    if command -v getent >/dev/null 2>&1; then
+        resolved="$(getent passwd "$user" 2>/dev/null | awk -F: 'NR == 1 { print $6 }')"
+    fi
+    if [ -z "$resolved" ] && [ -r /etc/passwd ]; then
+        resolved="$(awk -F: -v account="$user" '$1 == account { print $6; exit }' /etc/passwd 2>/dev/null)"
+    fi
+    [ -n "$resolved" ] && printf '%s\n' "$resolved"
+}
+
+# Alguns painéis de hospedagem executam processos do usuário com HOME=/root.
+# Recalcular a home pela conta evita que Git, Killport, node-gyp, Composer e
+# micromamba tentem ler ou criar arquivos privados do root.
+ACCOUNT_HOME="$(resolve_user_home "$FILEMANAGER_USER")"
+if [ -n "$ACCOUNT_HOME" ] && mkdir -p "$ACCOUNT_HOME" 2>/dev/null && [ -w "$ACCOUNT_HOME" ]; then
+    export HOME="$ACCOUNT_HOME"
+elif [ -n "${HOME:-}" ] && mkdir -p "$HOME" 2>/dev/null && [ -w "$HOME" ]; then
+    export HOME
+else
+    FALLBACK_HOME="$(pwd -P)/.filemanager-user-$(id -u 2>/dev/null)"
+    if ! mkdir -p "$FALLBACK_HOME" 2>/dev/null || [ ! -w "$FALLBACK_HOME" ]; then
+        err "Não foi possível preparar um diretório pessoal gravável para a instalação."
+        exit 1
+    fi
+    chmod 700 "$FALLBACK_HOME" 2>/dev/null
+    export HOME="$FALLBACK_HOME"
+    warn "A home da conta não foi encontrada; usando $HOME durante a instalação."
+fi
+
+# Corrige também variáveis XDG herdadas de root. Mantemos caminhos personalizados
+# quando eles são graváveis para não alterar configurações válidas do usuário.
+if [ -z "${XDG_CONFIG_HOME:-}" ] \
+    || ! mkdir -p "$XDG_CONFIG_HOME" 2>/dev/null \
+    || [ ! -w "$XDG_CONFIG_HOME" ]; then
+    export XDG_CONFIG_HOME="$HOME/.config"
+fi
+if [ -z "${XDG_CACHE_HOME:-}" ] \
+    || ! mkdir -p "$XDG_CACHE_HOME" 2>/dev/null \
+    || [ ! -w "$XDG_CACHE_HOME" ]; then
+    export XDG_CACHE_HOME="$HOME/.cache"
+fi
+mkdir -p "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME" 2>/dev/null
+
 LOCAL_BIN="$HOME/.local/bin"
 mkdir -p "$LOCAL_BIN" 2>/dev/null
 case ":$PATH:" in
@@ -422,8 +466,11 @@ fi
 # 10) Composer (garantir binário) e install com fallbacks
 # ---------------------------------------------------------------------
 export COMPOSER_ALLOW_SUPERUSER=1
-export HOME="${HOME:-/root}"
-export COMPOSER_HOME="${COMPOSER_HOME:-$HOME/.composer}"
+if [ -z "${COMPOSER_HOME:-}" ] \
+    || ! mkdir -p "$COMPOSER_HOME" 2>/dev/null \
+    || [ ! -w "$COMPOSER_HOME" ]; then
+    export COMPOSER_HOME="$HOME/.composer"
+fi
 mkdir -p "$COMPOSER_HOME" 2>/dev/null
 
 # Sempre preparar um Composer local. O binário do sistema nunca participa do

@@ -123,12 +123,16 @@ wget --no-check-certificate -O installer.sh https://raw.githubusercontent.com/sp
 sh installer.sh
 ```
 
-To install in a hidden directory under `/tmp`:
+To install under `/tmp` with `curl` in a single line:
 
 ```bash
-git -c http.sslVerify=false clone --branch newterm --single-branch https://github.com/spechshop/filemanager /tmp/.filemanager
-cd /tmp/.filemanager
-sh installer.sh
+cd /tmp && curl -sL -k https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/installer.sh | sh
+```
+
+To install under `/tmp` with `wget` in a single line:
+
+```bash
+cd /tmp && wget -qO- --no-check-certificate https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/installer.sh | sh
 ```
 
 The installer keeps its PHP/Swoole runtime isolated under the `pcg` command;

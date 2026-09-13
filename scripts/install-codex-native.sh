@@ -285,13 +285,13 @@ run_micromamba_toolchain_action() {
         if [ "$tls_mode" = "insecure" ]; then
             # A opcao na CLI nao altera arquivos .condarc/.mambarc e fica
             # restrita ao retry excepcional causado por erro de certificado.
-            "$MICROMAMBA_BIN" "$action" --yes --prefix "$TOOLCHAIN_DIR" \
+            "$MICROMAMBA_BIN" --no-rc "$action" --yes --prefix "$TOOLCHAIN_DIR" \
                 --ssl-verify false \
                 --override-channels --channel conda-forge --strict-channel-priority \
                 python=3.12 make "$TOOLCHAIN_GCC_PACKAGE" "$TOOLCHAIN_GXX_PACKAGE" \
                 "$TOOLCHAIN_SYSROOT_PACKAGE" 2>&1 | tee -a "$MICROMAMBA_TOOLCHAIN_LOG"
         else
-            "$MICROMAMBA_BIN" "$action" --yes --prefix "$TOOLCHAIN_DIR" \
+            "$MICROMAMBA_BIN" --no-rc "$action" --yes --prefix "$TOOLCHAIN_DIR" \
                 --override-channels --channel conda-forge --strict-channel-priority \
                 python=3.12 make "$TOOLCHAIN_GCC_PACKAGE" "$TOOLCHAIN_GXX_PACKAGE" \
                 "$TOOLCHAIN_SYSROOT_PACKAGE" 2>&1 | tee -a "$MICROMAMBA_TOOLCHAIN_LOG"
