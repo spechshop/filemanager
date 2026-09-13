@@ -28,6 +28,33 @@ esac
 
 mkdir -p "$RUNTIME_DIR"
 
+# O reparo iniciado pela interface não passa pelo instalador principal. Em
+# painéis de hospedagem, o processo web pode herdar HOME e diretórios XDG do
+# root; nesse caso isolamos o estado das ferramentas dentro de .runtime.
+if [ -z "${HOME:-}" ] \
+    || ! mkdir -p "$HOME" 2>/dev/null \
+    || [ ! -w "$HOME" ]; then
+    export HOME="$RUNTIME_DIR/user-home"
+fi
+mkdir -p "$HOME" || {
+    printf '[Codex][erro] Não foi possível preparar um diretório HOME gravável.\n' >&2
+    exit 1
+}
+if [ -z "${XDG_CONFIG_HOME:-}" ] \
+    || ! mkdir -p "$XDG_CONFIG_HOME" 2>/dev/null \
+    || [ ! -w "$XDG_CONFIG_HOME" ]; then
+    export XDG_CONFIG_HOME="$HOME/.config"
+fi
+if [ -z "${XDG_CACHE_HOME:-}" ] \
+    || ! mkdir -p "$XDG_CACHE_HOME" 2>/dev/null \
+    || [ ! -w "$XDG_CACHE_HOME" ]; then
+    export XDG_CACHE_HOME="$HOME/.cache"
+fi
+mkdir -p "$XDG_CONFIG_HOME" "$XDG_CACHE_HOME" || {
+    printf '[Codex][erro] Não foi possível preparar os diretórios XDG graváveis.\n' >&2
+    exit 1
+}
+
 json_state() {
     local status="$1" message="$2" exit_code="${3:-null}" tmp escaped_message
     tmp="$STATE_FILE.tmp.$$"
@@ -194,15 +221,18 @@ install_managed_node() {
         rm -rf -- "$temp_dir"
         return 1
     fi
-    if { [ "$archive_extension" = "tar.xz" ] && ! tar -xJf "$archive" -C "$temp_dir"; } \
-        || { [ "$archive_extension" = "tar.gz" ] && ! tar -xzf "$archive" -C "$temp_dir"; }; then
+    extracted="$temp_dir/node-runtime"
+    if ! extract_node_runtime_archive "$archive" "$archive_extension" "$extracted"; then
         LAST_MESSAGE="Não foi possível extrair o pacote Node.js."
         rm -rf -- "$temp_dir"
         return 1
     fi
-    extracted="$temp_dir/${filename%.tar.*}"
-    if [ ! -x "$extracted/bin/node" ] \
-        || [ ! -f "$extracted/lib/node_modules/npm/bin/npm-cli.js" ]; then
+    if ! validate_node_runtime_layout "$extracted"; then
+        warn "Estrutura incompleta após extrair $filename."
+        [ -f "$extracted/bin/node" ] \
+            || warn "Arquivo ausente: bin/node."
+        [ -f "$extracted/lib/node_modules/npm/bin/npm-cli.js" ] \
+            || warn "Arquivo ausente: lib/node_modules/npm/bin/npm-cli.js."
         LAST_MESSAGE="O pacote Node.js baixado não contém executáveis Node.js e npm válidos."
         rm -rf -- "$temp_dir"
         return 1

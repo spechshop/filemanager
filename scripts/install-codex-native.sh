@@ -14,6 +14,32 @@ configure_native_toolchain_paths() {
     export MAMBA_ROOT_PREFIX
 }
 
+extract_node_runtime_archive() {
+    local archive="$1" archive_extension="$2" destination="$3"
+
+    mkdir -p "$destination" || return 1
+    case "$archive_extension" in
+        tar.xz)
+            tar -xJf "$archive" --strip-components=1 -C "$destination"
+            ;;
+        tar.gz)
+            tar -xzf "$archive" --strip-components=1 -C "$destination"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+validate_node_runtime_layout() {
+    local runtime="$1"
+
+    [ -f "$runtime/bin/node" ] || return 1
+    chmod +x "$runtime/bin/node" 2>/dev/null || return 1
+    [ -x "$runtime/bin/node" ] || return 1
+    [ -f "$runtime/lib/node_modules/npm/bin/npm-cli.js" ] || return 1
+}
+
 version_is_older_than() {
     local current="$1" required="$2" current_major current_minor required_major required_minor
     current_major="${current%%.*}"

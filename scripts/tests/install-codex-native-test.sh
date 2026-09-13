@@ -118,6 +118,25 @@ case_legacy_node_selection() {
     assert_eq "$(select_compatible_node_version "$index_file" 26)" v26.8.1
 }
 
+case_node_archive_extraction() {
+    source "$HELPER"
+    local fixture source_dir archive destination
+    fixture="$(new_fixture)" || return 1
+    source_dir="$fixture/source/unexpected-root-name"
+    archive="$fixture/node-download.tar.gz"
+    destination="$fixture/extracted-runtime"
+    mkdir -p "$source_dir/bin" "$source_dir/lib/node_modules/npm/bin"
+    printf '%s\n' '#!/bin/sh' 'printf "v24.21.0\n"' > "$source_dir/bin/node"
+    printf '%s\n' '#!/usr/bin/env node' > "$source_dir/lib/node_modules/npm/bin/npm-cli.js"
+    chmod 644 "$source_dir/bin/node"
+    tar -czf "$archive" -C "$fixture/source" unexpected-root-name || return 1
+
+    extract_node_runtime_archive "$archive" tar.gz "$destination" || return 1
+    validate_node_runtime_layout "$destination" || return 1
+    [ -x "$destination/bin/node" ] || return 1
+    [ -f "$destination/lib/node_modules/npm/bin/npm-cli.js" ]
+}
+
 case_old_compiler_fallback() {
     source "$HELPER"
     quiet_callbacks
@@ -379,6 +398,7 @@ case_node_pty_validation() {
 run_case "A: npm normal nao prepara micromamba" case_modern_system_toolchain
 run_case "B: Python 3.12 tem prioridade sobre python3 antigo" case_python_priority
 run_case "runtime Node para glibc antiga" case_legacy_node_selection
+run_case "extração do Node independe do nome do diretório do pacote" case_node_archive_extraction
 run_case "C/D: GCC antigo aciona fallback local sem root" case_old_compiler_fallback
 run_case "E: toolchain existente e reutilizado" case_existing_toolchain_reused
 run_case "F: erro de rede nao aciona fallback" case_network_failure_does_not_fallback
