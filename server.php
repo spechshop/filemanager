@@ -13,6 +13,7 @@
 
     $cwd      = __DIR__;
     $localPhp = $cwd . '/pcg';
+    $localPhp = "php";
 
     // Verifica se o runtime ./pcg local existe e tem Swoole.
     if (!file_exists($localPhp) || !is_executable($localPhp)) {

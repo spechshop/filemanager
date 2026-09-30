@@ -1,0 +1,385 @@
+/* Layout do gerenciador em telas estreitas. */
+.filemanager-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+}
+.filemanager-actions > .btn { margin: 0; }
+.filemanager-pathbar #visualPath {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.filemanager-search { min-width: 0; }
+.filemanager-list { overflow-x: auto; }
+
+@media (max-width: 767.98px) {
+    #navContent { padding: 0 .5rem; }
+    #navContent .row { margin-right: 0; margin-left: 0; }
+    #navContent .row > .col-12 { padding-right: 0; padding-left: 0; }
+    #navContent .row .card-body button { float: none !important; margin: 0 0 .5rem !important; }
+    .filemanager-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .filemanager-actions > .btn {
+        min-width: 0;
+        white-space: normal;
+        font-size: .85rem;
+        padding: .5rem .35rem;
+    }
+    .filemanager-pathbar { flex-wrap: wrap; gap: .5rem; }
+    .filemanager-pathbar #visualPath { flex: 1 1 100%; }
+    .filemanager-pathbar #copyBtn { margin-left: 0 !important; }
+    .filemanager-navigation { flex-direction: column; align-items: stretch !important; gap: .75rem; }
+    .filemanager-navigation > .btn-group { display: flex; }
+    .filemanager-navigation > .btn-group > .btn { flex: 1; }
+    .filemanager-search { width: 100%; max-width: none !important; }
+    .filemanager-list { max-height: min(55vh, 450px) !important; }
+    #tableListFiles { width: 100%; table-layout: fixed; }
+    #tableListFiles th:nth-child(n+3):nth-child(-n+6),
+    #tableListFiles td:nth-child(n+3):nth-child(-n+6) { display: none; }
+    #tableListFiles th:first-child, #tableListFiles td:first-child { width: 2.25rem !important; }
+    #tableListFiles th:last-child, #tableListFiles td:last-child { width: 7.5rem !important; max-width: none !important; }
+    #tableListFiles td:nth-child(2) { max-width: none !important; overflow: hidden; }
+    #tableListFiles td:nth-child(2) > div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #tableListFiles td:last-child .btn { padding: .35rem .4rem; margin: .1rem 0; }
+    .swal2-popup.fixed-modal { width: min(900px, calc(100vw - 1rem)) !important; height: min(600px, 90dvh) !important; max-height: 90dvh; }
+    #modalContent { width: calc(100vw - 1rem) !important; height: min(90dvh, 800px) !important; padding: 1rem !important; }
+    #modalHeader { padding: 1rem !important; }
+    #nameFileModalMedia { max-width: calc(100% - 3rem); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #leftArrow { left: .5rem !important; width: 2.5rem !important; height: 2.5rem !important; }
+    #rightArrow { right: .5rem !important; width: 2.5rem !important; height: 2.5rem !important; }
+}
+
+/* Editor e terminal no celular. */
+#mobileTreeToggle, #mobileTerminalToggle { display: none; }
+@media (max-width: 767.98px) {
+    #edit-code .modal-dialog, #edit-code .modal-content {
+        width: 100%;
+        height: 100dvh;
+        max-height: 100dvh;
+        margin: 0;
+        border-radius: 0 !important;
+        overflow: hidden;
+    }
+    #edit-code .modal-header {
+        flex: 0 0 53px;
+        min-width: 0;
+        gap: .35rem;
+        padding: 0 .5rem !important;
+    }
+    #mobileTreeToggle, #mobileTerminalToggle { display: inline-flex; flex: 0 0 auto; font-size: .75rem; }
+    #edit-code #tab-bar { display: none !important; }
+    #edit-code #tabsFilesEditor {
+        flex: 1 1 auto;
+        min-width: 0;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+    #edit-code #tabsFilesEditor .tab-header-item { flex: 0 0 auto; max-width: 12rem; }
+    #edit-code #tabsFilesEditor .tab-header-item > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #edit-code .modal-header > .btn-close { flex: 0 0 auto; margin: 0 0 0 .2rem; }
+    #edit-code #modalBodyEditor {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
+        padding-bottom: min(27dvh, 220px) !important;
+    }
+    #edit-code #modalBodyEditor > .container-fluid,
+    #edit-code #modalBodyEditor > .container-fluid > .row { height: 100%; min-height: 0; }
+    #edit-code #rightPanel { width: 100% !important; height: 100%; min-height: 0; overflow: hidden; padding: 0; }
+    #edit-code #editorContainer { width: 100%; height: 100%; min-height: 0; }
+    #edit-code #editor { width: 100% !important; height: 100% !important; }
+    #edit-code #fArch {
+        display: none !important;
+        position: absolute;
+        top: 53px;
+        left: 0;
+        z-index: 1051;
+        width: min(85vw, 320px) !important;
+        height: min(60dvh, 500px) !important;
+        overflow: hidden;
+        resize: none;
+        box-shadow: 6px 8px 24px #0009;
+    }
+    #edit-code.mobile-tree-open #fArch { display: block !important; }
+    #edit-code #tree_label { display: flex; flex-direction: column; gap: .25rem; font-size: 1rem; }
+    #edit-code #searchFiles { display: block; max-height: 2.8em; overflow: auto; overflow-wrap: anywhere; }
+    #edit-code #tree_label .btn-group { float: none !important; flex-wrap: wrap; }
+    #edit-code #filesArchitecture { height: calc(100% - 110px) !important; overflow: auto; }
+    #edit-code #resizerVertical { display: none; }
+    #edit-code #footer-terminal {
+        width: 100%;
+        height: min(27dvh, 220px) !important;
+        max-height: min(27dvh, 220px);
+        padding: 0;
+    }
+    #edit-code #resizer { display: none; }
+    #edit-code #tabsTerm { height: 44px; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; }
+    #edit-code #tabsTerm .nav-item { flex: 0 0 auto; }
+    #edit-code #tabsTerm .nav-link { padding: .35rem .55rem !important; white-space: nowrap; }
+    #edit-code #tabsTerm .terminal-tab-label { max-width: 6.5rem; }
+    #edit-code #terms { width: 100%; height: calc(100% - 44px); overflow: hidden; }
+    #edit-code #terms .xterm-container { max-width: 100%; overflow: hidden; }
+    #edit-code.mobile-terminal-hidden #footer-terminal { display: none; }
+    #edit-code.mobile-terminal-hidden #modalBodyEditor { padding-bottom: 0 !important; }
+}
+
+/* Modos separados para código e terminal no celular. */
+#mobileWorkspaceSwitch, #mobileWorkspaceTitle,
+#mobileTerminalHeading, #mobileTerminalKeys { display: none; }
+@media (max-width: 767.98px) {
+    #mobileTerminalToggle { display: none; }
+    #edit-code .modal-header { background: #151d2a !important; border-bottom: 0 !important; }
+    #edit-code #mobileTreeToggle {
+        border-color: #38475e;
+        border-radius: 9px;
+        padding: .4rem .55rem;
+        color: #cbd8ec;
+    }
+    #edit-code #mobileWorkspaceSwitch {
+        display: flex;
+        flex: 0 0 52px;
+        gap: 4px;
+        padding: 5px 8px;
+        background: #151d2a;
+        border-bottom: 1px solid #263349;
+    }
+    #edit-code #mobileWorkspaceSwitch button {
+        flex: 1 1 50%;
+        border: 0;
+        border-radius: 9px;
+        color: #aebbd0;
+        background: transparent;
+        font-weight: 600;
+        font-size: .9rem;
+    }
+    #edit-code #mobileWorkspaceSwitch button.active {
+        background: #2e69d3;
+        color: #fff;
+        box-shadow: 0 2px 9px #07172f8c;
+    }
+    #edit-code #mobileWorkspaceSwitch i { margin-right: .4rem; }
+    #edit-code #modalBodyEditor { padding-bottom: 0 !important; }
+    #edit-code #fArch { top: 105px; height: min(65dvh, 520px) !important; }
+    #edit-code #footer-terminal { display: none; }
+    #edit-code.mobile-view-terminal #modalBodyEditor > .container-fluid { display: none; }
+    #edit-code.mobile-view-terminal #mobileTreeToggle,
+    #edit-code.mobile-view-terminal #tabsFilesEditor { display: none !important; }
+    #edit-code.mobile-view-terminal #mobileWorkspaceTitle {
+        display: block;
+        margin-left: .35rem;
+        color: #e4efff;
+        font: 700 .8rem 'JetBrains Mono', monospace;
+        letter-spacing: .12em;
+    }
+    #edit-code.mobile-view-terminal #footer-terminal {
+        display: flex;
+        flex-direction: column;
+        top: 105px;
+        bottom: 0;
+        height: calc(100dvh - 105px) !important;
+        max-height: none;
+        padding: 0;
+        background: #0a101a;
+    }
+    #edit-code #mobileTerminalHeading {
+        display: flex;
+        align-items: center;
+        flex: 0 0 36px;
+        gap: .55rem;
+        padding: 0 14px;
+        border-bottom: 1px solid #263347;
+        color: #aebed5;
+        background: #101926;
+        font: 700 .68rem 'JetBrains Mono', monospace;
+        letter-spacing: .09em;
+    }
+    #edit-code .terminal-live-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #5996ee;
+        box-shadow: 0 0 7px #5996ee88;
+    }
+    #edit-code .terminal-heading-caption { margin-left: auto; color: #75849a; font-weight: 400; letter-spacing: 0; }
+    #edit-code #tabsTerm {
+        flex: 0 0 48px;
+        height: 48px;
+        padding: 3px 7px 0;
+        gap: 4px;
+        border-bottom: 1px solid #263347;
+        background: #101926;
+        scrollbar-width: none;
+    }
+    #edit-code #tabsTerm .nav-link {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+        min-height: 39px;
+        margin-top: 0 !important;
+        border-radius: 8px 8px 0 0;
+        color: #b0bdd1;
+        background: #172233;
+    }
+    #edit-code #tabsTerm .nav-link.active {
+        color: #e9f2ff !important;
+        background: #23354d !important;
+        border-bottom: 2px solid #5b9dff !important;
+    }
+    #edit-code #tabsTerm .terminal-tab-label { max-width: 9rem; }
+    #edit-code #terms {
+        flex: 1 1 auto;
+        min-height: 0;
+        height: auto;
+        padding: 8px 6px;
+        overflow: hidden;
+        background: #080d15;
+    }
+    #edit-code #mobileTerminalKeys {
+        display: flex;
+        flex: 0 0 auto;
+        gap: 5px;
+        padding: 7px 8px calc(7px + env(safe-area-inset-bottom));
+        overflow-x: auto;
+        border-top: 1px solid #263347;
+        background: #131e2d;
+        scrollbar-width: none;
+    }
+    #edit-code #mobileTerminalKeys button {
+        flex: 0 0 auto;
+        min-width: 43px;
+        min-height: 39px;
+        padding: 0 .55rem;
+        border: 1px solid #354a65;
+        border-radius: 8px;
+        color: #dae6f6;
+        background: #23354b;
+        font: 600 .8rem 'JetBrains Mono', monospace;
+    }
+    #edit-code #mobileTerminalKeys button:active { background: #3167b5; }
+}
+
+#mobileTerminalEmpty { display: none; }
+@media (max-width: 767.98px) {
+    #edit-code #mobileTerminalEmpty {
+        display: grid;
+        place-items: center;
+        align-content: center;
+        gap: .5rem;
+        height: 100%;
+        color: #91a4c0;
+        font-size: .9rem;
+        text-align: center;
+    }
+    #edit-code #mobileTerminalEmpty strong { color: #7daeff; font-size: 1.25rem; }
+    #edit-code #terms:has(.xterm-container) #mobileTerminalEmpty { display: none; }
+}
+
+/* Altura real do navegador e do teclado virtual. */
+@media (max-width: 767.98px) {
+    #edit-code {
+        --mobile-vvh: 100dvh;
+        --mobile-vv-top: 0px;
+        --mobile-chrome-height: 105px;
+    }
+    #edit-code .modal-dialog {
+        position: fixed;
+        top: var(--mobile-vv-top);
+        left: 0;
+        width: 100%;
+        height: var(--mobile-vvh);
+        max-height: var(--mobile-vvh);
+        margin: 0;
+    }
+    #edit-code .modal-content {
+        height: 100%;
+        max-height: 100%;
+    }
+    #edit-code.mobile-view-terminal #footer-terminal {
+        top: calc(var(--mobile-vv-top) + var(--mobile-chrome-height));
+        height: calc(var(--mobile-vvh) - var(--mobile-chrome-height)) !important;
+    }
+    #edit-code .modal-header > .btn-close {
+        width: 40px;
+        height: 40px;
+        padding: 0;
+        border-radius: 10px;
+        background-size: 16px;
+        opacity: .82;
+    }
+    .lotus-toast {
+        top: 112px !important;
+        right: 8px !important;
+        width: calc(100vw - 16px) !important;
+        max-width: 360px;
+        z-index: 20000 !important;
+    }
+}
+@media (max-width: 767.98px) {
+    #edit-code.mobile-keyboard-open {
+        --mobile-chrome-height: 86px;
+    }
+    #edit-code.mobile-keyboard-open .modal-header {
+        flex-basis: 42px;
+        height: 42px !important;
+        min-height: 42px;
+    }
+    #edit-code.mobile-keyboard-open #mobileWorkspaceSwitch {
+        flex-basis: 44px;
+        height: 44px;
+        padding: 4px 7px;
+    }
+    #edit-code.mobile-keyboard-open #mobileWorkspaceSwitch button {
+        font-size: .8rem;
+        border-radius: 7px;
+    }
+    #edit-code.mobile-keyboard-open #mobileTerminalHeading {
+        display: none;
+    }
+    #edit-code.mobile-keyboard-open #tabsTerm {
+        flex-basis: 42px;
+        height: 42px;
+        padding-top: 2px;
+    }
+    #edit-code.mobile-keyboard-open #tabsTerm .nav-link {
+        min-height: 35px;
+        font-size: .85rem;
+    }
+    #edit-code.mobile-keyboard-open #mobileTerminalKeys {
+        position: relative;
+        z-index: 5;
+        flex-basis: 48px;
+        min-height: 48px;
+        padding: 4px 7px calc(4px + env(safe-area-inset-bottom));
+    }
+    #edit-code.mobile-keyboard-open #mobileTerminalKeys button {
+        min-width: 40px;
+        min-height: 38px;
+        font-size: .75rem;
+    }
+    #edit-code.mobile-keyboard-open .modal-header > .btn-close {
+        width: 34px;
+        height: 34px;
+    }
+}
+@media (max-width: 767.98px) {
+    #edit-code #mobileTerminalKeys {
+        overscroll-behavior-x: contain;
+        scroll-snap-type: x proximity;
+        touch-action: pan-x;
+    }
+    #edit-code #mobileTerminalKeys button {
+        scroll-snap-align: start;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+    }
+    #edit-code #tabsTerm,
+    #edit-code #tabsFilesEditor {
+        overscroll-behavior-x: contain;
+        touch-action: pan-x;
+    }
+    #edit-code .xterm-helper-textarea {
+        font-size: 16px !important;
+    }
+}

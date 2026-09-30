@@ -35,10 +35,10 @@
     "allowObservable": [],
     "fileManager": {
         "autoRestart": true,
-        "ptyBackend": "auto",
+        "ptyBackend": "node",
         "services": {
             "pty": true,
-            "lsp": false,
+            "lsp": true,
             "gpt": false,
             "codex": true
         }

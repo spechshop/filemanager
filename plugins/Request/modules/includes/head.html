@@ -115,6 +115,7 @@
 
     function createToastElement(messageText, titleMessage, theme) {
         const toast = document.createElement("div");
+        toast.classList.add("lotus-toast");
         Object.assign(toast.style, {
             position: "fixed", top: `${10 + toastHeight}px`, right: "10px", padding: "10px",
             backgroundColor: theme.backgroundColor, color: theme.color, borderRadius: "5px",
@@ -204,7 +205,7 @@
     }
 
     function updateToastPositions() {
-        const toasts = document.querySelectorAll("div[style*='position: fixed']");
+        const toasts = document.querySelectorAll(".lotus-toast");
         let height = 10;
         toasts.forEach(toast => {
             toast.style.top = `${height}px`;

@@ -163,6 +163,8 @@
     <div class="modal-dialog modal-fullscreen" role="document">
         <div class="modal-content headerModal" style="border-bottom: none; border-radius: 13px !important">
             <div class="modal-header" style="height: 53px">
+                <button type="button" id="mobileTreeToggle" class="btn btn-outline-light btn-sm" aria-controls="fArch" aria-expanded="false">Arquivos</button>
+                <span id="mobileWorkspaceTitle">EDITOR</span>
 
                 <div id="tab-bar" class="d-flex align-items-center ps-2" style="overflow-x: auto;">
 
@@ -213,6 +215,10 @@
                 ></button>
                 <div id="hiddenFileEdit" style="display: none"></div>
             </div>
+            <nav id="mobileWorkspaceSwitch" aria-label="Área de trabalho">
+                <button type="button" data-mobile-view="code" class="active" aria-current="page"><i class="fa-solid fa-code"></i> Código</button>
+                <button type="button" data-mobile-view="terminal"><i class="fa-solid fa-terminal"></i> Terminal</button>
+            </nav>
             <div class="modal-body" id="modalBodyEditor">
                 <!-- responsive two box -->
 
@@ -509,6 +515,7 @@
                 </ul>
                 <div class="col-md-12 footer-terminal" id="footer-terminal">
                     <div id="resizer"></div>
+                    <div id="mobileTerminalHeading"><span class="terminal-live-dot"></span><span>SESSÕES</span><span class="terminal-heading-caption">Terminal integrado</span></div>
                     <ul class="nav nav-tabs" id="tabsTerm">
                         <li class="nav-item" id="new-terminal">
                             <a class="nav-link active mt-1" href="#" title="Novo terminal">
@@ -516,7 +523,21 @@
                             </a>
                         </li>
                     </ul>
-                    <div id="terms"></div>
+                    <div id="terms"><div id="mobileTerminalEmpty"><span>Toque em <strong>+</strong> para abrir um terminal.</span></div></div>
+                    <div id="mobileTerminalKeys" role="toolbar" aria-label="Teclas do terminal">
+                        <button type="button" data-terminal-key="esc">Esc</button>
+                        <button type="button" data-terminal-key="tab">Tab</button>
+                        <button type="button" data-terminal-key="ctrlc">Ctrl C</button>
+                        <button type="button" data-terminal-key="up" aria-label="Seta para cima">↑</button>
+                        <button type="button" data-terminal-key="down" aria-label="Seta para baixo">↓</button>
+                        <button type="button" data-terminal-key="left" aria-label="Seta para esquerda">←</button>
+                        <button type="button" data-terminal-key="right" aria-label="Seta para direita">→</button>
+                        <button type="button" data-terminal-key="home">Home</button>
+                        <button type="button" data-terminal-key="end">End</button>
+                        <button type="button" data-terminal-key="slash">/</button>
+                        <button type="button" data-terminal-key="pipe">|</button>
+                        <button type="button" data-terminal-key="tilde">~</button>
+                    </div>
                 </div>
                 <script>
                     let terminals = {};
@@ -916,6 +937,19 @@
                     function adjustTerminalSizeFromStorage(terminalId) {
                         const el = document.getElementById(terminalId);
                         if (!el) return;
+                        if (window.matchMedia('(max-width: 767.98px)').matches) {
+                            const termsArea = document.getElementById('terms');
+                            const width = termsArea.clientWidth;
+                            const height = termsArea.clientHeight;
+                            if (!width || !height) return;
+                            el.style.width = `${width}px`;
+                            el.style.height = `${height}px`;
+                            terminals[terminalId]?.terminal?.resize(
+                                Math.max(20, Math.floor(width / 9) - 2),
+                                Math.max(3, Math.floor(height / 17) - 1)
+                            );
+                            return;
+                        }
                         const dims = getXtermDimensions();
                         if (!dims) return;
                         el.style.width = `${dims.width}px`;
@@ -1009,8 +1043,10 @@
                         const dims = getXtermDimensions();
                         const editorEl = document.getElementById('editor');
                         const filesArchitecture = document.getElementById('filesArchitecture');
-                        if (editorEl && dims?.editor?.height) editorEl.style.height = `${dims.editor.height}px`;
-                        if (filesArchitecture && dims?.filesArchitecture?.height) filesArchitecture.style.height = `${dims.filesArchitecture.height}px`;
+                        if (!window.matchMedia('(max-width: 767.98px)').matches) {
+                            if (editorEl && dims?.editor?.height) editorEl.style.height = `${dims.editor.height}px`;
+                            if (filesArchitecture && dims?.filesArchitecture?.height) filesArchitecture.style.height = `${dims.filesArchitecture.height}px`;
+                        }
 
                         const token = await waitForToken();
                         const serverSessions = await apiGetTerminals();
@@ -1059,7 +1095,103 @@
         </div>
     </div>
 </div>
+<script>
+    const mobileEditorModal = document.getElementById("edit-code");
+    const mobileTreeToggle = document.getElementById("mobileTreeToggle");
+    mobileTreeToggle.addEventListener("click", () => {
+        const open = mobileEditorModal.classList.toggle("mobile-tree-open");
+        mobileTreeToggle.setAttribute("aria-expanded", String(open));
+    });
+    function setMobileWorkspace(view) {
+        const terminalView = view === "terminal";
+        mobileEditorModal.classList.toggle("mobile-view-terminal", terminalView);
+        mobileEditorModal.classList.remove("mobile-tree-open");
+        mobileTreeToggle.setAttribute("aria-expanded", "false");
+        document.getElementById("mobileWorkspaceTitle").textContent = terminalView ? "TERMINAL" : "EDITOR";
+        document.querySelectorAll("#mobileWorkspaceSwitch button").forEach(button => {
+            button.classList.toggle("active", button.dataset.mobileView === view);
+            if (button.dataset.mobileView === view) button.setAttribute("aria-current", "page");
+            else button.removeAttribute("aria-current");
+        });
+        requestAnimationFrame(() => {
+            if (typeof editor !== 'undefined') editor?.layout();
+            if (terminalView) refreshMobileEditor();
+        });
+    }
+    document.querySelectorAll("#mobileWorkspaceSwitch button").forEach(button => {
+        button.addEventListener("click", () => setMobileWorkspace(button.dataset.mobileView));
+    });
+    const mobileTerminalKeys = document.getElementById("mobileTerminalKeys");
+    function sendMobileTerminalKey(button) {
+        const active = document.querySelector("#tabsTerm [data-terminal-id] .nav-link.active")?.closest("[data-terminal-id]");
+        const session = active && terminals[active.dataset.terminalId];
+        if (!session) return;
+        const keys = {
+            esc: "\x1b", tab: "\t", ctrlc: "\x03",
+            up: "\x1b[A", down: "\x1b[B", left: "\x1b[D", right: "\x1b[C",
+            home: "\x1b[H", end: "\x1b[F", slash: "/", pipe: "|", tilde: "~"
+        };
+        const key = keys[button.dataset.terminalKey];
+        if (key) runCommand(session.socket, key);
+        session.terminal.focus();
+    }
+    mobileTerminalKeys.addEventListener("touchstart", event => {
+        const button = event.target.closest("button[data-terminal-key]");
+        if (!button) return;
+        event.preventDefault();
+        sendMobileTerminalKey(button);
+    }, {passive: false});
+    mobileTerminalKeys.addEventListener("click", event => {
+        const button = event.target.closest("button[data-terminal-key]");
+        if (!button || event.sourceCapabilities?.firesTouchEvents) return;
+        sendMobileTerminalKey(button);
+    });
+    let mobileViewportBaseline = 0;
+    let mobileViewportWidth = 0;
 
+    function syncMobileViewport() {
+        if (!window.matchMedia("(max-width: 767.98px)").matches) return;
+        const viewport = window.visualViewport;
+        const height = Math.round(viewport?.height || window.innerHeight);
+        const width = Math.round(viewport?.width || window.innerWidth);
+        const offsetTop = Math.round(viewport?.offsetTop || 0);
+
+        if (!mobileViewportWidth || Math.abs(width - mobileViewportWidth) > 40) {
+            mobileViewportBaseline = height;
+            mobileViewportWidth = width;
+        }
+        const keyboardOpen = mobileViewportBaseline - height > 120;
+        if (!keyboardOpen) mobileViewportBaseline = Math.max(mobileViewportBaseline, height);
+
+        mobileEditorModal.style.setProperty("--mobile-vvh", `${height}px`);
+        mobileEditorModal.style.setProperty("--mobile-vv-top", `${offsetTop}px`);
+        mobileEditorModal.classList.toggle("mobile-keyboard-open", keyboardOpen);
+        refreshMobileEditor();
+    }
+
+    function refreshMobileEditor() {
+        if (!window.matchMedia("(max-width: 767.98px)").matches || !mobileEditorModal.classList.contains("show")) return;
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            if (typeof editor !== "undefined") editor?.layout();
+            const activeTerminal = document.querySelector("#tabsTerm [data-terminal-id] .nav-link.active")?.closest("[data-terminal-id]");
+            if (activeTerminal) adjustTerminalSizeFromStorage(activeTerminal.dataset.terminalId);
+        }));
+    }
+    mobileEditorModal.addEventListener("shown.bs.modal", () => {
+        mobileViewportBaseline = Math.round(window.visualViewport?.height || window.innerHeight);
+        mobileViewportWidth = Math.round(window.visualViewport?.width || window.innerWidth);
+        syncMobileViewport();
+    });
+    mobileEditorModal.addEventListener("hidden.bs.modal", () => {
+        setMobileWorkspace("code");
+        mobileEditorModal.classList.remove("mobile-keyboard-open");
+        mobileEditorModal.style.removeProperty("--mobile-vvh");
+        mobileEditorModal.style.removeProperty("--mobile-vv-top");
+    });
+    window.addEventListener("resize", syncMobileViewport);
+    window.visualViewport?.addEventListener("resize", syncMobileViewport);
+    window.visualViewport?.addEventListener("scroll", syncMobileViewport);
+</script>
 
 <style>
     .myGlyphMarginClass {
@@ -1114,6 +1246,8 @@
     let hints = [];
     let language = "php";
     let codeInfo = {};
+    let legacyProviderCache = null;
+    let legacyProviderPromise = null;
     let debounceTimeout = null;
     let contextMain = {};
     let nameFile = "";
@@ -1340,7 +1474,8 @@
             fontFamily: "'JetBrains Mono', 'Menlo', 'Monaco', 'Courier New', monospace",
             renderWhitespace: 'none',
             theme: 'nightfall',
-            fontSize: 13,
+            fontSize: window.matchMedia('(max-width: 767.98px)').matches ? 14 : 13,
+            wordWrap: window.matchMedia('(max-width: 767.98px)').matches ? 'on' : 'off',
             lineNumbers: 'on',
             tabSize: 4,
             insertSpaces: true,
@@ -3574,6 +3709,11 @@
         // bloqueava a main thread a cada abertura/salvamento e congelava a
         // barra de progresso do toast. Sem LSP, mantém o comportamento antigo.
         async function refreshLegacyProviders() {
+            const currentModel = editor && editor.getModel();
+            if (!currentModel || currentModel.getLanguageId() !== "php") {
+                return;
+            }
+
             try { inlayHintsProvider && inlayHintsProvider.dispose(); } catch (e) {}
             try { codeActionsProvider && codeActionsProvider.dispose(); } catch (e) {}
             try { completionProvider && completionProvider.dispose(); } catch (e) {}
@@ -3690,24 +3830,31 @@
             await updateImports(editor.getModel());
             await updateMarkersImport();
 
-            let provider = await fetch(
-                "/codeGenerate?tokenBrowser=" + $("#fp").text(),
-                {
-                    method: "POST",
-                    body: JSON.stringify({
-                        search: "",
-                        lastDid: "",
-                        lineContent: "",
-                        nameFile: "",
-                    }),
-                    headers: {
-                        "Content-Type": "application/json",
+            if (!legacyProviderCache && !legacyProviderPromise) {
+                legacyProviderPromise = fetch(
+                    "/codeGenerate?tokenBrowser=" + $("#fp").text(),
+                    {
+                        method: "POST",
+                        body: JSON.stringify({
+                            search: "",
+                            lastDid: "",
+                            lineContent: "",
+                            nameFile: "",
+                        }),
+                        headers: {"Content-Type": "application/json"},
+                        mode: "cors",
                     },
-                    mode: "cors",
-                },
-            )
-                .then(async (response) => await response.text())
-                .then((data) => JSON.parse(data).list);
+                )
+                    .then((response) => response.json())
+                    .then((data) => {
+                        legacyProviderCache = data.list || {};
+                        return legacyProviderCache;
+                    })
+                    .finally(() => {
+                        legacyProviderPromise = null;
+                    });
+            }
+            let provider = legacyProviderCache || await legacyProviderPromise;
             sug = [];
             functionSignatures = {};
             codeInfo = {};
@@ -3719,6 +3866,8 @@
                     constants: [],
                 };
             }
+
+            const suggestionLabels = new Set();
 
             // Keywords/snippets vindos do backend (stubs-generated.json).
             applyBackendKeywords(provider["keywords"]);
@@ -3758,8 +3907,9 @@
                 };
 
 
-                if (!sug.some(s => s.label === functionItem.label)) {
+                if (!suggestionLabels.has(functionItem.label)) {
                     sug.push(functionItem);
+                    suggestionLabels.add(functionItem.label);
                 }
             }
             updateImports(editor.getModel());
@@ -3823,8 +3973,9 @@
 
                             detail: item["class"],
                         };
-                        if (!sug.some(s => s.label === propertyItem.label)) {
+                        if (!suggestionLabels.has(propertyItem.label)) {
                             sug.push(propertyItem);
+                            suggestionLabels.add(propertyItem.label);
                         }
 
                     }
@@ -3844,13 +3995,10 @@
                     documentation: "",
                     detail: item["name"],
                 };
-                let check = false;
-                for (let x = 0; x < sug.length; x++) {
-                    if (sug[x].label === constantItem.label) {
-                        check = true;
-                    }
+                if (!suggestionLabels.has(constantItem.label)) {
+                    sug.push(constantItem);
+                    suggestionLabels.add(constantItem.label);
                 }
-                if (!check) sug.push(constantItem);
             }
 
 
@@ -4011,6 +4159,32 @@
 
 
         const target = document.getElementById("namefilemodaledit");
+        const editorFileRequests = new Map();
+
+        async function loadEditorFile(nameFile) {
+            if (editorFileRequests.has(nameFile)) {
+                return editorFileRequests.get(nameFile);
+            }
+
+            const request = asyncGet(
+                `/getFile?tokenBrowser=${encodeURIComponent($("#fp").text())}&path=${encodeURIComponent(nameFile)}`,
+            ).then((response) => {
+                if (!response || response.success !== true || typeof response.information !== "string") {
+                    throw new Error(response?.message || "Não foi possível carregar o arquivo.");
+                }
+                if (!response.encoded) return response.information;
+
+                const binary = atob(response.information);
+                const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+                return new TextDecoder("utf-8").decode(bytes);
+            }).finally(() => {
+                editorFileRequests.delete(nameFile);
+            });
+
+            editorFileRequests.set(nameFile, request);
+            return request;
+        }
+
         const observer = new MutationObserver(async function (mutations) {
             if (window.blockingMonitor) return; // Evita que o monitoramento seja acionado durante a abertura do modal
             for (const mutation of mutations) {
@@ -4047,26 +4221,21 @@
                     } else {
                         language = getLanguageByExtension(language);
                     }
-                    let fileContent = (
-                        await asyncGet(
-                            `/getFile?tokenBrowser=${$("#fp").text()}&path=${encodeURIComponent(nameFile)}`,
-                        )
-                    );
-                    try {
-                        if (fileContent['encoded']) {
-                            // Decode base64 com suporte a caracteres especiais
-                            const binaryString = atob(fileContent["information"]);
-                            const bytes = new Uint8Array(binaryString.length);
-                            for (let i = 0; i < binaryString.length; i++) {
-                                bytes[i] = binaryString.charCodeAt(i);
-                            }
-                            fileContent = new TextDecoder('utf-8').decode(bytes);
-                        } else {
-                            fileContent = fileContent["information"];
+                    // Reescrever o nome da aba dispara outra mutação. Se o arquivo
+                    // já é o modelo ativo, não há nada para recarregar ou reindexar.
+                    if (models[nameFile] && editor.getModel() === models[nameFile]) {
+                        continue;
+                    }
+
+                    let fileContent = null;
+                    if (!models[nameFile]) {
+                        try {
+                            fileContent = await loadEditorFile(nameFile);
+                        } catch (error) {
+                            console.error("Erro ao abrir arquivo:", error);
+                            toastLotus(error.message, "Erro", 3000, "error");
+                            return;
                         }
-                    } catch (e) {
-                        // Se falhar o decode, mostra o conteúdo original
-                        fileContent = fileContent["information"];
                     }
                     if (!models[nameFile]) {
                         positions[nameFile] = {
