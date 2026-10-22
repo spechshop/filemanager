@@ -105,7 +105,17 @@ jobs:
           node-version: '24'
       - run: composer validate --no-check-publish
       - run: composer audit --locked
-      - run: npm audit --package-lock-only
+      - name: Verify npm accepted-risk policy
+        run: node --test scripts/security/npm-audit-policy.test.cjs
+      - name: Run npm audit and enforce the exact temporary baseline
+        shell: bash
+        run: |
+          set +e
+          npm audit --package-lock-only --json > npm-audit.json
+          audit_status=$?
+          set -e
+          NPM_AUDIT_EXIT_CODE="$audit_status" node scripts/security/npm-audit-policy.cjs \
+            npm-audit.json docs/security/npm-audit-accepted-risks.json
   semgrep:
     name: Semgrep PHP, JavaScript and web security
     runs-on: ubuntu-24.04

@@ -2,7 +2,7 @@
 
 Investigação: 22/10/2026 UTC (21/10 em America/Porto_Velho). Base: `security/audit-regression-ci`, `f3dc77125c8bfa3dac67fcf785d23dd0712d40a2`. Branch: `security/npm-lsp-advisories`.
 
-**Correção parcial; aprovação bloqueada.** A árvore instalada passa de 12 alertas (8 altos, 4 moderados) para 8 (4 altos, 4 moderados). O critério de zero alertas/8 jobs verdes não foi atingido. O job `Composer and npm advisories (blocking)` permanece falhando, sem exceções ou redução de severidade. PR #12 deve permanecer aberto para revisão e homologação. Nenhum deploy, acesso à VPS ou merge foi realizado.
+**Correção parcial com aceitação temporária de risco.** A árvore instalada passa de 12 alertas (8 altos, 4 moderados) para 8 (4 altos, 4 moderados). Esses oito alertas não foram corrigidos nem reclassificados. O proprietário autorizou sua aceitação temporária nesta etapa, e o trabalho corretivo está registrado na [issue #15](https://github.com/spechshop/filemanager/issues/15). O PR #12 permanece aberto para revisão e homologação. Nenhum deploy, acesso à VPS ou merge na `newterm` foi realizado.
 
 ## Causas e versões das 12 ocorrências
 
@@ -45,7 +45,7 @@ Foi feita uma resolução descartável de `intelephense: "1.8.2"`, mantendo as d
 
 ## Dependências instaladas versus código carregado
 
-`intelephense`, `node-pty` e `ws` são dependências de produção. `jsdom` e seus transitivos são exclusivamente de desenvolvimento para regressões DOM. Os 12 alertas pertencem à árvore de produção; nenhuma flag `omit` foi usada.
+`intelephense`, `node-pty` e `ws` são dependências de produção. `jsdom` e seus transitivos são exclusivamente de desenvolvimento para regressões DOM. Os oito alertas remanescentes pertencem à árvore de produção; nenhuma flag `omit` foi usada.
 
 A integração existente permanece: Monaco → WebSocket Swoole (`plugins/Message/server/server.php`) → bridge autenticado em loopback (`lsp.js`) → processo Intelephense por conexão. O editor usa `initialize`, `initialized`, documentos, completion, hover e definition; a injeção da raiz permite indexar workspace/vendor.
 
@@ -76,7 +76,8 @@ Comandos reproduzíveis:
 
 ```sh
 npm ci
-npm audit --package-lock-only
+npm audit --package-lock-only --json
+node --test scripts/security/npm-audit-policy.test.cjs
 npm run test:security:dependencies
 npm run test:security:lsp
 npm run test:security:ui
@@ -87,15 +88,15 @@ SECURITY_PTY_BACKEND=php npm run test:security:pty
 node --test scripts/security/swoole-integration.cjs
 ```
 
-A auditoria deve retornar **exit 1** enquanto os oito alertas permanecerem. Os testes PHP com doubles exigem PHP convencional sem Swoole compilado: `/usr/bin/php8.3 -n scripts/security/http-regression.php` e `ws-regression.php` passaram (85 e 18 assertivas). O PHP padrão local tem Swoole embutido mesmo com `-n`, causando colisões com os doubles; não se modificou esse runtime. Seu runtime-check também falha porque PHP 8.5.10 está abaixo do mínimo 8.5.12 exigido pelo projeto. O CI instala as versões e extensões necessárias para os checks de PHP 8.3/8.4/8.5. Essas limitações locais não foram convertidas em passes.
+O comando `npm audit` retorna **exit 1** enquanto os oito alertas permanecerem. O CI captura esse status e só aprova depois que [npm-audit-policy.cjs](../../../scripts/security/npm-audit-policy.cjs) valida o relatório real contra a [baseline específica](../npm-audit-accepted-risks.json). Erro do scanner, pacote/advisory novo, mudança de severidade ou totais inconsistentes continuam falhando. Os testes PHP com doubles exigem PHP convencional sem Swoole compilado: `/usr/bin/php8.3 -n scripts/security/http-regression.php` e `ws-regression.php` passaram (85 e 18 assertivas). O PHP padrão local tem Swoole embutido mesmo com `-n`, causando colisões com os doubles; não se modificou esse runtime. Seu runtime-check também falha porque PHP 8.5.10 está abaixo do mínimo 8.5.12 exigido pelo projeto. O CI instala as versões e extensões necessárias para os checks de PHP 8.3/8.4/8.5. Essas limitações locais não foram convertidas em passes.
 
-O workflow mantém os oito jobs e o comando de auditoria bloqueante intactos. Foram acrescentados testes de dependências/LSP ao job Node e LSP via relay ao job Swoole. Os resultados finais e os links de execução serão registrados no PR desta branch; a execução de referência anterior é [39715665326](https://github.com/spechshop/filemanager/actions/runs/39715665326), 7/8 aprovados.
+O workflow mantém os oito jobs e a execução real da auditoria. Foram acrescentados testes de dependências/LSP ao job Node, LSP via relay ao job Swoole e cinco regressões da política npm. O resumo do Actions informa explicitamente a quantidade pendente e referencia a issue #15. A baseline permite somente os oito riscos documentados e não usa `continue-on-error`, threshold de severidade ou substituição indiscriminada do exit code. A execução de referência anterior à política é [39719166050](https://github.com/spechshop/filemanager/actions/runs/39719166050), 7/8 aprovados.
 
-## Alternativas e condição de desbloqueio
+## Alternativas e acompanhamento
 
 1. **Preferida:** release oficial do Intelephense com `braces` corrigido/substituído, telemetria migrada e bundle reconstruído; repetir instalação, auditoria e toda a suíte. Ainda não publicada na consulta efetuada.
 2. Manter fork revisado de `braces` com limites de profundidade e testes diferenciais da API completa; solicitar ao fornecedor integração/rebuild. Exige manutenção e análise de semântica. Um alias para picomatch ou outra biblioteca não reproduz automaticamente parse/compile/expand e pode quebrar indexação/exclusões. Renomear um pacote ou aplicar patch sem rastrear o advisory não atende ao critério de segurança.
 3. Migração coordenada de Application Insights/OpenTelemetry, validando recursos de telemetria e o bundle com o fornecedor. Override isolado de core foi comprovadamente rejeitado por incompatibilidade.
 4. Avaliar outro LSP apenas com decisão explícita de produto e uma matriz de paridade (PHP, indexação vendor/Swoole, completion, diagnósticos, hover, definition, reconexão e licenciamento). Não foi substituído o servidor nem removida qualquer funcionalidade nesta alteração.
 
-Até essa decisão/correção, manter o PR sem merge e o check de advisories falhando. A aprovação dos demais testes não autoriza implantação.
+Até essa decisão/correção, manter os oito achados visíveis no resumo e na baseline. A aprovação do job indica somente que nenhum risco fora da aceitação temporária foi encontrado. O acompanhamento continua na issue #15; a aprovação dos oito jobs não autoriza implantação nem merge do PR #12 na `newterm`.

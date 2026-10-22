@@ -1,10 +1,10 @@
 # Auditoria de segurança do FileManager
 
-Data: 21/10/2026. Base: `newterm`, commit `894e52c`. Branch: `security/audit-regression-ci`.
+Data: 22/10/2026. Base: `newterm`, commit `894e52c`. Branch: `security/audit-regression-ci`.
 
 **As correções e os testes não determinam o vetor do incidente anterior.** Não foram fornecidos logs forenses, imagem da VPS, histórico de sessões ou perfil/extensões do navegador. A existência de XSS, falhas de autorização ou avisos do PHP não comprova qual deles foi explorado.
 
-**Esta alteração não representa uma liberação para produção:** permanecem achados bloqueantes nas dependências npm e no runtime local anterior aos patches publicados em 21/10. As seis ocorrências históricas de credenciais receberam o tratamento específico documentado abaixo, após confirmação de revogação pelo proprietário. Não houve acesso SSH, implantação, merge ou alteração de uma VPS. Instalações de ferramentas, dependências de validação e processos de teste ficaram no ambiente de desenvolvimento e em árvores temporárias.
+**Esta alteração não representa uma liberação para produção:** oito achados do npm permanecem reais e foram aceitos temporariamente pelo proprietário para esta etapa, com correção acompanhada na [issue #15](https://github.com/spechshop/filemanager/issues/15). O runtime local também permanece anterior aos patches publicados em 21/10. As seis ocorrências históricas de credenciais receberam o tratamento específico documentado abaixo, após confirmação de revogação pelo proprietário. Não houve acesso SSH, implantação, merge na `newterm` ou alteração de uma VPS. Instalações de ferramentas, dependências de validação e processos de teste ficaram no ambiente de desenvolvimento e em árvores temporárias.
 
 ## Superfície investigada antes das correções
 
@@ -29,7 +29,7 @@ A severidade considera a capacidade técnica da falha, não comprovação de exp
 | S09 — Alta | Extração por `unzip/tar/unrar/7z` recebia diretório de destino sem validar todos os membros/links. Compactação e cópia poderiam seguir links de arquivos. | ZIP/TAR são lidos como dados; XZ e 7z/RAR só emitem dados por stdout, sem receber um diretório para extrair. Todos os membros são validados antes da primeira escrita; links não são materializados. Limites: 10 mil entradas e 512 MiB declarados/descomprimidos. Testes incluem entrada maliciosa tardia, traversal, symlink, hardlink, symlink pré-existente e operações válidas ZIP/TAR/TAR.XZ/7z/RAR. |
 | S10 — Alta | `codex.php`, `utilsFunction::simplePost` e `libCurl::{get,put,post}` desabilitavam validação TLS. `getPreview` podia entregar protocolos/formatos de rede ao ffmpeg e usar temporário previsível. | TLS validado nas conexões externas; temporário exclusivo para preview e restrição de protocolos/demuxers do ffmpeg. Erros não devolvem saída de processos. O preview ainda exige ffmpeg atualizado e teste com a coleção real de mídias na homologação. |
 | S11 — Média | CORS `*`, ausência de proteção de framing/referrer e verificações de origem. Não havia política comum de negação nem logs seguros. | CORS wildcard removido; validação de Origin/Fetch Metadata, `nosniff`, `Referrer-Policy: no-referrer`, `X-Frame-Options: DENY` e CSP para objetos/base/framing. Eventos registram apenas rótulos controlados, canal e horário; nunca tokens, comandos, URLs, nomes de arquivos ou conteúdo. |
-| S12 — Alta | Lock npm original apontava 15 pacotes vulneráveis. Composer incluía pacote abandonado; constraints não limitavam vários majors. | `ws` atualizado, override de `protobufjs` no mesmo major e atualizações compatíveis do lock. Pacote abandonado substituído por `composer/class-map-generator`. **Permanecem 12 alertas npm** (8 altos, 4 moderados) na árvore do Intelephense; não foram aplicados downgrades/overrides de major sem validar compatibilidade. O check continua bloqueante. |
+| S12 — Alta | Lock npm original apontava 15 pacotes vulneráveis. Composer incluía pacote abandonado; constraints não limitavam vários majors. | `ws` atualizado, override de `protobufjs` no mesmo major e atualizações compatíveis do lock. Pacote abandonado substituído por `composer/class-map-generator`. `basic-ftp` foi atualizado de 5.3.1 para 6.2.3 por override restrito a `get-uri@6.0.5`, removendo quatro entradas da auditoria e preservando a integração FTP/PAC. **Permanecem 8 alertas npm** (4 altos, 4 moderados) na árvore do Intelephense. Eles não foram corrigidos; estão aceitos temporariamente por uma baseline exata e acompanhados na issue #15. |
 
 ## Execução e resultados locais
 
@@ -50,7 +50,7 @@ Os resultados textuais estão nesta pasta; são saídas dos testes, não uma afi
 | Semgrep 1.156.0 | Rulesets PHP, JavaScript e OWASP mais cinco regras próprias. Scan bloqueante, sem métricas, sem erros de parsing na superfície selecionada. Autoteste comprova detecção e caso permitido; regras próprias também detectam omissões/fallthrough/HTML no código original. Scripts Shell são analisados pelo ShellCheck; probes antigos de performance com TLS de laboratório e relatórios são excluídos do Semgrep, não do controle de versão. |
 | Gitleaks, compilado do tag v8.28.0 | Árvore versionada atual limpa. Histórico completo: **5 ocorrências de tokens (4 tokens distintos) e 1 credencial de proxy comentada**. Após confirmação de revogação pelo proprietário, a baseline oficial reconhece exatamente essas seis ocorrências. A suíte verifica que credenciais novas e reinserções das antigas continuam bloqueantes. Uma varredura ampla também vê material privado ignorado da instalação e falsos positivos em vendor; isso não representa novos segredos versionados. Nenhum segredo real foi incluído no relatório. |
 | Composer 2.9.5 | [Audit do lock: zero advisories e zero pacotes abandonados](composer-audit.json). Validação do manifesto passa, com aviso de licença não especificada já existente; esta tarefa não escolhe uma licença para o projeto. |
-| npm 11.17.0 / Node 24.19.0 | [Antes: 15 alertas](npm-before.json); [depois: 12 alertas](npm-after.json). O CI não ignora esses alertas. |
+| npm 11.17.0 / Node 24.19.0 | [Antes da auditoria: 15 alertas](npm-before.json); após a primeira atualização: [12 alertas](npm-after.json); após `basic-ftp` 6.2.3: [8 alertas](npm-lsp/audit-after.json), 4 altos e 4 moderados. O CI executa o scanner real e aceita temporariamente somente esses oito pares de pacote, severidade e advisories. |
 | ShellCheck 0.9.0 / actionlint 1.7.7 | Scripts versionados e workflow validados. Ajustados export e avisos de variáveis consumidas por helpers carregados dinamicamente. |
 
 ## Reprodução
@@ -69,6 +69,9 @@ php scripts/security/archive-regression.php
 npm run test:security:ui
 npm run test:security:threads
 npm run test:security:pty
+npm run test:security:dependencies
+npm run test:security:lsp
+node --test scripts/security/npm-audit-policy.test.cjs
 ```
 
 Novos identificadores do navegador usam 32 bytes aleatórios. Credenciais já registradas são preservadas por compatibilidade e precisam de rotação se eram fingerprints ou apareceram no histórico.
@@ -113,7 +116,13 @@ A [suíte de regressão](../../scripts/security/gitleaks_regression.py) executa 
 - Expansão/alteração da baseline é recusada, e nenhum campo do JSON contém as credenciais históricas.
 - Um segredo removido antes de quatro commits limpos continua detectado; também é detectado quando existe apenas em outra branch. Checkout raso é recusado.
 
-Limitações: a revogação é uma declaração do proprietário; os segredos continuam acessíveis em commits e clones antigos. Gitleaks é um detector baseado em regras, não uma prova de ausência de segredos nem um teste de validade junto aos provedores. O scan cobre o histórico alcançável pelas refs disponíveis ao checkout, não refs não buscadas ou objetos inacessíveis. Alterações intencionais nos scripts de CI e hashes precisam de revisão/proteção de branch: um teste no próprio repositório não impede alguém autorizado de modificar simultaneamente o controle e o teste. Os alertas do `npm audit` continuam bloqueantes e ficam fora desta tarefa. Não houve mudança de autenticação, implantação, acesso à VPS, reescrita de histórico ou merge.
+Limitações: a revogação é uma declaração do proprietário; os segredos continuam acessíveis em commits e clones antigos. Gitleaks é um detector baseado em regras, não uma prova de ausência de segredos nem um teste de validade junto aos provedores. O scan cobre o histórico alcançável pelas refs disponíveis ao checkout, não refs não buscadas ou objetos inacessíveis. Alterações intencionais nos scripts de CI e hashes precisam de revisão/proteção de branch: um teste no próprio repositório não impede alguém autorizado de modificar simultaneamente o controle e o teste. Os oito alertas do `npm audit` permanecem conhecidos, sem correção, sob a aceitação temporária detalhada abaixo. Não houve mudança de autenticação, implantação, acesso à VPS, reescrita de histórico ou merge na `newterm`.
+
+## Baseline temporária do npm
+
+O arquivo [npm-audit-accepted-risks.json](npm-audit-accepted-risks.json) registra exatamente oito pacotes, a severidade de cada entrada e o conjunto de advisories raiz propagado até ela. A política executa `npm audit --package-lock-only --json` sem `continue-on-error`; o exit 1 esperado para vulnerabilidades só é aceito depois que o JSON é validado. Erro de rede/registry, JSON ausente ou inválido, exit code inesperado, contagens inconsistentes, novo pacote, novo advisory ou mudança de severidade fazem o job falhar. A remoção de um achado conhecido é permitida.
+
+Quando os oito achados permanecem, o resumo do GitHub Actions mostra um aviso explícito com 4 altos, 4 moderados e o link da [issue #15](https://github.com/spechshop/filemanager/issues/15). A suíte da política prova que pacote novo, advisory novo, severidade alterada, erro de execução e relatório inconsistente são rejeitados. Essa política registra aceitação de risco; não converte os achados em vulnerabilidades corrigidas nem afirma auditoria com zero alertas.
 
 ## CI e atualização contínua
 
@@ -123,7 +132,7 @@ Ações são fixadas em SHA; o token tem somente `contents: read`, checkout sem 
 
 ## Evidência da execução no GitHub
 
-[Execução do PR para o código `93db811`](https://github.com/spechshop/filemanager/actions/runs/39710201296), com [resultado estruturado](ci-results.json): passaram as três versões de PHP (incluindo regressões e PHPStan), Node/DOM/conversas/PTY, Swoole real e Semgrep. No job de ferramentas, actionlint e ShellCheck passaram; o Gitleaks falhou pelas seis ocorrências históricas. No job de dependências, Composer passou e npm audit falhou pelos 12 alertas remanescentes. Nenhuma dessas falhas é mascarada. O PR [#12](https://github.com/spechshop/filemanager/pull/12) permanece em rascunho para revisão e tratamento dos bloqueios de implantação.
+[A execução anterior do PR para o código `f3dc771`](https://github.com/spechshop/filemanager/actions/runs/39715665326) aprovou sete dos oito jobs: as três versões de PHP, Node/DOM/conversas/PTY, Swoole real, Semgrep e ferramentas. O job de dependências falhou pelos 12 alertas então presentes. O PR #14 reduziu a auditoria a oito alertas e acrescentou regressões reais de FTP/PAC, LSP, Swoole e lifecycle; sua integração no PR [#12](https://github.com/spechshop/filemanager/pull/12) preserva essas evidências e aplica a política temporária descrita acima.
 
 Também foi repetido `npm ci` a partir do lock em um checkout temporário limpo; os testes DOM, conversas, ambos os PTYs e HTTP/WebSocket Swoole passaram sem depender de node_modules/libspech da instalação local. A verificação final encontrou zero processos remanescentes nas fixtures e zero segredos na árvore versionada atual.
 
@@ -138,7 +147,7 @@ A compilação estática não é substituída por `apt upgrade`. Recompilar em b
 Antes de implantar, o operador precisa:
 
 1. Preservar evidências do incidente e confirmar sessões encerradas. O proprietário confirmou a revogação prévia das credenciais das seis ocorrências inventariadas; o agente não verificou essa revogação diretamente nos serviços. Qualquer exposição adicional exige tratamento próprio, sem ampliação automática da baseline. Remover um arquivo do commit não remove cópias do histórico/clones.
-2. Resolver ou revisar formalmente os 12 alertas npm remanescentes, atualizar o runtime e manter os checks bloqueantes. Não liberar implantação a partir dos resultados locais de um runtime anterior ao patch.
+2. Corrigir os oito alertas npm aceitos temporariamente na issue #15, remover a baseline depois da correção, atualizar o runtime e manter os checks bloqueantes. Não liberar implantação a partir dos resultados locais de um runtime anterior ao patch.
 3. Executar com usuário dedicado sem root; código/configuração, banco de tokens e `.runtime` privados e fora dos workspaces graváveis. Novos tokens são criptográficos e o banco deve ter modo 0600. Limitar o helper sudo ao comando fixo necessário.
 4. Exportar `FILEMANAGER_ORIGIN` com a origem HTTPS externa exata e `FILEMANAGER_ALLOWED_ROOTS` como JSON de diretórios dedicados. O PHP não carrega automaticamente `.env`; configure o ambiente do serviço. Não autorizar `/`, a aplicação ou seus pais como workspace. Um token pode restringir `allowedRoots`; tokens com esse escopo não recebem terminal/admin por padrão. `terminal: true` concede privilégios de shell equivalentes ao usuário Unix, não uma sandbox de filesystem.
 5. Manter PTY/LSP/agente em loopback e atrás do bridge autenticado, sem proxy público dessas portas. Preservar o segredo 0600 e não inseri-lo em páginas, URLs ou logs. Reiniciar os bridges na implantação para eliminar processos antigos sem a nova guarda.
@@ -154,4 +163,4 @@ Antes de implantar, o operador precisa:
 - Revogação é conferida por mensagem/transferência e por timers de 0,5–1 segundo. Ela interrompe canais/PTY; não desfaz operações anteriormente autorizadas, nem garante eliminar da máquina um daemon deliberadamente iniciado antes da revogação. Falhas de disco e revogações no meio de lotes já autorizados podem deixar trabalho parcial; negações no preflight são testadas sem efeitos.
 - Restam scripts inline, dependências CDN nem todas protegidas por SRI, extensões do navegador e localStorage. A CSP adicionada restringe objetos/base/framing; **não é uma CSP estrita de scripts**. Homologação com navegador real, migração de scripts inline e fixação/SRI dos assets externos são trabalhos posteriores. A suíte DOM cobre os sinks identificados, não prova ausência universal de XSS.
 - O CI testa um servidor Swoole isolado com código real e ambos os PTYs. Não inicia o supervisor completo, instaladores/reparadores, autenticação real do provedor de IA, proxy TLS de produção ou o build estático de produção. Esses componentes exigem homologação separada, sem segredos em PRs não confiáveis.
-- O Semgrep cobre as linguagens/sinks descritos e tem um autoteste; não substitui revisão manual. A baseline PHPStan registra dívida anterior, não aprovação dessa dívida. O CI permanece vermelho para riscos conhecidos ainda não tratados.
+- O Semgrep cobre as linguagens/sinks descritos e tem um autoteste; não substitui revisão manual. A baseline PHPStan registra dívida anterior, não aprovação dessa dívida. A aprovação do job npm significa correspondência exata com os oito riscos aceitos temporariamente; não significa zero vulnerabilidades.
