@@ -12,12 +12,16 @@
     "findings": 0,
     "errors": 0,
     "scannedFiles": 282,
-    "selfTest": "PASS: all four custom rules detect unsafe fixtures; the authorized handler stays clean."
+    "selfTest": "PASS: all five custom rules detect unsafe fixtures; the authorized handler stays clean."
   },
   "gitleaks": {
     "sourceTag": "v8.28.0",
     "versionedTreeFindings": 0,
-    "historicalFindings": 5
+    "historicalFindings": 6,
+    "historicalRules": {
+      "filemanager-token-store": 5,
+      "filemanager-proxy-credential": 1
+    }
   },
   "shellcheck": "0.9.0: passed at warning level",
   "actionlint": "1.7.7: passed",

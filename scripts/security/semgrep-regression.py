@@ -14,6 +14,8 @@ with tempfile.TemporaryDirectory(prefix='fm-semgrep-') as directory:
         'plugins/Request/apps/fallthrough.php': '<?php namespace plugins\\Request; class Bad { public static function api($request, $response) { security::verifyToken($request) ?: security::invalidToken($response); doWork(); } }',
         'plugins/Request/modules/unsafe.html': '<script>node.innerHTML = suggestionText;</script>',
         'js/unsafe.js': 'eval(request.body);',
+        'plugins/Extension/plugins/tls-array.php': '<?php $options = [CURLOPT_SSL_VERIFYHOST => false];',
+        'plugins/Extension/plugins/tls-call.php': '<?php curl_setopt($client, CURLOPT_SSL_VERIFYPEER, false);',
     }
     for name, text in sources.items():
         file = root / name
@@ -32,7 +34,9 @@ with tempfile.TemporaryDirectory(prefix='fm-semgrep-') as directory:
         ('plugins/Request/apps/fallthrough.php', 'filemanager-auth-fallthrough'),
         ('plugins/Request/modules/unsafe.html', 'filemanager-browser-html-data'),
         ('js/unsafe.js', 'filemanager-javascript-eval'),
+        ('plugins/Extension/plugins/tls-array.php', 'filemanager-insecure-tls-options'),
+        ('plugins/Extension/plugins/tls-call.php', 'filemanager-insecure-tls-options'),
     }
     if detected != expected:
         raise RuntimeError(f'Expected {expected}, got {detected}')
-    print('PASS: all four custom rules detect unsafe fixtures; the authorized handler stays clean.')
+    print('PASS: all five custom rules detect unsafe fixtures; the authorized handler stays clean.')

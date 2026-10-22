@@ -1,0 +1,45 @@
+{
+  "occurrences": 6,
+  "rules": {
+    "filemanager-token-store": 5,
+    "filemanager-proxy-credential": 1
+  },
+  "locations": [
+    {
+      "rule": "filemanager-token-store",
+      "file": "database/tokens.lotus",
+      "line": 2,
+      "commit": "b02232bace6aea146398a2b8896fe230ad07259d"
+    },
+    {
+      "rule": "filemanager-token-store",
+      "file": "database/tokens.lotus",
+      "line": 2,
+      "commit": "c587cabefa7ad7829cbee5f98b21054699916b49"
+    },
+    {
+      "rule": "filemanager-token-store",
+      "file": "database/tokens.lotus",
+      "line": 6,
+      "commit": "c587cabefa7ad7829cbee5f98b21054699916b49"
+    },
+    {
+      "rule": "filemanager-token-store",
+      "file": "database/tokens.lotus",
+      "line": 10,
+      "commit": "c587cabefa7ad7829cbee5f98b21054699916b49"
+    },
+    {
+      "rule": "filemanager-token-store",
+      "file": "database/tokens.lotus",
+      "line": 2,
+      "commit": "4668d867ac6f7439b9eee1d3140e772ec0ee29d7"
+    },
+    {
+      "rule": "filemanager-proxy-credential",
+      "file": "plugins/Extension/plugins/libCurl.php",
+      "line": 113,
+      "commit": "4668d867ac6f7439b9eee1d3140e772ec0ee29d7"
+    }
+  ]
+}

@@ -31,3 +31,8 @@ rules:
     pattern-either:
       - pattern: eval(...)
       - pattern: new Function(...)
+  - id: filemanager-insecure-tls-options
+    languages: [php]
+    message: TLS peers and hostnames must be verified, including options passed as arrays.
+    severity: ERROR
+    pattern-regex: '(?i)CURLOPT_SSL_VERIFY(?:PEER|HOST)\s*(?:=>|,)\s*(?:false|0)\b'

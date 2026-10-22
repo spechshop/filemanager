@@ -17,8 +17,8 @@ class libCurl
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => false,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
             CURLOPT_POST => false,
             CURLOPT_CUSTOMREQUEST => "GET"
         ];
@@ -61,8 +61,8 @@ class libCurl
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => false,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
             CURLOPT_ENCODING => 'gzip, deflate, br',
             CURLOPT_CUSTOMREQUEST => "PUT"
         ];
@@ -105,12 +105,10 @@ class libCurl
             CURLOPT_URL => $url,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_SSL_VERIFYPEER => false,
-            CURLOPT_SSL_VERIFYHOST => false,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
             CURLOPT_ENCODING => 'gzip, deflate, br',
             CURLOPT_POST => true,
-            //CURLOPT_PROXY => 'gw.proxy.rainproxy.io:5959',
-            //CURLOPT_PROXYUSERPWD => 'bWswrrdHgrfhgCJh-cc-br:QvugfdghDPVds3q',
             CURLOPT_CUSTOMREQUEST => "POST",
             CURLOPT_USERAGENT => "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36"
         ];
