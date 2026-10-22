@@ -285,18 +285,19 @@
                                 }
 
                                 function buildTreeHtml(tree, path) {
+        if (path === '/' && window.FileManagerWorkspaceRoot) path = window.FileManagerWorkspaceRoot;
                                     let html = '<ul>';
                                     for (const key in tree) {
                                         if (typeof tree[key] === 'object') {
                                             html += `
-                        <li class="folder" data-path="${path + key}/">
-                            <i class="fas fa-folder icon"></i>${key}
+                        <li class="folder" data-path="${FMUI.html(path + key)}/">
+                            <i class="fas fa-folder icon"></i>${FMUI.html(key)}
                         </li>
                         <ul class="hidden"></ul>`;
                                         } else {
                                             html += `<li class="file" onclick="(function (){
-    $('#hiddenFileEdit').text('${path + tree[key]}');
-    $('#nameFileForEdit').text('${tree[key]}');
+    $('#hiddenFileEdit').text(${FMUI.argument(path + tree[key])});
+    $('#nameFileForEdit').text(${FMUI.argument(tree[key])});
 
 
 
@@ -304,7 +305,7 @@
 
 
 ${getIconFile(tree[key])}&nbsp;
-${tree[key]}</li>`;
+${FMUI.html(tree[key])}</li>`;
                                         }
                                     }
                                     html += '</ul>';
@@ -1361,7 +1362,7 @@ ${tree[key]}</li>`;
                                 let suggestionSpan = document.createElement('span');
                                 suggestionSpan.style.opacity = 0.5;
                                 suggestionSpan.className = 'suggestion';
-                                suggestionSpan.innerHTML = suggestionText.replaceAll(`\n`, '<br-class="brs">').replaceAll(' ', '&nbsp;').replaceAll('<br-class="brs">', '<br class="brs">');
+                                suggestionSpan.innerHTML = FMUI.html(suggestionText).replaceAll(`\n`, '<br-class="brs">').replaceAll(' ', '&nbsp;').replaceAll('<br-class="brs">', '<br class="brs">');
 
 
                                 pkn.appendChild(suggestionSpan);
@@ -1421,7 +1422,7 @@ ${tree[key]}</li>`;
                                 let suggestionSpan = document.createElement('span');
                                 suggestionSpan.style.opacity = 0.5;
                                 suggestionSpan.className = 'suggestion';
-                                suggestionSpan.innerHTML = suggestionText.replaceAll(`\n`, '<br-class="brs">').replaceAll(' ', '&nbsp;').replaceAll('<br-class="brs">', '<br class="brs">');
+                                suggestionSpan.innerHTML = FMUI.html(suggestionText).replaceAll(`\n`, '<br-class="brs">').replaceAll(' ', '&nbsp;').replaceAll('<br-class="brs">', '<br class="brs">');
                                 pkn.appendChild(suggestionSpan);
                                 let totalLinesNeeded = suggestionText.split('\n').length;
                                 let brs = '';

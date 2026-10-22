@@ -28,11 +28,15 @@ class codeGenerate
      */
     public static function api(Request $request, Response $response): ?bool
     {
-        if (!security::verifyToken($request)) return security::invalidToken($response);
-        $command = escapeshellarg(PHP_BINARY)
+        if (!security::authorize($request, $response)) return true;
+        $listed = is_file('stubs-paths.json') ? json_decode(file_get_contents('stubs-paths.json'), true) : securityPolicy::roots(securityPolicy::requestToken($request));
+        if (!is_array($listed)) return security::deny($response);
+        foreach ($listed as $listedPath) securityPolicy::tree(securityPolicy::path($listedPath, securityPolicy::requestToken($request)), securityPolicy::requestToken($request));
+        $command = 'FILEMANAGER_SCAN_ROOTS=' . escapeshellarg(json_encode(array_values($listed))) . ' ' . escapeshellarg(PHP_BINARY)
             . ' '
             . escapeshellarg(appController::baseDir() . 'r.php');
-        async(static fn() => shell_exec($command));
+        $owner = securityPolicy::requestToken($request);
+        async(static function () use ($command, $owner) { if (securityPolicy::validToken($owner)) shell_exec($command); });
         $response->header('Content-Type', 'application/json');
         return $response->end(json_encode([
             'success' => true,

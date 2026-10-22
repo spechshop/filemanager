@@ -1,0 +1,255 @@
+Local validation, 2026-10-22 UTC; Node 24.19.0 / npm 11.17.0.
+
+=== npm-ci-before ===
+
+added 168 packages, and audited 169 packages in 3s
+
+23 packages are looking for funding
+  run `npm fund` for details
+
+12 vulnerabilities (4 moderate, 8 high)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+npm warn allow-scripts 1 package has install scripts not yet covered by allowScripts:
+npm warn allow-scripts   node-pty@1.1.0 (install: node scripts/prebuild.js || node-gyp rebuild; postinstall: node scripts/post-install.js)
+npm warn allow-scripts
+npm warn allow-scripts Run `npm approve-scripts --allow-scripts-pending` to review, or `npm approve-scripts <pkg>` to allow.
+
+=== npm-ci-after ===
+
+added 168 packages, and audited 169 packages in 3s
+
+23 packages are looking for funding
+  run `npm fund` for details
+
+8 vulnerabilities (4 moderate, 4 high)
+
+To address issues that do not require attention, run:
+  npm audit fix
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+npm warn allow-scripts 1 package has install scripts not yet covered by allowScripts:
+npm warn allow-scripts   node-pty@1.1.0 (install: node scripts/prebuild.js || node-gyp rebuild; postinstall: node scripts/post-install.js)
+npm warn allow-scripts
+npm warn allow-scripts Run `npm approve-scripts --allow-scripts-pending` to review, or `npm approve-scripts <pkg>` to allow.
+
+=== dependencies ===
+
+> test:security:dependencies
+> node --test scripts/security/dependency-regression.cjs
+
+✔ basic-ftp override preserves get-uri downloads, MDTM, LIST fallback, cache and missing file errors (63.568144ms)
+✔ proxy-agent loads PAC over FTP and completes an HTTP request (54.456475ms)
+✔ FTP hostile listing parser remains bounded and still parses ordinary entries (23.490579ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 197.053688
+
+=== lsp-swoole ===
+
+> test:security:lsp
+> node --test scripts/security/lsp-integration.cjs
+
+✔ real Intelephense through authenticated WebSocket: PHP features, updates, reconnect, resources and shutdown (11412.442749ms)
+ℹ Modules loaded by real LSP: {"braces":false,"micromatch":false,"fast-glob":false,"applicationinsights":false,"@opentelemetry/core":false,"basic-ftp":false}
+ℹ LSP resource samples: [{"cycle":0,"cpuTicks":109,"rssKiB":282364,"idleCpuMs":0},{"cycle":1,"cpuTicks":54,"rssKiB":191812,"idleCpuMs":0},{"cycle":2,"cpuTicks":54,"rssKiB":192560,"idleCpuMs":0}]
+✔ LSP disconnect, crash, session revocation and bridge SIGTERM reap real children (1344.20602ms)
+✔ LSP process failure: missing (127.832711ms)
+✔ LSP process failure: spawn-error (125.488123ms)
+✔ LSP process failure: stubborn (1955.715098ms)
+✔ real Swoole relay forwards initialize, PHP hover and shutdown to Intelephense (1076.035825ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 16085.826968
+
+=== ui ===
+
+> test:security:ui
+> node --test scripts/security/ui-regression.cjs
+
+✔ stored filenames render as text; clicking keeps the complete filename as data (81.200235ms)
+✔ stored chat markup and crafted markdown fences cannot create executable nodes (15.956359ms)
+✔ reflected paths and search highlighting stay text, including regex metacharacters (8.637818ms)
+✔ file tree preserves hostile names and inline arguments without code execution (12.667096ms)
+✔ notification headers and bodies display untrusted messages as text (18.452113ms)
+✔ stored credentials and server welcome messages never enter HTML sinks (17.825243ms)
+✔ new browser credentials use independent random bytes and preserve registered credentials (10.551861ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 488.715232
+
+=== threads ===
+
+> test:security:threads
+> node --test scripts/security/thread-regression.cjs
+
+✔ thread ownership persists across reconnect and blocks other users, unknown legacy threads and revoked sessions without writes (4.529688ms)
+✔ actual bridge action handlers reject another user before RPC and filter thread history (2.245027ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 45.104066
+
+=== pty ===
+
+> test:security:pty
+> node --test scripts/security/pty-integration.cjs
+
+✔ real node PTY: unauthorized requests have no shell/files; reconnect and revocation (1149.1354ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2716.159087
+
+=== php-pty ===
+
+> test:security:pty
+> node --test scripts/security/pty-integration.cjs
+
+✔ real php PTY: unauthorized requests have no shell/files; reconnect and revocation (2648.203143ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2692.668222
+
+=== swoole ===
+✔ real Swoole HTTP + WebSocket denied operations have no file/upload/process/bridge effects (1135.159854ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3376.714724
+
+=== php-archive ===
+PASS malicious late ZIP entry rejected before any extraction: ../outside/pwned
+PASS malicious late ZIP entry rejected before any extraction: /tmp/fm-archive-48355d9b70fd8bf4/outside/absolute-pwned
+PASS malicious late ZIP entry rejected before any extraction: safe/../../outside/pwned
+PASS malicious late ZIP entry rejected before any extraction: link
+PASS TAR traversal/link rejected before writing earlier safe entry: 0
+PASS TAR traversal/link rejected before writing earlier safe entry: 2
+PASS TAR traversal/link rejected before writing earlier safe entry: 1
+PASS existing symlink target unchanged
+PASS authorized ZIP extraction preserved
+PASS authorized TAR extraction preserved
+PASS authorized TAR.XZ extraction preserved without filesystem extractor
+PASS authorized 7z extraction preserved via stdout decoder
+PASS authorized RAR preserved; decoder never creates links
+PASS 7z symlink metadata rejected before filesystem writes
+14 assertions, 0 failures
+
+=== php-watcher ===
+PASS initial snapshot
+PASS unchanged
+PASS same-size save in same second
+PASS one notification per content change
+PASS touch without content change
+PASS create
+PASS rename
+PASS delete
+PASS ignored vendor
+PASS ignored node_modules
+PASS ignored files
+PASS ignored stubs
+PASS ignored terminals
+PASS does not recurse through symlinks
+PASS new directory
+PASS unreadable directory does not cause restart loop
+PASS permission recovery
+PASS deleted directory
+PASS empty extension list
+PASS unobserved extension
+PASS burst of saves coalesced
+PASS burst does not repeat
+22 assertions passed
+
+=== php-cache ===
+PASS missing token store fails closed without creation
+PASS new token visible
+PASS same-second same-size replacement revokes old token
+PASS stable token snapshot
+PASS malformed data fails closed
+PASS scalar JSON fails closed
+PASS atomic save recovers
+PASS deleted store revokes tokens
+PASS empty routes
+PASS new route
+PASS same-second renamed route
+PASS stable route snapshot
+PASS deleted route
+13 assertions passed
+
+=== php-static-isolated ===
+
+Warning: PHP Startup: Unable to load dynamic library '/tmp/filemanager-npm-evidence/composer-vendor/phpstan/phpstan/turbo-ext/linux-gnu-x86_64/phpstan_turbo-8.5-zts.so' (tried: /tmp/filemanager-npm-evidence/composer-vendor/phpstan/phpstan/turbo-ext/linux-gnu-x86_64/phpstan_turbo-8.5-zts.so (Dynamic loading not supported), /lib/php/extensions/no-debug-zts-20250925//tmp/filemanager-npm-evidence/composer-vendor/phpstan/phpstan/turbo-ext/linux-gnu-x86_64/phpstan_turbo-8.5-zts.so.so (Dynamic loading not supported)) in Unknown on line 0
+Note: Using configuration file /home/lotus/projetos/filemanager/phpstan.neon.
+
+ [OK] No errors
+
+
+=== composer-validate ===
+./composer.json is valid, but with a few warnings
+See https://getcomposer.org/doc/04-schema.md for details on the schema
+# General warnings
+- No license specified, it is recommended to do so. For closed-source software you may use "proprietary" as license.
+
+=== composer-audit ===
+No security vulnerability advisories found.
+
+=== php-http-plain (summary; /usr/bin/php8.3 -n) ===
+PASS authorized download preserved
+85 assertions, 0 failures
+
+=== php-ws-plain (summary; /usr/bin/php8.3 -n) ===
+PASS reused connection cannot inherit prior owner
+18 assertions, 0 failures
+
+=== local runtime check (FAIL, preserved) ===
+{
+    "php": "8.5.10",
+    "swoole": "6.3.0RC1",
+    "openssl": "OpenSSL 4.0.2 25 Aug 2026",
+    "advisoryDate": "2026-10-21",
+    "minimumPatchedPhp": "8.5.12",
+    "patchedPhp": false,
+    "requiredSwoolePresent": true,
+    "source": "https://www.php.net/archive/2026.php#2026-10-21-5"
+}

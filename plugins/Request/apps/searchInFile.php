@@ -10,14 +10,12 @@ class searchInFile
 {
     public static function api(Request $request, Response $response)
     {
-        if (!security::verifyToken($request)) {
-            return security::invalidToken($response);
-        }
+        if (!security::authorize($request, $response)) return true;
 
         $response->header("Content-Type", "application/json");
 
         $search = trim($request->post["search"] ?? "");
-        $currentPath = $request->post["path"] ?? appController::baseDir();
+        $currentPath = $request->post["path"] ?? securityPolicy::roots(securityPolicy::requestToken($request))[0];
         $limit = (int) ($request->post["limit"] ?? 1000);
 
         if (!$search) {
@@ -29,6 +27,7 @@ class searchInFile
             );
         }
 
+        securityPolicy::tree($currentPath, securityPolicy::requestToken($request));
         $path = is_file($currentPath) ? dirname($currentPath) : $currentPath;
         $path = rtrim(str_replace("//", "/", $path), "/");
 
@@ -83,7 +82,7 @@ class searchInFile
                 return $found;
             }
 
-            if (!$item->isFile()) {
+            if ($item->isLink() || !$item->isFile()) {
                 continue;
             }
 

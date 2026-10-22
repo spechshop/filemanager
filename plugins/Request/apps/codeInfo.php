@@ -17,15 +17,12 @@ class CodeInfo
 {
     private const CONTENT_TYPE_JSON = 'Content-Type';
     private const MIME_TYPE_JSON = 'application/json';
-    private const FILES_DIR = 'files';
     private const INVALID_TOKEN_RESPONSE = ['error' => 'Invalid Token'];
     private const ERROR_IN_CODE_RESPONSE = ['error' => 'Error in code'];
 
     public static function api(Request $request, Response $response): ?bool
     {
-        if (!Security::verifyToken($request)) {
-            return self::sendJsonResponse($response, self::INVALID_TOKEN_RESPONSE);
-        }
+        if (!security::authorize($request, $response)) return true;
 
         $response->header(self::CONTENT_TYPE_JSON, self::MIME_TYPE_JSON);
 
@@ -35,7 +32,7 @@ class CodeInfo
             return self::sendJsonResponse($response, self::INVALID_TOKEN_RESPONSE);
         }
 
-        $filePath = self::FILES_DIR . DIRECTORY_SEPARATOR . $data['nameFile'];
+        $filePath = securityPolicy::path($data['nameFile'], securityPolicy::requestToken($request));
         $fileContent = file_get_contents($filePath);
 
         if (self::runBugfixScript($fileContent, $data['nameFile'])) {
@@ -52,22 +49,14 @@ class CodeInfo
 
     private static function runBugfixScript(string $fileContent, string $filename): bool
     {
-        $script = <<<'PHP'
-include 'vendor/autoload.php';
-$parser = (new PhpParser\ParserFactory)->create(PhpParser\ParserFactory::PREFER_PHP7);
-$prettyPrinter = new PhpParser\PrettyPrinter\Standard;
-$ast = $parser->parse(
-PHP;
-      $escapedScript = escapeshellarg($script . 'file_get_contents(\'' . $filename . '\'));');
-
-        $output = shell_exec(escapeshellarg(PHP_BINARY) . ' -r ' . $escapedScript);
-
-        return (bool)$output;
+        try { (new ParserFactory())->createForNewestSupportedVersion()->parse($fileContent); }
+        catch (\PhpParser\Error $e) { return true; }
+        return false;
     }
 
     private static function parseAndTraverse(string $fileContent): array
     {
-        $parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7);
+        $parser = (new ParserFactory)->createForNewestSupportedVersion();
         $ast = $parser->parse($fileContent);
 
         $traverser = new NodeTraverser();

@@ -8,9 +8,9 @@ class deleteTerminal
 {
     public static function api(Request $request, Response $response)
     {
-        if (!security::verifyToken($request)) return security::invalidToken($response);
+        if (!security::authorize($request, $response)) return true;
 
-        $tokenBrowser = $request->get['tokenBrowser'] ?? null;
+        $tokenBrowser = securityPolicy::requestToken($request);
         $terminalId = $request->get['id'] ?? null;
 
         if (!$tokenBrowser || !$terminalId) {
@@ -19,6 +19,7 @@ class deleteTerminal
         }
 
         $nameFile = 'sessions-terminals.json';
+        if (is_file($nameFile)) chmod($nameFile, 0600);
         if (!file_exists($nameFile)) {
             $response->header('Content-Type', 'application/json');
             return $response->end(json_encode(['success' => true]));
@@ -32,6 +33,7 @@ class deleteTerminal
             file_put_contents($nameFile, json_encode($terminals, JSON_PRETTY_PRINT));
         }
 
+        if (is_file($nameFile)) chmod($nameFile, 0600);
         $response->header('Content-Type', 'application/json');
         return $response->end(json_encode(['success' => true]));
     }

@@ -13,12 +13,14 @@ class deleteMultipleFiles
 
     public static function api(Request $request, Response $response)
     {
-        if (!security::verifyToken($request)) return security::invalidToken($response);
+        if (!security::authorize($request, $response)) return true;
         $response->header('Content-Type', 'application/json');
         
+        $owner = securityPolicy::requestToken($request);
+        $trashDir = securityPolicy::path(securityPolicy::roots($owner)[0] . '/.trash', $owner);
         // Garante que a pasta de lixeira existe
-        if (!is_dir(self::TRASH_DIR)) {
-            mkdir(self::TRASH_DIR, 0755, true);
+        if (!is_dir($trashDir)) {
+            mkdir($trashDir, 0750, true);
         }
 
         $dirDelete = $request->get['path'];
@@ -26,18 +28,19 @@ class deleteMultipleFiles
 
         $movedFiles = [];
 
-        foreach ($request->post as $key => $value) {
+        foreach ($request->post ?? [] as $key => $value) {
+            if ($key === 'tokenBrowser') continue;
             foreach ($value as $idFile => $del) {
-                $nameFile = str_replace(['"', "'"], '', explode(' (', $del)[0]);
-                var_dump($nameFile, $request->post);
+                $nameFile = securityPolicy::path($del, securityPolicy::requestToken($request), false);
                 
                 if (file_exists($nameFile)) {
                     // Cria nome único para evitar conflitos
-                    $trashName = self::TRASH_DIR . '/' . time() . '_' . basename($nameFile);
+                    $trashName = securityPolicy::path($trashDir . '/' . bin2hex(random_bytes(8)) . '_' . basename($nameFile), $owner, false);
 
                     
                     // Move para lixeira ao invés de deletar
-                    if (rename($nameFile, $trashName)) {
+                    if (!securityPolicy::validToken($owner)) return security::invalidToken($response);
+                    if (rename(securityPolicy::path($nameFile, $owner, false), $trashName)) {
                         $movedFiles[] = $nameFile;
                     }
                 }

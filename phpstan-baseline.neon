@@ -1,0 +1,145 @@
+# Only exact diagnostics also reproduced on newterm 894e52c. No wildcard ignores.
+# New securityPolicy/safeFiles code has no baseline entries.
+parameters:
+    ignoreErrors:
+        - message: '~^PHPDoc\ tag\ @param\ references\ unknown\ parameter:\ \$maskDocument$~'
+          count: 1
+          path: plugins/Extension/plugins/StringUtils.php
+        - message: '~^Binary\ operation\ "\*"\ between\ string\ and\ int<1,\ 11>\ results\ in\ an\ error\.$~'
+          count: 1
+          path: plugins/Extension/plugins/StringUtils.php
+        - message: '~^Unreachable\ statement\ \-\ code\ above\ always\ terminates\.$~'
+          count: 1
+          path: plugins/Extension/plugins/terminal.php
+        - message: '~^Method\ plugins\\Extension\\utilsFunction::getFilePermissions\(\)\ should\ return\ string\|null\ but\ returns\ false\.$~'
+          count: 1
+          path: plugins/Extension/plugins/utilsFunction.php
+        - message: '~^Strict\ comparison\ using\ ===\ between\ non\-empty\-string\|Swoole\\WebSocket\\Frame\|true\ and\ null\ will\ always\ evaluate\ to\ false\.$~'
+          count: 1
+          path: plugins/Message/server/server.php
+        - message: '~^Strict\ comparison\ using\ ===\ between\ string\ and\ null\ will\ always\ evaluate\ to\ false\.$~'
+          count: 1
+          path: plugins/Message/server/server.php
+        - message: '~^Method\ plugins\\Request\\CodeInfo::sendJsonResponse\(\)\ never\ returns\ null\ so\ it\ can\ be\ removed\ from\ the\ return\ type\.$~'
+          count: 1
+          path: plugins/Request/apps/codeInfo.php
+        - message: '~^Method\ plugins\\Request\\FindClassesAndMethodsVisitor::enterNode\(\)\ should\ return\ array<PhpParser\\Node>\|int\|PhpParser\\Node\|null\ but\ return\ statement\ is\ missing\.$~'
+          count: 1
+          path: plugins/Request/apps/codeInfo.php
+        - message: '~^Expression\ on\ left\ side\ of\ \?\?\ is\ not\ nullable\.$~'
+          count: 1
+          path: plugins/Request/apps/codeInfo.php
+        - message: '~^Call\ to\ function\ is_string\(\)\ with\ non\-empty\-string\ will\ always\ evaluate\ to\ true\.$~'
+          count: 1
+          path: plugins/Request/apps/codeInfo.php
+        - message: '~^Access\ to\ an\ undefined\ property\ PhpParser\\Node\\Expr::\$name\.$~'
+          count: 1
+          path: plugins/Request/apps/codeInfo.php
+        - message: '~^Access\ to\ an\ undefined\ property\ PhpParser\\Node::\$name\.$~'
+          count: 1
+          path: plugins/Request/apps/codeInfo.php
+        - message: '~^Right\ side\ of\ \&\&\ is\ always\ true\.$~'
+          count: 1
+          path: plugins/Request/apps/codeInfo.php
+        - message: '~^Variable\ \$files\ in\ empty\(\)\ always\ exists\ and\ is\ not\ falsy\.$~'
+          count: 1
+          path: plugins/Request/apps/compressMultipleFiles.php
+        - message: '~^Parameter\ \#2\ \$value\ of\ method\ Swoole\\Http\\Response::header\(\)\ expects\ array\|string,\ int<0,\ max>\|false\ given\.$~'
+          count: 1
+          path: plugins/Request/apps/downloadFile.php
+        - message: '~^Offset\ 3\ on\ non\-empty\-list<string>\ on\ left\ side\ of\ \?\?\ always\ exists\ and\ is\ not\ nullable\.$~'
+          count: 1
+          path: plugins/Request/apps/fileManagerServices.php
+        - message: '~^Offset\ 1\ on\ non\-empty\-list<string>\ on\ left\ side\ of\ \?\?\ always\ exists\ and\ is\ not\ nullable\.$~'
+          count: 1
+          path: plugins/Request/apps/fileManagerServices.php
+        - message: '~^Offset\ 9\ on\ non\-empty\-list<string>\ on\ left\ side\ of\ \?\?\ always\ exists\ and\ is\ not\ nullable\.$~'
+          count: 1
+          path: plugins/Request/apps/fileManagerServices.php
+        - message: '~^Offset\ 2\ on\ array\{non\-falsy\-string,\ numeric\-string,\ ''''\|numeric\-string\}\ in\ isset\(\)\ always\ exists\ and\ is\ not\ nullable\.$~'
+          count: 1
+          path: plugins/Request/apps/imageBase64.php
+        - message: '~^Parameter\ \#2\ \$value\ of\ method\ Swoole\\Http\\Response::header\(\)\ expects\ array\|string,\ int\ given\.$~'
+          count: 1
+          path: plugins/Request/apps/imageBase64.php
+        - message: '~^Parameter\ \#2\ \$value\ of\ method\ Swoole\\Http\\Response::header\(\)\ expects\ array\|string,\ int<0,\ max>\|false\ given\.$~'
+          count: 1
+          path: plugins/Request/apps/imageBase64.php
+        - message: '~^Constant\ plugins\\Request\\phpParser::INVALID_TOKEN_RESPONSE\ is\ unused\.$~'
+          count: 1
+          path: plugins/Request/apps/phpParser.php
+        - message: '~^Constant\ plugins\\Request\\phpParser::ERROR_IN_CODE_RESPONSE\ is\ unused\.$~'
+          count: 1
+          path: plugins/Request/apps/phpParser.php
+        - message: '~^Call\ to\ function\ is_string\(\)\ with\ non\-empty\-string\ will\ always\ evaluate\ to\ true\.$~'
+          count: 1
+          path: plugins/Request/apps/phpParser.php
+        - message: '~^Method\ plugins\\Request\\findClassesAndMethodsVisitorParser::enterNode\(\)\ should\ return\ array<PhpParser\\Node>\|int\|PhpParser\\Node\|null\ but\ return\ statement\ is\ missing\.$~'
+          count: 2
+          path: plugins/Request/apps/phpParser.php
+        - message: '~^Call\ to\ function\ is_string\(\)\ with\ non\-falsy\-string\ will\ always\ evaluate\ to\ true\.$~'
+          count: 1
+          path: plugins/Request/apps/phpParser.php
+        - message: '~^Method\ plugins\\Request\\findClassesAndMethodsVisitorParser::leaveNode\(\)\ should\ return\ array<PhpParser\\Node>\|int\|PhpParser\\Node\|null\ but\ return\ statement\ is\ missing\.$~'
+          count: 1
+          path: plugins/Request/apps/phpParser.php
+        - message: '~^Call\ to\ function\ is_string\(\)\ with\ non\-empty\-string\ will\ always\ evaluate\ to\ true\.$~'
+          count: 1
+          path: plugins/Request/apps/phpParserBackup.php
+        - message: '~^Method\ plugins\\Request\\findClassesAndMethodsVisitorParserbackup::enterNode\(\)\ should\ return\ array<PhpParser\\Node>\|int\|PhpParser\\Node\|null\ but\ return\ statement\ is\ missing\.$~'
+          count: 2
+          path: plugins/Request/apps/phpParserBackup.php
+        - message: '~^Call\ to\ function\ is_string\(\)\ with\ non\-falsy\-string\ will\ always\ evaluate\ to\ true\.$~'
+          count: 1
+          path: plugins/Request/apps/phpParserBackup.php
+        - message: '~^Method\ plugins\\Request\\findClassesAndMethodsVisitorParserbackup::leaveNode\(\)\ should\ return\ array<PhpParser\\Node>\|int\|PhpParser\\Node\|null\ but\ return\ statement\ is\ missing\.$~'
+          count: 1
+          path: plugins/Request/apps/phpParserBackup.php
+        - message: '~^Offset\ 2\ on\ array\{non\-empty\-string,\ numeric\-string,\ string\}\ on\ left\ side\ of\ \?\?\ always\ exists\ and\ is\ not\ nullable\.$~'
+          count: 1
+          path: plugins/Request/apps/searchInFile.php
+        - message: '~^Constant\ plugins\\Request\\stub::FILES_DIR\ is\ unused\.$~'
+          count: 1
+          path: plugins/Request/apps/stub.php
+        - message: '~^Constant\ plugins\\Request\\stub::ERROR_IN_CODE_RESPONSE\ is\ unused\.$~'
+          count: 1
+          path: plugins/Request/apps/stub.php
+        - message: '~^Strict\ comparison\ using\ !==\ between\ ReflectionType\ and\ null\ will\ always\ evaluate\ to\ true\.$~'
+          count: 3
+          path: plugins/Request/apps/stub.php
+        - message: '~^Method\ plugins\\Request\\stub::sendJsonResponse\(\)\ never\ returns\ null\ so\ it\ can\ be\ removed\ from\ the\ return\ type\.$~'
+          count: 1
+          path: plugins/Request/apps/stub.php
+        - message: '~^Call\ to\ function\ is_int\(\)\ with\ string\ will\ always\ evaluate\ to\ false\.$~'
+          count: 1
+          path: plugins/Request/apps/stub.php
+        - message: '~^Static\ method\ plugins\\Request\\stub::runBugfixScript\(\)\ is\ unused\.$~'
+          count: 1
+          path: plugins/Request/apps/stub.php
+        - message: '~^Static\ method\ plugins\\Request\\stub::parseAndTraverse\(\)\ is\ unused\.$~'
+          count: 1
+          path: plugins/Request/apps/stub.php
+        - message: '~^Offset\ 0\ on\ non\-empty\-list<string>\ in\ isset\(\)\ always\ exists\ and\ is\ not\ nullable\.$~'
+          count: 1
+          path: plugins/Request/apps/syncPath.php
+        - message: '~^If\ condition\ is\ always\ true\.$~'
+          count: 1
+          path: plugins/Start/server/cache.php
+        - message: '~^Call\ to\ function\ is_array\(\)\ with\ array<string,\ string>\ will\ always\ evaluate\ to\ true\.$~'
+          count: 1
+          path: pty.php
+        - message: '~^Offset\ ''pid''\ on\ array\{command:\ string,\ pid:\ int,\ running:\ bool,\ signaled:\ bool,\ stopped:\ bool,\ exitcode:\ int,\ termsig:\ int,\ stopsig:\ int\}\ on\ left\ side\ of\ \?\?\ always\ exists\ and\ is\ not\ nullable\.$~'
+          count: 1
+          path: pty.php
+        - message: '~^Call\ to\ function\ is_array\(\)\ with\ array\{command:\ string,\ pid:\ int,\ running:\ bool,\ signaled:\ bool,\ stopped:\ bool,\ exitcode:\ int,\ termsig:\ int,\ stopsig:\ int\}\ will\ always\ evaluate\ to\ true\.$~'
+          count: 1
+          path: pty.php
+        - message: '~^Call\ to\ function\ is_int\(\)\ with\ null\ will\ always\ evaluate\ to\ false\.$~'
+          count: 1
+          path: server.php
+        - message: '~^Comparison\ operation\ ">"\ between\ \*NEVER\*\ and\ 1\ results\ in\ an\ error\.$~'
+          count: 1
+          path: server.php
+        - message: '~^If\ condition\ is\ always\ false\.$~'
+          count: 1
+          path: server.php

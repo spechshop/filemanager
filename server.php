@@ -66,7 +66,11 @@ function portAlive(mixed $port): bool
 
 
 
-include 'libspech/plugins/autoloader.php';
+$deploymentAutoloader = __DIR__ . '/libspech/plugins/autoloader.php';
+if (!is_file($deploymentAutoloader)) {
+    throw new RuntimeException('Deployment dependency libspech is missing; use the documented installer in an isolated environment.');
+}
+require $deploymentAutoloader;
 \libspech\Cli\cli::pcl("Running Tests...");
 \co\run(function () use ($phpBinary) {
     global $argv;

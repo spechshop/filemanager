@@ -1,47 +1,46 @@
 <?php
-
 namespace plugins\Request;
 
-use plugins\Start\cache;
 use Swoole\Http\Request;
 use Swoole\Http\Response;
 
 class security
 {
-    public static function verifyToken(Request $request): ?bool
+    public static function verifyToken(Request $request): bool
     {
-        $_GET = $request->get;
-        $_POST = $request->post;
-        if (!empty($_GET['tokenBrowser'])) $tokenBrowser = $_GET['tokenBrowser'];
-        if (!empty($_POST['tokenBrowser'])) $tokenBrowser = $_POST['tokenBrowser'];
-        if (empty($tokenBrowser)) {
-            return false;
-        } elseif (!key_exists($tokenBrowser, cache::global()['dataKeys'])) {
-            return false;
-        } elseif (strtotime(date('Y-m-d H:i:s')) >= cache::global()['dataKeys'][$tokenBrowser]['expire']) {
-            return false;
-        }
+        return securityPolicy::validToken(securityPolicy::requestToken($request));
+    }
+
+    public static function authorize(Request $request, Response $response): bool
+    {
+        if (!self::verifyToken($request)) { self::invalidToken($response); return false; }
+        if (!securityPolicy::originAllowed($request)) { self::deny($response); return false; }
+        try { securityPolicy::preflight($request, securityPolicy::requestToken($request)); }
+        catch (\DomainException $e) { self::deny($response); return false; }
+        if (!self::verifyToken($request)) { self::invalidToken($response); return false; }
         return true;
     }
 
-    public static function invalidToken(Response $response): ?bool
+    public static function invalidToken(Response $response): bool
     {
+        securityPolicy::log('authentication_denied');
+        $response->status(401);
         $response->header('Content-Type', 'application/json');
-        return $response->end(json_encode([
-            'success' => false,
-            'message' => 'Identifier not found'
-        ]));
+        return $response->end(json_encode(['success' => false, 'message' => 'Unauthorized']));
     }
 
-    public static function sanitizeInput($input): ?string
+    public static function deny(Response $response): bool
     {
-        return htmlspecialchars(strip_tags(trim($input)));
+        securityPolicy::log('access_denied');
+        $response->status(403);
+        $response->header('Content-Type', 'application/json');
+        return $response->end(json_encode(['success' => false, 'message' => 'Forbidden']));
     }
 
-    public static function writeChat(array $data):?bool {
-        $nameFile = appController::baseDir().'/4o';
-        return false;
+    public static function sanitizeInput($input): string
+    {
+        return htmlspecialchars(strip_tags(trim($input)), ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     }
 
-
+    public static function writeChat(array $data): bool { return false; }
 }

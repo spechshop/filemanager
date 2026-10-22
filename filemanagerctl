@@ -103,6 +103,7 @@ stop_processes() {
 
     [ -n "$pids" ] && kill $pids 2>/dev/null
     for attempt in 1 2 3 4 5; do
+        : "$attempt"
         processes_alive "$pids" || break
         sleep 1
     done

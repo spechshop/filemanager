@@ -10,11 +10,11 @@ class chat4o
 {
     public static function api(Request $request, Response $response): ?bool
     {
-        // if (!security::verifyToken($request)) return security::invalidToken($response);
+        if (!security::authorize($request, $response)) return true;
         $data = json_decode($request->rawContent(), true);
 
         $path = $request->server["request_uri"] ?? "";
-        $conversationFile = appController::baseDir() . "/4o.json";
+        $conversationFile = appController::baseDir() . '/database/chat-' . hash('sha256', securityPolicy::requestToken($request)) . '.lotus';
         $conversation = loadConversation($conversationFile);
 
         if ($data["action"] === "getConversation") {
@@ -29,7 +29,7 @@ class chat4o
         }
 
         $message = $data["message"];
-        $conversationFile = appController::baseDir() . "/4o.json";
+        $conversationFile = appController::baseDir() . '/database/chat-' . hash('sha256', securityPolicy::requestToken($request)) . '.lotus';
         $endPoint = "http://localhost:3090/api";
         $client = new \Swoole\Coroutine\Http\Client("localhost", 3090);
         $client->set([
@@ -50,7 +50,7 @@ class chat4o
             ])
         );
         $recv = $client->getBody();
-        var_dump($recv);
+
         $client->close();
         $obj = json_decode($recv, true);
         $reply = $obj["parts"][0];

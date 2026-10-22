@@ -8,7 +8,11 @@ global $server;
 global $coroutinesProcess;
 ini_set('memory_limit', '2000M');
 ini_set('max_input_vars', '100000');
-include 'libspech/plugins/autoloader.php';
+$deploymentAutoloader = __DIR__ . '/libspech/plugins/autoloader.php';
+if (!is_file($deploymentAutoloader)) {
+    throw new RuntimeException('Deployment dependency libspech is missing; use the documented installer in an isolated environment.');
+}
+require $deploymentAutoloader;
 require_once __DIR__ . '/vendor/autoload.php';
 sleep(1);
 include 'plugins/autoload.php';
@@ -60,6 +64,17 @@ if (!function_exists('portAlive')) {
     }
 }
 
+$secretDirectory = __DIR__ . '/.runtime';
+if (!is_dir($secretDirectory)) mkdir($secretDirectory, 0700, true);
+$secretFile = $secretDirectory . '/bridge-secret';
+if (!is_file($secretFile)) {
+    $handle = fopen($secretFile, 'x');
+    if ($handle === false) throw new RuntimeException('Cannot initialize bridge authentication');
+    chmod($secretFile, 0600);
+    fwrite($handle, bin2hex(random_bytes(32)));
+    fclose($handle);
+}
+if (strlen(\plugins\Request\securityPolicy::bridgeSecret()) < 32) throw new RuntimeException('Invalid bridge secret');
 $host = cache::global()['interface']['host'];
 $port = cache::global()['interface']['port'];
 \co\run(function () use (&$port) {

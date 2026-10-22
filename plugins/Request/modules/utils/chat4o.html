@@ -254,7 +254,7 @@
                         promptTextarea.value = '';
                         sendButton.disabled = true;
                         writeMessageMe(message);
-                        const send = await fetch('/chat4o', {
+                        const send = await fetch('/chat4o?tokenBrowser=' + encodeURIComponent($('#fp').text()), {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -280,7 +280,7 @@
                             await new Promise((resolve) => setTimeout(resolve, 1000));
 
                         }
-                        const getConversation = await fetch('/chat4o', {
+                        const getConversation = await fetch('/chat4o?tokenBrowser=' + encodeURIComponent($('#fp').text()), {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -385,7 +385,7 @@
                        message = '  ';
                     }
     // Divide o texto em linhas
-    const lines = message.split('\n');
+    const lines = escapeHTML(String(message)).split('\n');
     let container = '';
     let insideCodeBlock = false;
     let codeLanguage = '';
@@ -397,7 +397,7 @@
                 insideCodeBlock = false;
             } else {
                 codeLanguage = line.substring(3).trim();
-                if (!codeLanguage.includes('<') && !codeLanguage.includes('>')) {
+                if (/^[a-zA-Z0-9_-]*$/.test(codeLanguage)) {
                     container += `<pre class="language-${codeLanguage}"><code class="language-${codeLanguage}">`;
                     insideCodeBlock = true;
                 } else {
@@ -405,7 +405,7 @@
                 }
             }
         } else if (insideCodeBlock) {
-            container += `${escapeHTML(line)}\n`;
+            container += `${line}\n`;
         } else if (line.startsWith('# ')) {
             container += `<h1>${line.substring(2)}</h1>\n`;
         } else if (line.startsWith('## ')) {

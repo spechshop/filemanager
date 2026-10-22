@@ -426,14 +426,13 @@
                             // Restaurar nome original se já tiver highlight
                             const originalText = span.getAttribute('data-original') || span.textContent;
                             span.setAttribute('data-original', originalText); // salva original só uma vez
-                            span.innerHTML = originalText;
+                            span.textContent = originalText;
 
                             const visible = path.includes(termo);
                             td.parentElement.style.display = visible ? '' : 'none';
 
                             if (visible && termo) {
-                                const regex = new RegExp(`(${termo})`, 'gi');
-                                span.innerHTML = originalText.replace(regex, '<span style="color: #ffc107; font-weight: bold;">$1</span>');
+                                FMUI.highlight(span, originalText, termo);
                             }
                         });
 
@@ -448,14 +447,13 @@
                             // Restaurar nome original
                             const originalText = nameDiv.getAttribute('data-original') || nameDiv.textContent;
                             nameDiv.setAttribute('data-original', originalText);
-                            nameDiv.innerHTML = originalText;
+                            nameDiv.textContent = originalText;
 
                             const visible = path.includes(termo);
                             item.style.display = visible ? '' : 'none';
 
                             if (visible && termo) {
-                                const regex = new RegExp(`(${termo})`, 'gi');
-                                nameDiv.innerHTML = originalText.replace(regex, '<span style="color: #ffc107; font-weight: bold;">$1</span>');
+                                FMUI.highlight(nameDiv, originalText, termo);
                             }
                         });
                     });
@@ -520,7 +518,7 @@ max-height: calc(-2px + 57vh);"></div>
             });
         };
         if (localStorage.getItem('pathInvisible') !== null) {
-            document.getElementById('pathInvisible').innerHTML = localStorage.getItem('pathInvisible');
+            document.getElementById('pathInvisible').textContent = localStorage.getItem('pathInvisible');
         }
         const listP = $('#pathInvisible').text();
         for (let i = 0; i < listP.split('/').length; i++) {

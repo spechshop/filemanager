@@ -10,7 +10,7 @@ class getArchiveDetails
 {
     public static function api(Request $request, Response $response)
     {
-        if (!security::verifyToken($request)) return security::invalidToken($response);
+        if (!security::authorize($request, $response)) return true;
         $response->header('Content-Type', 'application/json');
         $data = $request->get;
         $fileAddress =  $data['path'];

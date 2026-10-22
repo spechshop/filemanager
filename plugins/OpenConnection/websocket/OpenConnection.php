@@ -1,8 +1,6 @@
 <?php
-
 namespace plugins\websocket;
-
-use plugins\Start\cache;
+use plugins\Request\securityPolicy;
 use Swoole\Http\Request;
 use Swoole\WebSocket\Server;
 
@@ -10,52 +8,38 @@ class OpenConnection
 {
     public static function open(Server $server, Request $request): void
     {
-        $GLOBALS['dataKeys'] = \plugins\Database\call::data() ?? [];
-        $uri = (string) ($request->server['request_uri'] ?? '/');
-        $socketToken = ltrim(explode('?', $uri, 2)[0], '/');
-        $clientToken = self::clientTokenFromSocketToken($socketToken);
-
-        // O websocket de métricas (SSD/RAM/CPU) conecta em "/" e autentica
-        // no primeiro frame com {token}. Terminais/LSP/etc usam "/{token}-...".
-        if ($socketToken !== '') {
-            if ($clientToken === '' || !self::validToken($clientToken)) {
-                $server->close($request->fd);
-                return;
+        $socket = ltrim(explode('?', $request->server['request_uri'] ?? '/', 2)[0], '/');
+        $owner = securityPolicy::socketOwner($socket);
+        if (!securityPolicy::originAllowed($request, true) || !securityPolicy::validToken($owner)) {
+            securityPolicy::log('connection_denied', 'websocket');
+            $server->disconnect($request->fd, 1008, 'Unauthorized');
+            return;
+        }
+        $fd = $request->fd;
+        $identity = bin2hex(random_bytes(16));
+        $GLOBALS['fdToToken'][$fd] = $socket;
+        $GLOBALS['websocketConnections'][$fd] = ['token' => $socket, 'clientToken' => $owner, 'identity' => $identity];
+        // Active and idle connections must be revoked, not only the next incoming frame.
+        $timer = \Swoole\Timer::tick(1000, static function () use ($server, $fd, $owner, $identity): void {
+            if (($GLOBALS['websocketConnections'][$fd]['identity'] ?? '') !== $identity) return;
+            $valid = securityPolicy::validToken($owner);
+            if (($GLOBALS['websocketConnections'][$fd]['identity'] ?? '') !== $identity) return;
+            if (!$valid) {
+                securityPolicy::log('session_revoked', 'websocket');
+                $server->disconnect($fd, 1008, 'Session expired');
+                \plugins\server::close($server, $fd);
             }
-        }
-
-        if (!isset($GLOBALS['fdToToken'])) {
-            $GLOBALS['fdToToken'] = [];
-        }
-        if (!isset($GLOBALS['websocketConnections'])) {
-            $GLOBALS['websocketConnections'] = [];
-        }
-
-        $GLOBALS['fdToToken'][$request->fd] = $socketToken;
-        $GLOBALS['websocketConnections'][$request->fd] = [
-            'token' => $socketToken,
-            'clientToken' => $clientToken,
-            'openedAt' => time(),
-        ];
+        });
+        $GLOBALS['websocketConnections'][$fd]['timer'] = $timer;
     }
 
     protected static function clientTokenFromSocketToken(string $socketToken): string
     {
-        if ($socketToken === '') {
-            return '';
-        }
-
-        $parts = explode('-', $socketToken);
-        return $parts[0] ?? '';
+        return securityPolicy::socketOwner($socketToken);
     }
 
     protected static function validToken(string $token): bool
     {
-        if ($token === '' || !key_exists($token, cache::global()['dataKeys'] ?? [])) {
-            return false;
-        }
-
-        $expires = cache::global()['dataKeys'][$token]['expire'] ?? 0;
-        return time() < (int) $expires;
+        return securityPolicy::validToken($token);
     }
 }

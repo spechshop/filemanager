@@ -9,11 +9,9 @@ class cutCopy
 {
     public static function api(Request $request, Response $response): ?bool
     {
-        if (!security::verifyToken($request)) {
-            return security::invalidToken($response);
-        }
+        if (!security::authorize($request, $response)) return true;
         $response->header("Content-Type", "application/json");
-        $data = count($request->post) > 0 ? $request->post : json_decode($request->rawContent(), true);
+        $data = count($request->post ?? []) > 0 ? $request->post : json_decode($request->rawContent(), true);
         $accept = ["move", "copy"];
         if (!in_array($data["type"], $accept)) {
             return $response->end(
@@ -44,13 +42,20 @@ class cutCopy
             $file = $split[count($split) - 1];
             $newFiles[$oldKey] = $moveTo . "/" . $file;
         }
+        $owner = securityPolicy::requestToken($request);
+        foreach ($newFiles as $old => $new) {
+            securityPolicy::tree($old, $owner);
+            securityPolicy::path($new, $owner, false);
+            if (securityPolicy::within($new, $old)) return security::deny($response);
+        }
         if ($data["type"] == "copy") {
             foreach ($newFiles as $old => $new) {
-                System::exec(sprintf("cp -r %s %s", escapeshellarg($old), escapeshellarg($new)));
+                safeFiles::copy($old, $new, $owner);
             }
         } elseif ($data["type"] == "move") {
             foreach ($newFiles as $old => $new) {
-                System::exec(sprintf("mv %s %s", escapeshellarg($old), escapeshellarg($new)));
+                if (!securityPolicy::validToken($owner)) return security::invalidToken($response);
+                rename(securityPolicy::path($old, $owner, false), securityPolicy::path($new, $owner, false));
             }
         }
         return $response->end(

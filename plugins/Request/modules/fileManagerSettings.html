@@ -459,19 +459,19 @@
                 const desiredState = service.enabled ? 'Inicialização habilitada' : 'Inicialização desabilitada';
                 const unavailable = !service.available && !service.running;
                 const reason = service.unavailableReason
-                    ? `<div class="small text-warning mt-2"><i class="fa-duotone fa-triangle-exclamation me-1"></i>${service.unavailableReason}</div>`
+                    ? `<div class="small text-warning mt-2"><i class="fa-duotone fa-triangle-exclamation me-1"></i>${escapeHtml(service.unavailableReason)}</div>`
                     : '';
                 const ptyDetails = service.id === 'pty'
                     ? `<div class="small text-info mt-1">Configurado: ${escapeHtml(service.backendLabel || 'Automático')}${service.activeBackend ? ` · Ativo: ${service.activeBackend === 'node' ? 'Node.js' : 'PHP/Swoole'}` : ''}</div>`
                     : '';
 
                 return `
-                    <article class="service-card p-3" data-service-card="${service.id}">
+                    <article class="service-card p-3" data-service-card="${escapeHtml(service.id)}">
                         <div class="d-flex justify-content-between align-items-start gap-3">
                             <div>
-                                <div class="fw-semibold">${service.name}</div>
-                                <div class="settings-description small">${service.description}</div>
-                                <div class="small text-muted mt-1">Porta ${service.port} · ${desiredState}</div>
+                                <div class="fw-semibold">${escapeHtml(service.name)}</div>
+                                <div class="settings-description small">${escapeHtml(service.description)}</div>
+                                <div class="small text-muted mt-1">Porta ${escapeHtml(service.port)} · ${desiredState}</div>
                                 ${ptyDetails}
                                 ${reason}
                             </div>
@@ -481,15 +481,15 @@
                         </div>
                         <div class="d-flex flex-wrap gap-2 mt-3">
                             <button class="btn btn-sm btn-success" data-service-action="start"
-                                    data-service="${service.id}" ${service.running || unavailable ? 'disabled' : ''}>
+                                    data-service="${escapeHtml(service.id)}" ${service.running || unavailable ? 'disabled' : ''}>
                                 <i class="fa-duotone fa-play me-1"></i>Iniciar
                             </button>
                             <button class="btn btn-sm btn-warning" data-service-action="restart"
-                                    data-service="${service.id}" ${unavailable ? 'disabled' : ''}>
+                                    data-service="${escapeHtml(service.id)}" ${unavailable ? 'disabled' : ''}>
                                 <i class="fa-duotone fa-rotate me-1"></i>Reiniciar
                             </button>
                             <button class="btn btn-sm btn-danger" data-service-action="stop"
-                                    data-service="${service.id}" ${!service.running ? 'disabled' : ''}>
+                                    data-service="${escapeHtml(service.id)}" ${!service.running ? 'disabled' : ''}>
                                 <i class="fa-duotone fa-stop me-1"></i>Parar
                             </button>
                         </div>
@@ -515,7 +515,7 @@
                 }
                 renderServices(data.services);
             } catch (error) {
-                servicesList.innerHTML = `<div class="alert alert-danger mb-0">${error.message}</div>`;
+                servicesList.innerHTML = `<div class="alert alert-danger mb-0">${FMUI.html(error.message)}</div>`;
             }
         }
 

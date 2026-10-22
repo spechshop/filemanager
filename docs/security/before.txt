@@ -1,0 +1,19 @@
+FAIL delete denied without effects: missing
+FAIL freeRam denied without command: missing
+FAIL delete denied without effects: invalid
+FAIL freeRam denied without command: invalid
+FAIL delete denied without effects: expired
+FAIL freeRam denied without command: expired
+FAIL delete denied without effects: revoked
+FAIL freeRam denied without command: revoked
+FAIL download outside denied without disclosure
+FAIL outside deletion denied without effects
+FAIL download outside denied without disclosure
+FAIL outside deletion denied without effects
+FAIL download outside denied without disclosure
+FAIL outside deletion denied without effects
+FAIL symlink escape denied without disclosure
+FAIL write outside denied without creation
+FAIL cross-origin deletion denied without effects
+PASS authorized download preserved
+18 assertions, 17 failures

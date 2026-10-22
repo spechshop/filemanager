@@ -9,11 +9,10 @@ class schemaPath
 {
     public static function api(Request $request, Response $response)
     {
-        if (!security::verifyToken($request)) return security::invalidToken($response);
-        $response->header('Content-Encoding', 'gzip');
+        if (!security::authorize($request, $response)) return true;
         $response->header('Content-Type', 'application/json');
 
-        $schema = appController::listFilesAndDirs('files');
+        $schema = appController::listFilesAndDirs(securityPolicy::roots(securityPolicy::requestToken($request))[0]);
         return $response->end(json_encode(['success' => true, 'schema' => $schema]));
     }
 }

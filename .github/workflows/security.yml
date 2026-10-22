@@ -1,0 +1,150 @@
+name: Security
+on:
+  pull_request:
+    branches: [newterm, 'security/audit-regression-ci']
+  push:
+    branches: [newterm, 'security/**']
+  schedule:
+    - cron: '23 7 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  php:
+    name: PHP ${{ matrix.php }} syntax, static analysis and regressions
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.3', '8.4', '8.5']
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@d52fc211a0436f8839a587b3b5b8efddab4744ea # v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: zip, mbstring, sockets
+          coverage: none
+          tools: composer:v2
+      - run: composer install --no-interaction --prefer-dist --no-plugins --no-scripts --ignore-platform-req=ext-swoole
+      - run: php scripts/security/runtime-check.php
+      - name: Syntax (all tracked PHP, including tests)
+        run: python3 scripts/security/php-lint.py
+      - run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+      - run: php -n scripts/security/http-regression.php
+      - run: php -n scripts/security/ws-regression.php
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends p7zip-full p7zip-rar xz-utils
+      - run: php scripts/security/archive-regression.php
+      - run: php scripts/tests/file-watcher-test.php
+      - run: php scripts/tests/request-cache-test.php
+  node:
+    name: Browser and real Node PTY regressions
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm rebuild node-pty
+      - run: npm run test:security:ui
+      - run: npm run test:security:threads
+      - run: npm run test:security:pty
+      - run: npm run test:security:dependencies
+      - run: npm run test:security:lsp
+  swoole:
+    name: Real Swoole HTTP, WebSocket and PHP PTY regressions
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@d52fc211a0436f8839a587b3b5b8efddab4744ea # v2
+        with:
+          php-version: '8.3'
+          extensions: swoole-6.2.3, zip, sockets
+          coverage: none
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+      - name: Require Swoole and exercise the real PHP PTY
+        env:
+          SECURITY_PTY_BACKEND: php
+        run: npm run test:security:pty
+      - run: node --test scripts/security/swoole-integration.cjs
+      - name: Real LSP through the Swoole WebSocket relay
+        env:
+          SECURITY_LSP_SWOOLE: '1'
+        run: npm run test:security:lsp
+  dependencies:
+    name: Composer and npm advisories (blocking)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@d52fc211a0436f8839a587b3b5b8efddab4744ea # v2
+        with:
+          php-version: '8.3'
+          tools: composer:v2
+          coverage: none
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - run: composer validate --no-check-publish
+      - run: composer audit --locked
+      - name: Verify npm accepted-risk policy
+        run: node --test scripts/security/npm-audit-policy.test.cjs
+      - name: Run npm audit and enforce the exact temporary baseline
+        shell: bash
+        run: |
+          set +e
+          npm audit --package-lock-only --json > npm-audit.json
+          audit_status=$?
+          set -e
+          NPM_AUDIT_EXIT_CODE="$audit_status" node scripts/security/npm-audit-policy.cjs \
+            npm-audit.json docs/security/npm-audit-accepted-risks.json
+  semgrep:
+    name: Semgrep PHP, JavaScript and web security
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - run: pipx install semgrep==1.156.0
+      - run: python3 scripts/security/semgrep-regression.py
+      - run: semgrep scan --error --strict --metrics=off --disable-version-check --config .semgrep/security.yml --config p/php --config p/javascript --config p/owasp-top-ten --exclude vendor --exclude node_modules --exclude libspech --exclude docs --exclude scripts/performance --exclude '*.sh' --exclude filemanagerctl
+  tooling:
+    name: Gitleaks, ShellCheck and workflow validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: '1.24.7'
+          cache: false
+      - run: go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+      - run: go install github.com/zricethezav/gitleaks/v8@v8.28.0
+      - run: actionlint -color
+      - run: git ls-files -z '*.sh' filemanagerctl | xargs -0 shellcheck --severity=warning
+      - name: Verify historical baseline and secret detection regressions
+        run: python3 scripts/security/gitleaks_regression.py
+      - name: Full history secret scan with reviewed revoked-credential baseline
+        run: python3 scripts/security/gitleaks_scan.py

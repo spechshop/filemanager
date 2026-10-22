@@ -26,7 +26,16 @@
             if (!response.ok) {
                 throw new Error(`Request failed with status: ${response.status}`);
             }
-            return await response.json();
+            const data = await response.json();
+            if (data.success && typeof data.currentPath === 'string') {
+                const current = document.getElementById('pathInvisible');
+                if (current && current.textContent !== data.currentPath) {
+                    current.textContent = data.currentPath;
+                    localStorage.setItem('pathInvisible', data.currentPath);
+                    FMUI.breadcrumbs(document.getElementById('visualPath'), data.currentPath, setPath);
+                }
+            }
+            return data;
         } catch (error) {
             console.error('Error during GET request:', error);
             throw error;
@@ -81,22 +90,22 @@
                         ws.send(JSON.stringify({token: token || $('#fp').text()}));
                     }
                 }, 1000);
-                $('#totalDisk').html(`${data['disk']['total_space']} ${data['disk']['unit']}`);
-                $('#diskUsed').html(`${data['disk']['used_space']} ${data['disk']['unit']}`);
-                $('#freeDisk').html(`${data['disk']['free_space']} ${data['disk']['unit']}`);
+                $('#totalDisk').text(`${data['disk']['total_space']} ${data['disk']['unit']}`);
+                $('#diskUsed').text(`${data['disk']['used_space']} ${data['disk']['unit']}`);
+                $('#freeDisk').text(`${data['disk']['free_space']} ${data['disk']['unit']}`);
                 $('#progressDisk').css('width', `${data['disk']['used_percentage']}%`);
                 $('#progressDisk').attr('class', `progress-bar ${data['disk']['background']}`);
 
-                $('#totalMem').html(`${data['memory']['total_mem']} ${data['memory']['unit']}`);
-                $('#memUsed').html(`${data['memory']['used_mem']} ${data['memory']['unit']}`);
-                $('#memFree').html(`${data['memory']['free_mem']} ${data['memory']['unit']}`);
+                $('#totalMem').text(`${data['memory']['total_mem']} ${data['memory']['unit']}`);
+                $('#memUsed').text(`${data['memory']['used_mem']} ${data['memory']['unit']}`);
+                $('#memFree').text(`${data['memory']['free_mem']} ${data['memory']['unit']}`);
                 $('#progressMem').css('width', `${data['memory']['used_percentage']}%`);
                 $('#progressMem').attr('class', `progress-bar ${data['memory']['background']}`);
 
-                $('#cpuName').html(data['cpu']['name']);
-                $('#cpuUsed').html(`${data['cpu']['usage']} %`);
+                $('#cpuName').text(data['cpu']['name']);
+                $('#cpuUsed').text(`${data['cpu']['usage']} %`);
                 $('#progressCpu').css('width', `${data['cpu']['usage']}%`);
-                $('#freeCpu').html(`${parseFloat(100 - data['cpu']['usage'])} %`);
+                $('#freeCpu').text(`${parseFloat(100 - data['cpu']['usage'])} %`);
                 $('#progressCpu').attr('class', `progress-bar ${data['cpu']['background']}`);
             }
         };
@@ -266,30 +275,30 @@
                 !(iconSrc.includes('://')) ? 'img/' : ''
 
             }${iconSrc}" width="26" alt="icon">`;
-            if (['png', 'jpg'].includes(ext)) iconFile = `<img src="imageBase64?tokenBrowser=${$('#fp').text()}&path=${item.path}" width="26" alt="icon">`;
+            if (['png', 'jpg'].includes(ext)) iconFile = `<img src="imageBase64?tokenBrowser=${$('#fp').text()}&path=${encodeURIComponent(item.path)}" width="26" alt="icon">`;
 
             const tr = document.createElement('tr');
 
             const tdCheck = document.createElement('td');
             tdCheck.classList.add('text-white');
 
-            tdCheck.innerHTML = `<input type="checkbox" class="form-check-input checkboxFileList" value="'${item.path}'">`;
+            tdCheck.innerHTML = `<input type="checkbox" class="form-check-input checkboxFileList" value="${FMUI.html(item.path)}">`;
             tr.appendChild(tdCheck);
 
             const tdName = document.createElement('td');
             tdName.setAttribute('fullpath', item.path);
             tdName.style = 'max-width: 100px; height: 10px !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
-            const nameHtml = `<span class="text-white" style="width: 20px;overflow: hidden;white-space: nowrap;text-overflow: ellipsis;flex-grow: 1;">${item.name}</span>`;
+            const nameHtml = `<span class="text-white" style="width: 20px;overflow: hidden;white-space: nowrap;text-overflow: ellipsis;flex-grow: 1;">${FMUI.html(item.name)}</span>`;
 
             if (item.typeFile === 'folder') {
-                tdName.innerHTML = `<div onclick="setPath('${item.path}')">${iconFile} &nbsp;&nbsp; ${nameHtml}</div>`;
+                tdName.innerHTML = `<div onclick="setPath(${FMUI.argument(item.path)})">${iconFile} &nbsp;&nbsp; ${nameHtml}</div>`;
             } else if (item.isImage || item.isMedia) {
                 allImagePaths.push(item.path); // acumula para navegação
 
 
-                tdName.innerHTML = `<div onclick="showImage('${item.path}')">${iconFile} &nbsp;&nbsp; ${nameHtml}</div>`;
+                tdName.innerHTML = `<div onclick="showImage(${FMUI.argument(item.path)})">${iconFile} &nbsp;&nbsp; ${nameHtml}</div>`;
             } else {
-                tdName.innerHTML = `<div onclick="showEditor('${ext}', '${item.path}')">${iconFile} &nbsp;&nbsp; ${nameHtml}</div>`;
+                tdName.innerHTML = `<div onclick="showEditor(${FMUI.argument(ext)}, ${FMUI.argument(item.path)})">${iconFile} &nbsp;&nbsp; ${nameHtml}</div>`;
             }
             tr.appendChild(tdName);
 
@@ -325,10 +334,10 @@
             actions.classList.add('text-white');
             actions.style = 'max-width: 50px;';
             if (ext !== 'folder') {
-                actions.innerHTML = `<a class="btn btn-info" onclick="downloadFile('${item.path}')"><i class="fa-regular fa-download"></i></a>`;
+                actions.innerHTML = `<a class="btn btn-info" onclick="downloadFile(${FMUI.argument(item.path)})"><i class="fa-regular fa-download"></i></a>`;
             }
-            actions.innerHTML += `&nbsp;<a class="btn btn-danger" onclick="deleteFile('${item.path}')"><i class="fa-regular fa-trash"></i></a>`;
-            actions.innerHTML += `&nbsp;<a class="btn btn-warning" onclick="renameItem('${item.path}')"><i class="fa-regular fa-edit"></i></a>`;
+            actions.innerHTML += `&nbsp;<a class="btn btn-danger" onclick="deleteFile(${FMUI.argument(item.path)})"><i class="fa-regular fa-trash"></i></a>`;
+            actions.innerHTML += `&nbsp;<a class="btn btn-warning" onclick="renameItem(${FMUI.argument(item.path)})"><i class="fa-regular fa-edit"></i></a>`;
             tr.appendChild(actions);
 
             tbody.appendChild(tr);
@@ -615,23 +624,14 @@
 
     function setPath(path) {
         localStorage.setItem('pathInvisible', path);
-        document.getElementById('pathInvisible').innerHTML = path;
+        document.getElementById('pathInvisible').textContent = path;
 
-        const splitPath = path.split('/');
-        splitPath.forEach(function (item, index) {
-            if (index === 0) {
-                document.getElementById('visualPath').innerHTML = `<span class="text-white"></span> <a class="text-secondary" onclick="setPath('/')">${item}</a>`;
-            } else if (index === splitPath.length - 1) {
-                document.getElementById('visualPath').innerHTML += `<span class="text-white">&nbsp;/</span> <span class="text-blue">${item}</span>`;
-            } else {
-                document.getElementById('visualPath').innerHTML += `<span class="text-white">&nbsp;/</span> <a class="text-secondary" onclick="setPath('${splitPath.slice(0, index + 1).join('/')}')">${item}</a>`;
-            }
-        });
+        FMUI.breadcrumbs(document.getElementById('visualPath'), path, setPath);
         adjustPath()
     }
 
     function backPath() {
-        const path = document.getElementById('pathInvisible').innerHTML;
+        const path = document.getElementById('pathInvisible').textContent;
         const splitPath = path.split('/');
         if (splitPath.length > 1) {
             splitPath.pop();
@@ -643,7 +643,7 @@
         if (true) {
             $('#modalFileCompress').modal('show');
             const namefile = path.split('/').pop();
-            $('#nameFileUncompress').html(`(&nbsp;<img src="img/zip.png" width="26" alt="icon">&nbsp;${namefile}&nbsp;<span class="ml-2 badge bg-danger rounded-pill badge-notifications" id="totalFilesCompress">0</span>&nbsp;)`);
+            $('#nameFileUncompress').html(`(&nbsp;<img src="img/zip.png" width="26" alt="icon">&nbsp;${FMUI.html(namefile)}&nbsp;<span class="ml-2 badge bg-danger rounded-pill badge-notifications" id="totalFilesCompress">0</span>&nbsp;)`);
             const realpath = path.split('/').slice(0, -1).join('/') + '/' + namefile;
             const spinnerPulse = `<div class="spinner-grow" role="status"><span class="visually-hidden"></span></div>`;
             const namePathToExtract = path.split('/').slice(0, -1).join('/') + '/' + namefile.split('.').slice(0, -1).join('.');
@@ -695,7 +695,7 @@
                         if (extension === 'Gemfile') iconFileCompress = `<img src="img/diamond.png" width="26" alt="icon">`;
                         if (extension === 'Makefile') iconFileCompress = `<img src="img/letter-m.png" width="26" alt="icon">`;
                         if (extension === 'eps') iconFileCompress = `<img src="img/photoshop-camera.png" width="26" alt="icon">`;
-                        listElementBuffer.push(`<li class="list-group-item">${iconFileCompress} &nbsp;&nbsp;${data['list'][i]}</li>`);
+                        listElementBuffer.push(`<li class="list-group-item">${iconFileCompress} &nbsp;&nbsp;${FMUI.html(data['list'][i])}</li>`);
                     }
                     if (data['list'].length > 6) $('#scrollToEndButtonFather').css('display', 'block');
                     else $('#scrollToEndButtonFather').css('display', 'none');
@@ -719,7 +719,7 @@
         $('#nameFileModalMedia').text(path);
         const token = $('#fp').text();
         const ext = path.split('.').pop().toLowerCase();
-        const url = `imageBase64?tokenBrowser=${token}&path=${path}`;
+        const url = `imageBase64?tokenBrowser=${token}&path=${encodeURIComponent(path)}`;
         const mediaFileList = Array.isArray(window.fileList) ? window.fileList : [];
         const currentIndex = mediaFileList.indexOf(path);
 
@@ -737,10 +737,10 @@
 <div class="modern-audio-container">
 <dotlottie-player class="modern-audio-artwork" src="https://lottie.host/ca316c43-00ba-458e-9070-f94fb0a10c1a/yBA3TkFfHx.json" background="transparent" speed="1" loop autoplay></dotlottie-player>
 <div class="modern-audio-details">
-<p class="modern-audio-filename">${getFilename(path)}</p>
+<p class="modern-audio-filename">${FMUI.html(getFilename(path))}</p>
 <div class="native-audio-player-frame">
 <audio class="native-audio-player" controls preload="metadata">
-<source src="imageBase64?tokenBrowser=${token}&path=${encodeURI(path)}" type="audio/${ext}">
+<source src="imageBase64?tokenBrowser=${token}&path=${encodeURIComponent(path)}" type="audio/${ext}">
 Seu navegador não oferece suporte ao player de áudio.
 </audio>
 </div>
@@ -765,11 +765,11 @@ Seu navegador não oferece suporte ao player de áudio.
         const thumb = (idx) => {
             const file = mediaFileList[idx];
             if (!file) return '';
-            let thumbUrl = `imageBase64?tokenBrowser=${token}&path=${file}`;
+            let thumbUrl = `imageBase64?tokenBrowser=${token}&path=${encodeURIComponent(file)}`;
             let fll = getFilename(file).split('.')[getFilename(file).split('.').length-1].toLowerCase();
 
             if (fll === 'mp3' || fll === 'wav' || fll === 'ogg') {
-              return `<div style="width:50px;height:50px;border-radius:10px;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.3s ease;border:${file === path ? '3px solid #fff' : '2px solid rgba(255,255,255,0.3)'};box-shadow:0 5px 15px rgba(0,0,0,0.3);" onclick="showImage('${file}')" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"><dotlottie-player src="https://lottie.host/5c96eef4-376a-4d90-bb27-9af56f5e2c2e/8K1HJaNgmj.lottie" background="transparent" speed="1" style="width:30px;height:30px;" loop autoplay></dotlottie-player></div>`;
+              return `<div style="width:50px;height:50px;border-radius:10px;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.3s ease;border:${file === path ? '3px solid #fff' : '2px solid rgba(255,255,255,0.3)'};box-shadow:0 5px 15px rgba(0,0,0,0.3);" onclick="showImage(${FMUI.argument(file)})" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"><dotlottie-player src="https://lottie.host/5c96eef4-376a-4d90-bb27-9af56f5e2c2e/8K1HJaNgmj.lottie" background="transparent" speed="1" style="width:30px;height:30px;" loop autoplay></dotlottie-player></div>`;
 
             }
 
@@ -777,18 +777,18 @@ Seu navegador não oferece suporte ao player de áudio.
 
 
             if (fll === 'mp4' || fll === 'webm' || fll === 'ogg') {
-                thumbUrl = `getPreview?tokenBrowser=${token}&path=${file}`;
+                thumbUrl = `getPreview?tokenBrowser=${token}&path=${encodeURIComponent(file)}`;
             } else if (fll === 'mp3' || fll === 'wav' || fll === 'ogg') {
-                let anim = `<div style="width:50px;height:50px;border-radius:10px;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.3s ease;border:${file === path ? '3px solid #fff' : '2px solid rgba(255,255,255,0.3)'};box-shadow:0 5px 15px rgba(0,0,0,0.3);" onclick="showImage('${file}')" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"><dotlottie-player src="https://lottie.host/5c96eef4-376a-4d90-bb27-9af56f5e2c2e/8K1HJaNgmj.lottie" background="transparent" speed="1" style="width:30px;height:30px;" loop autoplay></dotlottie-player></div>`;
+                let anim = `<div style="width:50px;height:50px;border-radius:10px;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.3s ease;border:${file === path ? '3px solid #fff' : '2px solid rgba(255,255,255,0.3)'};box-shadow:0 5px 15px rgba(0,0,0,0.3);" onclick="showImage(${FMUI.argument(file)})" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"><dotlottie-player src="https://lottie.host/5c96eef4-376a-4d90-bb27-9af56f5e2c2e/8K1HJaNgmj.lottie" background="transparent" speed="1" style="width:30px;height:30px;" loop autoplay></dotlottie-player></div>`;
                 return anim;
             } else if (isImageExtension(fll)) {
-                thumbUrl = `imageBase64?tokenBrowser=${token}&path=${file}`;
+                thumbUrl = `imageBase64?tokenBrowser=${token}&path=${encodeURIComponent(file)}`;
             } else {
                 thumbUrl = `img/desconhecido.png`;
             }
 
 
-            return `<img src="${thumbUrl}" style="width:50px;height:50px;object-fit:cover;border-radius:10px;cursor:pointer;border:${file === path ? '3px solid #fff' : '2px solid rgba(255,255,255,0.3)'};transition:all 0.3s ease;box-shadow:0 5px 15px rgba(0,0,0,0.3);" onclick="showImage('${file}')" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">`;
+            return `<img src="${thumbUrl}" style="width:50px;height:50px;object-fit:cover;border-radius:10px;cursor:pointer;border:${file === path ? '3px solid #fff' : '2px solid rgba(255,255,255,0.3)'};transition:all 0.3s ease;box-shadow:0 5px 15px rgba(0,0,0,0.3);" onclick="showImage(${FMUI.argument(file)})" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">`;
         };
 
         thumbNav.innerHTML = `

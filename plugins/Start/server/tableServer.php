@@ -20,6 +20,6 @@ class tableServer extends Table
      * @return bool
      */
      public function setData(string $identifier, string $data): bool {
-        
+        return $this->set($identifier, ['identifier' => $identifier, 'data' => $data]);
      }
 }

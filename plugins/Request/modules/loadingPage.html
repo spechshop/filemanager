@@ -57,26 +57,29 @@
 
     async function fetchFileTree(path = '/') {
         const response = await fetch(`/treeDetails?dir=${encodeURIComponent(path)}&tokenBrowser=${$('#fp').text()}`);
+        const root = response.headers.get('X-FileManager-Root');
+        if (root) window.FileManagerWorkspaceRoot = root.replace(/\/+$/, '') + '/';
         return await response.json();
     }
 
     async function buildTreeHtml(tree, path) {
+        if (path === '/' && window.FileManagerWorkspaceRoot) path = window.FileManagerWorkspaceRoot;
         let html = '<ul>';
         for (const key in tree) {
             if (typeof tree[key] === 'object') {
                 html += `
-                        <li class="folder" data-path="${path + key}/">
-                            <i class="fas fa-folder icon"></i>${key}
+                        <li class="folder" data-path="${FMUI.html(path + key)}/">
+                            <i class="fas fa-folder icon"></i>${FMUI.html(key)}
                         </li>
                         <ul class="hidden"></ul>`;
             } else {
-                html += `<li file-path="${path + tree[key]}" class="file" onclick="(function (){
-    $('#hiddenFileEdit').text('${path + tree[key]}');
-    $('#namefilemodaledit').text('${path + tree[key]}');
-    $('#nameFileForEdit').text('${tree[key]}');
+                html += `<li file-path="${FMUI.html(path + tree[key])}" class="file" onclick="(function (){
+    $('#hiddenFileEdit').text(${FMUI.argument(path + tree[key])});
+    $('#namefilemodaledit').text(${FMUI.argument(path + tree[key])});
+    $('#nameFileForEdit').text(${FMUI.argument(tree[key])});
 })();">
     ${getIconFile(tree[key])}&nbsp;
-    ${tree[key]}
+    ${FMUI.html(tree[key])}
 </li>`;
             }
         }

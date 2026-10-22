@@ -12,7 +12,11 @@ class server
         $path = $request->server['path_info'];
         $response->header('Content-Type', 'application/json');
         // liberar cors
-        $response->header('Access-Control-Allow-Origin', '*');
+        $response->header('X-Content-Type-Options', 'nosniff');
+        $response->header('Referrer-Policy', 'no-referrer');
+        $response->header('X-Frame-Options', 'DENY');
+        $response->header('Content-Security-Policy', "object-src 'none'; base-uri 'self'; frame-ancestors 'none'");
+        if (!securityPolicy::originAllowed($request)) return security::deny($response);
 
 
         

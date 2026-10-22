@@ -1,0 +1,16 @@
+title = "FileManager secret detection"
+[extend]
+useDefault = true
+
+[[rules]]
+id = "filemanager-token-store"
+description = "Authentication token in a Lotus token record"
+regex = '''["']([a-fA-F0-9]{24,128})["']\s*:\s*\{\s*["'](?:nameClient|expire|dateCreate)["']'''
+secretGroup = 1
+
+[[rules]]
+id = "filemanager-proxy-credential"
+description = "Literal proxy credential, including disabled/commented configuration"
+regex = '''(?i)CURLOPT_PROXYUSERPWD\s*(?:=>|,)\s*["']([^"'\r\n]{3,})["']'''
+secretGroup = 1
+path = '''(?i)\.php$'''

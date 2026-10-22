@@ -22,12 +22,15 @@
 // proc_open com suporte a PTY (Linux) e o utilitário "stty" para resize.
 // =====================================================================
 
+require_once __DIR__ . '/plugins/Request/components/appController.php';
+require_once __DIR__ . '/plugins/Request/components/securityPolicy.php';
+use plugins\Request\securityPolicy;
 use Swoole\WebSocket\Server;
 use Swoole\Http\Request;
 use Swoole\WebSocket\Frame;
 
 const PTY_HOST         = '127.0.0.1';
-const PTY_PORT         = 6060;
+define('PTY_PORT', (int) (getenv('FILEMANAGER_PTY_PORT') ?: 6060));
 const OUTPUT_CACHE_SIZE = 50000; // bytes mantidos por terminal para replay
 const TERMINALS_FILE   = './terminals.json';
 const DEFAULT_COLS     = 220;
@@ -79,6 +82,7 @@ function saveTerminalsToFile(array $ids): void
 {
     try {
         file_put_contents(TERMINALS_FILE, json_encode(array_values($ids), JSON_PRETTY_PRINT));
+        chmod(TERMINALS_FILE, 0600);
     } catch (\Throwable $e) {
         fwrite(STDERR, 'Error saving terminals file: ' . $e->getMessage() . "\n");
     }
@@ -96,6 +100,7 @@ function terminalEnvironment(): array
         $env = [];
     }
 
+    unset($env['FILEMANAGER_BRIDGE_SECRET'], $env['CODEX_ACCESS_TOKEN']);
     $preferredBins = [
         __DIR__ . '/.runtime/node/bin',
         __DIR__ . '/.runtime/codex/bin',
@@ -129,7 +134,6 @@ function createNewTerminal(Server $server, string $token): bool
     $pipes = [];
     $proc  = @proc_open($shell, $descriptorspec, $pipes, $filesDir, $env);
     if (!is_resource($proc)) {
-        fwrite(STDERR, "[pty.php] Falha ao abrir PTY para $token\n");
         return false;
     }
 
@@ -173,7 +177,6 @@ function createNewTerminal(Server $server, string $token): bool
         saveTerminalsToFile($GLOBALS['terminalIds']);
     }
 
-    echo "New session created for {$token}\n";
     return true;
 }
 
@@ -185,6 +188,7 @@ function onMasterReadable(Server $server, string $token, $master): void
         return;
     }
 
+    if (!securityPolicy::validToken(securityPolicy::socketOwner($token))) { closeTerminal($token); return; }
     $data = @fread($master, 65536);
 
     // EOF / processo encerrado: limpar a sessão.
@@ -257,13 +261,15 @@ function applyResize(string $token, int $cols, int $rows): void
 // Encerra explicitamente (closeXtermHandlerCommand).
 function closeTerminal(string $token): void
 {
+    global $server;
+    $fd = $GLOBALS['sessions'][$token]['fd'] ?? null;
+    if (is_int($fd) && $server->isEstablished($fd)) $server->disconnect($fd, 1008, 'Terminal closed');
     destroyTerminal($token);
     $GLOBALS['terminalIds'] = array_values(array_filter(
         $GLOBALS['terminalIds'],
         static fn($id) => $id !== $token
     ));
     saveTerminalsToFile($GLOBALS['terminalIds']);
-    echo "Session for {$token} closed\n";
 }
 
 // Libera recursos de um terminal (sem mexer no terminals.json).
@@ -307,10 +313,10 @@ $server->on('open', function (Server $server, Request $request) {
     $uri   = $request->server['request_uri'] ?? '/';
     $token = ltrim($uri, '/');
 
+    if (!securityPolicy::bridgeAllowed($request, $token)) { securityPolicy::log('connection_denied', 'pty'); $server->disconnect($request->fd, 1008, 'Unauthorized'); return; }
     $GLOBALS['fdToToken'][$request->fd] = $token;
 
     if (isset($GLOBALS['sessions'][$token]) && isProcAlive($token)) {
-        echo "Resuming session for {$token}\n";
         $GLOBALS['sessions'][$token]['fd'] = $request->fd;
         // Replay do cache para o cliente reconectado ver o contexto.
         if (!empty($GLOBALS['sessions'][$token]['cache'])) {
@@ -320,7 +326,6 @@ $server->on('open', function (Server $server, Request $request) {
     }
 
     if (isset($GLOBALS['sessions'][$token])) {
-        echo "Session for {$token} was dead. Creating a new one.\n";
         destroyTerminal($token);
     }
 
@@ -335,9 +340,9 @@ $server->on('message', function (Server $server, Frame $frame) {
         return;
     }
 
+    if (!securityPolicy::validToken(securityPolicy::socketOwner($token))) { closeTerminal($token); return; }
     $cmdStr = $frame->data;
     $trim   = trim($cmdStr);
-    echo "Command from {$token}: " . substr($cmdStr, 0, 80) . "\n";
 
     // Mantém o fd atual associado (reconexões).
     $GLOBALS['sessions'][$token]['fd'] = $frame->fd;
@@ -363,14 +368,12 @@ $server->on('message', function (Server $server, Frame $frame) {
             $newCols = (int) $trim;
             if ($newCols > 0) {
                 applyResize($token, $newCols, $GLOBALS['sessions'][$token]['rows']);
-                echo "Resized {$token}: cols={$newCols}\n";
                 $GLOBALS['sessions'][$token]['termcw'] = 1;
             }
         } elseif ($termcw === 1) {
             $newRows = (int) $trim;
             if ($newRows > 0) {
                 applyResize($token, $GLOBALS['sessions'][$token]['cols'], $newRows);
-                echo "Resized {$token}: rows={$newRows}\n";
                 $GLOBALS['sessions'][$token]['termcw'] = 0;
             }
         }
@@ -390,8 +393,12 @@ $server->on('close', function (Server $server, int $fd) {
         if (($GLOBALS['sessions'][$token]['fd'] ?? null) === $fd) {
             $GLOBALS['sessions'][$token]['fd'] = null;
         }
-        echo "Client {$token} disconnected (session kept alive)\n";
     }
 });
 
+$server->on('WorkerStart', static function () {
+    \Swoole\Timer::tick(500, static function () {
+        foreach (array_keys($GLOBALS['sessions']) as $token) if (!securityPolicy::validToken(securityPolicy::socketOwner($token))) closeTerminal($token);
+    });
+});
 $server->start();

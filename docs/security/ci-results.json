@@ -1,0 +1,62 @@
+{
+  "status": "completed",
+  "conclusion": "failure",
+  "headSha": "93db8116b0829a64c10ab5e8726d10dd4f92d50f",
+  "url": "https://github.com/spechshop/filemanager/actions/runs/39710201296",
+  "createdAt": "2026-10-22T02:13:36Z",
+  "note": "Code revision verified on GitHub. Overall failure is intentional until npm advisories and historical credentials are treated.",
+  "jobs": [
+    {
+      "name": "Semgrep PHP, JavaScript and web security",
+      "conclusion": "success",
+      "url": "https://github.com/spechshop/filemanager/actions/runs/39710201296/job/119599454329",
+      "failedSteps": []
+    },
+    {
+      "name": "Real Swoole HTTP, WebSocket and PHP PTY regressions",
+      "conclusion": "success",
+      "url": "https://github.com/spechshop/filemanager/actions/runs/39710201296/job/119599454509",
+      "failedSteps": []
+    },
+    {
+      "name": "PHP 8.4 syntax, static analysis and regressions",
+      "conclusion": "success",
+      "url": "https://github.com/spechshop/filemanager/actions/runs/39710201296/job/119599454572",
+      "failedSteps": []
+    },
+    {
+      "name": "Composer and npm advisories (blocking)",
+      "conclusion": "failure",
+      "url": "https://github.com/spechshop/filemanager/actions/runs/39710201296/job/119599454583",
+      "failedSteps": [
+        "Run npm audit --package-lock-only"
+      ]
+    },
+    {
+      "name": "PHP 8.3 syntax, static analysis and regressions",
+      "conclusion": "success",
+      "url": "https://github.com/spechshop/filemanager/actions/runs/39710201296/job/119599454584",
+      "failedSteps": []
+    },
+    {
+      "name": "Gitleaks, ShellCheck and workflow validation",
+      "conclusion": "failure",
+      "url": "https://github.com/spechshop/filemanager/actions/runs/39710201296/job/119599454606",
+      "failedSteps": [
+        "Full history secret scan; always redact findings"
+      ]
+    },
+    {
+      "name": "PHP 8.5 syntax, static analysis and regressions",
+      "conclusion": "success",
+      "url": "https://github.com/spechshop/filemanager/actions/runs/39710201296/job/119599454608",
+      "failedSteps": []
+    },
+    {
+      "name": "Browser and real Node PTY regressions",
+      "conclusion": "success",
+      "url": "https://github.com/spechshop/filemanager/actions/runs/39710201296/job/119599454641",
+      "failedSteps": []
+    }
+  ]
+}

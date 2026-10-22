@@ -1,15 +1,26 @@
 {
   "require": {
-    "symfony/translation-contracts": "*",
-    "varunsridharan/php-classmap-generator": "*",
-    "soyhuce/classmap-generator": "*",
-    "nikic/php-parser": "*",
+    "symfony/translation-contracts": "^3.7",
+    "varunsridharan/php-classmap-generator": "^1.2",
+    "nikic/php-parser": "^5.9",
     "ext-zip": "*",
     "ext-swoole": "*",
-    "ext-sockets": "*"
+    "ext-sockets": "*",
+    "php": "^8.3",
+    "composer/class-map-generator": "^1.6"
   },
   "require-dev": {
     "phpstan/phpstan": "^2.1",
     "swoole/ide-helper": "^6.0"
-  }
+  },
+  "config": {
+    "platform": {
+      "php": "8.3.0"
+    },
+    "allow-plugins": false,
+    "sort-packages": true
+  },
+  "name": "spechshop/filemanager",
+  "description": "File manager and remote terminal using PHP CLI, Swoole and Node.js",
+  "type": "project"
 }

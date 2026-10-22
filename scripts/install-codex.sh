@@ -266,7 +266,8 @@ else
     ok "Usando $NODE_BIN ($($NODE_BIN --version))."
 fi
 
-export PATH="$(dirname -- "$NODE_BIN"):$CODEX_PREFIX/bin:${PATH:-}"
+PATH="$(dirname -- "$NODE_BIN"):$CODEX_PREFIX/bin:${PATH:-}"
+export PATH
 
 if [ -f "$(dirname -- "$NODE_BIN")/../lib/node_modules/npm/bin/npm-cli.js" ]; then
     NPM_CLI="$(dirname -- "$NODE_BIN")/../lib/node_modules/npm/bin/npm-cli.js"

@@ -97,7 +97,7 @@
         for (let i = 0; i < list.length; i++) {
             // Verifica se o checkbox está marcado E se o elemento está visível
             if (list[i].children[0].children[0].checked && list[i].style.display !== 'none') {
-                const file = list[i].children[0].children[0].value.split('item-')[0].split(' (')[0].replaceAll("'", '')
+                const file = list[i].children[0].children[0].value
                 files.push(file);
             }
         }
@@ -285,16 +285,16 @@
             if (schemaList[i].type === 'folder') {
                 let pathOnList = schemaList[i]['path'];
                 list.innerHTML += `<li onclick="(() => {
-            setPath('${pathOnList}');
+            setPath(${FMUI.argument(pathOnList)});
             htmlFoldersListSwall();
             cutCopy();
 })()" class="list-group-item d-flex justify-content-between" style="margin-left: 10%;background-color: rgba(0, 0, 0, .3) !important; color: white; border-color: transparent; border-radius: 4px">
          <div class="d-flex flex-row">
             <img src="img/pasta-aberta.png" width="40" height="40" alt="icon" class="mt-1">
             <div>
-               <span class="mb-1" style="margin-top: -60px !important;">&nbsp;&nbsp;${schemaList[i]['name']}</span>
+               <span class="mb-1" style="margin-top: -60px !important;">&nbsp;&nbsp;${FMUI.html(schemaList[i]['name'])}</span>
                <div class="about">&nbsp;&nbsp;
-                  <span>${schemaList[i]['path']}</span>
+                  <span>${FMUI.html(schemaList[i]['path'])}</span>
                </div>
             </div>
          </div>
@@ -303,7 +303,7 @@
         }
         const pathUsingBack = pathUsing.split('/').slice(0, -1).join('/');
         const buttonBack = invisibleTmp.querySelector('#backButtonSwallTmp');
-        buttonBack.innerHTML = `<button onclick="setPath('${pathUsingBack}');  htmlFoldersListSwall(); cutCopy();"  type="button" class="btn btn-primary d-flex align-items-center">
+        buttonBack.innerHTML = `<button onclick="setPath(${FMUI.argument(pathUsingBack)});  htmlFoldersListSwall(); cutCopy();"  type="button" class="btn btn-primary d-flex align-items-center">
         <dotlottie-player src="img/arrows.json" background="transparent" speed="1" style="width: 30px; height: 30px;" loop autoplay></dotlottie-player>
         <span style="font-size: 20px;">Voltar</span>
     </button>`;

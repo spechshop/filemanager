@@ -1,0 +1,86 @@
+PASS delete denied without effects: missing
+PASS freeRam denied without command: missing
+PASS delete denied without effects: invalid
+PASS freeRam denied without command: invalid
+PASS delete denied without effects: expired
+PASS freeRam denied without command: expired
+PASS delete denied without effects: revoked
+PASS freeRam denied without command: revoked
+PASS array credential denied without errors or effects
+PASS Git transport/injection denied without launching process
+PASS Git transport/injection denied without launching process
+PASS Git transport/injection denied without launching process
+PASS Git transport/injection denied without launching process
+PASS Git transport/injection denied without launching process
+PASS Git transport/injection denied without launching process
+PASS Git transport/injection denied without launching process
+PASS Git transport/injection denied without launching process
+PASS direct handler denies before work: chat4o
+PASS direct handler denies before work: checkToken
+PASS direct handler denies before work: codeGenerate
+PASS direct handler denies before work: codeInfo
+PASS direct handler denies before work: codex
+PASS direct handler denies before work: compressMultipleFiles
+PASS direct handler denies before work: cutCopy
+PASS direct handler denies before work: decompressFile
+PASS direct handler denies before work: deleteFile
+PASS direct handler denies before work: deleteMultipleFiles
+PASS direct handler denies before work: deleteTerminal
+PASS direct handler denies before work: downloadFile
+PASS direct handler denies before work: fileManagerDiagnostics
+PASS direct handler denies before work: fileManagerServices
+PASS direct handler denies before work: fileManagerSettings
+PASS direct handler denies before work: fileManagerSystem
+PASS direct handler denies before work: formatCode
+PASS direct handler denies before work: freeRam
+PASS direct handler denies before work: getArchiveDetails
+PASS direct handler denies before work: getFile
+PASS direct handler denies before work: getPreview
+PASS direct handler denies before work: getTerminals
+PASS direct handler denies before work: imageBase64
+PASS direct handler denies before work: imageBase643
+PASS direct handler denies before work: importGit
+PASS direct handler denies before work: newFile
+PASS direct handler denies before work: phpParser
+PASS direct handler denies before work: phpParserBackup
+PASS direct handler denies before work: phpstanCheck
+PASS direct handler denies before work: refactorFile
+PASS direct handler denies before work: renameItem
+PASS direct handler denies before work: saveTerminal
+PASS direct handler denies before work: schemaPath
+PASS direct handler denies before work: searchInFile
+PASS direct handler denies before work: stub
+PASS direct handler denies before work: syncPath
+PASS direct handler denies before work: toggleStubsPath
+PASS direct handler denies before work: treeDetails
+PASS direct handler denies before work: uploadFile
+PASS complete HTTP handler inventory loaded (no silent skips)
+PASS conflicting credentials cannot choose another owner
+PASS cross-owner metadata write leaves session unchanged
+PASS scoped token cannot read another workspace
+PASS scoped file credential cannot execute system commands
+PASS revocation during policy IO cannot fall back to global filesystem scope
+PASS download outside denied without disclosure
+PASS outside deletion denied without effects
+PASS download outside denied without disclosure
+PASS outside deletion denied without effects
+PASS download outside denied without disclosure
+PASS outside deletion denied without effects
+PASS symlink escape denied without disclosure
+PASS write outside denied without creation
+PASS cross-origin deletion denied without effects
+PASS invalid multipart filename leaves source/destination intact
+PASS invalid multipart filename leaves source/destination intact
+PASS invalid multipart filename leaves source/destination intact
+PASS upload destination outside denied without moving temp file
+PASS rename escape leaves source intact
+PASS move escape leaves source intact
+PASS workspace root cannot be deleted
+PASS late invalid batch item does not create trash or move earlier files
+PASS authorized batch deletion at workspace root preserved
+PASS recursive symlink preflight leaves entire directory intact
+PASS shell metacharacters are literal filename data
+PASS authorized deletion uses filesystem without shell
+PASS revocation after successful use is observed immediately
+PASS authorized download preserved
+85 assertions, 0 failures

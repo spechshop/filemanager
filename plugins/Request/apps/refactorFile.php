@@ -10,9 +10,7 @@ class refactorFile
 {
     public static function api(Request $request, Response $response): bool
     {
-        if (!security::verifyToken($request)) {
-            return security::invalidToken($response);
-        }
+        if (!security::authorize($request, $response)) return true;
 
         $response->header('Content-Type', 'application/json');
         $data = json_decode($request->rawContent(), true);

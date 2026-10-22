@@ -1,4 +1,5 @@
 "use strict";
+const bridgeAuth = require('./scripts/security/bridge-auth.cjs');
 
 const { spawn } = require("node:child_process");
 const fs = require("node:fs");
@@ -47,6 +48,8 @@ const commandProcesses = new Set();
 const clients = new Set();
 const pendingRpc = new Map();
 const pendingServerRequests = new Map();
+const ThreadScope = require('./scripts/security/thread-scope.cjs');
+const threadScope = new ThreadScope(path.join(ROOT, '.runtime', 'codex-thread-owners.json'));
 const threadOwners = new Map();
 const threadWorkspaces = new Map();
 const activeTurns = new Map();
@@ -260,7 +263,7 @@ function publicPayload(value) {
 }
 
 function sendClient(client, payload) {
-    if (client.readyState !== WebSocket.OPEN) return;
+    if (client.readyState !== WebSocket.OPEN || !bridgeAuth.valid(client.authSession)) return;
     client.send(JSON.stringify(publicPayload(payload)));
 }
 
@@ -327,7 +330,7 @@ function containsAuthenticationRejection(value) {
 }
 
 function ownersForThread(threadId) {
-    if (!threadId) return clients;
+    if (!threadId) return new Set();
     return threadOwners.get(threadId) || new Set();
 }
 
@@ -335,6 +338,7 @@ function rememberThread(client, thread, workspace) {
     const threadId = thread?.id;
     if (!threadId) return;
     if (!threadOwners.has(threadId)) threadOwners.set(threadId, new Set());
+    threadScope.require(threadId, client.authSession);
     threadOwners.get(threadId).add(client);
     threadWorkspaces.set(threadId, workspace);
     const active = Array.isArray(thread.turns)
@@ -604,6 +608,7 @@ async function startCodex() {
 }
 
 function requireThread(client, threadId) {
+    threadScope.require(threadId, client.authSession);
     if (typeof threadId !== "string" || !threadOwners.get(threadId)?.has(client)) {
         throw new Error("Conversa do Codex inválida para esta conexão.");
     }
@@ -718,7 +723,7 @@ async function performAction(client, message) {
     }
 
     if (action === "thread.list") {
-        return rpc("thread/list", {
+        const result = await rpc("thread/list", {
             limit: 200,
             sortKey: "updated_at",
             sortDirection: "desc",
@@ -727,6 +732,7 @@ async function performAction(client, message) {
             // history remains compatible if Codex starts using that source.
             sourceKinds: ["vscode", "appServer"],
         });
+        return {...result, data: (result?.data || []).filter(thread => threadScope.allows(thread.id, client.authSession))};
     }
 
     if (action === "thread.start") {
@@ -737,11 +743,13 @@ async function performAction(client, message) {
             serviceName: "lotus_filemanager",
             ...threadPreferenceOverrides(message),
         });
+        threadScope.claim(result?.thread?.id, client.authSession);
         rememberThread(client, result?.thread, workspace);
         return result;
     }
 
     if (action === "thread.resume") {
+        threadScope.require(message.threadId, client.authSession);
         const workspace = resolveWorkspace(message.workspace);
         const result = await rpc("thread/resume", {
             threadId: message.threadId,
@@ -856,15 +864,16 @@ const wsServer = new WebSocketServer({ noServer: true, maxPayload: MAX_MESSAGE_B
 server.on("upgrade", (request, socket, head) => {
     const remote = request.socket.remoteAddress || "";
     const loopback = remote === "127.0.0.1" || remote === "::1" || remote === "::ffff:127.0.0.1";
-    if (request.url !== "/agent" || !loopback) {
+    if (request.url !== "/agent" || !loopback || !bridgeAuth.allowed(request, request.headers["x-filemanager-session"])) {
         socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
         socket.destroy();
         return;
     }
-    wsServer.handleUpgrade(request, socket, head, (client) => wsServer.emit("connection", client));
+    wsServer.handleUpgrade(request, socket, head, (client) => wsServer.emit("connection", client, request));
 });
 
-wsServer.on("connection", (client) => {
+wsServer.on("connection", (client, request) => {
+    client.authSession = request.headers["x-filemanager-session"];
     clients.add(client);
     client.isAlive = true;
     sendClient(client, {
@@ -883,6 +892,7 @@ wsServer.on("connection", (client) => {
     client.on("message", async (raw) => {
         let message;
         try {
+            if (!bridgeAuth.valid(client.authSession)) { client.close(1008, "Session expired"); return; }
             if (raw.length > MAX_MESSAGE_BYTES) throw new Error("Mensagem muito grande.");
             message = JSON.parse(raw.toString("utf8"));
             if (!message || typeof message !== "object" || typeof message.action !== "string") {
@@ -919,9 +929,12 @@ wsServer.on("connection", (client) => {
     });
 });
 
+const authTimer = setInterval(() => { for (const client of clients) if (!bridgeAuth.valid(client.authSession)) client.close(1008, "Session expired"); }, 500);
+authTimer.unref();
+
 const heartbeat = setInterval(() => {
     for (const client of clients) {
-        if (!client.isAlive) {
+        if (!bridgeAuth.valid(client.authSession) || !client.isAlive) {
             client.terminate();
             continue;
         }
