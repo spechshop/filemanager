@@ -12,5 +12,8 @@ PASS revoked active session cannot create terminal/send command
 PASS revoked reconnect has no replay or process
 PASS idle expiry actively disconnects and removes timer/binding
 PASS fd reused during credential IO cannot mutate or disconnect replacement session
+PASS null service flag cannot bypass scoped credential permissions: isCodex
+PASS null service flag cannot bypass scoped credential permissions: lsp
+PASS null service flag cannot bypass scoped credential permissions: codexAgent
 PASS reused connection cannot inherit prior owner
-15 assertions, 0 failures
+18 assertions, 0 failures

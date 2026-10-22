@@ -85,6 +85,17 @@ namespace {
         \plugins\server::message($server, $frame);
         check(!$server->closed && empty($GLOBALS['xterm']) && ($GLOBALS['websocketConnections'][1] ?? []) === $replacement, 'fd reused during credential IO cannot mutate or disconnect replacement session');
         unset($GLOBALS['securityOnRead']);
+        $tokens[$a]['terminal'] = false; file_put_contents($file, json_encode($tokens));
+        foreach (['isCodex', 'lsp', 'codexAgent'] as $flag) {
+            unset($GLOBALS['xterm'], $GLOBALS['lsp'], $GLOBALS['codexAgent']);
+            $server = openSocket($a . '-terminal');
+            $frame->data = json_encode(['token' => $a . '-terminal', $flag => null, 'command' => 'touch unauthorized', 'payload' => '{}']);
+            $threw = false;
+            try { \plugins\server::message($server, $frame); } catch (Throwable $e) { $threw = true; }
+            check(!$threw && isset($server->closed[1]) && empty($GLOBALS['xterm']) && empty($GLOBALS['lsp']) && empty($GLOBALS['codexAgent']), 'null service flag cannot bypass scoped credential permissions: ' . $flag);
+        }
+        unset($GLOBALS['xterm'], $GLOBALS['lsp'], $GLOBALS['codexAgent']);
+        unset($tokens[$a]['terminal']); file_put_contents($file, json_encode($tokens));
         // An fd reused after disconnect must never inherit the old credential.
         $server = openSocket($b . '-terminal');
         $frame->data = json_encode(['token' => $a . '-terminal', 'isCodex' => true, 'command' => 'touch unauthorized']);

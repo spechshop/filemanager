@@ -97,7 +97,7 @@ class server extends OpenConnection
             securityPolicy::log('message_denied', 'websocket');
             return $server->disconnect($frame->fd, 1008, 'Unauthorized');
         }
-        $privileged = isset($object['isCodex']) || isset($object['codexAgent']) || isset($object['lsp']);
+        $privileged = array_key_exists('isCodex', $object) || array_key_exists('codexAgent', $object) || array_key_exists('lsp', $object);
         if (!self::activeBinding($server, $frame->fd, $binding, $tokenClient, $privileged)) return;
         $tokenBrowser = $socketToken;
         if (!empty($GLOBALS["coroutinesProcess"][$tokenBrowser])) {

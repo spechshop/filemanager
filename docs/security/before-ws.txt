@@ -16,5 +16,9 @@ FAIL idle expiry actively disconnects and removes timer/binding
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-terminal foi fechado
 FAIL fd reused during credential IO cannot mutate or disconnect replacement session
 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-terminal foi fechado
+FAIL null service flag cannot bypass scoped credential permissions: isCodex
+FAIL null service flag cannot bypass scoped credential permissions: lsp
+FAIL null service flag cannot bypass scoped credential permissions: codexAgent
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-terminal foi fechado
 FAIL reused connection cannot inherit prior owner
-15 assertions, 12 failures
+18 assertions, 15 failures
