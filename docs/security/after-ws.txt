@@ -1,0 +1,16 @@
+PASS unauthorized open has no session/process: missing
+PASS unauthorized open has no session/process: unknown
+PASS unauthorized open has no session/process: expired
+PASS unauthorized open has no session/process: revoked
+PASS invalid/missing origin has no session
+PASS invalid/missing origin has no session
+PASS invalid/missing origin has no session
+PASS connection binds authenticated owner
+PASS hyphenated token binds complete owner
+PASS payload cannot steal another owner/session or send terminal input
+PASS revoked active session cannot create terminal/send command
+PASS revoked reconnect has no replay or process
+PASS idle expiry actively disconnects and removes timer/binding
+PASS fd reused during credential IO cannot mutate or disconnect replacement session
+PASS reused connection cannot inherit prior owner
+15 assertions, 0 failures

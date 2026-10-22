@@ -1,0 +1,20 @@
+FAIL unauthorized open has no session/process: missing
+PASS unauthorized open has no session/process: unknown
+PASS unauthorized open has no session/process: expired
+FAIL unauthorized open has no session/process: revoked
+FAIL invalid/missing origin has no session
+FAIL invalid/missing origin has no session
+FAIL invalid/missing origin has no session
+PASS connection binds authenticated owner
+FAIL hyphenated token binds complete owner
+bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb-terminal foi fechado
+FAIL payload cannot steal another owner/session or send terminal input
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-terminal foi fechado
+FAIL revoked active session cannot create terminal/send command
+FAIL revoked reconnect has no replay or process
+FAIL idle expiry actively disconnects and removes timer/binding
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-terminal foi fechado
+FAIL fd reused during credential IO cannot mutate or disconnect replacement session
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-terminal foi fechado
+FAIL reused connection cannot inherit prior owner
+15 assertions, 12 failures

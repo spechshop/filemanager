@@ -9,11 +9,12 @@ class getTerminals
 {
     public static function api(Request $request, Response $response)
     {
-        if (!security::verifyToken($request)) return security::invalidToken($response);
+        if (!security::authorize($request, $response)) return true;
 
-        $tokenBrowser = $request->get['tokenBrowser'];
+        $tokenBrowser = securityPolicy::requestToken($request);
         $response->header('Content-Type', 'application/json');
         $nameFile = 'sessions-terminals.json';
+        if (is_file($nameFile)) chmod($nameFile, 0600);
         if (!file_exists($nameFile)) {
             file_put_contents($nameFile, json_encode([
                 $tokenBrowser => []
@@ -24,6 +25,7 @@ class getTerminals
             $terminals[$tokenBrowser] = [];
             file_put_contents($nameFile, json_encode($terminals, JSON_PRETTY_PRINT));
         }
+        chmod($nameFile, 0600);
         $sessions = $terminals[$tokenBrowser];
         // Migrate legacy flat-array format (just IDs) to object format
         $sessions = array_map(function ($item) {

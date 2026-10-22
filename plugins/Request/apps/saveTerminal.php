@@ -8,11 +8,11 @@ class saveTerminal
 {
     public static function api(Request $request, Response $response)
     {
-        if (!security::verifyToken($request)) return security::invalidToken($response);
+        if (!security::authorize($request, $response)) return true;
 
         $body = json_decode($request->rawContent(), true);
         // token comes as query param (verifyToken already validated it)
-        $tokenBrowser = $request->get['tokenBrowser'] ?? null;
+        $tokenBrowser = securityPolicy::requestToken($request);
         $terminalId = $body['id'] ?? null;
         $terminalName = $body['name'] ?? 'Terminal';
 
@@ -22,6 +22,7 @@ class saveTerminal
         }
 
         $nameFile = 'sessions-terminals.json';
+        if (is_file($nameFile)) chmod($nameFile, 0600);
         if (!file_exists($nameFile)) {
             file_put_contents($nameFile, json_encode([$tokenBrowser => []]));
         }
@@ -51,6 +52,7 @@ class saveTerminal
 
         file_put_contents($nameFile, json_encode($terminals, JSON_PRETTY_PRINT));
 
+        if (is_file($nameFile)) chmod($nameFile, 0600);
         $response->header('Content-Type', 'application/json');
         return $response->end(json_encode(['success' => true]));
     }

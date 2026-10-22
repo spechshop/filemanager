@@ -9,20 +9,19 @@ class getPreview
 {
     public static function api(Request $request, Response $response)
     {
-        if (!security::verifyToken($request)) {
-            return security::invalidToken($response);
-        }
+        if (!security::authorize($request, $response)) return true;
 
         $path = $request->get['path'];
         $realPath = $path;
 
         if (file_exists($realPath)) {
             // Caminho temporário para thumbnail
-            $thumbPath = sys_get_temp_dir() . '/thumb_' . md5($realPath) . '.jpg';
+            $thumbPath = tempnam(sys_get_temp_dir(), 'fm-thumb-');
+            if ($thumbPath === false) throw new \RuntimeException('thumbnail');
 
             // Comando para gerar thumbnail em 1s do vídeo
             $cmd = sprintf(
-                'ffmpeg -y -i %s -ss 00:00:01.000 -vframes 1 -f image2 %s 2>&1',
+                'ffmpeg -nostdin -protocol_whitelist file,pipe -format_whitelist mov,matroska,avi,mpegts,mpeg,flv,asf,rm,mp3,wav,ogg,flac,image2,webp_pipe,png_pipe,jpeg_pipe,h264,hevc,av1,ivf -y -i %s -ss 00:00:01.000 -vframes 1 -c:v mjpeg -f image2 %s 2>&1',
                 escapeshellarg($realPath),
                 escapeshellarg($thumbPath)
             );
@@ -31,12 +30,13 @@ class getPreview
 
             if ($code === 0 && file_exists($thumbPath)) {
                 $response->header('Content-Type', 'image/jpeg');
-                $response->sendfile($thumbPath);
+                $response->end(file_get_contents($thumbPath));
                 // Opcionalmente, apague depois (ou deixe o GC do SO cuidar)
                 unlink($thumbPath);
             } else {
                 $response->status(500);
-                $response->end("Erro ao gerar thumbnail.\n" . implode("\n", $out));
+                $response->end("Erro ao gerar thumbnail.");
+                if (file_exists($thumbPath)) unlink($thumbPath);
             }
         } else {
             $response->status(404);

@@ -1,3 +1,4 @@
+const bridgeAuth = require('./scripts/security/bridge-auth.cjs');
 // ============================================================
 // lsp.js — Ponte WebSocket <-> stdio para um Language Server PHP.
 //
@@ -81,9 +82,16 @@ function resolveIntelephense() {
 }
 
 const server = http.createServer();
-const wss = new WebSocket.Server({ server });
+const wss = new WebSocket.Server({ noServer: true, maxPayload: 131072 });
 
-wss.on('connection', (ws) => {
+server.on('upgrade', (request, socket, head) => {
+    if (!bridgeAuth.allowed(request, bridgeAuth.session(request))) return bridgeAuth.reject(socket);
+    wss.handleUpgrade(request, socket, head, ws => wss.emit('connection', ws, request));
+});
+wss.on('connection', (ws, request) => {
+    const session = bridgeAuth.session(request);
+    const timer = setInterval(() => { if (!bridgeAuth.valid(session)) ws.close(1008, 'Session expired'); }, 500);
+    ws.once('close', () => clearInterval(timer));
     const bin = resolveIntelephense();
     if (!bin) {
         try {
@@ -138,6 +146,7 @@ wss.on('connection', (ws) => {
 
     // ---- WebSocket (editor) -> stdio (servidor) --------------------
     ws.on('message', (data) => {
+        if (!bridgeAuth.valid(session)) { ws.close(1008, 'Session expired'); return; }
         let json = typeof data === 'string' ? data : data.toString('utf8');
         json = injectWorkspaceRoot(json);
         const payload = Buffer.from(json, 'utf8');

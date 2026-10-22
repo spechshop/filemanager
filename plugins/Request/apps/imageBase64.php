@@ -46,9 +46,7 @@ class imageBase64
      */
     public static function api(Request $request, Response $response)
     {
-        if (!security::verifyToken($request)) {
-            return security::invalidToken($response);
-        }
+        if (!security::authorize($request, $response)) return true;
 
         $path = $request->get["path"] ?? null;
         if (!$path || !file_exists($path)) {
@@ -56,9 +54,12 @@ class imageBase64
             return $response->end();
         }
 
-        $realPath = realpath($path);
+        $realPath = securityPolicy::path($path, securityPolicy::requestToken($request));
+        $response->header('Content-Security-Policy', "sandbox; default-src 'none'");
+        $response->header('X-Content-Type-Options', 'nosniff');
         $fileSize = filesize($realPath);
         $mime = self::getMimeType($realPath);
+        if ($mime === 'application/octet-stream' || $mime === 'image/svg+xml') $response->header('Content-Disposition', 'attachment');
         $start = 0;
         $end = $fileSize - 1;
 
@@ -72,6 +73,7 @@ class imageBase64
                 $end = intval($matches[2]);
             }
 
+            if ($start < 0 || $start >= $fileSize || $end < $start || $end >= $fileSize) { $response->status(416); return $response->end(); }
             $length = $end - $start + 1;
             $response->status(206);
             $response->header("Content-Range", "bytes $start-$end/$fileSize");

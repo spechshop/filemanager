@@ -7,6 +7,8 @@ mkdir($root . '/plugins/Request/views', 0700, true);
 mkdir($root . '/plugins/Request/pages', 0700, true);
 copy($source . '/plugins/Request/views/controller.php', $root . '/plugins/Request/views/controller.php');
 eval('namespace plugins\\Request; class appController { public static function baseDir() { return $GLOBALS["root"]; } }');
+putenv('FILEMANAGER_TOKENS_FILE=' . $root . '/database/tokens.lotus');
+require $source . '/plugins/Request/components/securityPolicy.php';
 require $source . '/plugins/Database/call/call.php';
 require $root . '/plugins/Request/views/controller.php';
 $checks = 0;
@@ -17,7 +19,7 @@ function checkCache(bool $condition, string $name): void {
 }
 try {
     $tokens = $root . '/database/tokens.lotus';
-    checkCache(plugins\Database\call::data() === [], 'missing token store created');
+    checkCache(plugins\Database\call::data() === [], 'missing token store fails closed without creation');
     file_put_contents($tokens, '{"aaa":1}');
     checkCache(plugins\Database\call::data() === ['aaa' => 1], 'new token visible');
     file_put_contents($tokens, '{"bbb":2}');
@@ -25,9 +27,9 @@ try {
     sleep(2);
     checkCache(plugins\Database\call::data() === ['bbb' => 2], 'stable token snapshot');
     file_put_contents($tokens, '{');
-    checkCache(plugins\Database\call::data() === null, 'malformed data fails closed');
+    checkCache(plugins\Database\call::data() === [], 'malformed data fails closed');
     file_put_contents($tokens, '"scalar"');
-    checkCache(plugins\Database\call::data() === null, 'scalar JSON fails closed');
+    checkCache(plugins\Database\call::data() === [], 'scalar JSON fails closed');
     file_put_contents($tokens . '.tmp', '{"ccc":3}');
     rename($tokens . '.tmp', $tokens);
     checkCache(plugins\Database\call::data() === ['ccc' => 3], 'atomic save recovers');

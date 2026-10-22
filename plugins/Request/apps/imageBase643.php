@@ -10,7 +10,7 @@ class imageBase643
 {
     public static function api(Request $request, Response $response)
     {
-        if (!security::verifyToken($request)) return security::invalidToken($response);
+        if (!security::authorize($request, $response)) return true;
         $path = $request->get['path'];
         $realPath = $path;
         if (file_exists($realPath)) {

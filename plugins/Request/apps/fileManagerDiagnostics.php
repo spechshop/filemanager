@@ -12,6 +12,7 @@ class fileManagerDiagnostics
 
     public static function api(Request $request, Response $response): bool
     {
+        if (!security::authorize($request, $response)) return true;
         if (!security::verifyToken($request)) {
             return (bool) security::invalidToken($response);
         }

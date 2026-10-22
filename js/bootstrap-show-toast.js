@@ -6,6 +6,12 @@
 ;(function (bootstrap) {
     "use strict"
 
+    function text(value) {
+        const element = document.createElement('span');
+        element.textContent = String(value ?? '');
+        return element.innerHTML;
+    }
+
     function createElement(html) {
         const template = document.createElement('template')
         template.innerHTML = html.trim()
@@ -40,8 +46,8 @@
         const showHeader = this.props.header || this.props.headerSmall
         if (showHeader) {
             toastHeader = `<div class="toast-header text-white" style="background-color: hsla(0, 100%, 90%, 0.3);">
-                            <strong class="me-auto ${this.props.colorHeader ? this.props.colorHeader : 'text-white'}">${this.props.header}</strong>
-                            ${this.props.headerSmall ? `<small>${this.props.headerSmall}</small>` : ""}
+                            <strong class="me-auto ${this.props.colorHeader ? this.props.colorHeader : 'text-white'}">${text(this.props.header)}</strong>
+                            ${this.props.headerSmall ? `<small>${text(this.props.headerSmall)}</small>` : ""}
                             <i class="fa-duotone fa-circle-xmark"></i>
                           </div>`
         }
@@ -50,7 +56,7 @@
               ${toastHeader}
               <div class="d-flex">
                   <div class="toast-body">
-                    ${this.props.body}
+                    ${text(this.props.body)}
                   </div>
                   ${(!showHeader && this.props.closeButton) ? `<button type="button" class="btn-close me-2 mx-auto ${this.props.closeButtonClass}" style="margin-top: 0.69rem" data-bs-dismiss="toast" aria-label="${this.props.closeButtonLabel}"></button>` : ""}
               </div>

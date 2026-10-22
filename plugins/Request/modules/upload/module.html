@@ -62,7 +62,7 @@
                                     }
 
                                     for (const file of files) {
-                                        document.getElementById('file-list').innerHTML += '<li>' + file.name + '</li>';
+                                        document.getElementById('file-list').innerHTML += '<li>' + FMUI.html(file.name) + '</li>';
                                     }
                                     const filesBuffer = [];
                                     for (const file of files) filesBuffer.push(file);

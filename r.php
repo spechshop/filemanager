@@ -10,9 +10,10 @@ use Symfony\Component\Finder\Finder;
 
 // ---- Paths ----
 
-$stp = file_exists('stubs-paths.json')
+$scanRoots = getenv('FILEMANAGER_SCAN_ROOTS');
+$stp = $scanRoots ? json_decode($scanRoots, true) : (file_exists('stubs-paths.json')
     ? json_decode(file_get_contents('stubs-paths.json'), true)
-    : ['files'];
+    : ['files']);
 
 $stp = array_values(array_filter($stp, 'is_dir'));
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC1090,SC2034 # dynamically source the helper; globals are consumed by sourced functions
 
 set -uo pipefail
 

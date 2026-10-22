@@ -9,12 +9,14 @@ class treeDetails
 {
     public static function api(Request $request, Response $response): bool
     {
-        if (!security::verifyToken($request)) return security::invalidToken($response);
-        $_GET = $request->get;
-        $_POST = $request->post;
+        if (!security::authorize($request, $response)) return true;
+        $directory = $request->get['dir'] ?? '/';
 
-        $path = isset($_GET['dir']) ? $_GET['dir'] : '/';
+        $owner = securityPolicy::requestToken($request);
+        $path = $directory === '/' ? securityPolicy::roots($owner)[0] : securityPolicy::path($directory, $owner);
 
+        $response->header('X-FileManager-Root', securityPolicy::roots($owner)[0]);
+        // nosemgrep: php.lang.security.injection.tainted-filename.tainted-filename -- canonical workspace path, validated above and covered by escape tests
         if (is_dir($path)) {
             $tree = self::getDirTree($path);
             $response->header("Content-Type", "application/json");
@@ -35,6 +37,7 @@ class treeDetails
                 continue;
             }
 
+            if (is_link($dir . DIRECTORY_SEPARATOR . $value)) continue;
             $path = realpath($dir . DIRECTORY_SEPARATOR . $value);
             if (is_dir($path)) {
                 $result[$value] = [];

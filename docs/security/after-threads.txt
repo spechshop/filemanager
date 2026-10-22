@@ -1,0 +1,10 @@
+✔ thread ownership persists across reconnect and blocks other users, unknown legacy threads and revoked sessions without writes (2.075401ms)
+✔ actual bridge action handlers reject another user before RPC and filter thread history (2.649986ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 48.217018

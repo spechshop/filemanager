@@ -9,7 +9,7 @@ class codex
 {
     public static function api(Request $request, Response $response): ?bool
     {
-        if (!security::verifyToken($request)) return security::invalidToken($response);
+        if (!security::authorize($request, $response)) return true;
         $data = $request->rawContent();
         $datax = json_decode($data, true);
         if (!empty($datax['type'])) {
@@ -18,8 +18,8 @@ class codex
                 $client = new \Swoole\Coroutine\Http\Client('localhost', 3090);
                 $client->set([
                     'timeout' => 120,
-                    'ssl_verify_peer' => false,
-                    'ssl_verify_peer_name' => false,
+                    'ssl_verify_peer' => true,
+                    'ssl_verify_peer_name' => true,
                     'keep_alive' => true,
                     'enable_keep_alive' => true,
                 ]);
@@ -35,7 +35,6 @@ class codex
                 $obj = json_decode($recv, true);
                 $obj = $obj['parts'][0];
 
-                var_dump($obj);
                 // remover a primeira linha
                 $obj = explode("\n", $obj);
                 array_shift($obj);
@@ -51,8 +50,8 @@ class codex
         $client = new \Swoole\Coroutine\Http\Client('copilot-proxy.githubusercontent.com', 443, true);
         $client->set([
             'timeout' => 10,
-            'ssl_verify_peer' => false,
-            'ssl_verify_peer_name' => false,
+            'ssl_verify_peer' => true,
+            'ssl_verify_peer_name' => true,
             'keep_alive' => true,
             'enable_keep_alive' => true,
         ]);
@@ -94,7 +93,6 @@ class codex
         $postData = json_encode($postData);
         $client->post('/v1/engines/copilot-codex/completions', $postData);
         $recv = $client->getBody();
-        var_dump($recv);
         $client->close();
         if (empty($recv)) {
             self::makeToken();
@@ -142,8 +140,8 @@ class codex
         $client = new \Swoole\Coroutine\Http\Client('api.github.com', 443, true);
         $client->set([
             'timeout' => 10,
-            'ssl_verify_peer' => false,
-            'ssl_verify_peer_name' => false,
+            'ssl_verify_peer' => true,
+            'ssl_verify_peer_name' => true,
             'keep_alive' => true,
             'enable_keep_alive' => true,
         ]);

@@ -23,6 +23,7 @@ class phpParserBackup
 
     public static function api(Request $request, Response $response): ?bool
     {
+        if (!security::authorize($request, $response)) return true;
         $response->header(self::CONTENT_TYPE_JSON, self::MIME_TYPE_JSON);
         $data = json_decode($request->rawContent(), true);
         if (empty($data['nameFile'])) {
@@ -37,7 +38,7 @@ class phpParserBackup
         }
 
 
-        $parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7);
+        $parser = (new ParserFactory)->createForNewestSupportedVersion();
         $ast = $parser->parse($code);
 
         $traverser = new NodeTraverser();
@@ -58,16 +59,9 @@ class phpParserBackup
 
     private static function runBugfixScript(string $fileContent, string $filename): bool
     {
-        $script = <<<'PHP'
-include 'vendor/autoload.php';
-$parser = (new PhpParser\ParserFactory)->create(PhpParser\ParserFactory::PREFER_PHP7);
-$prettyPrinter = new PhpParser\PrettyPrinter\Standard;
-$ast = $parser->parse(
-PHP;
-        $escapedScript = escapeshellarg($script . 'file_get_contents(\'' . $filename . '\'));');
-        $output = shell_exec(escapeshellarg(PHP_BINARY) . ' -r ' . $escapedScript);
-
-        return (bool)$output;
+        try { (new ParserFactory())->createForNewestSupportedVersion()->parse($fileContent); }
+        catch (\PhpParser\Error $e) { return true; }
+        return false;
     }
 }
 

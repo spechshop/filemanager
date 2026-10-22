@@ -1,3 +1,4 @@
+const bridgeAuth = require('./scripts/security/bridge-auth.cjs');
 const WebSocket = require('ws');
 const os = require('os');
 const pty = require('node-pty');
@@ -7,7 +8,12 @@ const fs = require('fs');
 const path = require('path');
 
 const server = http.createServer();
-const wss = new WebSocket.Server({ server });
+const wss = new WebSocket.Server({ noServer: true, maxPayload: 131072 });
+
+server.on('upgrade', (request, socket, head) => {
+    if (!bridgeAuth.allowed(request, bridgeAuth.session(request))) return bridgeAuth.reject(socket);
+    wss.handleUpgrade(request, socket, head, ws => wss.emit('connection', ws, request));
+});
 
 const shell = os.platform() === 'win32' ? 'powershell.exe' : 'bash';
 const terminals = new Map();
@@ -30,6 +36,8 @@ if (!fs.existsSync(filesDir)) {
  */
 function terminalEnvironment() {
     const env = {...process.env};
+    delete env.FILEMANAGER_BRIDGE_SECRET;
+    delete env.CODEX_ACCESS_TOKEN;
     const pathKey = Object.keys(env).find(key => key.toLowerCase() === 'path') || 'PATH';
     const inheritedPath = String(env[pathKey] || '');
     const preferredBins = [
@@ -56,7 +64,8 @@ function loadTerminalsFromFile() {
 
 function saveTerminalsToFile(ids) {
     try {
-        fs.writeFileSync(TERMINALS_FILE, JSON.stringify(ids, null, 2));
+        fs.writeFileSync(TERMINALS_FILE, JSON.stringify(ids, null, 2), {mode: 0o600});
+        fs.chmodSync(TERMINALS_FILE, 0o600);
     } catch (e) {
         console.error('Error saving terminals file:', e);
     }
@@ -66,7 +75,7 @@ let termcw = {};
 let outputCache = {};
 let terminalIds = loadTerminalsFromFile();
 
-server.listen(6060, '127.0.0.1', () => {
+server.listen(Number(process.env.FILEMANAGER_PTY_PORT || 6060), '127.0.0.1', () => {
     console.log('PTY server listening on 127.0.0.1:6060 (local only)');
 });
 
@@ -78,13 +87,11 @@ wss.on('connection', (ws, req) => {
     if (terminals.has(userToken)) {
         ptyProcess = terminals.get(userToken);
         if (!ptyProcess.killed) {
-            console.log(`Resuming session for ${userToken}`);
             // Replay cached output so reconnected client sees context
             if (outputCache[userToken]) {
                 ws.send(outputCache[userToken]);
             }
         } else {
-            console.log(`Session for ${userToken} was killed. Creating a new one.`);
             ptyProcess = createNewTerminal(userToken);
         }
     } else {
@@ -99,8 +106,8 @@ wss.on('connection', (ws, req) => {
             ws.close(1001, 'Terminal exited');
             return;
         }
+        if (!bridgeAuth.valid(userToken)) { closeTerminal(userToken, ptyProcess); return; }
         const cmdStr = command.toString();
-        console.log(`Command from ${userToken}: `, cmdStr.substring(0, 80));
 
         try {
             if (cmdStr.trim() === 'startXtermHandlerCommand') {
@@ -114,14 +121,12 @@ wss.on('connection', (ws, req) => {
                     const newCols = parseInt(cmdStr.trim());
                     if (!isNaN(newCols) && newCols > 0) {
                         ptyProcess.resize(newCols, ptyProcess.rows);
-                        console.log(`Resized ${userToken}: cols=${newCols}`);
                         termcw[userToken] = 1;
                     }
                 } else if (termcw[userToken] === 1) {
                     const newRows = parseInt(cmdStr.trim());
                     if (!isNaN(newRows) && newRows > 0) {
                         ptyProcess.resize(ptyProcess.cols, newRows);
-                        console.log(`Resized ${userToken}: rows=${newRows}`);
                         termcw[userToken] = 0;
                     }
                 }
@@ -129,19 +134,16 @@ wss.on('connection', (ws, req) => {
                 ptyProcess.write(cmdStr);
             }
         } catch (err) {
-            console.error(`Terminal error for ${userToken}:`, err.message);
             ws.close(1011, 'Terminal unavailable');
         }
     });
 
     ws.on('close', () => {
         clients.delete(ws);
-        console.log(`Client ${userToken} disconnected (session kept alive)`);
         // Do NOT close the terminal on disconnect so it survives reconnects
     });
 
     ws.on('error', (err) => {
-        console.error(`WebSocket error for ${userToken}:`, err.message);
         clients.delete(ws);
         ws.terminate();
     });
@@ -161,6 +163,7 @@ function createNewTerminal(userToken) {
     // A terminal owns one data subscription for its entire lifetime. Browser
     // reconnects only join/leave the client set; they never attach PTY listeners.
     const dataSubscription = ptyProcess.onData(rawOutput => {
+        if (!bridgeAuth.valid(userToken)) { closeTerminal(userToken, ptyProcess); return; }
         outputCache[userToken] = ((outputCache[userToken] || '') + rawOutput).slice(-OUTPUT_CACHE_SIZE);
         for (const client of terminalClients.get(userToken) || []) {
             if (client.readyState === WebSocket.OPEN) client.send(rawOutput);
@@ -176,7 +179,6 @@ function createNewTerminal(userToken) {
         terminalIds.push(userToken);
         saveTerminalsToFile(terminalIds);
     }
-    console.log(`New session created for ${userToken}`);
     return ptyProcess;
 }
 
@@ -196,10 +198,15 @@ function forgetTerminal(userToken, ptyProcess) {
     delete termcw[userToken];
     terminalIds = terminalIds.filter(id => id !== userToken);
     saveTerminalsToFile(terminalIds);
-    console.log(`Session for ${userToken} closed`);
 }
 
+const authorizationTimer = setInterval(() => {
+    for (const [token, process] of terminals) if (!bridgeAuth.valid(token)) closeTerminal(token, process);
+}, 500);
+authorizationTimer.unref();
+
 function shutdown() {
+    clearInterval(authorizationTimer);
     for (const [token, process] of terminals) closeTerminal(token, process);
     wss.close();
     server.close();

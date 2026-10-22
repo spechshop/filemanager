@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-22T02:08:23.025064+00:00",
+  "base": "894e52c",
+  "phpstan": {
+    "version": "2.3.1",
+    "level": 5,
+    "preexistingBaselineDiagnostics": 51,
+    "result": "Note: Using configuration file /home/lotus/projetos/filemanager/phpstan.neon.\n\n [OK] No errors"
+  },
+  "semgrep": {
+    "version": "1.156.0",
+    "findings": 0,
+    "errors": 0,
+    "scannedFiles": 282,
+    "selfTest": "PASS: all four custom rules detect unsafe fixtures; the authorized handler stays clean."
+  },
+  "gitleaks": {
+    "sourceTag": "v8.28.0",
+    "versionedTreeFindings": 0,
+    "historicalFindings": 5
+  },
+  "shellcheck": "0.9.0: passed at warning level",
+  "actionlint": "1.7.7: passed",
+  "runtimePatchCheck": "failed; see runtime-local.json",
+  "npmAudit": "failed; 12 advisories, see npm-after.json",
+  "composerAudit": "passed; see composer-audit.json"
+}

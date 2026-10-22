@@ -1,20 +1,17 @@
+includes:
+    - phpstan-baseline.neon
+
 parameters:
     level: 5
+    phpVersion: 80300
+    rememberPossiblyImpureFunctionValues: false
     paths:
         - plugins
         - middleware.php
-    excludePaths:
-        analyseAndScan:
-            - vendor (?)
-            - node_modules (?)
-            - backup (?)
-            - stubs (?)
-            - libspech (?)
+        - pty.php
+        - server.php
+    scanFiles:
+        - scripts/security/phpstan-external.stub
     scanDirectories:
-        - libspech/plugins
-        - vendor/swoole/ide-helper/src/
-    ignoreErrors:
-        - '#Call to an undefined method#'
-        - '#Access to an undefined property#'
-        - '#Variable \$[a-zA-Z0-9_]+ might not be defined#'
-        - '#Function Co\\[a-zA-Z0-9_]+ not found#'
+        - vendor/swoole/ide-helper/src
+    tmpDir: .cache/phpstan

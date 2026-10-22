@@ -1,0 +1,33 @@
+rules:
+  - id: filemanager-http-guard-required
+    languages: [php]
+    message: Every HTTP api must start with the shared fail-closed authorization guard.
+    severity: ERROR
+    paths:
+      include: ['**/plugins/Request/apps/**']
+    patterns:
+      - pattern: public static function api(...) { ... }
+      - pattern-not: |
+          public static function api(...) {
+            if (!security::authorize($request, $response)) return true;
+            ...
+          }
+  - id: filemanager-auth-fallthrough
+    languages: [php]
+    message: Responding to an authentication failure does not stop execution. Return immediately.
+    severity: ERROR
+    pattern-regex: '(?i)\bsecurity::verifyToken\s*\([^;]*?\)\s*\?:\s*security::invalidToken\s*\('
+  - id: filemanager-browser-html-data
+    languages: [generic]
+    message: Use textContent or the context-specific FMUI encoder for untrusted data.
+    severity: ERROR
+    paths:
+      include: ['**/plugins/Request/**/*.html', '**/js/**']
+    pattern-regex: '\.innerHTML\s*=\s*(suggestionText|originalText|path)\b'
+  - id: filemanager-javascript-eval
+    languages: [javascript]
+    message: Do not evaluate strings as JavaScript.
+    severity: ERROR
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: new Function(...)

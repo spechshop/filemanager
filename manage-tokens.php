@@ -81,20 +81,26 @@ function saveTokens(string $file, array $tokens): bool
     // Criar diretório se não existir
     $dir = dirname($file);
     if (!is_dir($dir)) {
-        mkdir($dir, 0755, true);
+        mkdir($dir, 0700, true);
     }
 
-    if (file_put_contents($file, $json . "\n") === false) {
-        printError("Erro ao salvar arquivo");
-        return false;
+    $temporary = tempnam($dir, '.tokens-');
+    if ($temporary === false) return false;
+    try {
+        chmod($temporary, 0600);
+        if (file_put_contents($temporary, $json . "\n", LOCK_EX) === false || !rename($temporary, $file)) {
+            printError("Erro ao salvar arquivo");
+            return false;
+        }
+        return true;
+    } finally {
+        if (file_exists($temporary)) unlink($temporary);
     }
-
-    return true;
 }
 
 function generateToken(): string
 {
-    return md5(uniqid((string)rand(), true));
+    return bin2hex(random_bytes(32));
 }
 
 function formatDate(int $timestamp): string

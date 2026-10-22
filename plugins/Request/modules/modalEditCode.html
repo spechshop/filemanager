@@ -3260,7 +3260,7 @@
         }
 
         function formatSuggestionHTML(text) {
-            return text
+            return FMUI.html(text)
                 .replaceAll(`\n`, '<br-class="brs">')
                 .replaceAll(" ", "&nbsp;")
                 .replaceAll('<br-class="brs">', '<br class="brs">');
@@ -3509,7 +3509,7 @@
                             let suggestionSpan = document.createElement("span");
                             suggestionSpan.style.opacity = 0.5;
                             suggestionSpan.className = "suggestion";
-                            suggestionSpan.innerHTML = suggestionText
+                            suggestionSpan.innerHTML = FMUI.html(suggestionText)
                                 .replaceAll(`\n`, '<br-class="brs">')
                                 .replaceAll(" ", "&nbsp;")
                                 .replaceAll(
@@ -4320,7 +4320,7 @@
                             $('#searchFiles').text(nameFile);
                             
                             // Atualizar título do modal com o nome do arquivo atual (estilo PhpStorm)
-                            document.querySelector('.modal-title').innerHTML = `Editor - <span style="color: #A1A8B3">${getFilename(nameFile)}</span>`;
+                            document.querySelector('.modal-title').innerHTML = `Editor - <span style="color: #A1A8B3">${FMUI.html(getFilename(nameFile))}</span>`;
 
                             if (positions[nameFile]) {
                                 editor.setPosition(positions[nameFile]);

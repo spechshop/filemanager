@@ -433,6 +433,7 @@ install_filemanager_node_dependencies() {
         json_state running "Repetindo npm install com o compilador local..." null
         log "Repetindo npm install com toolchain local..."
         if ! run_npm_install_with_local_toolchain; then
+            # shellcheck disable=SC2034 # caller reads LAST_MESSAGE on failure
             LAST_MESSAGE="npm install falhou também com o toolchain C/C++ local."
             return 1
         fi

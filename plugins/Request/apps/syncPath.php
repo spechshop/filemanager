@@ -58,42 +58,10 @@ class syncPath
     }
 
     public static function api(Request $request, Response $response) {
-        $_GET = $request->get;
-        $_POST = $request->post;
-        $response->header('Content-Type', 'application/json');
-        if (!empty($_GET['tokenBrowser'])) {
-            $tokenBrowser = $_GET['tokenBrowser'];
-        }
-        if (!empty($_POST['tokenBrowser'])) {
-            $tokenBrowser = $_POST['tokenBrowser'];
-        }
-        if (!empty($_GET['path'])) {
-            $pathf = $_GET['path'];
-        }
-        if (!empty($_POST['path'])) {
-            $pathf = $_POST['path'];
-        }
-        if (empty($tokenBrowser)) {
-            return $response->end(json_encode([
-                'success' => false,
-                'message' => 'Identifier not found',
-            ]));
-        } elseif (!key_exists($tokenBrowser, cache::global()['dataKeys'])) {
-            return $response->end(json_encode([
-                'success' => false,
-                'message' => 'UniqueId not found',
-            ]));
-        } elseif (strtotime(date('Y-m-d H:i:s')) >= cache::global()['dataKeys'][$tokenBrowser]['expire']) {
-            return $response->end(json_encode([
-                'success' => false,
-                'message' => 'Your plan as has expired. Contact support for more information.',
-            ]));
-        } elseif (empty($pathf)) {
-            $pathf = '';
-        }
-        if (!is_dir('files')) {
-            mkdir('files');
-        }
+        if (!security::authorize($request, $response)) return true;
+        $pathf = $request->post['path'] ?? $request->get['path'] ?? securityPolicy::roots(securityPolicy::requestToken($request))[0];
+        if ($pathf === '') $pathf = securityPolicy::roots(securityPolicy::requestToken($request))[0];
+        $pathf = securityPolicy::path($pathf, securityPolicy::requestToken($request));
         if (is_file($pathf)) {
             $pathf = pathinfo($pathf, PATHINFO_DIRNAME);
         }
@@ -123,7 +91,7 @@ class syncPath
                     $namefile = substr(basename($file), 0, 35);
                     $itemCount = $isDirectory ? utilsFunction::countItensInPath($file) : 0;
                     $item = [
-                        'name' => htmlspecialchars(basename($namefile) . ($isDirectory ? sprintf(' (%s ite%s)', $itemCount, $itemCount > 1 ? 'ns' : 'm') : '')),
+                        'name' => basename($namefile) . ($isDirectory ? sprintf(' (%s ite%s)', $itemCount, $itemCount > 1 ? 'ns' : 'm') : ''),
                         'path' => $path,
                         'isImage' => utilsFunction::isMediaFile($file),
                         'isMedia' => utilsFunction::isMovie(pathinfo($file, PATHINFO_EXTENSION)),
@@ -158,6 +126,7 @@ class syncPath
         }
         $responsejson = json_encode([
             'success' => true,
+            'currentPath' => $pathf,
             'information' => $newData,
         ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
         if (!$responsejson) {

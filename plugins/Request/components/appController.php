@@ -70,10 +70,18 @@ class appController
      */
     public static function call($request, $response, $app): ?bool
     {
+        if (!security::authorize($request, $response)) return true;
+        if (!preg_match('/^[a-zA-Z][a-zA-Z0-9]*$/D', $app)) return false;
         $callable = "\\plugins\\Request\\$app::api";
-        if (is_callable($callable))
-            return (bool)self::mountCallable($callable, $request, $response, $app);
-        else return false;
+        if (!is_callable($callable)) return false;
+        try { self::mountCallable($callable, $request, $response, $app); }
+        catch (\DomainException $e) { security::deny($response); }
+        catch (\Throwable $e) {
+            securityPolicy::log('operation_failed');
+            $response->status(500);
+            $response->end(json_encode(['success' => false, 'message' => 'Operation failed']));
+        }
+        return true;
     }
 
     /**
@@ -138,6 +146,7 @@ class appController
         foreach ($items as $item) {
             if ($item === '.' || $item === '..') continue;
             $fullPath = $dir . DIRECTORY_SEPARATOR . $item;
+            if (is_link($fullPath)) continue;
             $fullPath = str_replace('//', '/', $fullPath);
             if (is_file($fullPath) || (is_dir($fullPath) && !is_link($fullPath))) $filesAndDirs[] = $fullPath;
         }

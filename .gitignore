@@ -159,3 +159,6 @@ lerna-debug.log*
 !LICENSE
 !CONTRIBUTING.md
 !.env.example
+
+/database/tokens.lotus
+/database/chat-*.lotus

@@ -1,0 +1,9 @@
+title = "FileManager secret detection"
+[extend]
+useDefault = true
+
+[[rules]]
+id = "filemanager-token-store"
+description = "Authentication token in a Lotus token record"
+regex = '''["']([a-fA-F0-9]{24,128})["']\s*:\s*\{\s*["'](?:nameClient|expire|dateCreate)["']'''
+secretGroup = 1

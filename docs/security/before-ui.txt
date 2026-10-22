@@ -1,0 +1,139 @@
+✖ stored filenames render as text; clicking keeps the complete filename as data (67.784225ms)
+✖ stored chat markup and crafted markdown fences cannot create executable nodes (10.626129ms)
+✖ reflected paths and search highlighting stay text, including regex metacharacters (7.524224ms)
+✖ file tree preserves hostile names and inline arguments without code execution (9.480716ms)
+✖ notification headers and bodies display untrusted messages as text (16.072541ms)
+✖ stored credentials and server welcome messages never enter HTML sinks (20.739557ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 0
+ℹ fail 6
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 436.781718
+
+✖ failing tests:
+
+test at scripts/security/ui-regression.cjs:16:1
+✖ stored filenames render as text; clicking keeps the complete filename as data (67.784225ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+
+  + ''
+  - '<img src=x onerror="window.pwned=1">'
+
+      at TestContext.<anonymous> (/home/lotus/projetos/filemanager/scripts/security/ui-regression.cjs:28:20)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.start (node:internal/test_runner/test:1242:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: '<img src=x onerror="window.pwned=1">',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/security/ui-regression.cjs:37:1
+✖ stored chat markup and crafted markdown fences cannot create executable nodes (10.626129ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  1 !== 0
+
+      at TestContext.<anonymous> (/home/lotus/projetos/filemanager/scripts/security/ui-regression.cjs:46:24)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/security/ui-regression.cjs:54:1
+✖ reflected paths and search highlighting stay text, including regex metacharacters (7.524224ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+
+  + '/workspace/'
+  - '/workspace/<img src=x onerror="window.pwned=1">'
+                ^
+
+      at TestContext.<anonymous> (/home/lotus/projetos/filemanager/scripts/security/ui-regression.cjs:63:20)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '/workspace/',
+    expected: '/workspace/<img src=x onerror="window.pwned=1">',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/security/ui-regression.cjs:73:1
+✖ file tree preserves hostile names and inline arguments without code execution (9.480716ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  4 !== 0
+
+      at TestContext.<anonymous> (/home/lotus/projetos/filemanager/scripts/security/ui-regression.cjs:82:20)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 4,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/security/ui-regression.cjs:88:1
+✖ notification headers and bodies display untrusted messages as text (16.072541ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  3 !== 0
+
+      at TestContext.<anonymous> (/home/lotus/projetos/filemanager/scripts/security/ui-regression.cjs:95:20)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 3,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/security/ui-regression.cjs:100:1
+✖ stored credentials and server welcome messages never enter HTML sinks (20.739557ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+
+  + ''
+  - '<img src=x onerror="window.pwned=1">'
+
+      at TestContext.<anonymous> (/home/lotus/projetos/filemanager/scripts/security/ui-regression.cjs:113:20)
+      at async Test.run (node:internal/test_runner/test:1389:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: '',
+    expected: '<img src=x onerror="window.pwned=1">',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

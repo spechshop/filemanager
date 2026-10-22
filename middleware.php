@@ -60,6 +60,17 @@ if (!function_exists('portAlive')) {
     }
 }
 
+$secretDirectory = __DIR__ . '/.runtime';
+if (!is_dir($secretDirectory)) mkdir($secretDirectory, 0700, true);
+$secretFile = $secretDirectory . '/bridge-secret';
+if (!is_file($secretFile)) {
+    $handle = fopen($secretFile, 'x');
+    if ($handle === false) throw new RuntimeException('Cannot initialize bridge authentication');
+    chmod($secretFile, 0600);
+    fwrite($handle, bin2hex(random_bytes(32)));
+    fclose($handle);
+}
+if (strlen(\plugins\Request\securityPolicy::bridgeSecret()) < 32) throw new RuntimeException('Invalid bridge secret');
 $host = cache::global()['interface']['host'];
 $port = cache::global()['interface']['port'];
 \co\run(function () use (&$port) {

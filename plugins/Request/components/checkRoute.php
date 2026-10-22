@@ -1,38 +1,21 @@
 <?php
-
 namespace plugins\Request;
-
 class checkRoute
 {
     public static function check($path, $response): ?array
     {
-        $e = explode('.', $path);
-        $fileTypeKey = count($e) - 1;
-        $fileType = $e[$fileTypeKey];
-        if (!strpos($path, '.')) return ['break' => false];
-        if (empty($e[$fileTypeKey]) or $e[$fileTypeKey] == '/') return ['break' => false];
-
-        if (!key_exists($fileType, $GLOBALS['interface']['allowExtensions'])) {
-            $response->status(401, 'Not authorized');
-            $response->end();
-            return ['break' => true];
+        if (!str_contains($path, '.')) return ['break' => false];
+        $base = rtrim(appController::baseDir(), '/');
+        $real = realpath($base . $path);
+        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        $allowed = false;
+        foreach (['css', 'js', 'img'] as $directory) if ($real !== false && securityPolicy::within($real, $base . '/' . $directory)) $allowed = true;
+        if (!$allowed || str_contains($path, '..') || !is_file($real)
+            || !isset($GLOBALS['interface']['allowExtensions'][$extension])) {
+            $response->status(404); $response->end(); return ['break' => true];
         }
-        $filePath = explode('/plugins', sprintf("%s{$path}", __DIR__))[0].$path;
-        if (!file_exists($filePath)) {
-            $response->status(404, 'File not found');
-            $response->end();
-            return ['break' => true];
-        }
-        foreach ($GLOBALS['interface']['allowExtensions'] as $extension => $typeContent) {
-            if ($extension == $fileType) {
-                $content = file_get_contents($filePath);
-                $response->header('Content-Type', $typeContent);
-                $response->end($content);
-                return ['break' => true];
-            }
-        }
-        $response->status(500, 'Internal Server Error');
-        $response->end();
+        $response->header('Content-Type', $GLOBALS['interface']['allowExtensions'][$extension]);
+        $response->end(file_get_contents($real));
         return ['break' => true];
     }
 }

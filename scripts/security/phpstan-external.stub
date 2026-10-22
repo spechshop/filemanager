@@ -1,0 +1,19 @@
+<?php
+// Signatures for the deployment-provided libspech library, which is not vendored.
+namespace libspech\Cache {
+    class cache {
+        public static function get($key) {}
+        public static function set($key, $value) {}
+        public static function subDefine($key, $item, $value) {}
+    }
+}
+namespace libspech\Cli {
+    class cli {
+        public static function pcl($message, $color = null) {}
+    }
+}
+namespace libspech\Network {
+    class network {
+        public static function getLocalIp() {}
+    }
+}

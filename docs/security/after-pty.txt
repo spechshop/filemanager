@@ -1,0 +1,10 @@
+✔ real node PTY: unauthorized requests have no shell/files; reconnect and revocation (1154.340445ms)
+✔ real php PTY: unauthorized requests have no shell/files; reconnect and revocation (2655.423468ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3871.901078

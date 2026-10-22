@@ -18,7 +18,7 @@ The system features:
 ## Stack
 
 ### Backend
-- **Language**: PHP 8.1+
+- **Language**: PHP 8.3+ (latest security patch)
 - **Runtime/Extension**: Swoole (WebSocket server, coroutines)
 - **Package Manager**: Composer
 - **Dependencies**:
@@ -79,7 +79,7 @@ The system features:
 ## Requirements
 
 ### System
-- PHP 8.1+ (CLI)
+- PHP 8.3+ (latest security patch) (CLI)
 - Swoole extension (matching your PHP version)
 - Composer
 - Node.js 22+ and npm (the installer can provision an isolated compatible runtime)
@@ -638,6 +638,10 @@ Future improvements:
 - [ ] Git integration UI
 - [ ] Database GUI
 - [ ] API documentation (OpenAPI/Swagger)
+
+## Security checks
+
+See [the security audit and reproducible checks](docs/security/audit.md) before deployment. The custom CLI/Swoole runtime must be rebuilt separately when PHP publishes security fixes; system package updates do not replace it.
 
 ## Changelog
 

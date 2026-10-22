@@ -17,6 +17,7 @@ class phpParser
     private const ERROR_IN_CODE_RESPONSE = ["error" => "Error in code"];
     public static function api(Request $request, Response $response): ?bool
     {
+        if (!security::authorize($request, $response)) return true;
         $response->header(self::CONTENT_TYPE_JSON, self::MIME_TYPE_JSON);
         $data = json_decode($request->rawContent(), true);
         if (empty($data["nameFile"])) {
@@ -29,22 +30,7 @@ class phpParser
         }
         $bug = self::runBugfixScript($code, $data["nameFile"]);
         if ($bug) {
-            $baseDir = \plugins\Request\appController::baseDir();
-            $script = <<<'PHP'
-            $includeVendorWithBaseDir = '__BASE_DIR__';
-            include $includeVendorWithBaseDir;
-            $parser = (new \PhpParser\ParserFactory)->createForNewestSupportedVersion();
-            $prettyPrinter = new \PhpParser\PrettyPrinter\Standard;
-            $ast = $parser->parse(
-            PHP;
-            $script = str_replace('__BASE_DIR__', $baseDir . 'vendor/autoload.php', $script);
-            $escapedScript = escapeshellarg($script . 'file_get_contents(\'' . $filename . '\'));');
-            return $response->end(json_encode([
-                "error" => "Bugfix script executed successfully, but no classes found.",
-                "res" => $bug,
-                "baseDir" => \plugins\Request\appController::baseDir(),
-                "script" => $script,
-            ]));
+            return $response->end(json_encode(["error" => "Error in code"]));
         }
         $parser = (new ParserFactory())->createForNewestSupportedVersion();
         $ast = $parser->parse($code);
@@ -65,19 +51,11 @@ class phpParser
         $response->end(json_encode($formattedClasses));
         return true;
     }
-    private static function runBugfixScript(string $fileContent, string $filename) {
-        $baseDir = \plugins\Request\appController::baseDir();
-        $script = <<<'PHP'
-        $includeVendorWithBaseDir = '__BASE_DIR__';
-        include $includeVendorWithBaseDir;
-        $parser = (new \PhpParser\ParserFactory)->createForNewestSupportedVersion();
-        $prettyPrinter = new \PhpParser\PrettyPrinter\Standard;
-        $ast = $parser->parse(
-        PHP;
-        $script = str_replace('__BASE_DIR__', $baseDir . 'vendor/autoload.php', $script);
-        $escapedScript = escapeshellarg($script . 'file_get_contents(\'' . $filename . '\'));');
-        $output = shell_exec(escapeshellarg(PHP_BINARY) . ' -r ' . $escapedScript);
-        return $output;
+    private static function runBugfixScript(string $fileContent, string $filename): bool
+    {
+        try { (new ParserFactory())->createForNewestSupportedVersion()->parse($fileContent); }
+        catch (\PhpParser\Error $e) { return true; }
+        return false;
     }
 }
 /**
