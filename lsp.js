@@ -22,7 +22,7 @@ const path = require('path');
 const { pathToFileURL } = require('url');
 const { spawn } = require('child_process');
 
-const PORT = 3057;
+const PORT = Number(process.env.FILEMANAGER_LSP_PORT || 3057);
 const HOST = '127.0.0.1';
 
 // Raiz do workspace entregue ao Intelephense. É o diretório do projeto,
@@ -83,6 +83,24 @@ function resolveIntelephense() {
 
 const server = http.createServer();
 const wss = new WebSocket.Server({ noServer: true, maxPayload: 131072 });
+const children = new Set();
+const stopping = new Map();
+function stopChild(child) {
+    if (!children.has(child) || stopping.has(child)) return;
+    child.kill('SIGTERM');
+    const timeout = setTimeout(() => child.kill('SIGKILL'), 1500);
+    timeout.unref();
+    stopping.set(child, timeout);
+}
+
+// Reap language servers on bridge shutdown, including disconnected sessions.
+for (const signal of ['SIGTERM', 'SIGINT']) {
+    process.once(signal, () => {
+        server.close();
+        for (const ws of wss.clients) ws.terminate();
+        for (const child of children) stopChild(child);
+    });
+}
 
 server.on('upgrade', (request, socket, head) => {
     if (!bridgeAuth.allowed(request, bridgeAuth.session(request))) return bridgeAuth.reject(socket);
@@ -111,6 +129,21 @@ wss.on('connection', (ws, request) => {
     const child = isJs
         ? spawn(process.execPath, [bin, '--stdio'], { cwd: __dirname })
         : spawn(bin, ['--stdio'], { cwd: __dirname });
+    children.add(child);
+    child.once('close', () => {
+        children.delete(child);
+        clearTimeout(stopping.get(child));
+        stopping.delete(child);
+        if (ws.readyState === WebSocket.OPEN) ws.close();
+    });
+    child.on('error', () => {
+        if (ws.readyState === WebSocket.OPEN) ws.close(1011, 'Language server unavailable');
+    });
+    // Stream write failures are asynchronous (e.g. EPIPE after a server crash).
+    child.stdin.on('error', () => {
+        stopChild(child);
+        if (ws.readyState === WebSocket.OPEN) ws.close(1011, 'Language server unavailable');
+    });
 
     // ---- stdio (servidor) -> WebSocket (editor) --------------------
     let buffer = Buffer.alloc(0);
@@ -158,11 +191,11 @@ wss.on('connection', (ws, request) => {
     });
 
     ws.on('close', () => {
-        try { child.kill(); } catch (e) { /* noop */ }
+        stopChild(child);
     });
 
     ws.on('error', () => {
-        try { child.kill(); } catch (e) { /* noop */ }
+        stopChild(child);
     });
 });
 

@@ -59,6 +59,8 @@ jobs:
       - run: npm run test:security:ui
       - run: npm run test:security:threads
       - run: npm run test:security:pty
+      - run: npm run test:security:dependencies
+      - run: npm run test:security:lsp
   swoole:
     name: Real Swoole HTTP, WebSocket and PHP PTY regressions
     runs-on: ubuntu-24.04
@@ -81,6 +83,10 @@ jobs:
           SECURITY_PTY_BACKEND: php
         run: npm run test:security:pty
       - run: node --test scripts/security/swoole-integration.cjs
+      - name: Real LSP through the Swoole WebSocket relay
+        env:
+          SECURITY_LSP_SWOOLE: '1'
+        run: npm run test:security:lsp
   dependencies:
     name: Composer and npm advisories (blocking)
     runs-on: ubuntu-24.04
