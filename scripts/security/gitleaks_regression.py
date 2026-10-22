@@ -101,32 +101,47 @@ class GitleaksRegression(unittest.TestCase):
             self.assertTrue(all(match.group(1) not in serialized for match in matches),
                             'Baseline must not contain historical credentials in any field')
 
-    def test_every_old_occurrence_is_blocked_in_a_later_commit(self):
-        # Recreate the same path, lines, columns, author, date and message.
-        # Recreate the parent file too: Gitleaks columns depend on diff boundaries.
-        # Only the commit identity changes. No real secret is printed or stored
-        # in a report; historical file contents exist only in this temp Git repo.
-        for index, finding in enumerate(json.loads(BASELINE.read_text())):
-            with self.subTest(occurrence=index + 1):
-                root = repository(self.directory / str(index))
-                parents = git(ROOT, 'rev-list', '--parents', '-n', '1', finding['Commit']).split()[1:]
-                if parents and git(ROOT, 'ls-tree', '--name-only', parents[0], '--', finding['File']):
-                    before = git(ROOT, 'show', f"{parents[0]}:{finding['File']}", strip=False)
-                    write(root, finding['File'], before)
-                    commit(root, 'Reproduce historical diff boundary')
-                blob = git(ROOT, 'show', f"{finding['Commit']}:{finding['File']}", strip=False)
-                write(root, finding['File'], blob)
-                env = dict(os.environ, GIT_AUTHOR_NAME=finding['Author'],
-                           GIT_AUTHOR_EMAIL=finding['Email'], GIT_AUTHOR_DATE=finding['Date'])
-                new_commit = commit(root, finding['Message'], env=env)
-                self.assertNotEqual(new_commit, finding['Commit'])
-                detected = self.assert_blocked(root, finding['RuleID'], new_commit)
-                self.assertTrue(any(
-                    all(f[key] == finding[key] for key in (
-                        'RuleID', 'Description', 'File', 'StartLine', 'EndLine',
-                        'StartColumn', 'EndColumn', 'Entropy', 'Author', 'Email', 'Date', 'Message'
-                    )) for f in detected
-                ), 'Reintroduced occurrence must retain all baseline comparison metadata except commit')
+    def test_same_baselined_secret_is_blocked_in_a_later_commit(self):
+        # Use synthetic secrets even in disposable commits. The real six-entry
+        # baseline is checked separately against the unchanged project history.
+        root = repository(self.directory / 'reintroduction')
+        files = {
+            'database/tokens.lotus': json.dumps({secrets.token_hex(32): {'nameClient': 'fixture'}}),
+            'plugins/Extension/plugins/libCurl.php':
+                '<?php // CURLOPT_PROXYUSERPWD => "fixture:' + secrets.token_hex(20) + '"',
+            'settings.txt': 'github_token = "' + 'ghp_' + secrets.token_hex(18) + '"',
+        }
+        for name, content in files.items():
+            write(root, name, content)
+        first_commit = commit(root)
+        status, historical = scan(root, baseline=None)
+        self.assertEqual((status, len(historical)), (1, 3))
+        self.assertEqual({f['RuleID'] for f in historical},
+                         {'filemanager-token-store', 'filemanager-proxy-credential', 'github-pat'})
+        baseline = self.directory / 'synthetic-baseline.json'
+        baseline.write_text(json.dumps(historical))
+        self.assertEqual(scan(root, baseline=baseline), (0, []))
+        for name in files:
+            (root / name).unlink()
+        commit(root, 'Remove synthetic credentials')
+        for name, content in files.items():
+            write(root, name, content)
+        metadata = historical[0]
+        env = dict(os.environ, GIT_AUTHOR_NAME=metadata['Author'],
+                   GIT_AUTHOR_EMAIL=metadata['Email'], GIT_AUTHOR_DATE=metadata['Date'])
+        new_commit = commit(root, metadata['Message'], env=env)
+        self.assertNotEqual(new_commit, first_commit)
+        status, detected = scan(root, baseline=baseline)
+        self.assertEqual((status, len(detected)), (1, 3))
+        self.assertTrue(all(f['Commit'] == new_commit for f in detected))
+        for finding in historical:
+            self.assertTrue(any(
+                all(f[key] == finding[key] for key in (
+                    'RuleID', 'Description', 'File', 'StartLine', 'EndLine',
+                    'StartColumn', 'EndColumn', 'Entropy', 'Author', 'Email', 'Date', 'Message',
+                    'Secret', 'Match',
+                )) for f in detected
+            ), 'Same synthetic secret must retain baseline metadata except commit')
 
     def test_rule_changes_require_explicit_review(self):
         original = CONFIG.read_text()

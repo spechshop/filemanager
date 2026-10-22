@@ -107,8 +107,8 @@ Hashes SHA-256 fixam os bytes revisados da configuração e da baseline. Qualque
 A [suíte de regressão](../../scripts/security/gitleaks_regression.py) executa o binário real em repositórios temporários. A [evidência local](after-gitleaks.txt) registra dez testes passando e zero achados fora da baseline no scan final. A suíte verifica:
 
 - Sem baseline, o histórico real falha com exatamente os seis achados do inventário; com baseline, retorna zero achados e exit 0.
-- Novos token FileManager, credencial de proxy comentada e token sintético GitHub são bloqueados (exit 1), inclusive nos dois caminhos históricos.
-- Cada uma das seis ocorrências antigas, recriada em outro commit com os demais metadados de comparação preservados, continua bloqueada (exit 1). Os valores reais ficam apenas nas fixtures temporárias, removidas ao terminar; nunca são impressos nem gravados sem redação em relatórios.
+- Novos tokens FileManager, credencial de proxy comentada e token sintético GitHub são bloqueados (exit 1), inclusive nos dois caminhos históricos.
+- Segredos sintéticos das duas regras próprias e de uma regra padrão são aceitos em uma baseline temporária, removidos e reinseridos identicamente em outro commit. A reinserção falha (exit 1), preservando os demais metadados usados na comparação oficial. Isso exercita o mecanismo de reutilização de segredo antigo sem criar commits com credenciais reais; a baseline real de seis achados é validada separadamente contra o histórico existente. Fixtures e relatórios redigidos são removidos ao terminar.
 - Mudanças nas regras padrão, regex, descrição, remoção da regra de proxy e inclusão de exceção genérica são recusadas pela guarda de integridade. Uma descrição modificada também faz o scanner oficial voltar a apontar os cinco tokens, em vez de absorvê-los silenciosamente.
 - Expansão/alteração da baseline é recusada, e nenhum campo do JSON contém as credenciais históricas.
 - Um segredo removido antes de quatro commits limpos continua detectado; também é detectado quando existe apenas em outra branch. Checkout raso é recusado.
