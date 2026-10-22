@@ -1,7 +1,7 @@
 name: Security
 on:
   pull_request:
-    branches: [newterm]
+    branches: [newterm, 'security/audit-regression-ci']
   push:
     branches: [newterm, 'security/**']
   schedule:
@@ -128,5 +128,7 @@ jobs:
       - run: go install github.com/zricethezav/gitleaks/v8@v8.28.0
       - run: actionlint -color
       - run: git ls-files -z '*.sh' filemanagerctl | xargs -0 shellcheck --severity=warning
-      - name: Full history secret scan; always redact findings
-        run: gitleaks git --redact --config .gitleaks.toml --no-banner
+      - name: Verify historical baseline and secret detection regressions
+        run: python3 scripts/security/gitleaks_regression.py
+      - name: Full history secret scan with reviewed revoked-credential baseline
+        run: python3 scripts/security/gitleaks_scan.py
