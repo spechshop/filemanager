@@ -121,3 +121,21 @@ test('stored credentials and server welcome messages never enter HTML sinks', as
         }
     } finally { w.close(); }
 });
+
+test('new browser credentials use independent random bytes and preserve registered credentials', () => {
+    const first = browser(), second = browser();
+    try {
+        const source = read('js/jquery.toast.min.js');
+        const code = source.slice(source.indexOf('function initializeBrowserCredential()'), source.indexOf('checkTokenBrowser = setTimeout'));
+        first.window.eval(code); second.window.eval(code);
+        const a = first.window.localStorage.getItem('tokenBrowser');
+        const b = second.window.localStorage.getItem('tokenBrowser');
+        assert.match(a, /^[a-f0-9]{64}$/);
+        assert.match(b, /^[a-f0-9]{64}$/);
+        assert.notEqual(a, b);
+        assert.equal(first.window.initializeBrowserCredential(), a);
+        first.window.localStorage.setItem('tokenBrowser', 'previously-registered');
+        assert.equal(first.window.initializeBrowserCredential(), 'previously-registered');
+        assert.equal(first.window.document.getElementById('fp').textContent, 'previously-registered');
+    } finally { first.window.close(); second.window.close(); }
+});

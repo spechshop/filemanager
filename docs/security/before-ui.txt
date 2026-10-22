@@ -1,22 +1,23 @@
-✖ stored filenames render as text; clicking keeps the complete filename as data (67.784225ms)
-✖ stored chat markup and crafted markdown fences cannot create executable nodes (10.626129ms)
-✖ reflected paths and search highlighting stay text, including regex metacharacters (7.524224ms)
-✖ file tree preserves hostile names and inline arguments without code execution (9.480716ms)
-✖ notification headers and bodies display untrusted messages as text (16.072541ms)
-✖ stored credentials and server welcome messages never enter HTML sinks (20.739557ms)
-ℹ tests 6
+✖ stored filenames render as text; clicking keeps the complete filename as data (67.893152ms)
+✖ stored chat markup and crafted markdown fences cannot create executable nodes (13.635122ms)
+✖ reflected paths and search highlighting stay text, including regex metacharacters (8.453428ms)
+✖ file tree preserves hostile names and inline arguments without code execution (8.486446ms)
+✖ notification headers and bodies display untrusted messages as text (16.080621ms)
+✖ stored credentials and server welcome messages never enter HTML sinks (24.243036ms)
+✖ new browser credentials use independent random bytes and preserve registered credentials (10.820966ms)
+ℹ tests 7
 ℹ suites 0
 ℹ pass 0
-ℹ fail 6
+ℹ fail 7
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 436.781718
+ℹ duration_ms 488.130407
 
 ✖ failing tests:
 
 test at scripts/security/ui-regression.cjs:16:1
-✖ stored filenames render as text; clicking keeps the complete filename as data (67.784225ms)
+✖ stored filenames render as text; clicking keeps the complete filename as data (67.893152ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
   + actual - expected
 
@@ -37,7 +38,7 @@ test at scripts/security/ui-regression.cjs:16:1
   }
 
 test at scripts/security/ui-regression.cjs:37:1
-✖ stored chat markup and crafted markdown fences cannot create executable nodes (10.626129ms)
+✖ stored chat markup and crafted markdown fences cannot create executable nodes (13.635122ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
 
   1 !== 0
@@ -58,7 +59,7 @@ test at scripts/security/ui-regression.cjs:37:1
   }
 
 test at scripts/security/ui-regression.cjs:54:1
-✖ reflected paths and search highlighting stay text, including regex metacharacters (7.524224ms)
+✖ reflected paths and search highlighting stay text, including regex metacharacters (8.453428ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
   + actual - expected
 
@@ -82,29 +83,31 @@ test at scripts/security/ui-regression.cjs:54:1
   }
 
 test at scripts/security/ui-regression.cjs:73:1
-✖ file tree preserves hostile names and inline arguments without code execution (9.480716ms)
+✖ file tree preserves hostile names and inline arguments without code execution (8.486446ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
 
-  4 !== 0
+  + '/safe.txt'
+  - '/authorized/workspace/safe.txt'
 
-      at TestContext.<anonymous> (/home/lotus/projetos/filemanager/scripts/security/ui-regression.cjs:82:20)
+      at TestContext.<anonymous> (/home/lotus/projetos/filemanager/scripts/security/ui-regression.cjs:82:16)
       at async Test.run (node:internal/test_runner/test:1389:7)
       at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
     generatedMessage: true,
     code: 'ERR_ASSERTION',
-    actual: 4,
-    expected: 0,
+    actual: '/safe.txt',
+    expected: '/authorized/workspace/safe.txt',
     operator: 'strictEqual',
     diff: 'simple'
   }
 
-test at scripts/security/ui-regression.cjs:88:1
-✖ notification headers and bodies display untrusted messages as text (16.072541ms)
+test at scripts/security/ui-regression.cjs:92:1
+✖ notification headers and bodies display untrusted messages as text (16.080621ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
 
   3 !== 0
 
-      at TestContext.<anonymous> (/home/lotus/projetos/filemanager/scripts/security/ui-regression.cjs:95:20)
+      at TestContext.<anonymous> (/home/lotus/projetos/filemanager/scripts/security/ui-regression.cjs:99:20)
       at Test.runInAsyncScope (node:async_hooks:227:14)
       at Test.run (node:internal/test_runner/test:1382:25)
       at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
@@ -119,15 +122,15 @@ test at scripts/security/ui-regression.cjs:88:1
     diff: 'simple'
   }
 
-test at scripts/security/ui-regression.cjs:100:1
-✖ stored credentials and server welcome messages never enter HTML sinks (20.739557ms)
+test at scripts/security/ui-regression.cjs:104:1
+✖ stored credentials and server welcome messages never enter HTML sinks (24.243036ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
   + actual - expected
 
   + ''
   - '<img src=x onerror="window.pwned=1">'
 
-      at TestContext.<anonymous> (/home/lotus/projetos/filemanager/scripts/security/ui-regression.cjs:113:20)
+      at TestContext.<anonymous> (/home/lotus/projetos/filemanager/scripts/security/ui-regression.cjs:117:20)
       at async Test.run (node:internal/test_runner/test:1389:7)
       at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
     generatedMessage: true,
@@ -135,5 +138,23 @@ test at scripts/security/ui-regression.cjs:100:1
     actual: '',
     expected: '<img src=x onerror="window.pwned=1">',
     operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at scripts/security/ui-regression.cjs:125:1
+✖ new browser credentials use independent random bytes and preserve registered credentials (10.820966ms)
+  AssertionError [ERR_ASSERTION]: The "string" argument must be of type string. Received type object (null)
+      at TestContext.<anonymous> (/home/lotus/projetos/filemanager/scripts/security/ui-regression.cjs:133:16)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1382:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:960:18)
+      at Test.postRun (node:internal/test_runner/test:1522:19)
+      at Test.run (node:internal/test_runner/test:1447:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:960:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: /^[a-f0-9]{64}$/,
+    operator: 'match',
     diff: 'simple'
   }
