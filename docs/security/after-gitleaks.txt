@@ -1,0 +1,16 @@
+test_baseline_cannot_expand_or_hide_payloads_without_review (__main__.GitleaksRegression.test_baseline_cannot_expand_or_hide_payloads_without_review) ... ok
+test_baseline_contains_no_historical_credential (__main__.GitleaksRegression.test_baseline_contains_no_historical_credential) ... ok
+test_deleted_secret_in_old_commit_and_other_branch_is_still_blocked (__main__.GitleaksRegression.test_deleted_secret_in_old_commit_and_other_branch_is_still_blocked) ... ok
+test_description_drift_is_not_silently_baselined (__main__.GitleaksRegression.test_description_drift_is_not_silently_baselined) ... ok
+test_new_credentials_are_blocked_by_custom_and_default_rules (__main__.GitleaksRegression.test_new_credentials_are_blocked_by_custom_and_default_rules) ... ok
+test_rule_changes_require_explicit_review (__main__.GitleaksRegression.test_rule_changes_require_explicit_review) ... ok
+test_same_baselined_secret_is_blocked_in_a_later_commit (__main__.GitleaksRegression.test_same_baselined_secret_is_blocked_in_a_later_commit) ... ok
+test_shallow_checkout_is_rejected (__main__.GitleaksRegression.test_shallow_checkout_is_rejected) ... ok
+test_six_historical_findings_match_official_baseline (__main__.GitleaksRegression.test_six_historical_findings_match_official_baseline) ... ok
+test_workflow_runs_regressions_and_guarded_scan_with_full_checkout (__main__.GitleaksRegression.test_workflow_runs_regressions_and_guarded_scan_with_full_checkout) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 1.914s
+
+OK
+Gitleaks full-history scan: 0 findings outside the reviewed baseline.
