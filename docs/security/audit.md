@@ -96,6 +96,12 @@ Semgrep: `python3 scripts/security/semgrep-regression.py` e o comando exato de s
 
 Ações são fixadas em SHA; o token tem somente `contents: read`, checkout sem persistência de credenciais, sem secrets da implantação, sem `pull_request_target` e sem auto-merge/deploy. Testes de PR executam em runners descartáveis. Dependabot acompanha Actions/Composer/npm semanalmente, com cooldown de sete dias para atualizações de versão. O agendamento e Dependabot passam a vigorar ao integrar os arquivos na branch padrão (`newterm`). Recomenda-se exigir esses checks na proteção da branch; as configurações administrativas do repositório não foram alteradas.
 
+## Evidência da execução no GitHub
+
+[Execução do PR para o código `93db811`](https://github.com/spechshop/filemanager/actions/runs/39710201296), com [resultado estruturado](ci-results.json): passaram as três versões de PHP (incluindo regressões e PHPStan), Node/DOM/conversas/PTY, Swoole real e Semgrep. No job de ferramentas, actionlint e ShellCheck passaram; o Gitleaks falhou pelas seis ocorrências históricas. No job de dependências, Composer passou e npm audit falhou pelos 12 alertas remanescentes. Nenhuma dessas falhas é mascarada. O PR [#12](https://github.com/spechshop/filemanager/pull/12) permanece em rascunho para revisão e tratamento dos bloqueios de implantação.
+
+Também foi repetido `npm ci` a partir do lock em um checkout temporário limpo; os testes DOM, conversas, ambos os PTYs e HTTP/WebSocket Swoole passaram sem depender de node_modules/libspech da instalação local. A verificação final encontrou zero processos remanescentes nas fixtures e zero segredos na árvore versionada atual.
+
 ## PHP, Swoole e implantação segura
 
 O README dizia PHP 8.1+, mas o lock já exigia pelo menos PHP 8.2. Agora o suporte declarado começa em **PHP 8.3 com patches de segurança atuais**, testado no CI em 8.3–8.5. PHP 8.1 encerrou o suporte; a situação atual está na [tabela oficial de suporte](https://www.php.net/supported-versions.php).
