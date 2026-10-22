@@ -15,7 +15,7 @@ putenv('FILEMANAGER_ALLOWED_ROOTS=' . json_encode([$tmp . '/files'])); putenv('F
 $fail = 0; $count = 0;
 function check($ok, $name) { global $count, $fail; $count++; if (!$ok) $fail++; echo ($ok ? 'PASS ' : 'FAIL ') . $name . "\n"; }
 try {
-    foreach (['../outside/pwned', '/tmp/absolute-pwned', 'safe/../../outside/pwned', 'link'] as $name) {
+    foreach (['../outside/pwned', $tmp . '/outside/absolute-pwned', 'safe/../../outside/pwned', 'link'] as $name) {
         $zip = new ZipArchive(); $file = $tmp . '/files/attack.zip';
         $zip->open($file, ZipArchive::CREATE | ZipArchive::OVERWRITE);
         $zip->addFromString('first-safe', 'must-not-be-written');
@@ -25,7 +25,7 @@ try {
         $denied = false;
         try { safeFiles::extract($file, $tmp . '/files/output', $token); }
         catch (Throwable $e) { $denied = true; }
-        check($denied && !file_exists($tmp . '/files/output') && !file_exists($tmp . '/outside/pwned'), 'malicious late ZIP entry rejected before any extraction: ' . $name);
+        check($denied && !file_exists($tmp . '/files/output') && !file_exists($tmp . '/outside/pwned') && !file_exists($tmp . '/outside/absolute-pwned'), 'malicious late ZIP entry rejected before any extraction: ' . $name);
     }
     $tarHeader = function(string $name, string $content, string $type = '0', string $link = ''): string {
         $header = str_pad($name, 100, "\0") . "0000644\0" . "0000000\0" . "0000000\0"

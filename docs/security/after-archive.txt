@@ -1,5 +1,5 @@
 PASS malicious late ZIP entry rejected before any extraction: ../outside/pwned
-PASS malicious late ZIP entry rejected before any extraction: /tmp/absolute-pwned
+PASS malicious late ZIP entry rejected before any extraction: /tmp/fm-archive-5a08d7b3ce7face2/outside/absolute-pwned
 PASS malicious late ZIP entry rejected before any extraction: safe/../../outside/pwned
 PASS malicious late ZIP entry rejected before any extraction: link
 PASS TAR traversal/link rejected before writing earlier safe entry: 0
