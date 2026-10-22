@@ -13,9 +13,14 @@
   "scripts": {
     "test:security:ui": "node --test scripts/security/ui-regression.cjs",
     "test:security:pty": "node --test scripts/security/pty-integration.cjs",
-    "test:security:threads": "node --test scripts/security/thread-regression.cjs"
+    "test:security:threads": "node --test scripts/security/thread-regression.cjs",
+    "test:security:lsp": "node --test scripts/security/lsp-integration.cjs",
+    "test:security:dependencies": "node --test scripts/security/dependency-regression.cjs"
   },
   "overrides": {
-    "protobufjs": "^8.8.1"
+    "protobufjs": "^8.8.1",
+    "get-uri@6.0.5": {
+      "basic-ftp": "6.2.3"
+    }
   }
 }
