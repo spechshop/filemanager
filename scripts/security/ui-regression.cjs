@@ -56,6 +56,7 @@ test('reflected paths and search highlighting stay text, including regex metacha
     try {
         const source = read('plugins/Request/modules/makeTable/preloadScripts.html');
         w.adjustPath = () => {};
+        w.eval(read('js/file-list.js'));
         w.eval(source.slice(source.indexOf('    function setPath('), source.indexOf('    function backPath(')));
         for (const payload of payloads) {
             const value = '/workspace/' + payload;

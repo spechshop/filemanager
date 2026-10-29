@@ -8,13 +8,14 @@ final class safeFiles
     private static int $total = 0;
 
     /** @return array{owner: string, process: resource, stream: resource, input: resource, size: int, entries: array} */
-    private static function start(string $op, string $path, string $token, ?string $target = null, int $offset = 0, ?int $length = null, bool $details = false): array
+    private static function start(string $op, string $path, string $token, ?string $target = null, int $offset = 0, ?int $length = null, bool $details = false, array $parameters = []): array
     {
         if (!securityPolicy::validToken($token)) throw new \DomainException('revoked');
         $command = json_encode(['op' => $op, 'path' => $path, 'target' => $target, 'offset' => $offset, 'length' => $length, 'token' => $token,
             'fallbackRoots' => securityPolicy::adminAllowed($token) ? [] : securityPolicy::roots($token), 'uploadDirectory' => securityPolicy::uploadDirectory(),
             'directoryStatsSeconds' => $details ? securityPolicy::limit('DIRECTORY_STATS_SECONDS', 2) : 0,
-            'tokenFile' => securityPolicy::tokenFile(), 'base' => appController::baseDir()], JSON_THROW_ON_ERROR) . "\n";
+            'tokenFile' => securityPolicy::tokenFile(), 'base' => appController::baseDir(),
+            'trashDirectory' => securityPolicy::dataPath('trash', appController::baseDir() . '.runtime/trash')] + $parameters, JSON_THROW_ON_ERROR) . "\n";
         if ((self::$active[$token] ?? 0) >= securityPolicy::limit('FILESYSTEM_PER_USER', 8) || self::$total >= securityPolicy::limit('FILESYSTEM_TOTAL', 32)) throw new \DomainException('Filesystem quota exceeded');
         self::$active[$token] = (self::$active[$token] ?? 0) + 1; self::$total++;
         $pipes = [];
@@ -31,7 +32,7 @@ final class safeFiles
             throw new \DomainException('Secure filesystem operation denied');
         }
         return ['owner' => $token, 'process' => $process, 'stream' => $pipes[1], 'input' => $pipes[0],
-            'size' => $result['size'] ?? 0, 'entries' => $result['entries'] ?? []];
+            'size' => $result['size'] ?? 0, 'entries' => $result['entries'] ?? [], 'result' => $result['result'] ?? []];
     }
 
     private static function release(string $owner): void
@@ -95,6 +96,14 @@ final class safeFiles
     public static function remove(string $path, string $token): void
     {
         self::close(self::start('remove', $path, $token));
+    }
+
+    public static function trash(string $action, string $token, string $path = '', string $id = '', bool $rename = false): array
+    {
+        if (!in_array($action, ['put', 'list', 'restore', 'purge'], true)) throw new \DomainException('trash action');
+        $operation = self::start('trash-' . $action, $path, $token, parameters: ['id' => $id, 'rename' => $rename]);
+        try { return $operation['result']; }
+        finally { self::close($operation); }
     }
 
     public static function copy(string $source, string $target, string $token): void

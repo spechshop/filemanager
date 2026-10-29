@@ -4,6 +4,10 @@ stdout: one JSON line then optional bytes. Never accepts code or shell commands.
 Linux openat2 deliberately has no pathname-based fallback.
 """
 import ctypes
+import fcntl
+import hashlib
+import re
+import secrets
 import errno
 import json
 import os
@@ -92,6 +96,9 @@ class Files:
         # Canonicalization permits legitimate absolute links between allowed roots.
         # It is not the IO guard: openat2 below binds resolution to an open root.
         path = os.path.realpath(path) if follow else os.path.join(os.path.realpath(os.path.dirname(path)), os.path.basename(path))
+        trash = self.request.get('trashDirectory')
+        if trash and within(path, os.path.normpath(trash)):
+            raise PermissionError('private recovery storage')
         for root, fd in sorted(self.rootfds, key=lambda item: -len(item[0])):
             if within(path, root):
                 return root, fd, os.path.relpath(path, root), path
@@ -335,6 +342,262 @@ class Files:
             os.close(fd)
 
 
+
+class TrashError(Exception):
+    def __init__(self, code):
+        self.code = code
+
+
+def rename_exclusive(source, name, target, new):
+    libc = ctypes.CDLL(None, use_errno=True)
+    if libc.renameat2(source, os.fsencode(name), target, os.fsencode(new), 1) != 0:
+        raise OSError(ctypes.get_errno(), 'exclusive move failed')
+
+
+class Trash:
+    """Private per-owner recovery records; user paths always pass Files confinement."""
+    def __init__(self, files):
+        self.files = files
+        self.fds = []
+        path = files.normalize(files.request['trashDirectory'])
+        slash = os.open('/', os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC)
+        self.fds.append(slash)
+        parent = slash
+        parts = path.strip('/').split('/')
+        for part in parts:
+            try:
+                os.mkdir(part, 0o700, dir_fd=parent)
+            except FileExistsError:
+                pass
+            parent = openat2(parent, part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                             resolve=BENEATH | NO_MAGICLINKS | NO_SYMLINKS)
+            self.fds.append(parent)
+        self.storage_path = path
+        info = os.fstat(parent)
+        if info.st_uid != os.geteuid() or info.st_mode & 0o077:
+            raise PermissionError('trash storage must be private')
+        owner = hashlib.sha256(files.token.encode()).hexdigest()
+        try:
+            os.mkdir(owner, 0o700, dir_fd=parent)
+        except FileExistsError:
+            pass
+        self.owner = openat2(parent, owner, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        self.fds.append(self.owner)
+        owner_info = os.fstat(self.owner)
+        if owner_info.st_uid != os.geteuid() or owner_info.st_mode & 0o077:
+            raise PermissionError('trash owner storage must be private')
+        self.lock = openat2(self.owner, '.lock', os.O_WRONLY | os.O_CREAT | os.O_NOFOLLOW, 0o600)
+        self.fds.append(self.lock)
+        deadline = time.monotonic() + 5
+        while True:
+            try:
+                fcntl.flock(self.lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() > deadline:
+                    raise TrashError('busy')
+                time.sleep(0.01)
+        files.authorize()
+
+    def close(self):
+        for fd in reversed(self.fds):
+            os.close(fd)
+        self.fds.clear()
+
+    def item(self, identifier):
+        if not isinstance(identifier, str) or re.fullmatch('[a-f0-9]{32}', identifier) is None:
+            raise TrashError('not_found')
+        try:
+            fd = openat2(self.owner, identifier, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        except FileNotFoundError:
+            raise TrashError('not_found')
+        self.fds.append(fd)
+        meta = openat2(fd, 'metadata.json', os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        try:
+            if not stat.S_ISREG(os.fstat(meta).st_mode) or os.fstat(meta).st_size > 65536:
+                raise PermissionError('invalid recovery record')
+            data = json.loads(os.read(meta, 65537))
+        finally:
+            os.close(meta)
+        if not isinstance(data, dict) or data.get('id') != identifier or not isinstance(data.get('originalPath'), str) or not isinstance(data.get('deletedAt'), int):
+            raise PermissionError('invalid recovery record')
+        self.files.locate(data['originalPath'], follow=False)
+        return fd, data
+
+    def list(self):
+        entries = []
+        for identifier in os.listdir(self.owner):
+            if re.fullmatch('[a-f0-9]{32}', identifier) is None:
+                continue
+            fd = None
+            try:
+                fd, data = self.item(identifier)
+                os.stat('contents', dir_fd=fd, follow_symlinks=False)
+                entries.append(data)
+            except (OSError, ValueError, TrashError):
+                # Preserve incomplete records for recovery; never erase evidence.
+                continue
+            finally:
+                if fd is not None:
+                    self.fds.remove(fd)
+                    os.close(fd)
+        return sorted(entries, key=lambda entry: entry['deletedAt'], reverse=True)
+
+    def copy_entry(self, source, name, target, new, depth=0):
+        self.files.authorize()
+        if depth > 128:
+            raise PermissionError('directory nesting limit')
+        info = os.stat(name, dir_fd=source, follow_symlinks=False)
+        if stat.S_ISLNK(info.st_mode):
+            os.symlink(os.readlink(name, dir_fd=source), new, dir_fd=target)
+        elif stat.S_ISDIR(info.st_mode):
+            src = openat2(source, name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+            os.mkdir(new, 0o700, dir_fd=target)
+            dst = openat2(target, new, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+            try:
+                for child in os.listdir(src):
+                    self.copy_entry(src, child, dst, child, depth + 1)
+                os.fchmod(dst, stat.S_IMODE(info.st_mode))
+                os.utime(dst, ns=(info.st_atime_ns, info.st_mtime_ns))
+                os.fsync(dst)
+            finally:
+                os.close(src)
+                os.close(dst)
+        elif stat.S_ISREG(info.st_mode):
+            src = openat2(source, name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+            dst = openat2(target, new, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+            try:
+                if not stat.S_ISREG(os.fstat(src).st_mode):
+                    raise PermissionError('unsupported trash type')
+                while True:
+                    self.files.authorize()
+                    block = os.read(src, 262144)
+                    if not block:
+                        break
+                    view = memoryview(block)
+                    while view:
+                        view = view[os.write(dst, view):]
+                if os.fstat(src).st_mtime_ns != info.st_mtime_ns:
+                    raise OSError('source changed during copy')
+                os.fchmod(dst, stat.S_IMODE(info.st_mode))
+                os.utime(dst, ns=(info.st_atime_ns, info.st_mtime_ns))
+                os.fsync(dst)
+            finally:
+                os.close(src)
+                os.close(dst)
+        else:
+            raise PermissionError('unsupported trash type')
+
+    def transfer(self, source, name, target, new):
+        self.files.authorize()
+        try:
+            rename_exclusive(source, name, target, new)
+            return
+        except OSError as error:
+            if error.errno == errno.EEXIST:
+                raise TrashError('conflict')
+            if error.errno != errno.EXDEV:
+                raise
+        # Stage on the source volume so a pathname replacement cannot be removed.
+        stage = '.fm-trash-move-' + secrets.token_hex(16)
+        rename_exclusive(source, name, source, stage)
+        temporary = '.pending-' + secrets.token_hex(16)
+        try:
+            self.copy_entry(source, stage, target, temporary)
+            self.files.authorize()
+            rename_exclusive(target, temporary, target, new)
+        except Exception as error:
+            try:
+                self.files.remove_at(target, temporary)
+            except OSError:
+                pass
+            try:
+                rename_exclusive(source, stage, source, name)
+            except OSError:
+                raise TrashError('partial')
+            if isinstance(error, OSError) and error.errno == errno.EEXIST:
+                raise TrashError('conflict')
+            raise
+        try:
+            self.files.remove_at(source, stage)
+        except OSError:
+            raise TrashError('partial')
+
+    def put(self, path):
+        parent, name = self.files.parent(path)
+        original = self.files.locate(path, follow=False)[3]
+        if within(self.storage_path, original) or within(original, self.storage_path):
+            raise PermissionError('cannot trash recovery storage')
+        info = os.stat(name, dir_fd=parent, follow_symlinks=False)
+        if not (stat.S_ISREG(info.st_mode) or stat.S_ISDIR(info.st_mode) or stat.S_ISLNK(info.st_mode)):
+            raise PermissionError('unsupported trash type')
+        identifier = secrets.token_hex(16)
+        os.mkdir(identifier, 0o700, dir_fd=self.owner)
+        fd = openat2(self.owner, identifier, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+        self.fds.append(fd)
+        data = dict(id=identifier, name=name, originalPath=original, deletedAt=int(time.time()),
+                    kind='link' if stat.S_ISLNK(info.st_mode) else 'folder' if stat.S_ISDIR(info.st_mode) else 'file',
+                    size=None if stat.S_ISDIR(info.st_mode) else info.st_size)
+        meta = openat2(fd, 'metadata.json', os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        with os.fdopen(meta, 'w', encoding='utf8') as output:
+            json.dump(data, output)
+            output.flush()
+            os.fsync(output.fileno())
+        os.fsync(fd)
+        os.fsync(self.owner)
+        self.transfer(parent, name, fd, 'contents')
+        os.fsync(fd)
+        return data
+
+    def make_parents(self, path):
+        try:
+            fd = self.files.open(path, os.O_RDONLY | os.O_DIRECTORY)
+            self.files.release(fd)
+        except FileNotFoundError:
+            self.make_parents(os.path.dirname(path))
+            try:
+                self.files.mkdir(path)
+            except FileExistsError:
+                pass
+
+    def restore(self, identifier, rename=False):
+        fd, data = self.item(identifier)
+        original = data['originalPath']
+        self.make_parents(os.path.dirname(original))
+        parent, name = self.files.parent(original)
+        os.stat('contents', dir_fd=fd, follow_symlinks=False)
+        for attempt in range(1000):
+            target = name if attempt == 0 else self.restored_name(name, attempt)
+            try:
+                self.transfer(fd, 'contents', parent, target)
+                self.cleanup(identifier, fd)
+                return dict(id=identifier, restoredPath=os.path.join(os.path.dirname(original), target))
+            except TrashError as error:
+                if error.code != 'conflict' or not rename:
+                    raise
+        raise TrashError('conflict')
+
+    @staticmethod
+    def restored_name(name, attempt):
+        base, extension = os.path.splitext(name)
+        suffix = ' (restaurado ' + str(attempt) + ')'
+        limit = 255 - len((suffix + extension).encode())
+        base = base.encode()[:max(1, limit)].decode('utf8', errors='ignore')
+        return base + suffix + extension
+
+    def cleanup(self, identifier, fd):
+        os.unlink('metadata.json', dir_fd=fd)
+        os.rmdir(identifier, dir_fd=self.owner)
+        os.fsync(self.owner)
+
+    def purge(self, identifier):
+        fd, data = self.item(identifier)
+        self.files.remove_at(fd, 'contents')
+        self.cleanup(identifier, fd)
+        return dict(id=identifier)
+
+
+
 def reply(value):
     sys.stdout.buffer.write(json.dumps(value, ensure_ascii=True).encode() + b'\n')
     sys.stdout.buffer.flush()
@@ -373,6 +636,26 @@ def main():
             entries = files.entries(path)
             files.authorize()
             reply({'ok': True, 'entries': entries})
+        elif op in ('trash-put', 'trash-list', 'trash-restore', 'trash-purge'):
+            trash = Trash.__new__(Trash)
+            trash.fds = []
+            try:
+                trash.__init__(files)
+                if op == 'trash-put':
+                    result = trash.put(path)
+                elif op == 'trash-list':
+                    result = {'entries': trash.list()}
+                elif op == 'trash-restore':
+                    result = trash.restore(request.get('id'), request.get('rename') is True)
+                else:
+                    result = trash.purge(request.get('id'))
+                reply({'ok': True, 'result': {'success': True, **result}})
+            except TrashError as error:
+                reply({'ok': True, 'result': {'success': False, 'code': error.code}})
+            except FileNotFoundError:
+                reply({'ok': True, 'result': {'success': False, 'code': 'not_found'}})
+            finally:
+                trash.close()
         elif op == 'write':
             # Handshake permits streaming arbitrarily large uploads without buffering.
             # Validate and pin the target before accepting its bytes.

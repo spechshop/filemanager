@@ -8,10 +8,8 @@ class deleteFile
     {
         if (!security::authorize($request, $response, __CLASS__)) return true;
         $token = securityPolicy::requestToken($request);
-        $path = $request->get['path'] ?? '';
-        securityPolicy::entryPath($path, $token);
-        safeFiles::remove($path, $token);
-        securityPolicy::log('file_deleted');
-        return $response->end(json_encode(['success' => true, 'information' => 'ok']));
+        $path = $request->post['path'] ?? $request->get['path'] ?? '';
+        $response->header('Content-Type', 'application/json');
+        return $response->end(json_encode(recycleBin::move([$path], $token), JSON_UNESCAPED_UNICODE));
     }
 }

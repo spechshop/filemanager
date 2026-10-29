@@ -51,11 +51,11 @@ namespace {
     require $source . '/plugins/Start/server/cache.php';
     require $source . '/plugins/Request/components/appController.php';
     require $source . '/plugins/Request/components/security.php';
-    foreach (['securityPolicy', 'safeFiles', 'fileManagerConfig'] as $component) {
+    foreach (['securityPolicy', 'safeFiles', 'fileManagerConfig', 'recycleBin'] as $component) {
         if (is_file($source . '/plugins/Request/components/' . $component . '.php')) require $source . '/plugins/Request/components/' . $component . '.php';
     }
     require $source . '/plugins/Database/call/call.php';
-    foreach (['deleteFile', 'freeRam', 'downloadFile', 'newFile', 'uploadFile', 'renameItem', 'cutCopy', 'deleteMultipleFiles', 'saveTerminal', 'deleteTerminal'] as $handler) {
+    foreach (['deleteFile', 'freeRam', 'downloadFile', 'newFile', 'uploadFile', 'renameItem', 'cutCopy', 'deleteMultipleFiles', 'saveTerminal', 'deleteTerminal', 'trash'] as $handler) {
         require $source . '/plugins/Request/apps/' . $handler . '.php';
     }
     if (is_file($source . '/vendor/autoload.php')) {
@@ -186,7 +186,26 @@ namespace {
         $r = invoke('deleteMultipleFiles', ['tokenBrowser' => $valid, 'path' => $tmp . '/files'], ['files' => [$tmp . '/files/batch-safe', $tmp . '/outside/private']]);
         check($r->code === 403 && file_exists($tmp . '/files/batch-safe') && !is_dir($tmp . '/files/.trash'), 'late invalid batch item does not create trash or move earlier files');
         $r = invoke('deleteMultipleFiles', ['tokenBrowser' => $valid, 'path' => $tmp . '/files'], ['files' => [$tmp . '/files/batch-safe']]);
-        check($r->code === 200 && !file_exists($tmp . '/files/batch-safe') && count(glob($tmp . '/files/.trash/*')) === 1, 'authorized batch deletion at workspace root preserved');
+        check($r->code === 200 && !file_exists($tmp . '/files/batch-safe') && count(glob($tmp . '/trash/*/*/metadata.json')) === 1, 'authorized batch deletion records recoverable private trash metadata');
+        $r = invoke('trash', ['tokenBrowser' => $valid], ['action' => 'list']);
+        $trashed = json_decode($r->body, true)['entries'] ?? [];
+        check(count($trashed) === 1 && $trashed[0]['originalPath'] === $tmp . '/files/batch-safe', 'trash API lists original paths and recovery ids');
+        $recoveryId = $trashed[0]['id'];
+        $r = invoke('trash', ['tokenBrowser' => $other], ['action' => 'list']);
+        check((json_decode($r->body, true)['entries'] ?? null) === [], 'trash API isolates different owners in the same workspace');
+        $r = invoke('trash', ['tokenBrowser' => $valid], ['action' => 'restore', 'ids' => [$recoveryId]]);
+        check($r->code === 405 && !file_exists($tmp . '/files/batch-safe'), 'trash mutations reject GET requests');
+        file_put_contents($tmp . '/files/batch-safe', 'NEW');
+        $r = invoke('trash', ['tokenBrowser' => $valid], ['action' => 'restore', 'ids' => [$recoveryId]], [], [], null, false, 'POST');
+        check((json_decode($r->body, true)['errors'][0]['code'] ?? '') === 'conflict' && file_get_contents($tmp . '/files/batch-safe') === 'NEW', 'trash restoration never overwrites an existing file');
+        $r = invoke('trash', ['tokenBrowser' => $valid], ['action' => 'restore', 'ids' => [$recoveryId], 'conflict' => 'rename'], [], [], null, false, 'POST');
+        $restoredPath = json_decode($r->body, true)['completed'][0]['restoredPath'] ?? '';
+        check($r->code === 200 && is_file($restoredPath) && file_get_contents($restoredPath) === 'BATCH' && file_get_contents($tmp . '/files/batch-safe') === 'NEW', 'trash API restores with another name while preserving both contents');
+        $r = invoke('trash', ['tokenBrowser' => $valid], ['action' => 'move', 'files' => [$restoredPath]], [], [], null, false, 'POST');
+        $purgeId = json_decode($r->body, true)['completed'][0]['id'] ?? '';
+        check($purgeId !== '' && !is_file($restoredPath), 'trash move action uses the same recovery storage as legacy delete routes');
+        $r = invoke('trash', ['tokenBrowser' => $valid], ['action' => 'purge', 'ids' => [$purgeId]], [], [], null, false, 'POST');
+        check(!empty(json_decode($r->body, true)['success']) && count(glob($tmp . '/trash/*/*/metadata.json')) === 0, 'trash API permanently removes only the requested recovery entry');
         mkdir($tmp . '/files/recursive'); file_put_contents($tmp . '/files/recursive/first', 'RECURSIVE');
         symlink($tmp . '/outside', $tmp . '/files/recursive/link');
         $r = invoke('deleteFile', ['tokenBrowser' => $valid, 'path' => $tmp . '/files/recursive']);

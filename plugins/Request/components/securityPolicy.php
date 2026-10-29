@@ -46,6 +46,7 @@ final class securityPolicy
         'syncPath' => 'files',
         'toggleStubsPath' => 'admin',
         'treeDetails' => 'files',
+        'trash' => 'files',
         'uploadFile' => 'files',
     ];
 
@@ -297,7 +298,7 @@ final class securityPolicy
             if (isset($data['files'])) {
                 if (!is_array($data['files'])) throw new \DomainException('files');
                 foreach ($data['files'] as $file) {
-                    if ($route === 'deleteMultipleFiles') { self::entryPath($file, $token); if (!is_link($file)) self::tree($file, $token); }
+                    if (in_array($route, ['deleteMultipleFiles', 'trash'], true)) { self::entryPath($file, $token); if (!is_link($file)) self::tree($file, $token); }
                     else self::tree(self::path($file, $token, false), $token);
                 }
             }

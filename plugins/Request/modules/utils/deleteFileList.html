@@ -6,20 +6,7 @@
 
 
     function deleteFileList() {
-        Swal.fire({
-            title: 'Tem certeza?',
-            text: 'Você não poderá reverter esta ação!',
-            icon: 'warning',
-            color: '#fff',
-            confirmButtonColor: '#7367f0',
-            cancelButtonColor: '#424659',
-            background: '#24283b',
-            showCancelButton: true,
-            confirmButtonText: 'Sim, excluir!',
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
-            if (result.isConfirmed) deleteFileListConfirmed();
-        })
+        return deleteFileListConfirmed();
     }
 
     function compressFiles() {
@@ -51,44 +38,11 @@
     }
 
     function deleteFileListConfirmed() {
-        const list = document.getElementById('filesList').children;
-        let files = [];
-        for (let i = 0; i < list.length; i++) {
-            // Verifica se o checkbox está marcado E se o elemento está visível
-            if (list[i].children[0].children[0].checked && list[i].style.display !== 'none') {
-
-                files.push(list[i].children[0].children[0].value);
-            }
-        }
-        if (files.length === 0) {
-            return {
-                success: false
-            }
-        }
-        const token = $('#fp').text();
-        const path = encodeURI($('#pathInvisible').text());
-
-        $.ajax({
-            url: `deleteMultipleFiles?tokenBrowser=${token}&path=${path}`,
-            type: 'POST',
-            data: {files: files},
-            success: async function (data) {
-                const fopenDynamicToken = $('#fp').text();
-                const pathUsing = $('#pathInvisible').text();
-                setItemsInTbody(
-                    await (await asyncGet(`/syncPath?tokenBrowser=${fopenDynamicToken}&path=${pathUsing}`))['information'],
-                    'filesList'
-                );
-                Swal.fire({
-                    title: 'Arquivos excluídos!',
-                    text: 'Não será possível recuperar os arquivos excluídos.',
-                    icon: 'success',
-                    color: '#fff',
-                    background: '#24283b',
-                    confirmButtonColor: '#7367f0',
-                })
-            }
-        });
+        const files = [...document.querySelectorAll('#filesList tr')]
+            .filter(row => row.style.display !== 'none')
+            .map(row => row.querySelector('.checkboxFileList:checked')?.value)
+            .filter(Boolean);
+        return FMTrash.move(files);
     }
 
     function compressFileListConfirmed() {

@@ -1,0 +1,89 @@
+<section id="trashView" role="dialog" aria-modal="true" aria-labelledby="trashTitle" hidden>
+    <header class="trash-header">
+        <div><h2 id="trashTitle"><i class="fa-solid fa-trash-can" aria-hidden="true"></i> Lixeira</h2><p>Arquivos e pastas removidos, com restauração para o local de origem.</p></div>
+        <button id="trashClose" type="button" onclick="FMTrash.close()" title="Voltar aos arquivos (Esc)">← Voltar aos arquivos</button>
+    </header>
+    <div class="trash-toolbar">
+        <input id="trashSearch" type="search" placeholder="Buscar por nome ou local de origem" aria-label="Buscar na lixeira" oninput="FMTrash.filter()">
+        <button id="trashRefresh" type="button" onclick="FMTrash.refresh()">Atualizar</button>
+        <button id="trashEmpty" class="trash-danger" type="button" onclick="FMTrash.perform('empty')">Esvaziar lixeira</button>
+    </div>
+    <div class="trash-selection">
+        <label><input id="trashSelectAll" type="checkbox" onchange="FMTrash.selectAll(this.checked)"> Selecionar visíveis</label>
+        <span id="trashSelectedCount" aria-live="polite"></span>
+        <button id="trashRestoreSelected" type="button" onclick="FMTrash.perform('restore')">Restaurar selecionados</button>
+        <button id="trashDeleteSelected" class="trash-danger" type="button" onclick="FMTrash.perform('purge')">Excluir selecionados definitivamente</button>
+    </div>
+    <div id="trashStatus" class="trash-status" role="status" aria-live="polite" hidden><span id="trashStatusText"></span><button id="trashRetry" type="button" onclick="FMTrash.refresh()" hidden>Tentar novamente</button></div>
+    <div class="trash-content">
+        <div class="trash-columns" aria-hidden="true"><span></span><span>Nome / tipo</span><span>Local de origem</span><span>Removido em</span><span>Tamanho</span><span>Ações</span></div>
+        <ul id="trashItems" aria-label="Itens na lixeira"></ul>
+        <div id="trashNoItems" class="trash-empty"><i class="fa-regular fa-trash-can" aria-hidden="true"></i><h3 id="trashNoItemsTitle">Sua lixeira está vazia</h3><p id="trashNoItemsText">Os arquivos e pastas removidos aparecerão aqui para restauração.</p></div>
+    </div>
+    <div class="trash-footer">Os itens permanecem aqui até serem restaurados ou excluídos definitivamente. A restauração preserva arquivos que já existem no destino.</div>
+</section>
+<style>
+    html:has(#trashView:not([hidden])) { overflow: hidden !important; max-height: none !important; }
+    #trashView { position: fixed; inset: 0; z-index: 10020; display: flex; flex-direction: column; background: #151b25; color: #edf1f7; font-size: 14px; }
+    #trashView *, #trashView *::before, #trashView *::after { box-sizing: border-box; }
+    #trashView[hidden], #trashView [hidden], #trashCountBadge[hidden] { display: none !important; }
+    #trashView button { min-height: 36px; padding: 7px 12px; border: 1px solid #43516a; border-radius: 7px; background: #29374d; color: #e1ebfc; font: inherit; cursor: pointer; }
+    #trashView button:hover:not(:disabled) { background: #364b68; }
+    #trashView button:disabled { opacity: .4; cursor: default; }
+    #trashView button:focus-visible, #trashView input:focus-visible { outline: 2px solid #93b6ff; outline-offset: 3px; }
+    #trashView .trash-danger { color: #ffacb5; background: #3c2832; border-color: #70414e; }
+    #trashView .trash-danger:hover:not(:disabled) { background: #59313e; }
+    .trash-header { display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; gap: 20px; padding: 24px 32px; border-bottom: 1px solid #303b4d; background: #1d2634; }
+    #trashTitle { margin: 0 0 6px; color: inherit; font-size: 24px; }
+    #trashTitle i { margin-right: 8px; color: #f2bf72; }
+    .trash-header p { margin: 0; color: #9faec4; }
+    #trashClose { flex-shrink: 0; }
+    .trash-toolbar, .trash-selection { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 16px 32px; flex-shrink: 0; }
+    .trash-toolbar { border-bottom: 1px solid #303b4d; }
+    #trashSearch { min-width: 160px; width: min(480px, 100%); margin-right: auto; padding: 10px 12px; background: #101722; border: 1px solid #43516a; border-radius: 7px; color: #edf1f7; font: inherit; }
+    #trashSearch::placeholder { color: #96a5bc; }
+    .trash-selection { background: #192231; font-size: 12px; }
+    .trash-selection label { display: flex; align-items: center; gap: 8px; margin: 0; }
+    #trashSelectedCount { margin-right: auto; color: #a7b8d0; }
+    .trash-status { display: flex; align-items: center; gap: 16px; margin: 12px 32px 0; padding: 12px 16px; border-radius: 7px; background: #24344d; color: #c2d9ff; flex-shrink: 0; }
+    .trash-status.trash-error { background: #492d36; color: #ffd2d8; }
+    .trash-content { overflow: auto; overscroll-behavior: contain; flex: 1; min-height: 0; padding: 12px 32px 24px; }
+    .trash-columns, .trash-item { display: grid; grid-template-columns: 22px minmax(120px, 1fr) minmax(130px, 1.5fr) 145px 75px 175px; align-items: center; gap: 16px; }
+    .trash-columns { padding: 12px 14px; color: #93a5bf; font-size: 11px; }
+    #trashItems { margin: 0; padding: 0; list-style: none; }
+    .trash-item { margin-bottom: 8px; padding: 14px; border: 1px solid #303d52; border-radius: 9px; background: #1e293a; }
+    .trash-item-identity { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+    #trashView .trash-item-identity strong { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+    .trash-item-identity small, .trash-item time, .trash-item-size { color: #a3b2c9; font-size: 11px; }
+    .trash-item-origin { color: #bac9de; font-size: 12px; overflow-wrap: anywhere; }
+    .trash-item-actions { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
+    #trashView .trash-item-actions button { min-height: 30px; font-size: 11px; padding: 5px 8px; }
+    #trashView .trash-item-actions button[data-trash-item-action="purge"] { color: #f0a3ae; background: transparent; border-color: #67404e; }
+    .trash-empty { padding: 60px 20px; text-align: center; color: #96a7c1; }
+    .trash-empty > i { font-size: 44px; margin-bottom: 20px; }
+    .trash-empty h3 { color: #d4e0f3; font-size: 20px; }
+    .trash-footer { flex-shrink: 0; border-top: 1px solid #303b4d; padding: 14px 32px; color: #8ea3c0; font-size: 11px; }
+    @media (max-width: 1000px) {
+        .trash-columns { display: none; }
+        .trash-item { grid-template-columns: 22px minmax(0, 1fr) auto; gap: 10px 12px; }
+        .trash-item > input { grid-row: 1 / 4; align-self: start; }
+        .trash-item-origin { grid-column: 2 / 4; }
+        .trash-item-actions { grid-column: 2 / 4; flex-direction: row; }
+        .trash-item time { grid-column: 2; }
+        .trash-item-size { grid-column: 3; }
+    }
+    @media (max-width: 600px) {
+        .trash-header { padding: 16px; align-items: flex-start; gap: 12px; }
+        #trashTitle { font-size: 20px; }
+        .trash-header p { font-size: 11px; }
+        #trashClose { max-width: 110px; font-size: 11px !important; }
+        .trash-toolbar, .trash-selection { padding: 12px 16px; gap: 8px; }
+        #trashSearch { width: 100%; }
+        .trash-selection { font-size: 11px; }
+        .trash-selection button { font-size: 11px !important; }
+        .trash-content { padding: 12px 16px; }
+        .trash-status { margin: 10px 16px 0; }
+        .trash-footer { padding: 12px 16px; font-size: 10px; }
+    }
+</style>
+<script src="js/trash.js"></script>

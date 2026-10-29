@@ -1,4 +1,5 @@
 <script src="js/script.js"></script>
+<script src="js/file-list.js"></script>
 <script src="https://unpkg.com/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs" type="module" crossorigin="anonymous" referrerpolicy="no-referrer" integrity="sha384-ypAFdIpmPhrhuVLN9fmIZaqZHGUVSzHiiplL/kPO2+gJ4Na4yRVbVt0YhyvWdbwn"></script>
 
 <script>
@@ -333,7 +334,7 @@
             if (ext !== 'folder') {
                 actions.innerHTML = `<a class="btn btn-info" onclick="downloadFile(${FMUI.argument(item.path)})"><i class="fa-regular fa-download"></i></a>`;
             }
-            actions.innerHTML += `&nbsp;<a class="btn btn-danger" onclick="deleteFile(${FMUI.argument(item.path)})"><i class="fa-regular fa-trash"></i></a>`;
+            actions.innerHTML += `&nbsp;<a class="btn btn-danger" role="button" title="Mover para a lixeira" aria-label="Mover para a lixeira" onclick="deleteFile(${FMUI.argument(item.path)})"><i class="fa-regular fa-trash"></i></a>`;
             actions.innerHTML += `&nbsp;<a class="btn btn-warning" onclick="renameItem(${FMUI.argument(item.path)})"><i class="fa-regular fa-edit"></i></a>`;
             tr.appendChild(actions);
 
@@ -498,48 +499,8 @@
     }
 
     async function deleteFile(path) {
-        return await Swal.fire({
-            title: 'Tem certeza?',
-            text: 'Você não poderá reverter esta ação!',
-            icon: 'warning',
-            color: '#fff',
-            confirmButtonColor: '#7367f0',
-            cancelButtonColor: '#424659',
-            background: '#24283b',
-            showCancelButton: true,
-            confirmButtonText: 'Sim, excluir!',
-            cancelButtonText: 'Cancelar'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                const deleteStatusFunction = (path) => {
-                    var toke = $('#fp').text();
-                    fetch(`deleteFile?tokenBrowser=${toke}&path=${encodeURIComponent(path)}`
-                    )
-                        .then(response => response.text())
-                        .then(async data => {
-                            const fopenDynamicToken = $('#fp').text();
-                            const pathUsing = encodeURIComponent($('#pathInvisible').text());
-                            setItemsInTbody(
-                                (await asyncGet(`/syncPath?tokenBrowser=${fopenDynamicToken}&path=${pathUsing}`))['information'],
-                                'filesList'
-                            );
-                            return Swal.fire({
-                                icon: 'success',
-                                title: 'Sucesso!',
-                                text: 'Seu arquivo foi excluído com sucesso!',
-                                showConfirmButton: false,
-                                color: '#fff',
-                                confirmButtonColor: '#7367f0',
-                                cancelButtonColor: '#424659',
-                                background: '#24283b',
-                                timer: 2000
-                            });
-                        });
-                }
-                deleteStatusFunction(path);
-            }
-        })
-
+        const target = path || document.getElementById('hiddenFileEdit')?.textContent;
+        return FMTrash.move(target ? [target] : []);
     }
 
     function isCompressedExtension(extension) {
@@ -623,6 +584,7 @@
     }
 
     function setPath(path) {
+        FMFileList.loading(path);
         localStorage.setItem('pathInvisible', path);
         document.getElementById('pathInvisible').textContent = path;
 
@@ -708,31 +670,307 @@
     }
 
 
+    let mediaViewerRequest = 0;
+    const imageZoom = {scale: 1, x: 0, y: 0, drag: null};
+
     function resetBoxMedias() {
-        document.getElementById('customImageViewer').style.display = 'none';
+        document.querySelectorAll('#modalMedia video, #modalMedia audio').forEach(media => {
+            media.pause();
+            media.removeAttribute('src');
+            media.querySelectorAll('source').forEach(source => source.removeAttribute('src'));
+            media.load();
+        });
         document.getElementById('modalMedia').innerHTML = '';
         document.getElementById('modalAudio').innerHTML = '';
+        resetImageZoom();
+        document.getElementById('imageZoomControls').hidden = true;
+    }
+
+    function applyImageZoom() {
+        const image = document.getElementById('viewerImage');
+        if (!image) return;
+        const maxX = image.clientWidth * (imageZoom.scale - 1) / 2;
+        const maxY = image.clientHeight * (imageZoom.scale - 1) / 2;
+        imageZoom.x = Math.max(-maxX, Math.min(maxX, imageZoom.x));
+        imageZoom.y = Math.max(-maxY, Math.min(maxY, imageZoom.y));
+        image.style.transform = `translate(${imageZoom.x}px, ${imageZoom.y}px) scale(${imageZoom.scale})`;
+        image.style.cursor = imageZoom.scale === 1 ? 'zoom-in' : imageZoom.drag ? 'grabbing' : 'grab';
+        document.getElementById('imageZoomLevel').textContent = `${Math.round(imageZoom.scale * 100)}%`;
+        document.getElementById('imageZoomOut').disabled = imageZoom.scale <= 1;
+        document.getElementById('imageZoomIn').disabled = imageZoom.scale >= 8;
+    }
+
+    function changeImageZoom(delta) {
+        imageZoom.scale = Math.max(1, Math.min(8, imageZoom.scale + delta));
+        applyImageZoom();
+    }
+
+    function resetImageZoom() {
+        imageZoom.scale = 1;
+        imageZoom.x = imageZoom.y = 0;
+        imageZoom.drag = null;
+        applyImageZoom();
+    }
+
+    function enableImageZoom(image) {
+        document.getElementById('imageZoomControls').hidden = false;
+        applyImageZoom();
+        image.onload = () => {
+            if (!image.isConnected || image !== document.getElementById('viewerImage')) return;
+            applyImageZoom();
+            document.getElementById('mediaFileDetails').textContent = `${image.alt.split('.').pop().toUpperCase()} · ${image.naturalWidth} × ${image.naturalHeight} px`;
+        };
+        image.ondblclick = () => imageZoom.scale > 1 ? resetImageZoom() : changeImageZoom(1);
+        image.onpointerdown = event => {
+            if (imageZoom.scale <= 1 || event.button !== 0) return;
+            event.preventDefault();
+            imageZoom.drag = {id: event.pointerId, x: event.clientX, y: event.clientY};
+            image.setPointerCapture(event.pointerId);
+            applyImageZoom();
+        };
+        image.onpointermove = event => {
+            const drag = imageZoom.drag;
+            if (!drag || drag.id !== event.pointerId) return;
+            imageZoom.x += event.clientX - drag.x;
+            imageZoom.y += event.clientY - drag.y;
+            drag.x = event.clientX;
+            drag.y = event.clientY;
+            applyImageZoom();
+        };
+        image.onpointerup = image.onpointercancel = image.onlostpointercapture = () => {
+            imageZoom.drag = null;
+            applyImageZoom();
+        };
+    }
+
+    function handleImageViewerWheel(event) {
+        if (!document.getElementById('viewerImage') || !event.deltaY) return;
+        event.preventDefault();
+        changeImageZoom(event.deltaY < 0 ? 0.25 : -0.25);
+    }
+
+    function handleImageViewerKey(event) {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            event.stopPropagation();
+            closeImageViewer();
+            return;
+        }
+        if (event.key === 'Tab') {
+            const viewer = document.getElementById('customImageViewer');
+            const controls = [...viewer.querySelectorAll('button:not(:disabled), input, video[controls], audio[controls]')]
+                .filter(node => node.getClientRects().length > 0 && !node.closest('[hidden]'));
+            const first = controls[0];
+            const last = controls[controls.length - 1];
+            if (first && ((event.shiftKey ? document.activeElement === first : document.activeElement === last)
+                || !viewer.contains(document.activeElement))) {
+                event.preventDefault();
+                (event.shiftKey ? last : first).focus();
+            }
+            return;
+        }
+        if (event.ctrlKey || event.metaKey || event.altKey
+            || (event.target instanceof Element && event.target.closest('input, textarea, select, [contenteditable], audio, video'))) return;
+        if (document.getElementById('customImageViewer').classList.contains('gallery-expanded')) return;
+        const actions = {
+            ArrowLeft: navPrev, ArrowRight: navNext,
+            '+': () => changeImageZoom(0.25), '=': () => changeImageZoom(0.25),
+            '-': () => changeImageZoom(-0.25), '0': resetImageZoom,
+        };
+        if (!Object.hasOwn(actions, event.key)) return;
+        event.preventDefault();
+        event.stopPropagation();
+        actions[event.key]();
+    }
+
+    let mediaGallerySession = null;
+    let mediaViewerFocus = null;
+    let mediaViewerBodyOverflow = '';
+
+    function getMediaKind(file) {
+        const ext = file.split('.').pop().toLowerCase();
+        return ['mp4', 'webm', 'ogg'].includes(ext) ? 'video' : ['mp3', 'wav'].includes(ext) ? 'audio' : 'image';
+    }
+
+    function disposeMediaGallery() {
+        if (!mediaGallerySession) return;
+        mediaGallerySession.cancelled = true;
+        mediaGallerySession.observer?.disconnect();
+        mediaGallerySession.queue.length = 0;
+        mediaGallerySession = null;
+    }
+
+    function renderMediaThumbnails(mediaFileList) {
+        disposeMediaGallery();
+        const thumbNav = document.getElementById('thumbNav');
+        thumbNav.replaceChildren();
+        const session = {cancelled: false, queue: [], active: 0, observer: null, buttons: []};
+        mediaGallerySession = session;
+        const pump = () => {
+            while (!session.cancelled && session.active < 4 && session.queue.length) {
+                const {file, preview, kind} = session.queue.shift();
+                ++session.active;
+                FMAuth.mediaUrl(file, kind === 'video' ? 'getPreview' : 'imageBase64').then(url => {
+                    if (session.cancelled || !preview.isConnected) return;
+                    const image = document.createElement('img');
+                    image.alt = '';
+                    image.decoding = 'async';
+                    image.onload = () => {
+                        if (!session.cancelled && preview.isConnected) preview.replaceChildren(image);
+                    };
+                    image.src = url;
+                }).catch(() => {}).finally(() => {
+                    --session.active;
+                    pump();
+                });
+            }
+        };
+        const enqueue = button => {
+            if (session.cancelled || button.dataset.queued || button.dataset.kind === 'audio') return;
+            button.dataset.queued = 'true';
+            session.queue.push({file: button.dataset.path, kind: button.dataset.kind, preview: button.querySelector('.media-thumbnail-preview')});
+            pump();
+        };
+        if (typeof IntersectionObserver === 'function') {
+            session.observer = new IntersectionObserver(entries => {
+                entries.forEach(entry => {
+                    if (!entry.isIntersecting) return;
+                    enqueue(entry.target);
+                    session.observer.unobserve(entry.target);
+                });
+            }, {root: thumbNav, rootMargin: '200px'});
+        }
+        const fragment = document.createDocumentFragment();
+        mediaFileList.forEach(file => {
+            const kind = getMediaKind(file);
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'media-thumbnail';
+            button.dataset.path = file;
+            button.dataset.kind = kind;
+            button.title = getFilename(file);
+            button.setAttribute('aria-label', `Abrir ${getFilename(file)}`);
+            button.setAttribute('aria-current', 'false');
+            const preview = document.createElement('span');
+            preview.className = 'media-thumbnail-preview';
+            preview.textContent = kind === 'audio' ? '♫' : kind === 'video' ? '▶' : '▧';
+            const name = document.createElement('span');
+            name.className = 'media-thumbnail-name';
+            name.textContent = getFilename(file);
+            const type = document.createElement('span');
+            type.className = 'media-thumbnail-type';
+            type.textContent = file.split('.').pop().toUpperCase();
+            button.append(preview, name, type);
+            button.onclick = () => showImage(file);
+            fragment.appendChild(button);
+            session.buttons.push(button);
+        });
+        thumbNav.appendChild(fragment);
+        session.buttons.forEach(button => session.observer ? session.observer.observe(button) : enqueue(button));
+        document.getElementById('mediaGallerySearch').value = '';
+        filterMediaGallery('all');
+    }
+
+    function filterMediaGallery(kind) {
+        const gallery = document.getElementById('mediaGallery');
+        if (kind) gallery.dataset.filter = kind;
+        const query = document.getElementById('mediaGallerySearch').value.trim().toLocaleLowerCase();
+        let count = 0;
+        for (const button of mediaGallerySession?.buttons || []) {
+            button.hidden = !((gallery.dataset.filter === 'all' || button.dataset.kind === gallery.dataset.filter)
+                && getFilename(button.dataset.path).toLocaleLowerCase().includes(query));
+            if (!button.hidden) ++count;
+        }
+        gallery.querySelectorAll('[data-media-filter]').forEach(button => {
+            button.setAttribute('aria-pressed', String(button.dataset.mediaFilter === gallery.dataset.filter));
+        });
+        document.getElementById('mediaGalleryCount').textContent = `${count} ${count === 1 ? 'arquivo' : 'arquivos'}`;
+        document.getElementById('mediaGalleryEmpty').hidden = count !== 0;
+    }
+
+    function setMediaGalleryMode(expanded) {
+        const viewer = document.getElementById('customImageViewer');
+        viewer.classList.toggle('gallery-expanded', expanded);
+        const button = document.getElementById('mediaGalleryToggle');
+        button.setAttribute('aria-pressed', String(expanded));
+        button.textContent = expanded ? 'Ver mídia' : 'Ver galeria';
+        if (expanded) document.getElementById('mediaGallerySearch').focus({preventScroll: true});
+    }
+
+    function updateMediaGallerySelection(path) {
+        let selected;
+        for (const button of mediaGallerySession?.buttons || []) {
+            const active = button.dataset.path === path;
+            button.setAttribute('aria-current', String(active));
+            if (active) selected = button;
+        }
+        if (selected && !selected.hidden && typeof selected.scrollIntoView === 'function') {
+            selected.scrollIntoView({block: 'nearest'});
+        }
+    }
+
+    async function toggleMediaFullscreen() {
+        const viewer = document.getElementById('customImageViewer');
+        try {
+            if (document.fullscreenElement === viewer) await document.exitFullscreen();
+            else if (viewer.requestFullscreen) await viewer.requestFullscreen();
+        } catch (error) {
+            // The viewer still fills the browser viewport if fullscreen is unavailable.
+        }
     }
 
     async function showImage(path) {
-        resetBoxMedias();
-        $('#nameFileModalMedia').text(path);
-        const token = $('#fp').text();
-        const ext = path.split('.').pop().toLowerCase();
-        const url = await FMAuth.mediaUrl(path);
-        const mediaFileList = Array.isArray(window.fileList) ? window.fileList : [];
-        const currentIndex = mediaFileList.indexOf(path);
-
+        const request = ++mediaViewerRequest;
         const viewer = document.getElementById('customImageViewer');
         const modalMedia = document.getElementById('modalMedia');
-        const thumbNav = document.getElementById('thumbNav');
+        const wasOpen = viewer.style.display !== 'none';
+        if (!wasOpen) {
+            mediaViewerFocus = document.activeElement;
+            mediaViewerBodyOverflow = document.body.style.overflow;
+            document.body.style.overflow = 'hidden';
+        }
+        const wasGallery = viewer.classList.contains('gallery-expanded');
+        setMediaGalleryMode(false);
+        resetBoxMedias();
+        $('#nameFileModalMedia').text(path);
+        const ext = path.split('.').pop().toLowerCase();
+        const mediaFileList = wasOpen && Array.isArray(window.__fileList)
+            ? window.__fileList : Array.isArray(window.fileList) ? window.fileList.slice() : [];
+        if (!mediaFileList.includes(path)) mediaFileList.push(path);
+        const currentIndex = mediaFileList.indexOf(path);
+        window.__fileList = mediaFileList;
+        window.__currentIndex = currentIndex;
+        toggleArrowButtons();
+        viewer.style.display = 'block';
+        document.getElementById('mediaFolderPath').textContent = path.slice(0, path.lastIndexOf('/')) || '/';
+        document.getElementById('mediaFilePosition').textContent = `${currentIndex + 1} de ${mediaFileList.length}`;
+        document.getElementById('mediaFileDetails').textContent = ext.toUpperCase();
+        document.getElementById('mediaFullscreenButton').hidden = !document.fullscreenEnabled;
+        if (!wasOpen || wasGallery) document.getElementById('mediaViewerClose').focus({preventScroll: true});
+        modalMedia.innerHTML = '<p role="status">Carregando mídia…</p>';
+        modalMedia.addEventListener('wheel', handleImageViewerWheel, {passive: false});
+        window.addEventListener('keydown', handleImageViewerKey, true);
+
+        let url;
+        try {
+            const mediaUrl = FMAuth.mediaUrl(path);
+            if (!wasOpen) renderMediaThumbnails(mediaFileList);
+            updateMediaGallerySelection(path);
+            url = await mediaUrl;
+        } catch (error) {
+            if (request === mediaViewerRequest) {
+                modalMedia.innerHTML = '<p role="alert">Não foi possível carregar a mídia. Tente abrir o arquivo novamente.</p>';
+            }
+            return;
+        }
+        // Navigation and closing invalidate pending authorization requests.
+        if (request !== mediaViewerRequest) return;
 
         let media = '';
         if (['mp4', 'webm', 'ogg'].includes(ext)) {
-            media = `<video src="${url}" controls autoplay style="max-width:75%;max-height:75%;border-radius:15px;box-shadow:0 20px 40px rgba(0,0,0,0.4);background:#000;outline:none;" onloadeddata="this.style.opacity='1'"></video>`;
-        } else if (['mp3', 'wav', 'ogg'].includes(ext)) {
-            // trocar o title da pagina
-            document.querySelector('title').innerText = getFilename(path)
+            media = `<video src="${FMUI.html(url)}" controls autoplay style="max-width:100%;max-height:100%;border-radius:15px;box-shadow:0 20px 40px rgba(0,0,0,0.4);background:#000;outline:none;"></video>`;
+        } else if (['mp3', 'wav'].includes(ext)) {
+            document.querySelector('title').innerText = getFilename(path);
             media = `
 <div class="modern-audio-container">
 <dotlottie-player class="modern-audio-artwork" src="https://lottie.host/ca316c43-00ba-458e-9070-f94fb0a10c1a/yBA3TkFfHx.json" background="transparent" speed="1" loop autoplay></dotlottie-player>
@@ -747,71 +985,25 @@ Seu navegador não oferece suporte ao player de áudio.
 </div>
 </div>
 `;
-
         } else if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(ext)) {
-            media = `<img src="${url}" style="max-width:90%;max-height:90%;border-radius:15px;object-fit:contain;box-shadow:0 20px 40px rgba(0,0,0,0.3);transition:transform 0.3s ease;" onload="this.style.opacity='1'" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">`;
+            media = `<img id="viewerImage" src="${FMUI.html(url)}" alt="${FMUI.html(getFilename(path))}" draggable="false">`;
         } else {
-            media = `<div style="text-align:center;padding:40px;"><p style="font-size:18px;color:rgba(255,255,255,0.7);">Formato não suportado</p></div>`;
+            media = '<p>Formato não suportado</p>';
         }
-
         modalMedia.innerHTML = media;
-
-
-        if (['mp3', 'wav', 'ogg'].includes(ext)) {
-            //$('#modalAudio').html(media);s
-        }
-
-
-        const thumb = async (idx) => {
-            const file = mediaFileList[idx];
-            if (!file) return '';
-            let thumbUrl = await FMAuth.mediaUrl(file);
-            let fll = getFilename(file).split('.')[getFilename(file).split('.').length-1].toLowerCase();
-
-            if (fll === 'mp3' || fll === 'wav' || fll === 'ogg') {
-              return `<div style="width:50px;height:50px;border-radius:10px;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.3s ease;border:${file === path ? '3px solid #fff' : '2px solid rgba(255,255,255,0.3)'};box-shadow:0 5px 15px rgba(0,0,0,0.3);" onclick="showImage(${FMUI.argument(file)})" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"><dotlottie-player src="https://lottie.host/5c96eef4-376a-4d90-bb27-9af56f5e2c2e/8K1HJaNgmj.lottie" background="transparent" speed="1" style="width:30px;height:30px;" loop autoplay></dotlottie-player></div>`;
-
-            }
-
-
-
-
-            if (fll === 'mp4' || fll === 'webm' || fll === 'ogg') {
-                thumbUrl = await FMAuth.mediaUrl(file, 'getPreview');
-            } else if (fll === 'mp3' || fll === 'wav' || fll === 'ogg') {
-                let anim = `<div style="width:50px;height:50px;border-radius:10px;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.3s ease;border:${file === path ? '3px solid #fff' : '2px solid rgba(255,255,255,0.3)'};box-shadow:0 5px 15px rgba(0,0,0,0.3);" onclick="showImage(${FMUI.argument(file)})" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"><dotlottie-player src="https://lottie.host/5c96eef4-376a-4d90-bb27-9af56f5e2c2e/8K1HJaNgmj.lottie" background="transparent" speed="1" style="width:30px;height:30px;" loop autoplay></dotlottie-player></div>`;
-                return anim;
-            } else if (isImageExtension(fll)) {
-                thumbUrl = await FMAuth.mediaUrl(file);
-            } else {
-                thumbUrl = `img/desconhecido.png`;
-            }
-
-
-            return `<img src="${thumbUrl}" style="width:50px;height:50px;object-fit:cover;border-radius:10px;cursor:pointer;border:${file === path ? '3px solid #fff' : '2px solid rgba(255,255,255,0.3)'};transition:all 0.3s ease;box-shadow:0 5px 15px rgba(0,0,0,0.3);" onclick="showImage(${FMUI.argument(file)})" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">`;
-        };
-
-        thumbNav.innerHTML = `
-        ${(await Promise.all([-2, -1, 0, 1, 2].map(offset => thumb(currentIndex + offset)))).join('')}
-    `;
-
-        viewer.style.display = 'block';
-
-        window.__fileList = mediaFileList;
-        window.__currentIndex = currentIndex;
-
-        toggleArrowButtons();
-
-        window.onkeydown = (e) => {
-            if (e.key === 'ArrowLeft') navPrev();
-            else if (e.key === 'ArrowRight') navNext();
-            else if (e.key === 'Escape') closeImageViewer();
+        const image = document.getElementById('viewerImage');
+        if (image) enableImageZoom(image);
+        const mediaElement = modalMedia.querySelector('img, video, audio');
+        if (mediaElement) mediaElement.onerror = () => {
+            if (request !== mediaViewerRequest) return;
+            resetBoxMedias();
+            modalMedia.innerHTML = '<p role="alert">Não foi possível exibir este arquivo.</p>';
         };
     }
 
     function navPrev() {
         if (Array.isArray(window.__fileList) && window.__currentIndex > 0) {
-            showImage(window.__fileList[window.__currentIndex - 1]);
+            return showImage(window.__fileList[window.__currentIndex - 1]);
         }
     }
 
@@ -819,7 +1011,7 @@ Seu navegador não oferece suporte ao player de áudio.
         if (Array.isArray(window.__fileList)
             && window.__currentIndex >= 0
             && window.__currentIndex < window.__fileList.length - 1) {
-            showImage(window.__fileList[window.__currentIndex + 1]);
+            return showImage(window.__fileList[window.__currentIndex + 1]);
         }
     }
 
@@ -836,85 +1028,83 @@ Seu navegador não oferece suporte ao player de áudio.
     }
 
     function closeImageViewer() {
-        document.getElementById('customImageViewer').style.display = 'none';
-        window.onkeydown = null;
+        ++mediaViewerRequest;
+        const viewer = document.getElementById('customImageViewer');
+        viewer.style.display = 'none';
+        if (document.fullscreenElement === viewer) document.exitFullscreen().catch(() => {});
+        resetBoxMedias();
+        disposeMediaGallery();
+        document.getElementById('thumbNav').replaceChildren();
+        window.removeEventListener('keydown', handleImageViewerKey, true);
+        document.getElementById('modalMedia').removeEventListener('wheel', handleImageViewerWheel);
         delete window.__fileList;
         delete window.__currentIndex;
+        document.body.style.overflow = mediaViewerBodyOverflow;
+        if (mediaViewerFocus?.isConnected) mediaViewerFocus.focus({preventScroll: true});
+        mediaViewerFocus = null;
     }
 
 
 </script>
 
 
-<div id="customImageViewer" style="display:none;">
-    <button id="leftArrow" onclick="navPrev()"
-            style="position:fixed;top:50%;left:30px;transform:translateY(-50%);width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);border:2px solid rgba(255,255,255,0.2);color:white;z-index:9999;cursor:pointer;font-size:24px;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(10px);transition:all 0.3s ease;box-shadow:0 8px 32px rgba(0,0,0,0.3);" onmouseover="this.style.transform='translateY(-50%) scale(1.1)'" onmouseout="this.style.transform='translateY(-50%) scale(1)'">
-        ❮
-    </button>
-    <button id="rightArrow" onclick="navNext()"
-            style="position:fixed;top:50%;right:30px;transform:translateY(-50%);width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);border:2px solid rgba(255,255,255,0.2);color:white;z-index:9999;cursor:pointer;font-size:24px;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(10px);transition:all 0.3s ease;box-shadow:0 8px 32px rgba(0,0,0,0.3);" onmouseover="this.style.transform='translateY(-50%) scale(1.1)'" onmouseout="this.style.transform='translateY(-50%) scale(1)'">
-        ❯
-    </button>
-    <div id="modalBackdrop"
-         style="position:fixed;top:0;left:0;width:100%;height:100%;background:linear-gradient(135deg, rgba(0,0,0,0.9) 0%, rgba(30,41,59,0.9) 100%);backdrop-filter:blur(20px);z-index:9998;"></div>
-    <div id="modalContent" style="position:fixed;
-  top:50%;
-  left:50%;
-  height: 90%;
-  width: 90%;
-  max-width: 1200px;
-  max-height: 800px;
-  transform:translate(-50%,-50%);
-  background:linear-gradient(135deg, rgba(28,47,72,0.95) 0%, rgba(44,62,80,0.95) 100%);
-  backdrop-filter:blur(20px);
-  border:1px solid rgba(255,255,255,0.1);
-  padding:30px;
-  border-radius:20px;
-  z-index:9999;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  color:white;
-  box-shadow:0 25px 50px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05);
-  animation:fadeInScale 0.3s ease;">
-
-
-        <div id="modalHeader" style="
-        width: 100%;
-             display: flex;
-             align-items: center;
-             justify-content: space-between;
-             position: absolute;
-             top: 0;
-             left: 0;
-             padding: 20px 30px;
-             background: linear-gradient(90deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
-             border-radius: 20px 20px 0 0;
-             border-bottom: 1px solid rgba(255,255,255,0.1);
-        ">
-            <span id="nameFileModalMedia" style="font-size: 18px; font-weight: 600; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.3);">Arquivo</span>
+<div id="customImageViewer" style="display:none;" role="dialog" aria-modal="true" aria-label="Galeria de mídia">
+    <div id="modalContent">
+        <header id="modalHeader">
+            <div class="media-viewer-location">
+                <span class="media-viewer-eyebrow">GALERIA DE MÍDIA</span>
+                <span id="mediaFolderPath" title="Pasta atual">/</span>
+            </div>
+            <div class="media-viewer-header-actions">
+                <button id="mediaGalleryToggle" type="button" onclick="setMediaGalleryMode(!document.getElementById('customImageViewer').classList.contains('gallery-expanded'))" aria-pressed="false">Ver galeria</button>
+                <button id="mediaFullscreenButton" type="button" onclick="toggleMediaFullscreen()" title="Alternar tela cheia" aria-label="Alternar tela cheia">⛶</button>
+                <button id="mediaViewerClose" type="button" onclick="closeImageViewer()" title="Voltar aos arquivos (Esc)" aria-label="Fechar galeria">✕</button>
+            </div>
+        </header>
+        <div class="media-viewer-workspace">
+            <aside id="mediaGallery" data-filter="all" aria-label="Mídias da pasta">
+                <div class="media-gallery-heading">
+                    <h2>Arquivos da pasta</h2>
+                    <span id="mediaGalleryCount" aria-live="polite"></span>
+                </div>
+                <label class="media-gallery-search">
+                    <span aria-hidden="true">⌕</span>
+                    <input id="mediaGallerySearch" type="search" placeholder="Buscar nesta galeria" aria-label="Buscar arquivos na galeria" oninput="filterMediaGallery()">
+                </label>
+                <div class="media-gallery-filters" role="group" aria-label="Filtrar por tipo">
+                    <button type="button" data-media-filter="all" onclick="filterMediaGallery('all')" aria-pressed="true">Todos</button>
+                    <button type="button" data-media-filter="image" onclick="filterMediaGallery('image')" aria-pressed="false">Imagens</button>
+                    <button type="button" data-media-filter="video" onclick="filterMediaGallery('video')" aria-pressed="false">Vídeos</button>
+                    <button type="button" data-media-filter="audio" onclick="filterMediaGallery('audio')" aria-pressed="false">Áudios</button>
+                </div>
+                <div id="thumbNav" aria-label="Todos os arquivos de mídia"></div>
+                <p id="mediaGalleryEmpty" hidden>Nenhum arquivo encontrado.</p>
+            </aside>
+            <main id="mediaPreview" aria-label="Visualização da mídia">
+                <div class="media-preview-toolbar">
+                    <span id="nameFileModalMedia">Arquivo</span>
+                    <div id="imageZoomControls" hidden role="group" aria-label="Zoom da imagem">
+                        <button id="imageZoomOut" type="button" onclick="changeImageZoom(-0.25)" aria-label="Diminuir zoom" title="Diminuir zoom (-)">−</button>
+                        <span id="imageZoomLevel" aria-live="polite">100%</span>
+                        <button id="imageZoomIn" type="button" onclick="changeImageZoom(0.25)" aria-label="Aumentar zoom" title="Aumentar zoom (+)">+</button>
+                        <button type="button" onclick="resetImageZoom()" title="Ajustar à janela (0)">Ajustar</button>
+                    </div>
+                </div>
+                <div class="media-preview-stage">
+                    <div id="modalMedia"></div>
+                    <div id="modalAudio" hidden></div>
+                    <button id="leftArrow" class="media-viewer-arrow" type="button" onclick="navPrev()" aria-label="Mídia anterior">❮</button>
+                    <button id="rightArrow" class="media-viewer-arrow" type="button" onclick="navNext()" aria-label="Próxima mídia">❯</button>
+                </div>
+                <div class="media-preview-footer">
+                    <span id="mediaFilePosition"></span>
+                    <span id="mediaFileDetails"></span>
+                    <span class="media-shortcut-hint">← → navegar <span>·</span> Esc sair</span>
+                </div>
+            </main>
         </div>
-
-        <div id="modalMedia" style="
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
-        height: 100%;
-        margin-top: 40px;
-        margin-bottom: 20px;
-        "></div>
-        <div id="modalAudio" style="display:flex;align-items:center;justify-content:center;width:100%;"></div>
-
-        <div id="thumbNav"
-             style="position:absolute;bottom:20px;left:50%;transform:translateX(-50%);display:flex;align-items:center;justify-content:center;gap:15px;padding:15px 25px;background:rgba(0,0,0,0.4);backdrop-filter:blur(10px);border-radius:50px;border:1px solid rgba(255,255,255,0.1);"></div>
-        <button onclick="closeImageViewer()"
-                style="position:absolute;top:20px;right:30px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);color:white;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.3s ease;" onmouseover="this.style.background='rgba(255,59,59,0.8)';this.style.transform='scale(1.1)'" onmouseout="this.style.background='rgba(255,255,255,0.1)';this.style.transform='scale(1)'">✕
-        </button>
     </div>
 </div>
-
 
 <style>
     .swal2-close {
@@ -1016,32 +1206,175 @@ Seu navegador não oferece suporte ao player de áudio.
         }
     }
 
-    #customImageViewer img {
-
-        transition: opacity 0.3s ease, transform 0.3s ease;
+    #customImageViewer {
+        --gallery-background: #15191f;
+        --gallery-surface: #1d232c;
+        --gallery-line: rgba(255,255,255,0.09);
+        --gallery-muted: #9aa6b6;
+        --gallery-accent: #93b6ff;
+        position: fixed;
+        inset: 0;
+        z-index: 9998;
+        isolation: isolate;
+        color: #edf1f7;
+        background: var(--gallery-background);
+        font-size: 14px;
     }
 
-    #customImageViewer video {
-        opacity: 0;
-        transition: opacity 0.3s ease;
+    #customImageViewer *, #customImageViewer *::before, #customImageViewer *::after { box-sizing: border-box; }
+    #customImageViewer [hidden] { display: none !important; }
+
+    #modalContent {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        background: var(--gallery-background);
     }
 
-    #thumbNav > * {
-        transition: all 0.3s ease;
+    #modalHeader {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        flex-shrink: 0;
+        min-height: 76px;
+        padding: 14px 24px;
+        border-bottom: 1px solid var(--gallery-line);
+        background: #1a1f27;
     }
 
-    #modalContent::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        border-radius: 20px;
-        padding: 1px;
-        background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
-        mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-        mask-composite: exclude;
-        pointer-events: none;
+    .media-viewer-location { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+    .media-viewer-eyebrow { color: var(--gallery-muted); font-size: 10px; letter-spacing: 1.8px; font-weight: 600; }
+    #mediaFolderPath { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+    .media-viewer-header-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+    #customImageViewer button {
+        color: inherit;
+        font: inherit;
+        background: #29313d;
+        border: 1px solid var(--gallery-line);
+        border-radius: 7px;
+        cursor: pointer;
+        min-height: 36px;
+        padding: 7px 12px;
+    }
+
+    #customImageViewer button:hover:not(:disabled) { background: #354254; }
+    #customImageViewer button:focus-visible, #mediaGallerySearch:focus-visible { outline: 2px solid var(--gallery-accent); outline-offset: 2px; }
+    #customImageViewer button:disabled { cursor: default; opacity: 0.35; }
+    #customImageViewer button[aria-pressed="true"] { color: #c9dcff; background: #2d4266; border-color: #557bb5; }
+    #mediaViewerClose, #mediaFullscreenButton { width: 36px; padding: 0 !important; font-size: 18px !important; }
+
+    .media-viewer-workspace { display: flex; flex: 1; min-height: 0; min-width: 0; }
+
+    #mediaGallery {
+        display: flex;
+        flex-direction: column;
+        width: 310px;
+        flex-shrink: 0;
+        min-height: 0;
+        padding: 20px 16px 12px;
+        gap: 16px;
+        background: var(--gallery-surface);
+        border-right: 1px solid var(--gallery-line);
+    }
+
+    .media-gallery-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .media-gallery-heading h2 { margin: 0; color: inherit; font-size: 14px; font-weight: 600; }
+    #mediaGalleryCount { color: var(--gallery-muted); font-size: 11px; white-space: nowrap; }
+    .media-gallery-search { display: flex; align-items: center; gap: 8px; margin: 0; padding: 0 10px; border: 1px solid var(--gallery-line); border-radius: 7px; background: #151b23; color: var(--gallery-muted); }
+    .media-gallery-search > span { font-size: 24px; }
+    #mediaGallerySearch { width: 100%; min-width: 0; height: 38px; border: 0; background: transparent; color: #edf1f7; font: inherit; font-size: 12px; }
+    #mediaGallerySearch::placeholder { color: var(--gallery-muted); }
+    .media-gallery-filters { display: flex; gap: 4px; flex-shrink: 0; }
+    #customImageViewer .media-gallery-filters button { flex: 1; min-height: 30px; padding: 5px 6px; font-size: 11px; }
+
+    #thumbNav {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-auto-rows: max-content;
+        align-content: start;
+        gap: 14px 10px;
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        overflow-x: hidden;
+        overscroll-behavior: contain;
+        padding: 3px;
+        scrollbar-width: thin;
+        scrollbar-color: #414e60 transparent;
+    }
+
+    #customImageViewer .media-thumbnail {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        padding: 5px;
+        gap: 7px;
+        text-align: left;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 8px;
+    }
+
+    #customImageViewer .media-thumbnail[aria-current="true"] { background: #283b59; border-color: var(--gallery-accent); }
+    .media-thumbnail-preview { display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 4px; background: #11161d; color: #899bb7; font-size: 32px; }
+    .media-thumbnail-preview img { display: block; width: 100%; height: 100%; object-fit: contain; }
+    .media-thumbnail-name { width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
+    .media-thumbnail-type { color: var(--gallery-muted); font-size: 9px; letter-spacing: 0.7px; }
+    #mediaGalleryEmpty { margin: 0; padding: 16px 0; color: var(--gallery-muted); text-align: center; font-size: 13px; }
+    #mediaGallery:has(#mediaGalleryEmpty:not([hidden])) #thumbNav { flex: 0; }
+
+    #mediaPreview { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; overflow: hidden; }
+    .media-preview-toolbar { display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; min-height: 64px; gap: 16px; padding: 12px 24px; border-bottom: 1px solid var(--gallery-line); }
+    #nameFileModalMedia { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #c0cad8; font-size: 13px; }
+    #imageZoomControls { display: flex; align-items: center; flex-shrink: 0; gap: 6px; }
+    #imageZoomControls button { min-width: 32px; min-height: 32px; padding: 4px 9px; font-size: 12px; }
+    #imageZoomLevel { min-width: 46px; text-align: center; font-size: 12px; color: var(--gallery-muted); font-variant-numeric: tabular-nums; }
+    .media-preview-stage { position: relative; display: flex; flex: 1; min-height: 0; min-width: 0; padding: 20px 64px; background: #10141a; }
+
+    #modalMedia { display: flex; align-items: center; justify-content: center; flex: 1; min-height: 0; min-width: 0; overflow: hidden; position: relative; }
+    #modalMedia > p { color: var(--gallery-muted); text-align: center; }
+    #viewerImage { display: block; flex-shrink: 0; max-width: 100%; max-height: 100%; object-fit: contain; user-select: none; touch-action: none; transform-origin: center; }
+    #customImageViewer .media-viewer-arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 36px; height: 48px; padding: 0; z-index: 1; background: #252e3b; font-size: 19px; }
+    #leftArrow { left: 14px; }
+    #rightArrow { right: 14px; }
+    .media-preview-footer { display: flex; align-items: center; flex-wrap: wrap; flex-shrink: 0; gap: 12px 20px; min-height: 44px; padding: 10px 24px; border-top: 1px solid var(--gallery-line); font-size: 11px; color: var(--gallery-muted); }
+    #mediaFilePosition { color: #d2dcec; font-variant-numeric: tabular-nums; }
+    .media-shortcut-hint { margin-left: auto; }
+    .media-shortcut-hint span { margin: 0 8px; }
+
+    #customImageViewer.gallery-expanded #mediaGallery { width: 100%; border-right: 0; padding: 24px; }
+    #customImageViewer.gallery-expanded #mediaPreview { display: none; }
+    #customImageViewer.gallery-expanded #thumbNav { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px; }
+    #customImageViewer.gallery-expanded .media-gallery-search { max-width: 440px; }
+    #customImageViewer.gallery-expanded .media-gallery-filters { max-width: 360px; }
+    #customImageViewer.gallery-expanded .media-thumbnail-name { font-size: 13px; }
+
+    @media (max-width: 1000px) {
+        #mediaGallery { width: 250px; padding: 16px 10px 10px; gap: 12px; }
+        .media-preview-toolbar { flex-wrap: wrap; gap: 8px; padding: 12px 16px; }
+        #nameFileModalMedia { flex-basis: 100%; }
+        #imageZoomControls { margin-left: auto; }
+    }
+
+    @media (max-width: 700px) {
+        #modalHeader { min-height: 66px; padding: 12px; gap: 10px; }
+        .media-viewer-eyebrow { font-size: 9px; letter-spacing: 1px; }
+        #mediaFolderPath { max-width: 35vw; font-size: 12px; }
+        .media-viewer-header-actions { gap: 5px; }
+        #mediaGalleryToggle { padding: 6px 9px !important; font-size: 12px !important; }
+        #mediaGallery { display: none; }
+        #customImageViewer.gallery-expanded #mediaGallery { display: flex; padding: 16px 12px; }
+        #customImageViewer.gallery-expanded #thumbNav { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
+        .media-preview-stage { padding: 12px 42px; }
+        #customImageViewer .media-viewer-arrow { width: 28px; height: 42px; font-size: 16px; }
+        #leftArrow { left: 6px; }
+        #rightArrow { right: 6px; }
+        .media-preview-footer { padding: 10px 14px; gap: 10px; }
+        .media-shortcut-hint { display: none; }
     }
 </style>

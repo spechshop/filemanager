@@ -142,7 +142,7 @@
                     let optionCopy = document.createElement('li');
                     optionCopy.innerHTML = `<i class="fas fa-copy"></i> copiar/cortar`;
                     let optionDelete = document.createElement('li');
-                    optionDelete.innerHTML = `<i class="fas fa-trash"></i> deletar`;
+                    optionDelete.innerHTML = `<i class="fas fa-trash"></i> mover para a lixeira`;
                     let optionRename = document.createElement('li');
                     optionRename.innerHTML = `<i class="fas fa-edit"></i> renomear`;
 
@@ -153,48 +153,7 @@
 
 
                     optionDelete.addEventListener('click', async function () {
-                        const fireSwalParams = {
-                            background: '#1c2f48',
-                            color: '#fff',
-                            title: 'Atenção!',
-                            text: 'Deletar ' + fileElement.textContent.trim() + '?',
-                            icon: 'warning',
-                            showCancelButton: true,
-                            confirmButtonText: 'Sim',
-                            cancelButtonText: 'Não',
-                            confirmButtonColor: '#d33',
-                            cancelButtonColor: '#3085d6',
-                            allowOutsideClick: false,
-                        };
-                        const {isConfirmed} = await Swal.fire(fireSwalParams);
-                        if (isConfirmed) {
-                            const response = await fetch(`/deleteFile?path=${encodeURIComponent(fileElement.getAttribute('file-path'))}&tokenBrowser=${$('#fp').text()}`);
-                            const data = await response.json();
-                            if (data.information === 'ok') {
-                                refAll();
-                                return bootstrap.showToast({
-                                    header: 'Sucesso',
-                                    body: 'Arquivo deletado com sucesso!',
-                                    toastClass: "bg-success text-white",
-                                    colorHeader: 'text-white',
-                                });
-                            } else {
-                                bootstrap.showToast({
-                                    header: 'Erro',
-                                    body: 'Não foi possível deletar o arquivo!',
-                                    toastClass: "bg-danger text-white",
-                                    colorHeader: 'text-white',
-                                });
-                            }
-                        } else {
-                            bootstrap.showToast({
-                                header: 'Cancelado',
-                                body: 'Operação cancelada!',
-                                toastClass: "bg-info text-white",
-                                colorHeader: 'text-white',
-                            });
-                        }
-
+                        await deleteFile(fileElement.getAttribute('file-path'));
                     });
                     optionRename.addEventListener('click', async function () {
                         $('#edit-code').modal('hide');
@@ -264,7 +223,7 @@
                 let optionNewFile = document.createElement('li');
                 optionNewFile.innerHTML = `<i class="fa-light fa-file-circle-plus"></i> novo arquivo`;
                 let optionDelete = document.createElement('li');
-                optionDelete.innerHTML = `<i class="fas fa-trash"></i> deletar`;
+                optionDelete.innerHTML = `<i class="fas fa-trash"></i> mover para a lixeira`;
                 let trustPath = document.createElement('li');
                 trustPath.innerHTML = `<i class="fa-solid fa-sparkles"></i> add/remove stubs`;
                 trustPath.addEventListener('click', async function () {
@@ -316,7 +275,6 @@
 
                 optionDelete.addEventListener('click', async function () {
                     await deleteFile(folderElement.getAttribute('data-path'));
-                    refAll();
 
                 });
 

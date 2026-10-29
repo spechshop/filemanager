@@ -43,11 +43,6 @@
     #tableListFiles td:nth-child(2) > div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     #tableListFiles td:last-child .btn { padding: .35rem .4rem; margin: .1rem 0; }
     .swal2-popup.fixed-modal { width: min(900px, calc(100vw - 1rem)) !important; height: min(600px, 90dvh) !important; max-height: 90dvh; }
-    #modalContent { width: calc(100vw - 1rem) !important; height: min(90dvh, 800px) !important; padding: 1rem !important; }
-    #modalHeader { padding: 1rem !important; }
-    #nameFileModalMedia { max-width: calc(100% - 3rem); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    #leftArrow { left: .5rem !important; width: 2.5rem !important; height: 2.5rem !important; }
-    #rightArrow { right: .5rem !important; width: 2.5rem !important; height: 2.5rem !important; }
 }
 
 /* Editor e terminal no celular. */

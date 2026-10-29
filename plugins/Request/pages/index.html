@@ -230,9 +230,9 @@
     })()"><i
             class="fa-duotone fa-cloud-arrow-up"></i>&nbsp;Upload
     </button>
-    <button class="btn btn-danger d-none" data-selection-action onclick="deleteFileList()"><i class="fa-solid fa-trash-can-list"></i>&nbsp;Apagar
-        selecionados
+    <button class="btn btn-danger d-none" data-selection-action onclick="deleteFileList()"><i class="fa-solid fa-trash-can-list"></i>&nbsp;Mover selecionados para a lixeira
     </button>
+    <button class="btn btn-outline-warning" type="button" onclick="FMTrash.open()"><i class="fa-solid fa-trash-can"></i>&nbsp;Lixeira <span id="trashCountBadge" class="badge bg-secondary" hidden></span></button>
     <button class="btn btn-warning d-none" data-selection-action onclick="compressFiles()">
         <i class="fa-duotone fa-file-zip fa-lg"></i>&nbsp;Compactar selecionados
     </button>
@@ -308,6 +308,28 @@
         #visualPath:hover #copyBtn {
             display: inline-block;
         }
+
+        #fileListPanel[data-state="loading"] #tableListFiles,
+        #fileListPanel[data-state="loading"] #viewGridFiles,
+        #fileListPanel[data-state="error"] #tableListFiles,
+        #fileListPanel[data-state="error"] #viewGridFiles {
+            display: none !important;
+        }
+
+        #fileListStatus {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            min-height: 200px;
+            padding: 24px;
+            text-align: center;
+            color: #c5d3e5;
+        }
+
+        #fileListStatus [hidden], #fileListStatus[hidden] { display: none !important; }
+        #fileListStatusPath { max-width: 100%; overflow-wrap: anywhere; color: #91a4c0; }
     </style>
 
 
@@ -453,7 +475,13 @@
 
 
             <!-- Tabela de Arquivos -->
-            <div class="filemanager-list" style="max-height: 450px; overflow-y: auto;">
+            <div id="fileListPanel" class="filemanager-list" style="max-height: 450px; overflow-y: auto;">
+                <div id="fileListStatus" role="status" aria-live="polite" hidden>
+                    <span id="fileListSpinner" class="spinner-border text-info" aria-hidden="true"></span>
+                    <span id="fileListStatusText">Carregando pasta…</span>
+                    <small id="fileListStatusPath"></small>
+                    <button id="fileListRetry" class="btn btn-outline-info btn-sm" type="button" onclick="FMFileList.load()" hidden>Tentar novamente</button>
+                </div>
                 <div id="viewGridFiles" style="display: none;grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
 gap: 15px;
 padding: 10px;
@@ -490,6 +518,7 @@ max-height: calc(-2px + 57vh);"></div>
 @import(codexAgentStyle)
 @import(codexAgent)
 @import(makeTable/preloadScripts)
+@import(trash)
 @import(modalEditCode)
 @import(compressFile/module)
 @import(includes/offCanvas)
@@ -507,48 +536,13 @@ max-height: calc(-2px + 57vh);"></div>
             });
         };
         if (localStorage.getItem('pathInvisible') !== null) {
-            document.getElementById('pathInvisible').textContent = localStorage.getItem('pathInvisible');
+            setPath(localStorage.getItem('pathInvisible'));
         }
-        const listP = $('#pathInvisible').text();
-        for (let i = 0; i < listP.split('/').length; i++) {
-            if (listP.split('/')[i] !== '') {
-                setPath(listP.split('/').slice(0, i + 1).join('/'));
-            }
-        }
-        const fopenDynamicToken = $('#fp').text();
-        const pathUsing = $('#pathInvisible').text();
-        setItemsInTbody(
-            (await asyncGet(`/syncPath?tokenBrowser=${fopenDynamicToken}&path=${pathUsing}`))['information'],
-            'filesList'
-        );
+        await FMFileList.load();
+        FMTrash.updateCount();
 
     }).catch(error => showAuthenticationError(error));
-    const callback = async function (mutationsList, observer) {
-        const fopenDynamicToken = $('#fp').text();
-        const pathInvisible = $('#pathInvisible').text();
-        try {
-            return setItemsInTbody(
-                (await asyncGet(`/syncPath?tokenBrowser=${fopenDynamicToken}&path=${pathInvisible}`))['information'],
-                'filesList'
-            );
-        } catch (e) {
-            console.log('e');
-        }
-
-        for (const mutation of mutationsList) {
-            if (mutation.type === 'childList' || mutation.type === 'characterData') {
-                const fopenDynamicToken = $('#fp').text();
-                const pathInvisible = $('#pathInvisible').text();
-                setItemsInTbody(
-                    (await asyncGet(`/syncPath?tokenBrowser=${fopenDynamicToken}&path=${pathInvisible}`))['information'],
-                    'filesList'
-                );
-
-
-            }
-        }
-
-    };
+    const callback = () => FMFileList.load();
     const observer = new MutationObserver(callback);
     const config = {childList: true, characterData: false, subtree: false};
     const targetNode = document.getElementById('pathInvisible');
