@@ -7,7 +7,7 @@ final class safeFiles
     private static array $active = [];
     private static int $total = 0;
 
-    /** @return array{owner: string, process: resource, stream: resource, input: resource, size: int, entries: array} */
+    /** @return array{owner: string, process: resource, stream: resource, input: resource, size: int, entries: array, result: array} */
     private static function start(string $op, string $path, string $token, ?string $target = null, int $offset = 0, ?int $length = null, bool $details = false, array $parameters = []): array
     {
         if (!securityPolicy::validToken($token)) throw new \DomainException('revoked');
