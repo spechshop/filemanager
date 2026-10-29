@@ -79,9 +79,8 @@ contas/sessões administrativas separadas ou delegação específica revisada pe
 operador. Remover essa fronteira por um wrapper sudo genérico seria inseguro.
 
 fixs.json não é mais executado na inicialização. run-tests.php é diagnóstico e
-não instala Composer. O instalador não inicia um serviço root automaticamente:
-selecionar FILEMANAGER_SERVICE_USER ou assumir explicitamente o modo legado por
-FILEMANAGER_ALLOW_ROOT_SERVICE=1, após avaliar as consequências.
+não instala Composer. O instalador permite iniciar um serviço root automaticamente.
+Para usar uma conta Unix existente, selecionar FILEMANAGER_SERVICE_USER.
 
 3. Limites HTTP/WebSocket e grandes uploads
 

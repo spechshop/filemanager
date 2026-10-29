@@ -553,10 +553,6 @@ configure_drop_caches && FREE_RAM_OK=1
 # ---------------------------------------------------------------------
 # 12) Inicialização automática no boot (com cascata de fallbacks)
 # ---------------------------------------------------------------------
-if [ "$FILEMANAGER_USER" = root ] && [ "${FILEMANAGER_ALLOW_ROOT_SERVICE:-0}" != 1 ]; then
-    err "Serviço root não será iniciado automaticamente. Defina FILEMANAGER_SERVICE_USER para uma conta existente ou FILEMANAGER_ALLOW_ROOT_SERVICE=1 após revisão administrativa."
-    exit 1
-fi
 log "Configurando inicialização automática..."
 CURRENT_DIR="$(pwd)"
 RUNTIME_ADDRESS_FILE="$CURRENT_DIR/.runtime/server-address"

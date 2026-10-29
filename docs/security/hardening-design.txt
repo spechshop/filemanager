@@ -42,8 +42,8 @@ interromper clientes existentes. Nessa modalidade o limite WebSocket de 128 KiB
 ocorre no handler, depois da montagem do frame: a separação é requisito de
 produção para limitar a alocação anterior à autorização.
 
-Instalador: inicialização automática como root passa a exigir
-FILEMANAGER_ALLOW_ROOT_SERVICE=1. Alternativa recomendada:
+Instalador: inicialização automática como root é permitida por padrão.
+Alternativa recomendada:
 FILEMANAGER_SERVICE_USER com conta Unix já existente. Não criar usuários nem
 alterar donos/permissões existentes automaticamente. Codex CLI fica fixado em
 0.165.0; FILEMANAGER_CODEX_VERSION permite uma versão específica revisada.

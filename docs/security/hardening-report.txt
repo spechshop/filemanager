@@ -150,8 +150,8 @@ install-codex-native.txt, installer-home.txt, install-tmp.txt, shellcheck.txt.
 
 O servidor não executa fixs.json nem reparos/comandos de instalação ao iniciar.
 run-tests.php tornou-se diagnóstico, sem instalar Composer ou executar scripts
-baixados. O instalador permite conta existente FILEMANAGER_SERVICE_USER e exige
-FILEMANAGER_ALLOW_ROOT_SERVICE=1 para iniciar automaticamente no modo root legado.
+baixados. O instalador permite conta existente FILEMANAGER_SERVICE_USER e permite
+iniciar automaticamente como root sem exigir uma variável de liberação.
 
 DATA_DIR, CONFIG_FILE e TOKENS_FILE permitem dados/configuração/segredos fora do
 código. Metadados, preferências, tickets, logs, registros de conversas, segredo do
