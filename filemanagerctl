@@ -56,11 +56,62 @@ run_systemd_run() {
 }
 
 server_pids() {
-    pgrep -f -- "$SERVER" 2>/dev/null
+    local proc executable runtime candidate cwd resolved pid metadata state index option scope="${1:-all}"
+    local -a argv
+    for proc in /proc/[0-9]*; do
+        [ -r "$proc/cmdline" ] || continue
+        argv=()
+        mapfile -d '' -t argv 2>/dev/null < "$proc/cmdline" || continue
+        [ "${#argv[@]}" -gt 1 ] || continue
+        executable="${argv[0]##*/}"
+        case "$executable" in
+            php*|pcg) runtime=php ;;
+            node|nodejs) runtime=node ;;
+            *) continue ;;
+        esac
+
+        # Match the script argument, never arbitrary code (-r/-e) or a path
+        # mentioned in a shell command. Resolve relative scripts against the
+        # process's cwd, not the directory where this controller was invoked.
+        candidate=""
+        index=1
+        while [ "$index" -lt "${#argv[@]}" ]; do
+            option="${argv[index]}"
+            case "$runtime:$option" in
+                php:-r*|php:-R*|php:-B*|php:-E*|php:-F*|php:--run*|php:-S|php:--server) break ;;
+                node:-e*|node:-p*|node:--eval*|node:--print*) break ;;
+                php:-c|php:-d|php:-z|php:--php-ini|php:--define|php:--zend-extension|node:-r|node:--require|node:--import|node:--loader)
+                    index=$((index + 2)); continue ;;
+                php:-f|php:--file|*:--)
+                    index=$((index + 1)); candidate="${argv[index]:-}"; break ;;
+                php:--file=*) candidate="${option#*=}"; break ;;
+                *:-*) index=$((index + 1)); continue ;;
+                *) candidate="$option"; break ;;
+            esac
+        done
+        case "$runtime:${candidate##*/}" in
+            php:server.php|php:middleware.php) ;;
+            php:pty.php|node:pty.js|node:lsp.js|node:gpt.js|node:codex-agent.js) [ "$scope" = "all" ] || continue ;;
+            *) continue ;;
+        esac
+        if [[ "$candidate" = /* ]]; then
+            resolved="$(readlink -f -- "$candidate" 2>/dev/null)"
+        else
+            cwd="$(readlink -f -- "$proc/cwd" 2>/dev/null)" || continue
+            resolved="$(readlink -f -- "$cwd/$candidate" 2>/dev/null)"
+        fi
+        [ "$resolved" = "$APP_DIR/${candidate##*/}" ] || continue
+        IFS= read -r metadata 2>/dev/null < "$proc/stat" || continue
+        state="${metadata##*) }"
+        case "$state" in Z\ *|X\ *) continue ;; esac
+        pid="${proc##*/}"
+        printf '%s\n' "$pid"
+    done
+    return 0
 }
 
 is_running() {
-    [ -n "$(server_pids)" ]
+    [ -n "$(server_pids "${1:-all}")" ]
 }
 
 descendant_pids() {
@@ -72,8 +123,11 @@ descendant_pids() {
 }
 
 processes_alive() {
-    local pid
+    local pid metadata state
     for pid in $1; do
+        IFS= read -r metadata 2>/dev/null < "/proc/$pid/stat" || continue
+        state="${metadata##*) }"
+        case "$state" in Z\ *|X\ *) continue ;; esac
         kill -0 "$pid" 2>/dev/null && return 0
     done
     return 1
@@ -110,6 +164,7 @@ stop_processes() {
 
     processes_alive "$pids" && kill -KILL $pids 2>/dev/null
     sleep 1
+    processes_alive "$pids" && return 1
     ! is_running
 }
 
@@ -146,11 +201,11 @@ stop_server() {
 
     log "Parando o FileManager..."
 
-    if system_unit_matches; then
+    if system_unit_matches && [ "$(systemctl show -p ActiveState --value "$SERVICE" 2>/dev/null)" != "inactive" ]; then
         run_systemctl stop "$SERVICE" >/dev/null || failed=1
     fi
 
-    if user_unit_matches; then
+    if user_unit_matches && [ "$(systemctl --user show -p ActiveState --value "$SERVICE" 2>/dev/null)" != "inactive" ]; then
         systemctl --user stop "$SERVICE" >/dev/null || failed=1
     fi
 
@@ -166,7 +221,7 @@ stop_server() {
     fi
 
     if [ "$failed" -ne 0 ]; then
-        warn "O processo parou, mas algum supervisor não pôde ser parado; ele pode iniciar novamente."
+        warn "Alguns processos ou supervisores não puderam ser encerrados; verifique as permissões."
         return 1
     fi
 
@@ -188,9 +243,14 @@ php_binary() {
 start_server() {
     local php_bin
 
-    if is_running; then
+    if is_running main; then
         ok "FileManager já está rodando."
         return 0
+    fi
+
+    # Remove detached bridges before starting a new HTTP server.
+    if is_running; then
+        stop_processes || return 1
     fi
 
     log "Iniciando o FileManager..."
@@ -209,7 +269,7 @@ start_server() {
     fi
 
     sleep 1
-    if is_running; then
+    if is_running main; then
         ok "FileManager iniciado."
     else
         err "O FileManager não iniciou. Consulte $APP_DIR/filemanager.log ou o journalctl."
@@ -248,7 +308,7 @@ restart_server() {
     fi
 
     sleep 1
-    if is_running; then
+    if is_running main; then
         ok "FileManager reiniciado."
     else
         err "O FileManager não reiniciou. Consulte $APP_DIR/filemanager.log ou o journalctl."
@@ -362,10 +422,10 @@ enable_autostart() {
 }
 
 show_status() {
-    if system_unit_matches; then
+    if system_unit_matches && systemctl is-active --quiet "$SERVICE"; then
         log "Supervisor: systemd (sistema)"
         systemctl status "$SERVICE" --no-pager 2>/dev/null | sed -n '1,8p'
-    elif user_unit_matches; then
+    elif user_unit_matches && systemctl --user is-active --quiet "$SERVICE"; then
         log "Supervisor: systemd (usuário)"
         systemctl --user status "$SERVICE" --no-pager 2>/dev/null | sed -n '1,8p'
     elif command -v screen >/dev/null 2>&1 && screen -list 2>/dev/null | grep -q '[.]filemanager'; then
@@ -374,8 +434,11 @@ show_status() {
         log "Supervisor: processo em background"
     fi
 
-    if is_running; then
+    if is_running main; then
         ok "FileManager está rodando (PID(s): $(server_pids | tr '\n' ' ' | sed 's/ $//'))."
+    elif is_running; then
+        warn "Há serviços auxiliares ativos sem o servidor. Execute '$0 stop' para encerrá-los."
+        return 1
     else
         warn "FileManager está desligado."
         return 1
