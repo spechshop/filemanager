@@ -10,17 +10,21 @@ class uploadFile
         $token = securityPolicy::requestToken($request);
         $target = securityPolicy::path($request->get['path'] ?? '', $token);
         $files = $request->files['files'] ?? [];
+        $layout = securityPolicy::uploadLayout($files, $request->post ?? [], $target, $token);
+        if ($files === [] && $layout['directories'] === []) {
+            $response->status(400);
+            return $response->end(json_encode(['success' => false, 'message' => 'Empty upload']));
+        }
         // Check the entire batch before moving the first upload.
         $uploads = [];
-        foreach ($files as $file) {
-            $path = securityPolicy::path($target . '/' . securityPolicy::filename($file['name'] ?? null), $token, false);
+        foreach (array_values($files) as $index => $file) {
             if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || !is_uploaded_file($file['tmp_name'] ?? '')) {
                 $response->status(400);
                 return $response->end(json_encode(['success' => false, 'message' => 'Invalid upload']));
             }
-            $uploads[] = ['source' => $file['tmp_name'], 'target' => $path];
+            $uploads[] = ['source' => $file['tmp_name'], 'target' => $layout['targets'][$index]];
         }
-        safeFiles::uploadMany($uploads, $token);
+        safeFiles::uploadMany($uploads, $token, $target, $layout['directories']);
         foreach ($files as $file) {
             unlink($file['tmp_name']);
         }

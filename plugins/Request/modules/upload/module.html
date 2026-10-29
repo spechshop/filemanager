@@ -11,13 +11,18 @@
                             <div id="drop-area"
                                  style="border: 2px dashed #007bff;border-radius: 20px;width: 400px;margin: 50px auto;padding: 20px;position: relative;text-align: center;">
                                 <i class="fa-duotone fa-upload fa-2x text-blue"></i>
-                                <h3 class="text-blue mt-2">Arraste ou clique</h3>
+                                <h3 class="text-blue mt-2">Arraste arquivos e pastas</h3>
+                                <span class="text-white">ou clique para selecionar arquivos</span>
                                 <code>Limite máximo de upload: 2GB*</code>
                                 <input type="file" id="file-input" name="files[]"
                                        style="opacity: 0;position: absolute;width: 100%;height: 100%;cursor: pointer;top: 0;left: 0;display: none;"
                                        multiple/>
                             </div>
 
+                            <div class="text-center mb-3">
+                                <button type="button" id="select-upload-folder" class="btn btn-midnight text-white">Selecionar pasta</button>
+                                <input type="file" id="folder-input" webkitdirectory multiple style="display: none;"/>
+                            </div>
                             <div>
                                 <p class="text-center text-white">
                                 <h4>
@@ -37,117 +42,142 @@
 
 
                             <script>
-
                                 const dropArea = document.getElementById('drop-area');
                                 const fileInput = document.getElementById('file-input');
+                                const folderInput = document.getElementById('folder-input');
+                                let uploading = false;
 
-                                dropArea.addEventListener('dragover', (event) => {
+                                dropArea.addEventListener('dragover', event => {
                                     event.stopPropagation();
                                     event.preventDefault();
                                     event.dataTransfer.dropEffect = 'copy';
                                 });
+                                dropArea.addEventListener('drop', handleFiles);
+                                fileInput.addEventListener('change', handleFiles);
+                                folderInput.addEventListener('change', handleFiles);
+                                dropArea.addEventListener('click', () => fileInput.click());
+                                document.getElementById('select-upload-folder').addEventListener('click', () => folderInput.click());
 
-                                dropArea.addEventListener('drop', handleFiles, false);
-                                fileInput.addEventListener('change', handleFiles, false);
-
-                                function handleFiles(event) {
-                                    let files;
-                                    if (event.type === "drop") {
-                                        event.stopPropagation();
-                                        event.preventDefault();
-                                        files = event.dataTransfer.files;
-                                    } else {
-                                        files = event.target.files;
-                                    }
-
-                                    if (!files.length) return;
-                                    const list = document.createDocumentFragment();
-                                    const formData = new FormData();
-                                    for (const file of files) {
-                                        const item = document.createElement('li');
-                                        item.textContent = file.name;
-                                        list.appendChild(item);
-                                        formData.append('files[]', file);
-                                    }
-                                    document.getElementById('file-list').appendChild(list);
-                                    $('#progressBarUpload').css('width', '0%').text('0%');
-                                    $('#valueUploadProgress').text('0%');
-                                    const tokenBrowser = document.getElementById('fp').textContent.trim();
-                                    const pathUsing = document.getElementById('pathInvisible').textContent;
-                                    $.ajax({
-                                        url: `/uploadFile?tokenBrowser=${encodeURIComponent(tokenBrowser)}&path=${encodeURIComponent(pathUsing)}`,
-                                        type: 'POST',
-                                        data: formData,
-                                        processData: false,
-                                        contentType: false,
-                                        dataType: 'json',
-                                        xhr: function () {
-                                            var xhr = new window.XMLHttpRequest();
-                                            xhr.upload.addEventListener("progress", function (evt) {
-                                                if (evt.lengthComputable) {
-                                                    var percentComplete = evt.loaded / evt.total;
-                                                    percentComplete = parseInt(percentComplete * 100);
-                                                    $('#progressBarUpload').css('width', percentComplete + '%').attr('aria-valuenow', percentComplete);
-                                                    $('#progressBarUpload').html(percentComplete + '%');
-                                                    $('#valueUploadProgress').html(percentComplete + '%');
-                                                    if (percentComplete === 100) {
-                                                        Swal.fire({
-                                                            background: '#1c2f48',
-                                                            title: `<img src="https://i.gifer.com/47tj.gif" width="200px">`,
-                                                            color: '#fff',
-                                                            html: `<h3 class="text-white">Enviando arquivos...</h3>`,
-                                                            showConfirmButton: false,
-                                                            allowOutsideClick: false,
-                                                            allowEscapeKey: false,
-                                                            allowEnterKey: false,
-                                                            onBeforeOpen: () => {
-                                                                Swal.showLoading();
-                                                            },
-                                                        });
-                                                    }
-                                                }
-                                            }, false);
-                                            return xhr;
-                                        },
-                                        error: function () {
-                                            Swal.fire({icon: 'error', title: 'Falha no upload', text: 'Não foi possível concluir o envio. Verifique a conexão e tente novamente.', background: '#1c2f48', color: '#fff'});
-                                        },
-                                        success: async function (data) {
-                                            if (!data || data.success !== true) {
-                                                this.error();
-                                                return;
+                                async function collectUploads(event) {
+                                    const files = [], directories = [];
+                                    async function visit(entry, parent = '') {
+                                        const path = parent + entry.name;
+                                        if (entry.isFile) {
+                                            const file = await new Promise((resolve, reject) => entry.file(resolve, reject));
+                                            files.push({file, path});
+                                        } else if (entry.isDirectory) {
+                                            directories.push(path);
+                                            const reader = entry.createReader();
+                                            // A directory reader may return only part of its entries at a time.
+                                            while (true) {
+                                                const children = await new Promise((resolve, reject) => reader.readEntries(resolve, reject));
+                                                if (!children.length) break;
+                                                for (const child of children) await visit(child, path + '/');
                                             }
-                                            Swal.close();
-                                            Swal.fire({
-                                                icon: 'success',
-                                                title: 'Sucesso',
-                                                background: '#1c2f48',
-                                                color: '#fff',
-                                                text: 'Arquivos enviados com sucesso!',
-                                                showConfirmButton: false,
-                                                allowOutsideClick: false,
-                                                allowEscapeKey: false,
-                                                allowEnterKey: false,
-                                                timer: 2000,
-                                                timerProgressBar: true,
-                                                onBeforeOpen: () => {
-                                                    Swal.showLoading();
-                                                },
-                                            });
-                                            const fopenDynamicToken = $('#fp').text();
-                                            const pathUsing = $('#pathInvisible').text();
-                                            (async () => {
-                                                setItemsInTbody(await (await asyncGet(`/syncPath?tokenBrowser=${encodeURIComponent(fopenDynamicToken)}&path=${encodeURIComponent(pathUsing)}`))['information'], 'filesList')
-                                            })().then(r => {});
-                                            $('#modalFileUpload').modal('hide');
-                                            $('#file-list').html('');
                                         }
-                                    });
-
-
+                                    }
+                                    if (event.type === 'drop') {
+                                        // Capture entries while the drop's data store is still readable.
+                                        const items = Array.from(event.dataTransfer.items || []).filter(item => item.kind === 'file');
+                                        const entries = items.map(item => item.webkitGetAsEntry ? item.webkitGetAsEntry() : null);
+                                        const fallback = Array.from(event.dataTransfer.files);
+                                        if (entries.length && entries.every(Boolean)) {
+                                            for (const entry of entries) await visit(entry);
+                                        } else {
+                                            for (const file of fallback) files.push({file, path: file.webkitRelativePath || file.name});
+                                        }
+                                    } else {
+                                        for (const file of event.target.files) files.push({file, path: file.webkitRelativePath || file.name});
+                                    }
+                                    return {files, directories};
                                 }
 
-                                dropArea.addEventListener('click', () => fileInput.click());
+                                function uploadBatches(files, directories) {
+                                    const batches = [];
+                                    // Keep manifests and multipart file counts bounded, including empty folders.
+                                    for (let i = 0; i < directories.length; i += 64) batches.push({files: [], directories: directories.slice(i, i + 64)});
+                                    let batch = {files: [], directories: []}, bytes = 0;
+                                    for (const entry of files) {
+                                        if (batch.files.length && (batch.files.length >= 64 || bytes + entry.file.size > 16 * 1024 * 1024)) {
+                                            batches.push(batch);
+                                            batch = {files: [], directories: []};
+                                            bytes = 0;
+                                        }
+                                        batch.files.push(entry);
+                                        bytes += entry.file.size;
+                                    }
+                                    if (batch.files.length) batches.push(batch);
+                                    return batches;
+                                }
+
+                                async function handleFiles(event) {
+                                    if (event.type === 'drop') {
+                                        event.stopPropagation();
+                                        event.preventDefault();
+                                    }
+                                    if (uploading) {
+                                        Swal.fire({icon: 'info', title: 'Upload em andamento', text: 'Aguarde o envio atual terminar para adicionar mais arquivos.'});
+                                        return;
+                                    }
+                                    uploading = true;
+                                    try {
+                                        const {files, directories} = await collectUploads(event);
+                                        const batches = uploadBatches(files, directories);
+                                        if (!batches.length) return;
+                                        const list = document.createDocumentFragment();
+                                        for (const path of [...directories.map(path => path + '/'), ...files.map(entry => entry.path)]) {
+                                            const item = document.createElement('li');
+                                            item.textContent = path;
+                                            list.appendChild(item);
+                                        }
+                                        document.getElementById('file-list').replaceChildren(list);
+                                        const token = document.getElementById('fp').textContent.trim();
+                                        const destination = document.getElementById('pathInvisible').textContent;
+                                        const url = `/uploadFile?tokenBrowser=${encodeURIComponent(token)}&path=${encodeURIComponent(destination)}`;
+                                        const weights = batches.map(batch => Math.max(1, batch.files.reduce((sum, entry) => sum + entry.file.size, 0)));
+                                        const total = weights.reduce((sum, weight) => sum + weight, 0);
+                                        let completed = 0;
+                                        const progress = fraction => {
+                                            const percent = Math.floor(100 * fraction);
+                                            $('#progressBarUpload').css('width', percent + '%').attr('aria-valuenow', percent).text(percent + '%');
+                                            $('#valueUploadProgress').text(percent + '%');
+                                        };
+                                        progress(0);
+                                        for (let i = 0; i < batches.length; i++) {
+                                            const batch = batches[i], formData = new FormData();
+                                            for (const {file} of batch.files) formData.append('files[]', file, file.name);
+                                            formData.append('uploadPaths', JSON.stringify(batch.files.map(entry => entry.path)));
+                                            formData.append('uploadDirectories', JSON.stringify(batch.directories));
+                                            await new Promise((resolve, reject) => $.ajax({
+                                                url, type: 'POST', data: formData, processData: false, contentType: false, dataType: 'json',
+                                                xhr: function () {
+                                                    const xhr = new window.XMLHttpRequest();
+                                                    xhr.upload.addEventListener('progress', evt => {
+                                                        if (evt.lengthComputable) progress((completed + weights[i] * evt.loaded / evt.total) / total);
+                                                    });
+                                                    return xhr;
+                                                },
+                                                success: data => data && data.success === true ? resolve() : reject(new Error('Resposta de upload inválida')),
+                                                error: () => reject(new Error('Falha no envio')),
+                                            }));
+                                            completed += weights[i];
+                                            progress(completed / total);
+                                        }
+                                        Swal.fire({icon: 'success', title: 'Sucesso', text: 'Arquivos e pastas enviados com sucesso!', background: '#1c2f48', color: '#fff'});
+                                        $('#modalFileUpload').modal('hide');
+                                        $('#file-list').empty();
+                                        const currentPath = document.getElementById('pathInvisible').textContent;
+                                        const currentToken = document.getElementById('fp').textContent.trim();
+                                        asyncGet(`/syncPath?tokenBrowser=${encodeURIComponent(currentToken)}&path=${encodeURIComponent(currentPath)}`)
+                                            .then(data => setItemsInTbody(data.information, 'filesList')).catch(() => {});
+                                    } catch (error) {
+                                        Swal.fire({icon: 'error', title: 'Falha no upload', text: 'Não foi possível concluir o envio. Alguns itens podem já ter sido enviados. Verifique a conexão e as permissões e tente novamente.', background: '#1c2f48', color: '#fff'});
+                                    } finally {
+                                        uploading = false;
+                                        fileInput.value = '';
+                                        folderInput.value = '';
+                                    }
+                                }
                             </script>
                         </div>
 

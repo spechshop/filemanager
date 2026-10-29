@@ -267,6 +267,21 @@ class FilesystemTests(unittest.TestCase):
         self.assertEqual((self.outside / 'keep').read_bytes(), b'sentinel')
         self.assertFalse((self.a / 'uploaded').exists())
 
+    def test_upload_directory_creation_is_confined_and_reuses_existing_folders(self):
+        files = self.files()
+        initial = len(files.fds)
+        files.upload_directories(str(self.a), ['project/nested/empty', 'project/nested', 'project/other'])
+        self.assertTrue((self.a / 'project/nested/empty').is_dir())
+        self.assertEqual(len(files.fds), initial)
+        os.symlink(self.outside, self.a / 'escape')
+        with self.assertRaises(OSError):
+            files.upload_directories(str(self.a), ['escape/new'])
+        self.assertFalse((self.outside / 'new').exists())
+        self.assertEqual(len(files.fds), initial)
+        for path in ('../outside/new', '/absolute', 'project//empty'):
+            with self.assertRaises(OSError):
+                files.upload_directories(str(self.a), [path])
+
     def test_upload_provenance_is_private_and_never_follows_substituted_links(self):
         private = self.base / 'upload-tmp'
         private.mkdir(mode=0o700)

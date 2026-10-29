@@ -202,6 +202,28 @@ class Files:
                 for fd in self.fds[start:][::-1]:
                     self.release(fd)
 
+    def upload_directories(self, base, directories):
+        # Walk beneath the pinned destination; never follow substituted links.
+        for directory in directories:
+            parts = directory.split('/')
+            if any(not part or part in ('.', '..') or '\\' in part for part in parts):
+                raise PermissionError('invalid upload directory')
+            fd = self.open(base, os.O_RDONLY | os.O_DIRECTORY)
+            try:
+                for part in parts:
+                    self.authorize()
+                    try:
+                        os.mkdir(part, 0o750, dir_fd=fd)
+                    except FileExistsError:
+                        pass
+                    child = openat2(fd, part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                                    resolve=BENEATH | NO_MAGICLINKS | NO_SYMLINKS)
+                    self.release(fd)
+                    fd = child
+                    self.fds.append(fd)
+            finally:
+                self.release(fd)
+
     def directory_size(self, fd, deadline, seen=None):
         if time.monotonic() > deadline:
             return None
@@ -719,6 +741,7 @@ def main():
             files.upload(path, request['target'])
             reply({'ok': True})
         elif op == 'upload-many':
+            files.upload_directories(request.get('uploadBase'), request.get('directories', []))
             files.upload_many(request['uploads'])
             reply({'ok': True})
         elif op == 'mkdir':

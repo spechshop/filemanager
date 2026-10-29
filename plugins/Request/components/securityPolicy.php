@@ -266,6 +266,35 @@ final class securityPolicy
         return $name;
     }
 
+    /** Validate the complete folder manifest before creating any directory. */
+    public static function uploadLayout(array $files, array $post, string $target, string $token): array
+    {
+        foreach (['uploadPaths', 'uploadDirectories'] as $field) {
+            if (isset($post[$field]) && !is_string($post[$field])) throw new \DomainException('upload manifest');
+        }
+        $paths = isset($post['uploadPaths']) ? json_decode($post['uploadPaths'], true) : array_column($files, 'name');
+        $directories = isset($post['uploadDirectories']) ? json_decode($post['uploadDirectories'], true) : [];
+        if (!is_array($paths) || !array_is_list($paths) || count($paths) !== count($files)
+            || !is_array($directories) || !array_is_list($directories)) throw new \DomainException('upload manifest');
+        $targets = [];
+        foreach ($paths as $path) {
+            self::uploadRelativePath($path);
+            $targets[] = self::path($target . '/' . $path, $token, false);
+            if (str_contains($path, '/')) $directories[] = dirname($path);
+        }
+        foreach ($directories as $directory) {
+            self::uploadRelativePath($directory);
+            self::path($target . '/' . $directory, $token, false);
+        }
+        return ['targets' => $targets, 'directories' => array_values(array_unique($directories))];
+    }
+
+    private static function uploadRelativePath($path): void
+    {
+        if (!is_string($path) || strlen($path) > 4096 || str_contains($path, '://')) throw new \DomainException('upload path');
+        foreach (explode('/', $path) as $part) self::filename($part);
+    }
+
     public static function tree(string $path, string $token): void
     {
         self::path($path, $token);
@@ -315,7 +344,7 @@ final class securityPolicy
         if (in_array($route, ['deleteFile', 'cutCopy', 'compressMultipleFiles'], true) && isset($data['path']) && !($route === 'deleteFile' && is_link($data['path']))) self::tree(self::path($data['path'], $token), $token);
         if ($route === 'uploadFile') {
             $target = self::path($data['path'] ?? '', $token);
-            foreach ($request->files['files'] ?? [] as $file) self::path($target . '/' . self::filename($file['name'] ?? null), $token, false);
+            self::uploadLayout($request->files['files'] ?? [], $request->post ?? [], $target, $token);
         }
     }
 

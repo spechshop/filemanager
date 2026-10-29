@@ -99,6 +99,34 @@ test('real Swoole HTTP + WebSocket denied operations have no file/upload/process
         assert.equal(batchUpload.status, 200); assert.equal((await batchUpload.json()).success, true);
         for (let i = 0; i < 40; i++) assert.equal(fs.readFileSync(path.join(tmp, `files/batch & ${i}.txt`), 'utf8'), `batch-${i}`);
         assert.equal(fs.statSync(path.join(tmp, 'files/empty.txt')).size, 0);
+        // Browser folder manifests keep paths separate from multipart basenames.
+        const folderForm = new FormData();
+        const folderPaths = ['loose.txt', 'project/same.txt', 'project/nested/same.txt'];
+        folderPaths.forEach((name, i) => folderForm.append('files[]', new Blob([`folder-${i}`]), path.basename(name)));
+        folderForm.append('uploadPaths', JSON.stringify(folderPaths));
+        folderForm.append('uploadDirectories', JSON.stringify(['project', 'project/nested', 'project/empty']));
+        const folderResponse = await fetch(`${uploadBase}/uploadFile?path=${encodeURIComponent(path.join(tmp, 'files'))}`, {method: 'POST', headers: {Authorization: 'Bearer owner'}, body: folderForm});
+        assert.equal(folderResponse.status, 200); assert.equal((await folderResponse.json()).success, true);
+        folderPaths.forEach((name, i) => assert.equal(fs.readFileSync(path.join(tmp, 'files', name), 'utf8'), `folder-${i}`));
+        assert.equal(fs.statSync(path.join(tmp, 'files/project/empty')).isDirectory(), true);
+        const emptyFolder = new FormData();
+        emptyFolder.append('uploadPaths', '[]'); emptyFolder.append('uploadDirectories', '["empty-only/subfolder"]');
+        const emptyResponse = await fetch(`${uploadBase}/uploadFile?path=${encodeURIComponent(path.join(tmp, 'files'))}`, {method: 'POST', headers: {Authorization: 'Bearer owner'}, body: emptyFolder});
+        assert.equal(emptyResponse.status, 200); assert.equal((await emptyResponse.json()).success, true);
+        assert.equal(fs.statSync(path.join(tmp, 'files/empty-only/subfolder')).isDirectory(), true);
+        for (const badPath of ['../outside/escape.txt', '/absolute.txt', 'project/../escape.txt', 'project//escape.txt', 'project/\\escape.txt']) {
+            const form = new FormData(); form.append('files[]', new Blob(['bad']), 'escape.txt');
+            form.append('uploadPaths', JSON.stringify([badPath]));
+            form.append('uploadDirectories', '["must-not-create"]');
+            const denied = await fetch(`${uploadBase}/uploadFile?path=${encodeURIComponent(path.join(tmp, 'files'))}`, {method: 'POST', headers: {Authorization: 'Bearer owner'}, body: form});
+            assert.equal(denied.status, 403, badPath);
+            assert.equal(fs.existsSync(path.join(tmp, 'files/must-not-create')), false);
+        }
+        const missingFile = new FormData();
+        missingFile.append('files[]', new Blob(['x']), 'one.txt');
+        missingFile.append('uploadPaths', '["one.txt","missing.txt"]');
+        const mismatch = await fetch(`${uploadBase}/uploadFile?path=${encodeURIComponent(path.join(tmp, 'files'))}`, {method: 'POST', headers: {Authorization: 'Bearer owner'}, body: missingFile});
+        assert.equal(mismatch.status, 403); assert.equal(fs.existsSync(path.join(tmp, 'files/one.txt')), false);
         const largeForm = new FormData(); largeForm.append('files[]', new Blob([Buffer.alloc(16 * 1024 * 1024, 65)]), 'large.bin');
         const largeUpload = await fetch(`${uploadBase}/uploadFile?path=${encodeURIComponent(path.join(tmp, 'files'))}`, {method: 'POST', headers: {Authorization: 'Bearer owner'}, body: largeForm});
         assert.equal(largeUpload.status, 200); assert.equal((await largeUpload.json()).success, true);
