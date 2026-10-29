@@ -9,6 +9,7 @@ import tempfile
 import time
 import threading
 import unittest
+from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location('broker', Path(__file__).with_name('fs-broker.py'))
 broker = importlib.util.module_from_spec(spec)
@@ -199,6 +200,72 @@ class FilesystemTests(unittest.TestCase):
                 files.entries(str(self.a))
         finally:
             self.a.chmod(0o700)
+
+    def upload_fixture(self):
+        private = self.base / 'upload-tmp'
+        private.mkdir()
+        source = private / 'incoming'
+        source.write_bytes(bytes(range(256)) * 4096)
+        files = self.files()
+        files.request['uploadDirectory'] = str(private)
+        return files, source
+
+    def test_upload_batch_contents_overwrite_empty_and_bounded_descriptors(self):
+        files, source = self.upload_fixture()
+        (self.a / 'uploaded').write_bytes(b'old' * 1000000)
+        initial = len(files.fds)
+        files.upload_many([{'source': str(source), 'target': str(self.a / 'uploaded')}] * 100)
+        self.assertEqual((self.a / 'uploaded').read_bytes(), source.read_bytes())
+        self.assertEqual(len(files.fds), initial)
+        source.write_bytes(b'')
+        files.upload_many([{'source': str(source), 'target': str(self.a / 'uploaded')}])
+        self.assertEqual((self.a / 'uploaded').read_bytes(), b'')
+
+    def test_upload_fallback_after_partial_kernel_copy(self):
+        files, source = self.upload_fixture()
+        native = os.copy_file_range
+        calls = 0
+        def copy(source_fd, target_fd, count):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                return native(source_fd, target_fd, 123)
+            raise OSError(broker.errno.EXDEV, 'different filesystem')
+        with patch.object(os, 'copy_file_range', copy):
+            files.upload(str(source), str(self.a / 'uploaded'))
+        self.assertEqual((self.a / 'uploaded').read_bytes(), source.read_bytes())
+
+    def test_upload_zero_copy_result_falls_back_without_losing_data(self):
+        files, source = self.upload_fixture()
+        with patch.object(os, 'copy_file_range', return_value=0):
+            files.upload(str(source), str(self.a / 'uploaded'))
+        self.assertEqual((self.a / 'uploaded').read_bytes(), source.read_bytes())
+
+    def test_upload_revocation_between_kernel_chunks_and_batch_files(self):
+        files, source = self.upload_fixture()
+        native = os.copy_file_range
+        def copy(source_fd, target_fd, count):
+            result = native(source_fd, target_fd, count)
+            self.records['restricted']['revoked'] = True
+            self.save()
+            return result
+        initial = len(files.fds)
+        with patch.object(os, 'copy_file_range', copy), self.assertRaises(PermissionError):
+            files.upload_many([{'source': str(source), 'target': str(self.a / name)} for name in ('first', 'second')])
+        self.assertEqual((self.a / 'first').stat().st_size, 262144)
+        self.assertFalse((self.a / 'second').exists())
+        self.assertEqual(len(files.fds), initial)
+
+    def test_upload_rejects_outside_and_substituted_source(self):
+        files, source = self.upload_fixture()
+        with self.assertRaises(PermissionError):
+            files.upload(str(source), str(self.outside / 'keep'))
+        source.unlink()
+        source.symlink_to(self.outside / 'keep')
+        with self.assertRaises(OSError):
+            files.upload(str(source), str(self.a / 'uploaded'))
+        self.assertEqual((self.outside / 'keep').read_bytes(), b'sentinel')
+        self.assertFalse((self.a / 'uploaded').exists())
 
     def test_upload_provenance_is_private_and_never_follows_substituted_links(self):
         private = self.base / 'upload-tmp'

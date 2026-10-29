@@ -53,6 +53,13 @@ final class safeFiles
 
     public static function upload(string $source, string $target, string $token): void { self::close(self::start('upload', $source, $token, $target)); }
 
+    /** @param list<array{source: string, target: string}> $uploads */
+    public static function uploadMany(array $uploads, string $token): void
+    {
+        if ($uploads === []) return;
+        self::close(self::start('upload-many', '', $token, parameters: ['uploads' => $uploads]));
+    }
+
     public static function reader(string $path, string $token, int $offset = 0, ?int $length = null): array { return self::start('read', $path, $token, null, $offset, $length); }
 
     public static function read(string $path, string $token): string

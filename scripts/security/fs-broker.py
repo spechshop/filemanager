@@ -159,6 +159,49 @@ class Files:
             while view:
                 view = view[os.write(fd, view):]
 
+    def upload(self, source, target):
+        # Both ends remain pinned by confined descriptors, including on fallback.
+        source_fd = self.open_upload(source)
+        target_fd = None
+        try:
+            target_fd = self.open(target, os.O_WRONLY | os.O_CREAT, 0o640)
+            self.authorize()
+            os.ftruncate(target_fd, 0)
+            native_copy = hasattr(os, 'copy_file_range')
+            while True:
+                self.authorize()
+                if native_copy:
+                    try:
+                        if os.copy_file_range(source_fd, target_fd, 262144):
+                            continue
+                    except OSError as error:
+                        if error.errno not in (errno.EXDEV, errno.ENOSYS, errno.EINVAL, errno.EOPNOTSUPP):
+                            raise
+                    # Unsupported filesystems (and kernels returning zero early)
+                    # continue at the current offsets without restarting the copy.
+                    native_copy = False
+                block = os.read(source_fd, 262144)
+                if not block:
+                    break
+                self.authorize()
+                view = memoryview(block)
+                while view:
+                    view = view[os.write(target_fd, view):]
+        finally:
+            if target_fd is not None:
+                self.release(target_fd)
+            self.release(source_fd)
+
+    def upload_many(self, uploads):
+        # Release all per-file descriptors: a large batch must use bounded FDs.
+        for upload in uploads:
+            start = len(self.fds)
+            try:
+                self.upload(upload['source'], upload['target'])
+            finally:
+                for fd in self.fds[start:][::-1]:
+                    self.release(fd)
+
     def directory_size(self, fd, deadline, seen=None):
         if time.monotonic() > deadline:
             return None
@@ -673,9 +716,10 @@ def main():
                 while view:
                     view = view[os.write(fd, view):]
         elif op == 'upload':
-            fd = files.open_upload(path)
-            with os.fdopen(os.dup(fd), 'rb') as source:
-                files.write(request['target'], source)
+            files.upload(path, request['target'])
+            reply({'ok': True})
+        elif op == 'upload-many':
+            files.upload_many(request['uploads'])
             reply({'ok': True})
         elif op == 'mkdir':
             files.mkdir(path)

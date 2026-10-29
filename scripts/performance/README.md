@@ -109,3 +109,16 @@ investigação em `/tmp/filemanager-perf`, antes da organização destes drivers
 As cópias preservam o comportamento original; somente tokens, certificados,
 portas, fixtures e configurações de cada cenário são controlados. Não execute
 os scripts de falha apontando para um diretório de produção.
+
+## Finalização de uploads
+
+```bash
+python3 scripts/performance/upload-benchmark.py --baseline HEAD --runs 3
+```
+
+Use em `--baseline` a revisão anterior à otimização de uploads. O benchmark
+compara um processo por arquivo com um processo por lote, alternando versões,
+validando os bytes copiados e informando a mediana. Usa apenas diretórios
+temporários próprios; não acessa o servidor em execução. Inclui cenários de
+100 arquivos de 4 KiB e um arquivo de 64 MiB. Mede a finalização local dos
+uploads, incluindo o início do auxiliar Python, sem a transferência de rede.

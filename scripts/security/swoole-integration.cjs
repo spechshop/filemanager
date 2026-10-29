@@ -92,6 +92,13 @@ test('real Swoole HTTP + WebSocket denied operations have no file/upload/process
         const validForm = new FormData(); validForm.append('files[]', new Blob(['VALID-UPLOAD']), 'valid.txt');
         const validUpload = await fetch(`${uploadBase}/uploadFile?tokenBrowser=owner&path=${encodeURIComponent(path.join(tmp, 'files'))}`, {method: 'POST', body: validForm});
         assert.equal(validUpload.status, 200); assert.equal((await validUpload.json()).success, true); assert.equal(fs.readFileSync(path.join(tmp, 'files/valid.txt'), 'utf8'), 'VALID-UPLOAD');
+        const batchForm = new FormData();
+        for (let i = 0; i < 40; i++) batchForm.append('files[]', new Blob([`batch-${i}`]), `batch & ${i}.txt`);
+        batchForm.append('files[]', new Blob([]), 'empty.txt');
+        const batchUpload = await fetch(`${uploadBase}/uploadFile?path=${encodeURIComponent(path.join(tmp, 'files'))}`, {method: 'POST', headers: {Authorization: 'Bearer owner'}, body: batchForm});
+        assert.equal(batchUpload.status, 200); assert.equal((await batchUpload.json()).success, true);
+        for (let i = 0; i < 40; i++) assert.equal(fs.readFileSync(path.join(tmp, `files/batch & ${i}.txt`), 'utf8'), `batch-${i}`);
+        assert.equal(fs.statSync(path.join(tmp, 'files/empty.txt')).size, 0);
         const largeForm = new FormData(); largeForm.append('files[]', new Blob([Buffer.alloc(16 * 1024 * 1024, 65)]), 'large.bin');
         const largeUpload = await fetch(`${uploadBase}/uploadFile?path=${encodeURIComponent(path.join(tmp, 'files'))}`, {method: 'POST', headers: {Authorization: 'Bearer owner'}, body: largeForm});
         assert.equal(largeUpload.status, 200); assert.equal((await largeUpload.json()).success, true);

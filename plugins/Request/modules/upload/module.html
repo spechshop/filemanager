@@ -23,15 +23,15 @@
                                 <h4>
                                     <span class="text-white">Progresso atual: </span>
                                     <span class="text-info text-decoration-underline link-underline-opacity-25"
-                                          id="valueUploadProgress">12%</span>
+                                          id="valueUploadProgress">0%</span>
                                 </h4>
                                 </p>
                                 <div class="progress mb-5" style="height: 20px; margin-top: -10px;">
                                     <div class="progress-bar progress-bar-striped progress-bar-animated bg-success"
                                          role="progressbar"
                                          id="progressBarUpload"
-                                         aria-valuenow="75" aria-valuemin="0" aria-valuemax="100"
-                                         style="width: 75%"></div>
+                                         aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"
+                                         style="width: 0%"></div>
                                 </div>
                             </div>
 
@@ -40,7 +40,6 @@
 
                                 const dropArea = document.getElementById('drop-area');
                                 const fileInput = document.getElementById('file-input');
-                                const arquivolistateucuteurabodsgrecado = document.getElementById('file-list');
 
                                 dropArea.addEventListener('dragover', (event) => {
                                     event.stopPropagation();
@@ -61,33 +60,34 @@
                                         files = event.target.files;
                                     }
 
-                                    for (const file of files) {
-                                        document.getElementById('file-list').innerHTML += '<li>' + FMUI.html(file.name) + '</li>';
-                                    }
-                                    const filesBuffer = [];
-                                    for (const file of files) filesBuffer.push(file);
+                                    if (!files.length) return;
+                                    const list = document.createDocumentFragment();
                                     const formData = new FormData();
-                                    for (const file of filesBuffer) formData.append('files[]', file);
-                                    const tokenBrowser = document.getElementById('fp').innerText;
-                                    const pathUsing = document.getElementById('pathInvisible').innerText;
+                                    for (const file of files) {
+                                        const item = document.createElement('li');
+                                        item.textContent = file.name;
+                                        list.appendChild(item);
+                                        formData.append('files[]', file);
+                                    }
+                                    document.getElementById('file-list').appendChild(list);
+                                    $('#progressBarUpload').css('width', '0%').text('0%');
+                                    $('#valueUploadProgress').text('0%');
+                                    const tokenBrowser = document.getElementById('fp').textContent.trim();
+                                    const pathUsing = document.getElementById('pathInvisible').textContent;
                                     $.ajax({
-                                        url: `/uploadFile?tokenBrowser=${tokenBrowser}&path=${pathUsing}`,
+                                        url: `/uploadFile?tokenBrowser=${encodeURIComponent(tokenBrowser)}&path=${encodeURIComponent(pathUsing)}`,
                                         type: 'POST',
                                         data: formData,
                                         processData: false,
                                         contentType: false,
-                                        onprogress: function (e) {
-                                            if (e.lengthComputable) {
-                                                console.log(e.loaded, e.total);
-                                            }
-                                        },
+                                        dataType: 'json',
                                         xhr: function () {
                                             var xhr = new window.XMLHttpRequest();
                                             xhr.upload.addEventListener("progress", function (evt) {
                                                 if (evt.lengthComputable) {
                                                     var percentComplete = evt.loaded / evt.total;
                                                     percentComplete = parseInt(percentComplete * 100);
-                                                    $('#progressBarUpload').css('width', percentComplete + '%');
+                                                    $('#progressBarUpload').css('width', percentComplete + '%').attr('aria-valuenow', percentComplete);
                                                     $('#progressBarUpload').html(percentComplete + '%');
                                                     $('#valueUploadProgress').html(percentComplete + '%');
                                                     if (percentComplete === 100) {
@@ -109,14 +109,21 @@
                                             }, false);
                                             return xhr;
                                         },
+                                        error: function () {
+                                            Swal.fire({icon: 'error', title: 'Falha no upload', text: 'Não foi possível concluir o envio. Verifique a conexão e tente novamente.', background: '#1c2f48', color: '#fff'});
+                                        },
                                         success: async function (data) {
+                                            if (!data || data.success !== true) {
+                                                this.error();
+                                                return;
+                                            }
                                             Swal.close();
                                             Swal.fire({
                                                 icon: 'success',
                                                 title: 'Sucesso',
                                                 background: '#1c2f48',
                                                 color: '#fff',
-                                                text: 'Arquivos enviados com sucesso! (Pode demorar alguns segundos para atualizar a lista de arquivos)',
+                                                text: 'Arquivos enviados com sucesso!',
                                                 showConfirmButton: false,
                                                 allowOutsideClick: false,
                                                 allowEscapeKey: false,
@@ -130,7 +137,7 @@
                                             const fopenDynamicToken = $('#fp').text();
                                             const pathUsing = $('#pathInvisible').text();
                                             (async () => {
-                                                setItemsInTbody(await (await asyncGet(`/syncPath?tokenBrowser=${fopenDynamicToken}&path=${pathUsing}`))['information'], 'filesList')
+                                                setItemsInTbody(await (await asyncGet(`/syncPath?tokenBrowser=${encodeURIComponent(fopenDynamicToken)}&path=${encodeURIComponent(pathUsing)}`))['information'], 'filesList')
                                             })().then(r => {});
                                             $('#modalFileUpload').modal('hide');
                                             $('#file-list').html('');
