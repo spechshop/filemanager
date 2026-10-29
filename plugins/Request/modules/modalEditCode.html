@@ -3736,33 +3736,47 @@
         }
 
         async function saveFile() {
+            const savedPath = $("#hiddenFileEdit").text();
+            const savedModel = editor.getModel();
+            const separator = savedPath.lastIndexOf("/");
+            const filename = savedPath.slice(separator + 1);
+            if (!savedModel || models[savedPath] !== savedModel || !filename) {
+                toastLotus('Não foi possível identificar o arquivo aberto.', 'Erro', 3000, 'error');
+                return;
+            }
+            const savedVersion = savedModel.getAlternativeVersionId();
             $.ajax({
                 url: "newFile",
                 type: "POST",
+                dataType: "json",
                 data: {
                     type: "file",
-                    name: $("#nameFileForEdit").text(),
+                    name: filename,
                     tokenBrowser: $("#fp").text(),
-                    path: $("#hiddenFileEdit")
-                        .text()
-                        .split("/")
-                        .slice(0, -1)
-                        .join("/"),
-                    content: editor.getValue(),
+                    path: separator < 0 ? "." : (savedPath.slice(0, separator) || "/"),
+                    content: savedModel.getValue(),
                 },
                 success: async function (data) {
-                    const savedPath = $("#hiddenFileEdit").text();
-                    if (models[savedPath]) {
-                        cleanModelVersions[savedPath] = models[savedPath].getAlternativeVersionId();
+                    if (data?.success !== true) {
+                        toastLotus('Não foi possível salvar o arquivo.', 'Erro', 3000, 'error');
+                        return;
+                    }
+                    if (models[savedPath] === savedModel) {
+                        cleanModelVersions[savedPath] = savedVersion;
                     }
                     toastLotus('File saved successfully', 'success', 1000, 'success');
-                    runPhpStanDiagnostics();
+                    if (editor.getModel() === savedModel) {
+                        runPhpStanDiagnostics();
+                        await refreshLegacyProviders();
+                    }
                 },
                 error: function (data) {
-                    console.log(data);
+                    const message = data.status === 403
+                        ? 'Sem permissão para salvar este arquivo. Verifique as permissões do arquivo e do usuário do serviço.'
+                        : 'Não foi possível salvar o arquivo. Verifique a conexão e tente novamente.';
+                    toastLotus(message, 'Erro', 5000, 'error');
                 },
             });
-            refreshLegacyProviders();
         }
 
         async function updateImports(model) {
@@ -4309,7 +4323,7 @@
 
 // ação ao clicar na aba
                         newTab.onclick = function () {
-                            $('#nameFileForEdit').text(nameFile);
+                            $('#nameFileForEdit').text(getFilename(nameFile));
                             $('#hiddenFileEdit').text(nameFile);
                             $('#namefilemodaledit').text(nameFile);
 
@@ -4321,7 +4335,7 @@
                             $('#searchFiles').text(nameFile);
 
                             // Atualizar título do modal com o nome do arquivo atual (estilo PhpStorm)
-                            document.querySelector('.modal-title').innerHTML = `Editor - <span style="color: #A1A8B3">${FMUI.html(getFilename(nameFile))}</span>`;
+                            document.querySelector('#edit-code .modal-title').innerHTML = `Editor - <span id="nameFileForEdit" style="color: #A1A8B3">${FMUI.html(getFilename(nameFile))}</span>`;
 
                             if (positions[nameFile]) {
                                 editor.setPosition(positions[nameFile]);
