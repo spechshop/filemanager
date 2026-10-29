@@ -42,7 +42,7 @@ run('php-syntax', ['python3', 'scripts/security/php-lint.py'])
 run('phpstan', [PLAIN, 'vendor/bin/phpstan', 'analyse', '--no-progress', '--memory-limit=1G'])
 for name, script, flags in [
     ('autoload', 'autoload-regression.php', ['-n']), ('http', 'http-regression.php', ['-n']), ('websocket', 'ws-regression.php', ['-n']),
-    ('metadata', 'metadata-regression.php', []), ('tokens', 'tokens-regression.php', []),
+    ('metadata', 'metadata-regression.php', []), ('tokens', 'tokens-regression.php', []), ('token-manager', 'token-manager-regression.php', []),
     ('git-publication', 'git-publication-regression.php', []), ('parser', 'parser-regression.php', []),
     ('process', 'process-regression.php', ['-n']), ('temporaries', 'temporary-regression.php', ['-n']),
 ]:
@@ -57,7 +57,7 @@ run('request-cache', [PLAIN, 'scripts/tests/request-cache-test.php'])
 for name in ['install-codex-native', 'installer-home', 'install-tmp']:
     run(name, ['bash', 'scripts/tests/' + name + '-test.sh'])
 for name, files in [
-    ('ui', ['ui-regression.cjs']), ('threads', ['thread-regression.cjs']),
+    ('ui', ['ui-regression.cjs', 'token-manager-ui.cjs']), ('threads', ['thread-regression.cjs']),
     ('codex', ['codex-integration.cjs']), ('transport-limits', ['auth-transport-regression.cjs', 'limits-regression.cjs']),
     ('dependency-compatibility', ['dependency-regression.cjs']), ('npm-policy-regression', ['npm-audit-policy.test.cjs']),
 ]:

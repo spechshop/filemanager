@@ -18,6 +18,23 @@ class fileManagerSettings
         $method = strtoupper($request->server['request_method'] ?? 'GET');
         $token = securityPolicy::requestToken($request);
 
+        $response->header('Cache-Control', 'no-store');
+        if (($request->get['settingGroup'] ?? $request->post['settingGroup'] ?? '') === 'tokens') {
+            try {
+                if ($method === 'GET') return self::respond($response, 200, tokenManager::listing($token));
+                if ($method !== 'POST') return self::respond($response, 405, ['success' => false, 'message' => 'Método não permitido.']);
+                return self::respond($response, 200, tokenManager::mutate($token, $request->post ?? []));
+            } catch (\InvalidArgumentException $error) {
+                return self::respond($response, 422, ['success' => false, 'message' => $error->getMessage()]);
+            } catch (\UnexpectedValueException $error) {
+                return self::respond($response, 409, ['success' => false, 'message' => $error->getMessage()]);
+            } catch (\DomainException $error) {
+                return self::respond($response, 403, ['success' => false, 'message' => 'Permissão administrativa removida.']);
+            } catch (\Throwable $error) {
+                return self::respond($response, 500, ['success' => false, 'message' => 'Não foi possível acessar o cadastro de tokens.']);
+            }
+        }
+
         if ($method === 'GET') {
             try {
                 return self::respond($response, 200, [

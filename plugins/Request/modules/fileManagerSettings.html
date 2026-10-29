@@ -109,6 +109,9 @@
                                 data-settings-pane="settingsDiagnosticsPane" type="button">
                             <i class="fa-duotone fa-screwdriver-wrench me-2"></i>Diagnóstico
                         </button>
+                        <button class="btn settings-nav-button w-100 text-start mt-1" data-settings-pane="settingsTokensPane" type="button">
+                            <i class="fa-duotone fa-key me-2"></i>Tokens
+                        </button>
                     </aside>
                     <div class="col-md-9">
                         <section class="p-4 settings-pane" id="settingsSystemPane">
@@ -196,6 +199,42 @@
                                 </div>
                             </div>
                             <div id="fileManagerCodexStatus" class="small text-muted mt-2" aria-live="polite"></div>
+                        </section>
+
+                        <section class="p-4 settings-pane d-none" id="settingsTokensPane">
+                            <h6>Tokens de acesso</h6>
+                            <p class="settings-description small">Gerencie clientes, validade e permissões. Revogar ou renovar uma chave interrompe o acesso que depende dela.</p>
+                            <div class="d-flex flex-wrap gap-2 mb-3">
+                                <button type="button" class="btn btn-primary btn-sm" id="newAccessToken">Novo token</button>
+                                <button type="button" class="btn btn-outline-light btn-sm" id="refreshAccessTokens">Atualizar</button>
+                                <button type="button" class="btn btn-outline-danger btn-sm" id="cleanAccessTokens">Excluir expirados</button>
+                            </div>
+                            <div id="accessTokensStatus" class="small mb-2" role="status"></div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-sm-7"><input id="accessTokenSearch" class="form-control form-control-sm" type="search" placeholder="Buscar cliente ou chave" aria-label="Buscar tokens"></div>
+                                <div class="col-sm-5"><select id="accessTokenFilter" class="form-select form-select-sm" aria-label="Filtrar por status"><option value="">Todos os status</option><option value="active">Ativos</option><option value="expired">Expirados</option><option value="revoked">Revogados</option></select></div>
+                            </div>
+                            <form id="accessTokenForm" class="settings-section p-3 mb-3 d-none">
+                                <h6 id="accessTokenFormTitle">Novo token</h6>
+                                <label for="accessTokenName" class="form-label">Nome do cliente</label>
+                                <input id="accessTokenName" class="form-control mb-2" maxlength="200" required>
+                                <label for="accessTokenExpire" class="form-label">Expira em (horário local)</label>
+                                <input id="accessTokenExpire" class="form-control mb-3" type="datetime-local" required>
+                                <div class="mb-2"><label><input id="accessTokenAdmin" type="checkbox"> Administração</label></div>
+                                <div class="mb-3"><label><input id="accessTokenTerminal" type="checkbox"> Terminal</label></div>
+                                <label for="accessTokenRoots" class="form-label">Diretórios permitidos</label>
+                                <textarea id="accessTokenRoots" class="form-control" rows="3" placeholder="/caminho/da/pasta"></textarea>
+                                <p class="settings-description small mt-1">Um caminho absoluto existente por linha. Administradores podem deixar vazio para acessar todos os diretórios. Administração permite controlar serviços e gerenciar outros tokens; terminal permite executar comandos no servidor.</p>
+                                <button type="submit" class="btn btn-success btn-sm">Salvar token</button>
+                                <button type="button" id="cancelAccessToken" class="btn btn-outline-light btn-sm">Cancelar</button>
+                            </form>
+                            <div id="accessTokenSecretBox" class="settings-section p-3 mb-3 d-none">
+                                <label for="accessTokenSecret" class="form-label">Chave do token — guarde em local seguro</label>
+                                <input id="accessTokenSecret" class="form-control mb-2" readonly>
+                                <button type="button" id="copyAccessToken" class="btn btn-outline-light btn-sm">Copiar chave</button>
+                                <button type="button" id="hideAccessToken" class="btn btn-outline-light btn-sm">Ocultar</button>
+                            </div>
+                            <div id="accessTokensList" class="d-grid gap-2"></div>
                         </section>
 
                         <section class="p-4 settings-pane d-none" id="settingsServicesPane">
@@ -861,7 +900,150 @@
             }
         }
 
+        const tokenPane = document.getElementById('settingsTokensPane');
+        const tokenForm = document.getElementById('accessTokenForm');
+        const tokenStatus = document.getElementById('accessTokensStatus');
+        const tokenList = document.getElementById('accessTokensList');
+        let accessTokens = [];
+        let editingToken = null;
+        let tokenBusy = false;
+        let tokenLoadVersion = 0;
+        const tokenField = (name) => document.getElementById(`accessToken${name}`);
+        function tokenMessage(message, error = false) {
+            tokenStatus.textContent = message;
+            tokenStatus.className = `small mb-2 ${error ? 'text-danger' : 'text-info'}`;
+        }
+        function hideTokenSecret() {
+            tokenField('Secret').value = '';
+            tokenField('SecretBox').classList.add('d-none');
+        }
+        async function tokenRequest(values = null) {
+            const parameters = new URLSearchParams({settingGroup: 'tokens', ...values});
+            const response = await fetch(`/fileManagerSettings${values ? '' : '?' + parameters}`, {
+                method: values ? 'POST' : 'GET', cache: 'no-store',
+                headers: {Authorization: `Bearer ${tokenBrowser()}`, ...(values ? {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'} : {})},
+                ...(values ? {body: parameters.toString()} : {})
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.message || 'Não foi possível gerenciar os tokens.');
+            return data;
+        }
+        function renderAccessTokens() {
+            const query = tokenField('Search').value.trim().toLocaleLowerCase();
+            const filter = tokenField('Filter').value;
+            const labels = {active: 'Ativo', expired: 'Expirado', revoked: 'Revogado'};
+            const colors = {active: 'success', expired: 'warning', revoked: 'danger'};
+            const visible = accessTokens.filter((entry) => (!filter || entry.status === filter)
+                && `${entry.nameClient} ${entry.preview}`.toLocaleLowerCase().includes(query));
+            tokenList.innerHTML = visible.map((entry) => {
+                const action = (name, label, disabled = false) => `<button type="button" class="btn btn-sm btn-outline-light" data-token-action="${name}" data-token-id="${escapeHtml(entry.id)}" ${disabled || tokenBusy ? 'disabled' : ''}>${label}</button>`;
+                return `<article class="settings-section p-3">
+                    <div class="d-flex flex-wrap justify-content-between gap-2"><strong>${escapeHtml(entry.nameClient || 'Sem nome')}${entry.current ? ' (token atual)' : ''}</strong><span class="badge text-bg-${colors[entry.status]}">${labels[entry.status]}</span></div>
+                    <div class="small mt-1"><code>${escapeHtml(entry.preview)}</code> · ${escapeHtml(new Date(entry.expire * 1000).toLocaleString())}</div>
+                    <div class="settings-description small mt-1">${entry.admin ? 'Administrador' : 'Sem administração'} · Terminal ${entry.terminal ? 'permitido' : 'bloqueado'}</div>
+                    <div class="settings-description small text-break">Diretórios: ${escapeHtml(entry.allowedRoots === null ? (entry.admin ? 'Todos' : 'Padrão do servidor') : entry.allowedRoots.join(', '))}</div>
+                    <div class="d-flex flex-wrap gap-2 mt-2">${action('edit', 'Editar')}${action('reveal', 'Ver / copiar')}${action('rotate', 'Renovar chave', entry.current)}${action(entry.revoked ? 'restore' : 'revoke', entry.revoked ? 'Reativar' : 'Revogar', entry.current)}${action('delete', 'Excluir', entry.current)}</div>
+                </article>`;
+            }).join('');
+            if (!visible.length) tokenList.textContent = 'Nenhum token encontrado.';
+        }
+        async function loadAccessTokens() {
+            const version = ++tokenLoadVersion;
+            tokenMessage('Carregando tokens...');
+            try {
+                const data = await tokenRequest();
+                if (version !== tokenLoadVersion) return;
+                accessTokens = data.tokens;
+                renderAccessTokens();
+                const count = (status) => accessTokens.filter((entry) => entry.status === status).length;
+                tokenMessage(`${accessTokens.length} tokens · ${count('active')} ativos · ${count('expired')} expirados · ${count('revoked')} revogados`);
+            } catch (error) {
+                if (version !== tokenLoadVersion) return;
+                accessTokens = [];
+                tokenList.replaceChildren();
+                tokenMessage(error.message, true);
+            }
+        }
+        function editAccessToken(entry = null) {
+            editingToken = entry;
+            hideTokenSecret();
+            tokenForm.reset();
+            tokenField('FormTitle').textContent = entry ? 'Editar token' : 'Novo token';
+            tokenField('Name').value = entry?.nameClient || '';
+            const date = new Date(entry ? entry.expire * 1000 : Date.now() + 30 * 86400000);
+            tokenField('Expire').value = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+            tokenField('Admin').checked = entry?.admin ?? false;
+            tokenField('Terminal').checked = entry?.terminal ?? false;
+            tokenField('Roots').value = entry?.allowedRoots?.join('\n') || '';
+            tokenForm.classList.remove('d-none');
+            tokenField('Name').focus();
+        }
+        async function mutateAccessToken(values) {
+            if (tokenBusy) return;
+            tokenBusy = true;
+            tokenPane.querySelectorAll('button').forEach((button) => button.disabled = true);
+            try {
+                hideTokenSecret();
+                const data = await tokenRequest(values);
+                tokenForm.classList.add('d-none');
+                editingToken = null;
+                await loadAccessTokens();
+                tokenMessage(data.message);
+                if (data.secret && modal.classList.contains('show') && activePaneId === 'settingsTokensPane') {
+                    tokenField('Secret').value = data.secret;
+                    tokenField('SecretBox').classList.remove('d-none');
+                }
+            } catch (error) {
+                tokenMessage(error.message, true);
+            } finally {
+                tokenBusy = false;
+                tokenPane.querySelectorAll('button').forEach((button) => button.disabled = false);
+                renderAccessTokens();
+            }
+        }
+        tokenForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const expire = Math.floor(new Date(tokenField('Expire').value).getTime() / 1000);
+            if (!Number.isFinite(expire)) return tokenMessage('Informe uma data válida.', true);
+            mutateAccessToken({action: editingToken ? 'update' : 'create',
+                ...(editingToken ? {id: editingToken.id, revision: editingToken.revision} : {}),
+                nameClient: tokenField('Name').value, expire: String(expire),
+                admin: String(tokenField('Admin').checked), terminal: String(tokenField('Terminal').checked), allowedRoots: tokenField('Roots').value});
+        });
+        tokenList.addEventListener('click', async (event) => {
+            const button = event.target.closest('[data-token-action]');
+            if (!button || tokenBusy) return;
+            const entry = accessTokens.find((item) => item.id === button.dataset.tokenId);
+            if (!entry) return;
+            const action = button.dataset.tokenAction;
+            if (action === 'edit') return editAccessToken(entry);
+            if (['delete', 'revoke', 'rotate', 'restore'].includes(action)) {
+                const titles = {delete: 'Excluir token permanentemente?', revoke: 'Revogar acesso?', rotate: 'Renovar chave do token?', restore: 'Reativar token?'};
+                const descriptions = {delete: 'O cadastro será removido.', revoke: 'A chave deixará de autorizar acessos.', rotate: 'A chave antiga deixará de funcionar. Copie a nova chave após confirmar.', restore: 'O acesso será liberado se a validade ainda estiver vigente.'};
+                const confirmation = await Swal.fire({title: titles[action], text: `${entry.nameClient}: ${descriptions[action]}`, icon: 'warning', showCancelButton: true, confirmButtonText: 'Confirmar', cancelButtonText: 'Cancelar', background: '#1c2438', color: '#fff'});
+                if (!confirmation.isConfirmed) return;
+            }
+            mutateAccessToken({action, id: entry.id, revision: entry.revision});
+        });
+        document.getElementById('newAccessToken').addEventListener('click', () => editAccessToken());
+        document.getElementById('cancelAccessToken').addEventListener('click', () => { tokenForm.classList.add('d-none'); editingToken = null; });
+        document.getElementById('refreshAccessTokens').addEventListener('click', () => { hideTokenSecret(); loadAccessTokens(); });
+        document.getElementById('cleanAccessTokens').addEventListener('click', async () => {
+            const confirmation = await Swal.fire({title: 'Excluir todos os tokens expirados?', text: 'Esta ação remove permanentemente os cadastros vencidos, inclusive revogados.', icon: 'warning', showCancelButton: true, confirmButtonText: 'Excluir expirados', cancelButtonText: 'Cancelar', background: '#1c2438', color: '#fff'});
+            if (confirmation.isConfirmed) mutateAccessToken({action: 'clean'});
+        });
+        tokenField('Search').addEventListener('input', renderAccessTokens);
+        tokenField('Filter').addEventListener('change', renderAccessTokens);
+        document.getElementById('hideAccessToken').addEventListener('click', hideTokenSecret);
+        document.getElementById('copyAccessToken').addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(tokenField('Secret').value);
+                tokenMessage('Chave copiada.');
+            } catch (_) { tokenField('Secret').select(); tokenMessage('Selecione a chave e copie com Ctrl+C.', true); }
+        });
+
         function selectPane(paneId) {
+            if (paneId !== 'settingsTokensPane') hideTokenSecret();
             activePaneId = paneId;
             modal.querySelectorAll('.settings-pane').forEach((pane) => {
                 pane.classList.toggle('d-none', pane.id !== paneId);
@@ -869,9 +1051,10 @@
             navButtons.forEach((button) => {
                 button.classList.toggle('active', button.dataset.settingsPane === paneId);
             });
-            const actionPane = paneId === 'settingsServicesPane' || paneId === 'settingsDiagnosticsPane';
+            const actionPane = paneId === 'settingsServicesPane' || paneId === 'settingsDiagnosticsPane' || paneId === 'settingsTokensPane';
             saveButton.classList.toggle('d-none', actionPane);
             saveButton.disabled = formBusy || (paneId === 'settingsCodexPane' && codexModels.length === 0);
+            if (paneId === 'settingsTokensPane') loadAccessTokens();
             if (paneId === 'settingsServicesPane') loadServices();
             if (paneId === 'settingsDiagnosticsPane') loadDiagnostics();
         }
@@ -904,6 +1087,12 @@
             }, 5000);
         });
         modal.addEventListener('hidden.bs.modal', () => {
+            hideTokenSecret();
+            tokenForm.classList.add('d-none');
+            editingToken = null;
+            accessTokens = [];
+            tokenList.replaceChildren();
+            tokenLoadVersion++;
             clearInterval(serviceStatusInterval);
             serviceStatusInterval = null;
             stopDiagnosticPolling();

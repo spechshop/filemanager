@@ -1,0 +1,62 @@
+'use strict';
+const {test} = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const {JSDOM} = require('jsdom');
+const source = fs.readFileSync(require('node:path').resolve(__dirname, '../../plugins/Request/modules/fileManagerSettings.html'), 'utf8');
+const settle = () => new Promise(resolve => setTimeout(resolve, 20));
+test('settings token UI loads, safely renders, filters, edits, creates and copies keys', async () => {
+    const dom = new JSDOM('<div id="fp">fixture-owner</div>' + source, {url: 'https://localhost', runScripts: 'outside-only'});
+    const w = dom.window, d = w.document;
+    const calls = [];
+    let copied;
+    let entries = [{id: 'fixture-id', revision: 'revision', nameClient: '<img src=x onerror="window.pwned=1">', preview: 'abcd…1234', expire: Math.floor(Date.now()/1000)+86400,
+        admin: true, terminal: false, allowedRoots: ['/tmp/<script>'], current: true, status: 'active', revoked: false}];
+    w.fetch = async (url, options) => {
+        calls.push({url, options});
+        if (options.method === 'GET') return {ok: true, json: async () => ({success: true, tokens: entries})};
+        return {ok: true, json: async () => ({success: true, message: 'Salvo', secret: 'new-fixture-secret'})};
+    };
+    w.Swal = {fire: async () => ({isConfirmed: true})};
+    Object.defineProperty(w.navigator, 'clipboard', {value: {writeText: async value => {copied = value;}}});
+    try {
+        w.eval(source.match(/<script>([\s\S]*?)<\/script>/)[1]);
+        d.getElementById('fileManagerSettingsModal').classList.add('show');
+        d.querySelector('[data-settings-pane="settingsTokensPane"]').click();
+        await settle();
+        assert.equal(d.getElementById('saveFileManagerSettings').classList.contains('d-none'), true);
+        assert.equal(calls[0].options.headers.Authorization, 'Bearer fixture-owner');
+        assert.equal(calls[0].url.includes('tokenBrowser'), false);
+        assert.equal(d.querySelectorAll('#accessTokensList img, #accessTokensList script').length, 0);
+        assert.equal(d.querySelector('#accessTokensList strong').textContent, entries[0].nameClient + ' (token atual)');
+        for (const action of ['rotate', 'revoke', 'delete']) assert.equal(d.querySelector(`[data-token-action="${action}"]`).disabled, true);
+        d.getElementById('accessTokenSearch').value = 'absent';
+        d.getElementById('accessTokenSearch').dispatchEvent(new w.Event('input'));
+        assert.equal(d.getElementById('accessTokensList').textContent, 'Nenhum token encontrado.');
+        d.getElementById('accessTokenSearch').value = '';
+        d.getElementById('accessTokenSearch').dispatchEvent(new w.Event('input'));
+        d.querySelector('[data-token-action="edit"]').click();
+        assert.equal(d.getElementById('accessTokenName').value, entries[0].nameClient);
+        d.getElementById('accessTokenForm').dispatchEvent(new w.Event('submit', {cancelable: true}));
+        await settle();
+        const update = new URLSearchParams(calls.find(call => call.options.method === 'POST').options.body);
+        assert.equal(update.get('action'), 'update');
+        assert.equal(update.get('revision'), 'revision');
+        assert.equal(update.get('allowedRoots'), '/tmp/<script>');
+        d.getElementById('newAccessToken').click();
+        assert.equal(d.getElementById('accessTokenAdmin').checked, false);
+        assert.equal(d.getElementById('accessTokenTerminal').checked, false);
+        d.getElementById('accessTokenName').value = 'New client';
+        d.getElementById('accessTokenRoots').value = '/tmp';
+        d.getElementById('accessTokenForm').dispatchEvent(new w.Event('submit', {cancelable: true}));
+        await settle();
+        assert.equal(d.getElementById('accessTokenSecret').value, 'new-fixture-secret');
+        d.getElementById('copyAccessToken').click();
+        await settle();
+        assert.equal(copied, 'new-fixture-secret');
+        d.getElementById('fileManagerSettingsModal').dispatchEvent(new w.Event('hidden.bs.modal'));
+        assert.equal(d.getElementById('accessTokenSecret').value, '');
+        assert.equal(d.getElementById('accessTokensList').children.length, 0);
+        assert.equal(w.pwned, undefined);
+    } finally {w.close();}
+});

@@ -380,6 +380,24 @@ The system exposes numerous endpoints under `plugins/Request/apps/`:
 - `/freeRam` - Memory usage statistics
 - `/checkToken` - Validate session tokens
 
+## Token management
+
+Open **Configurações > Tokens** with an administrator token to create access keys,
+edit client names and expiration dates, configure administrator/terminal permissions
+and allowed directories, reveal/copy keys, rotate keys, revoke or restore access,
+and delete individual or expired records. New keys default to no administrative or
+terminal permissions; restricted tokens require at least one existing absolute
+directory. An administrator with no directory restriction can access all directories.
+
+Keys appear masked until explicitly revealed. Rotating a key invalidates the old
+key immediately; revocation keeps its record available for restoration. The current
+administrative token cannot be revoked, rotated, deleted, or stripped of admin access
+from its own session. Use another administrator token for those operations. Concurrent
+edits require refreshing the list rather than overwriting newer changes.
+
+Run the isolated regressions with `php scripts/security/token-manager-regression.php`
+and `node --test scripts/security/token-manager-ui.cjs`.
+
 ## Recent Improvements (2025-12-03)
 
 ### Code Editor Enhancements
