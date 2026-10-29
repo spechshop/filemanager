@@ -10,7 +10,9 @@ with tempfile.TemporaryDirectory(prefix='fm-semgrep-') as directory:
     root = Path(directory)
     sources = {
         'plugins/Request/apps/missing.php': '<?php namespace plugins\\Request; class Missing { public static function api($request, $response) { doWork(); } }',
-        'plugins/Request/apps/good.php': '<?php namespace plugins\\Request; class Good { public static function api($request, $response) { if (!security::authorize($request, $response)) return true; doWork(); } }',
+        'plugins/Request/apps/good.php': '<?php namespace plugins\\Request; class Good { public static function api($request, $response) { if (!security::authorize($request, $response, __CLASS__)) return true; doWork(); } }',
+        'plugins/Request/apps/no-identity.php': '<?php class Legacy { public static function api($request, $response) { if (!security::authorize($request, $response)) return true; doWork(); } }',
+        'plugins/Request/apps/late-guard.php': '<?php class Late { public static function api($request, $response) { doWork(); if (!security::authorize($request, $response, __CLASS__)) return true; } }',
         'plugins/Request/apps/fallthrough.php': '<?php namespace plugins\\Request; class Bad { public static function api($request, $response) { security::verifyToken($request) ?: security::invalidToken($response); doWork(); } }',
         'plugins/Request/modules/unsafe.html': '<script>node.innerHTML = suggestionText;</script>',
         'js/unsafe.js': 'eval(request.body);',
@@ -30,6 +32,8 @@ with tempfile.TemporaryDirectory(prefix='fm-semgrep-') as directory:
     detected = {(item['path'], item['check_id'].split('.')[-1]) for item in report['results']}
     expected = {
         ('plugins/Request/apps/missing.php', 'filemanager-http-guard-required'),
+        ('plugins/Request/apps/no-identity.php', 'filemanager-http-guard-required'),
+        ('plugins/Request/apps/late-guard.php', 'filemanager-http-guard-required'),
         ('plugins/Request/apps/fallthrough.php', 'filemanager-http-guard-required'),
         ('plugins/Request/apps/fallthrough.php', 'filemanager-auth-fallthrough'),
         ('plugins/Request/modules/unsafe.html', 'filemanager-browser-html-data'),

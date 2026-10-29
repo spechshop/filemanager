@@ -9,7 +9,7 @@ class codex
 {
     public static function api(Request $request, Response $response): ?bool
     {
-        if (!security::authorize($request, $response)) return true;
+        if (!security::authorize($request, $response, __CLASS__)) return true;
         $data = $request->rawContent();
         $datax = json_decode($data, true);
         if (!empty($datax['type'])) {

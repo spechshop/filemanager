@@ -1,0 +1,2 @@
+[teste][ok] HOME e diretórios XDG são corrigidos para a conta efetiva.
+[teste][ok] O reparador isola HOME e XDG herdados sem permissão.

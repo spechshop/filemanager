@@ -28,15 +28,21 @@ class codeGenerate
      */
     public static function api(Request $request, Response $response): ?bool
     {
-        if (!security::authorize($request, $response)) return true;
-        $listed = is_file('stubs-paths.json') ? json_decode(file_get_contents('stubs-paths.json'), true) : securityPolicy::roots(securityPolicy::requestToken($request));
+        if (!security::authorize($request, $response, __CLASS__)) return true;
+        $listed = is_file('stubs-paths.json') ? json_decode(file_get_contents('stubs-paths.json'), true) : [securityPolicy::initialPath(securityPolicy::requestToken($request))];
         if (!is_array($listed)) return security::deny($response);
         foreach ($listed as $listedPath) securityPolicy::tree(securityPolicy::path($listedPath, securityPolicy::requestToken($request)), securityPolicy::requestToken($request));
-        $command = 'FILEMANAGER_SCAN_ROOTS=' . escapeshellarg(json_encode(array_values($listed))) . ' ' . escapeshellarg(PHP_BINARY)
-            . ' '
-            . escapeshellarg(appController::baseDir() . 'r.php');
         $owner = securityPolicy::requestToken($request);
-        async(static function () use ($command, $owner) { if (securityPolicy::validToken($owner)) shell_exec($command); });
+        async(static function () use ($listed, $owner) {
+            securityPolicy::requireAdmin($owner);
+            $environment = getenv();
+            $environment['FILEMANAGER_SCAN_ROOTS'] = json_encode(array_values($listed));
+            $environment['FILEMANAGER_SCAN_TOKEN'] = $owner;
+            $pipes = [];
+            $process = proc_open([PHP_BINARY, appController::baseDir() . 'r.php'],
+                [['file', '/dev/null', 'r'], ['file', '/dev/null', 'w'], ['file', '/dev/null', 'w']], $pipes, appController::baseDir(), $environment);
+            if (is_resource($process)) proc_close($process);
+        });
         $response->header('Content-Type', 'application/json');
         return $response->end(json_encode([
             'success' => true,

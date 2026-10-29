@@ -1,0 +1,25 @@
+npm audit policy failed: npm audit found vulnerabilities outside the accepted-risk baseline:
+[
+  {
+    "package": "deepmerge",
+    "severity": "low",
+    "advisories": [
+      "GHSA-GCQX-W48M-W2H4"
+    ]
+  },
+  {
+    "package": "html-to-text",
+    "severity": "low",
+    "advisories": [
+      "GHSA-GCQX-W48M-W2H4"
+    ]
+  },
+  {
+    "package": "intelephense",
+    "severity": "moderate",
+    "advisories": [
+      "GHSA-8988-4F7V-96QF",
+      "GHSA-GCQX-W48M-W2H4"
+    ]
+  }
+]

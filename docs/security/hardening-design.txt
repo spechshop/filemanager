@@ -1,0 +1,63 @@
+Decisões de implementação — 28/10/2026
+
+A1: registro explícito de operações/capacidades. Cada handler fornece __CLASS__;
+nenhuma URL define a capacidade de uma chamada direta. Barras entre segmentos
+não são concatenadas. Terminal explícito não implica administração em tokens
+com allowedRoots; admin:true concede essa capacidade separadamente.
+
+A2: tokens sem allowedRoots mantêm acesso completo aos caminhos permitidos ao
+usuário Unix. FILEMANAGER_ALLOWED_ROOTS fornece caminhos iniciais/legados para
+navegação; não restringe administradores. Tokens com allowedRoots usam suas
+raízes independentes, sem exigir interseção com uma raiz global artificial.
+A restrição deve ser explícita no registro do token. Não modificar registros
+existentes automaticamente. Navegação inicial continua em files quando possível;
+GET treeDetails?dir=/ passa a representar a raiz real para acesso completo.
+
+Linux >= 5.6 + Python >= 3.9 são necessários para operações seguras de arquivos.
+Helper local sem sudo e sem listener de rede; argv fixo, JSON/streams em pipes.
+openat2 RESOLVE_BENEATH|RESOLVE_NO_MAGICLINKS prende a resolução à raiz aberta.
+Raízes são abertas sem seguir links durante a abertura; links legítimos são
+resolvidos para outra raiz explicitamente autorizada e abertos dentro dela.
+Descritores fixam o objeto autorizado, inclusive se seu nome mudar depois.
+Operações sobre nomes usam pais fixados e não seguem o link final; leituras
+usam o descritor do arquivo, nunca reabrem seu nome original. Renomear um objeto
+já aberto não transforma o descritor em autorização para seu substituto.
+Não há fallback inseguro a realpath+fopen se o kernel/helper estiver ausente.
+Movimentos entre volumes usam cópia segura seguida de remoção e podem ser
+parciais se houver falha ou revogação; renomeação no mesmo volume é atômica.
+Links de arquivos compactados/importações são tratados especificamente; nenhum
+checkout remoto pode materializar links antes da validação e publicação.
+
+C2: nenhuma permissão de host será alterada automaticamente. Separação de
+código/dados e delegação de privilégios dependem da implantação e serão
+fornecidas como configuração/documentação revisável. Não executar fixs.json
+na inicialização. O acesso completo significa privilégios do usuário Unix do
+serviço; um HTTP sem root não pode legitimamente ultrapassar essas permissões.
+
+Implantação opt-in: FILEMANAGER_UPLOAD_PORT cria um listener HTTP privado no
+loopback, exclusivo para uploadFile. O proxy encaminha essa rota para ele.
+O listener principal passa a limitar pacotes a HTTP_BODY_BYTES (8 MiB padrão).
+Sem essa configuração mantém-se o teto legado de upload de 2 GiB, para não
+interromper clientes existentes. Nessa modalidade o limite WebSocket de 128 KiB
+ocorre no handler, depois da montagem do frame: a separação é requisito de
+produção para limitar a alocação anterior à autorização.
+
+Instalador: inicialização automática como root passa a exigir
+FILEMANAGER_ALLOW_ROOT_SERVICE=1. Alternativa recomendada:
+FILEMANAGER_SERVICE_USER com conta Unix já existente. Não criar usuários nem
+alterar donos/permissões existentes automaticamente. Codex CLI fica fixado em
+0.165.0; FILEMANAGER_CODEX_VERSION permite uma versão específica revisada.
+A instalação passa a usar npm ci para respeitar o lock e sua integridade.
+
+Compatibilidade de credenciais de arquivos: a restauração de acesso completo
+vale para administradores sem allowedRoots. Credenciais legadas com admin:false
+ou terminal:false e sem allowedRoots conservam a fronteira global antiga de
+arquivos; não recebem acesso a todo o servidor por consequência desta correção.
+Recomenda-se torná-la explícita em allowedRoots. Essa mesma decisão é aplicada
+no helper no instante da operação e na revalidação de streams.
+
+Processos auxiliares finitos (formatter, PHPStan e Git): usar um supervisor local
+sem shell, com argumentos separados, grupo de processos próprio, revalidação de
+autorização, quota por worker, timeout configurável e saída limitada. O prazo
+não se aplica ao terminal interativo/Codex, que têm suas próprias políticas de
+sessão/reconexão. A terminação de um auxiliar cancela também seus descendentes.

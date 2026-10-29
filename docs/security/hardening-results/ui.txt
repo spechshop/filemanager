@@ -1,0 +1,15 @@
+✔ stored filenames render as text; clicking keeps the complete filename as data (85.941378ms)
+✔ stored chat markup and crafted markdown fences cannot create executable nodes (18.431593ms)
+✔ reflected paths and search highlighting stay text, including regex metacharacters (12.033133ms)
+✔ file tree preserves hostile names and inline arguments without code execution (11.403277ms)
+✔ notification headers and bodies display untrusted messages as text (20.163999ms)
+✔ stored credentials and server welcome messages never enter HTML sinks (18.744351ms)
+✔ new browser credentials use independent random bytes and preserve registered credentials (10.776206ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 489.667381

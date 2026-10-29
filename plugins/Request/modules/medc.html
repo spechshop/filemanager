@@ -1,6 +1,6 @@
 
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm/css/xterm.css"/>
-<script src="https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css"/>
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js" crossorigin="anonymous" referrerpolicy="no-referrer" integrity="sha384-/nfmYPUzWMS6v2atn8hbljz7NE0EI1iGx34lJaNzyVjWGDzMv+ciUZUeJpKA3Glc"></script>
 <style type="text/css" media="screen">
     #editor {
         width: 100%;
@@ -419,7 +419,7 @@ ${FMUI.html(tree[key])}</li>`;
 
                     async function recursiveWebSocket(events) {
                         const hostname = window.location.port ? `${window.location.hostname}:${parseInt(window.location.port)}` : window.location.hostname;
-                        socket = new WebSocket(`wss://${hostname}/${$('#fp').text()}`);
+                        socket = new WebSocket(await FMAuth.socketUrl(`wss://${hostname}/${$('#fp').text()}`));
                         socket.onopen = () => {
                             socket.send(JSON.stringify({
                                 command: `\n`,
@@ -514,7 +514,7 @@ ${FMUI.html(tree[key])}</li>`;
         </div>
     </div>
 </div>
-<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.46.0/min/vs/loader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.46.0/min/vs/loader.js" crossorigin="anonymous" referrerpolicy="no-referrer" integrity="sha384-s9sAjYOsnnr6dTRBtp4Wt2NcemdwBe1u+/P+pbmSduqn7HK9OY0RpGaCbJhvKnMV"></script>
 <script>
 
 
@@ -684,7 +684,7 @@ ${FMUI.html(tree[key])}</li>`;
                     editor.trigger('anyString', 'editor.action.formatDocument', {});
                 });
 
-                
+
 
                 await fetch('/codeGenerate?tokenBrowser=' + $('#fp').text(), {
                     method: 'POST',

@@ -1,0 +1,184 @@
+Implantação e migrações — FileManager, 28/10/2026
+
+Não houve alteração na VPS, no .env real, em proprietários/permissões da máquina
+ou em sipswoole/libspech. Nenhum exemplo desta pasta foi instalado ou ativado.
+O relatório histórico de auditoria permanece como evidência; as recomendações
+abaixo substituem a antiga restrição global de filesystem descrita naquela fase.
+
+1. Autorização e diretórios
+
+Administrador sem allowedRoots no registro do token: acesso a qualquer caminho
+acessível ao usuário Unix. Caminhos absolutos, outros volumes e links autorizados funcionam.
+FILEMANAGER_ALLOWED_ROOTS agora serve somente como escolha inicial legada para
+administradores; não é uma cerca global. Para restringir uma credencial, declare
+allowedRoots explicitamente no seu registro. Não há migração automática de
+credenciais existentes. Antes de atualizar, revise credenciais que dependiam
+somente de FILEMANAGER_ALLOWED_ROOTS para limitar arquivos.
+
+Exemplos sem credenciais reais (o valor da chave é fornecido pelo operador):
+  administrador: {"expire": 1799999999}
+  restrito: {"expire": 1799999999,
+             "allowedRoots": ["/srv/projetos", "/var/log/aplicacao"]}
+
+admin:false retira as APIs administrativas. Credenciais legadas com admin:false
+ou terminal:false e sem allowedRoots mantêm a fronteira antiga de arquivos,
+não ganham acesso global. terminal:false retira shell e LSP.
+Em tokens restritos, admin e terminal são falsos por padrão. São concessões
+independentes: terminal:true NÃO concede automaticamente administração/Codex.
+Codex Agent exige ambas as capacidades. Terminal e Codex concedem execução de
+código como o usuário Unix; allowedRoots não é uma sandbox para esses processos.
+Não conceda terminal/admin a um usuário que deve ter somente arquivos confinados.
+
+2. Código, dados e segredos
+
+Revisar filemanager.service.example. Usar uma conta dedicada já existente, com
+permissões Unix/ACL explícitas nos caminhos que precisa administrar. Código,
+PHP/JS, vendor, node_modules, scripts e runtimes devem pertencer à conta de
+implantação e ser somente leitura para o HTTP. O template protege /opt/filemanager
+sem bloquear globalmente a navegação em outros diretórios.
+
+Criar e preparar /var/lib/filemanager fora do checkout (diretório privado 0700),
+copiar a configuração e os metadados que deseja preservar, sem alterar os originais:
+  FILEMANAGER_DATA_DIR=/var/lib/filemanager
+  FILEMANAGER_CONFIG_FILE=/var/lib/filemanager/configInterface.json
+  FILEMANAGER_TOKENS_FILE=/etc/filemanager/tokens.lotus
+  FILEMANAGER_INITIAL_DIRECTORY=/srv/projetos
+
+FILEMANAGER_TEMP_DIR pode selecionar o diretório privado de temporários;
+por padrão usa DATA_DIR/tmp (ou .runtime/tmp no layout legado). Mantê-lo 0700,
+fora dos workspaces restritos. Sufixos PHP/NEON são reservados por rename
+atômico do arquivo criado, não por um nome sem reserva. PHPStan usa cache privado.
+
+DATA_DIR recebe sessões, preferências privadas, tickets, registro de conversas,
+segredo de bridge (quando não fornecido no ambiente), endereço/reinício e logs
+dos serviços. Omitir as variáveis preserva os caminhos antigos. Runtimes e
+instaladores continuam no checkout; no modo protegido o reparo desses executáveis
+é tarefa do operador, com o processo web sem escrita no código.
+
+Migrar sessions-terminals.json, terminals.json, database/codex-preferences.lotus
+e .runtime/codex-thread-owners.json, quando existirem. O último arquivo preserva
+a propriedade das conversas. Configurar também as variáveis para os serviços
+PTY/LSP/Codex iniciados fora do supervisor e para filemanagerctl.
+
+O arquivo de tokens deve ser editável somente pela conta administrativa/CLI;
+o HTTP precisa somente de leitura. manage-tokens.php agora respeita
+FILEMANAGER_TOKENS_FILE e recusa salvar uma edição concorrente obsoleta, evitando
+restaurar uma credencial revogada. Não editar esse arquivo sem lock/escrita
+atômica enquanto outro administrador o modifica.
+
+Segredos de implantação ficam fora do workspace e do código gravável. Pode-se
+injetar FILEMANAGER_BRIDGE_SECRET (>=32 caracteres aleatórios) pelo ambiente do
+serviço, evitando gerar um arquivo no checkout. Não incluir segredos no comando
+ExecStart nem em URLs/logs. Nenhum segredo real consta dos exemplos.
+
+freeRam mantém o helper específico filemanager-drop-caches e a regra sudo
+limitada existente. Não dar sudo irrestrito a PHP, Python, bash, screen ou Node.
+Não foi criado um broker genérico root: o helper de filesystem usa somente os
+privilégios Unix do serviço. Operações que excedem essas permissões exigem ACLs,
+contas/sessões administrativas separadas ou delegação específica revisada pelo
+operador. Remover essa fronteira por um wrapper sudo genérico seria inseguro.
+
+fixs.json não é mais executado na inicialização. run-tests.php é diagnóstico e
+não instala Composer. O instalador não inicia um serviço root automaticamente:
+selecionar FILEMANAGER_SERVICE_USER ou assumir explicitamente o modo legado por
+FILEMANAGER_ALLOW_ROOT_SERVICE=1, após avaliar as consequências.
+
+3. Limites HTTP/WebSocket e grandes uploads
+
+FILEMANAGER_UPLOAD_PORT=8081 cria um listener SOMENTE em 127.0.0.1, exclusivo da
+operação uploadFile. Encaminhar essa rota no proxy conforme nginx-limits.example.
+O listener principal usa HTTP_BODY_BYTES (8 MiB padrão); upload usa UPLOAD_BYTES
+(2 GiB padrão). Teste real local comprovou multipart de 16 MiB no listener de
+upload enquanto o principal tinha teto de 8 MiB.
+
+A separação é opt-in para preservar clientes/instalações existentes. Sem ela,
+o limite de pacote compartilhado continua em 2 GiB; o handler WebSocket nega
+mensagens acima de 128 KiB, mas o frame já foi montado pelo Swoole. Não confundir
+essa validação com proteção de memória anterior ao handler. Antes da produção,
+ativar a separação, limitar conexões no proxy e manter ambos os listeners privados.
+Uma instalação sem proxy deve decidir/documentar uma topologia equivalente.
+
+Variáveis FILEMANAGER_* (valores padrão, todos positivos e configuráveis):
+  WS_MESSAGE_BYTES=131072
+  HTTP_BODY_BYTES=8388608, UPLOAD_BYTES=2147483648
+  OUTPUT_BUFFER_BYTES=4194304
+  TERMINALS_PER_USER=16, TERMINALS_TOTAL=128
+  TERMINAL_DETACH_MS=1800000 (30 minutos para reconectar)
+  LSP_PER_USER=4, LSP_TOTAL=32, LSP_BUFFER_BYTES=8388608
+  CODEX_REQUESTS_PER_USER=4, CODEX_REQUESTS_TOTAL=32
+  CODEX_TURNS_PER_USER=4, CODEX_TURNS_TOTAL=16
+  CODEX_PENDING_RPCS=128, CODEX_BUFFER_BYTES=8388608
+  CODEX_DETACH_MS=300000 (5 minutos para reconectar tarefas)
+  BRIDGE_QUEUE_MESSAGES=32
+  FILESYSTEM_PER_USER=8, FILESYSTEM_TOTAL=32
+  FILESYSTEM_TIMEOUT_SECONDS=60, DIRECTORY_STATS_SECONDS=2
+  ARCHIVE_BYTES=536870912, ARCHIVE_ENTRIES=10000
+  AUXILIARY_PER_USER=2, AUXILIARY_TOTAL=16
+  AUXILIARY_TIMEOUT_SECONDS=300, AUXILIARY_OUTPUT_BYTES=16777216
+  FILEMANAGER_UPLOAD_TMP_DIR pode selecionar diretório privado de uploads;
+  por padrão, DATA_DIR/upload-tmp (ou .runtime/upload-tmp no layout legado).
+  ACCESS_TICKETS_TOTAL=10000, MEDIA_TICKET_SECONDS=3600
+
+Quotas Node são por serviço; filesystem e auxiliares são por worker PHP
+(padrão: um worker). Formatter, PHPStan e importação Git usam o supervisor finito
+sem shell: revogação, timeout e encerramento do worker terminam o grupo inteiro
+de processos, inclusive filhos que ignorem SIGTERM. O prazo de cinco minutos
+pode ser aumentado para repositórios/análises maiores; não limita o terminal.
+Dimensionar o total com worker_num. Limites de processos e memória do systemd
+são adicionais e devem ser ajustados ao uso legítimo. Arquivos grandes são
+transferidos em streams; não se exige carregar o upload inteiro em PHP/Python.
+
+4. URLs, navegador e CSP
+
+O navegador usa Bearer para fetch/XHR. WebSocket usa tickets aleatórios de uso
+único, válidos por 30 segundos; a identidade duradoura não vai na URL externa.
+Mídia/download usa ticket limitado ao arquivo e à operação, com duração padrão
+de uma hora para permitir ranges. Todos revalidam o token/escopo atual.
+Clientes antigos ainda podem usar tokenBrowser e URLs WebSocket legadas por
+compatibilidade. Logs do proxy devem omitir query strings; a aplicação registra
+somente eventos controlados. Não registrar bodies, headers de autorização ou
+frames. Tickets são credenciais temporárias, não devem ser publicados.
+
+O token duradouro permanece em localStorage/DOM por compatibilidade com o login
+e as abas atuais. XSS na mesma origem ainda pode acessá-lo; código de terceiros
+na origem também é parte da confiança. Foram mantidos renderizadores seguros,
+versões fixadas e SRI nos scripts CDN revisados. Monaco/Prism podem carregar
+componentes secundários: hospedar esses recursos localmente é etapa posterior.
+
+CSP existente é aplicada para objetos/base/framing/formulários. Política mais
+estrita de scripts/estilos/conexões está em Report-Only; não há endpoint externo
+de coleta. A aplicação ainda depende de handlers inline e de recursos do editor.
+Não trocar por uma política bloqueante antes de remover esses usos e homologar
+terminal, editor, galeria e Codex no navegador de produção.
+
+5. Integridade e compatibilidade
+
+Linux >=5.6, x86_64 ou aarch64, Python >=3.9 (/usr/bin/python3 por padrão,
+FILEMANAGER_PYTHON permite caminho de implantação), PHP >=8.3 com Swoole,
+Zip/Phar e Node >=22. Manter todos nos patches de segurança atuais. A falta de
+openat2/helper resulta em negação, nunca em realpath+fopen inseguro.
+
+TLS é obrigatório inclusive em redirects. Falhas de CA não têm downgrade. PHP,
+Composer e micromamba usam versões/digests fixados; Node confere os checksums do
+servidor de distribuição autenticado por TLS. O Codex CLI fica em 0.165.0,
+com FILEMANAGER_CODEX_VERSION para outra versão específica revisada. npm ci usa
+o lock e a integridade dos pacotes; strict_ssl é forçado. Bootstrap sem Git exige
+SHA256 revisado; os scripts de runtime vêm do checkout revisado, sem refresh
+remoto automático. Atualizar versões/digests exige nova revisão.
+
+O runtime PHP local de testes ainda não satisfaz runtime-check.php para os
+patches de outubro. Não trocar o runtime da máquina automaticamente; instalar e
+homologar uma versão corrigida antes de produção. Um digest correto comprova o
+artefato escolhido, não que essa versão esteja livre de vulnerabilidades.
+
+A auditoria npm atual difere da baseline histórica: manter o bloqueio para
+achados novos. Não houve aceite automático, downgrade para um LSP antigo ou
+substituição de APIs internas de telemetria por majors incompatíveis. Consulte
+o relatório final para os resultados e pendências exatos.
+
+6. Incidente
+
+As correções não identificam o vetor do incidente nem certificam o host invadido.
+Preservar evidências, revisar/recriar a instalação a partir de fonte confiável e
+rotacionar credenciais comprometidas fora deste trabalho antes de reabrir o acesso.
+Nenhum teste local contra fixtures constitui homologação da VPS comprometida.

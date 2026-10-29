@@ -82,7 +82,7 @@ function resolveIntelephense() {
 }
 
 const server = http.createServer();
-const wss = new WebSocket.Server({ noServer: true, maxPayload: 131072 });
+const wss = new WebSocket.Server({ noServer: true, maxPayload: bridgeAuth.limit('WS_MESSAGE_BYTES', 131072) });
 const children = new Set();
 const stopping = new Map();
 function stopChild(child) {
@@ -108,6 +108,9 @@ server.on('upgrade', (request, socket, head) => {
 });
 wss.on('connection', (ws, request) => {
     const session = bridgeAuth.session(request);
+    const release = bridgeAuth.acquire('LSP', session, 4, 32);
+    if (!release) { ws.close(1013, 'LSP quota exceeded'); return; }
+    ws.once('close', release);
     const timer = setInterval(() => { if (!bridgeAuth.valid(session)) ws.close(1008, 'Session expired'); }, 500);
     ws.once('close', () => clearInterval(timer));
     const bin = resolveIntelephense();
@@ -129,6 +132,8 @@ wss.on('connection', (ws, request) => {
     const child = isJs
         ? spawn(process.execPath, [bin, '--stdio'], { cwd: __dirname })
         : spawn(bin, ['--stdio'], { cwd: __dirname });
+    ws.removeListener('close', release);
+    child.once('close', release);
     children.add(child);
     child.once('close', () => {
         children.delete(child);
@@ -148,6 +153,8 @@ wss.on('connection', (ws, request) => {
     // ---- stdio (servidor) -> WebSocket (editor) --------------------
     let buffer = Buffer.alloc(0);
     child.stdout.on('data', (chunk) => {
+        if (!bridgeAuth.valid(session)) { ws.close(1008, 'Session expired'); return; }
+        if (buffer.length + chunk.length > bridgeAuth.limit('LSP_BUFFER_BYTES', 8388608)) { stopChild(child); ws.close(1009, 'LSP buffer exceeded'); return; }
         buffer = Buffer.concat([buffer, chunk]);
         // Desenquadra mensagens "Content-Length: N\r\n\r\n<json>".
         while (true) {
@@ -161,12 +168,13 @@ wss.on('connection', (ws, request) => {
                 continue;
             }
             const length = parseInt(match[1], 10);
+            if (length > bridgeAuth.limit('LSP_BUFFER_BYTES', 8388608)) { stopChild(child); ws.close(1009, 'LSP message exceeded'); return; }
             const bodyStart = headerEnd + 4;
             if (buffer.length < bodyStart + length) break; // corpo incompleto
             const body = buffer.slice(bodyStart, bodyStart + length).toString('utf8');
             buffer = buffer.slice(bodyStart + length);
             if (ws.readyState === WebSocket.OPEN) {
-                ws.send(body);
+                bridgeAuth.send(ws, body);
             }
         }
     });
@@ -185,6 +193,7 @@ wss.on('connection', (ws, request) => {
         const payload = Buffer.from(json, 'utf8');
         const header = Buffer.from(`Content-Length: ${payload.length}\r\n\r\n`, 'ascii');
         try {
+            if (child.stdin.writableLength + header.length + payload.length > bridgeAuth.limit('LSP_BUFFER_BYTES', 8388608)) { ws.close(1013, 'LSP input backpressure'); return; }
             child.stdin.write(header);
             child.stdin.write(payload);
         } catch (e) { /* servidor morreu */ }

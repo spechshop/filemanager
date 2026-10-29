@@ -12,7 +12,7 @@ class fileManagerDiagnostics
 
     public static function api(Request $request, Response $response): bool
     {
-        if (!security::authorize($request, $response)) return true;
+        if (!security::authorize($request, $response, __CLASS__)) return true;
         if (!security::verifyToken($request)) {
             return (bool) security::invalidToken($response);
         }
@@ -54,7 +54,7 @@ class fileManagerDiagnostics
                     'repair' => $job,
                 ]);
             }
-            self::startInstaller($nodeTarget);
+            self::startInstaller($nodeTarget, securityPolicy::requestToken($request));
             usleep(150000);
             $repair = self::jobStatus();
             if (($repair['status'] ?? '') === 'failed') {
@@ -250,7 +250,7 @@ class fileManagerDiagnostics
         ];
     }
 
-    private static function startInstaller(string $nodeTarget): void
+    private static function startInstaller(string $nodeTarget, string $owner): void
     {
         $root = self::root();
         $script = $root . '/scripts/install-codex.sh';
@@ -299,6 +299,7 @@ class fileManagerDiagnostics
                 }
             );
             try {
+                securityPolicy::requireAdmin($owner);
                 exec($command, $output, $exitCode);
             } catch (\Throwable $exception) {
                 $launchException = $exception;

@@ -1,0 +1,11 @@
+✔ thread ownership persists across reconnect and blocks other users, unknown legacy threads and revoked sessions without writes (2.000566ms)
+✔ actual bridge action handlers reject another user before RPC and filter thread history (2.436444ms)
+✔ permission removal while awaiting preferences prevents a pending Codex turn from starting (1.718249ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 45.462394

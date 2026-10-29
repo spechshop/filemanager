@@ -9,7 +9,7 @@ class freeRam
 {
     public static function api(Request $request, Response $response): bool
     {
-        if (!security::authorize($request, $response)) return true;
+        if (!security::authorize($request, $response, __CLASS__)) return true;
         $response->header('Content-Type', 'application/json');
         $output = [];
         $exitCode = 0;

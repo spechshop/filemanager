@@ -38,7 +38,7 @@ class fileManagerServices
 
     public static function api(Request $request, Response $response): bool
     {
-        if (!security::authorize($request, $response)) return true;
+        if (!security::authorize($request, $response, __CLASS__)) return true;
         if (!security::verifyToken($request)) {
             return (bool) security::invalidToken($response);
         }
@@ -70,7 +70,7 @@ class fileManagerServices
         }
 
         try {
-            $message = self::executeAction($service, $action);
+            $message = self::executeAction($service, $action, securityPolicy::requestToken($request));
             return self::respond($response, 200, [
                 'success' => true,
                 'message' => $message,
@@ -85,13 +85,13 @@ class fileManagerServices
         }
     }
 
-    private static function executeAction(string $service, string $action): string
+    private static function executeAction(string $service, string $action, string $owner): string
     {
         $name = self::SERVICES[$service]['name'];
 
         if ($action === 'stop') {
-            self::stop($service);
-            fileManagerConfig::setServiceEnabled($service, false);
+            self::stop($service, $owner);
+            fileManagerConfig::setServiceEnabled($service, false, $owner);
             return "$name interrompido.";
         }
 
@@ -99,14 +99,14 @@ class fileManagerServices
             if ($service === 'pty'
                 && self::portAlive(self::SERVICES['pty']['port'])
                 && self::serviceProcessIds('pty') === []) {
-                fileManagerConfig::setServiceEnabled('pty', true);
+                fileManagerConfig::setServiceEnabled('pty', true, $owner);
                 return 'Terminal PTY já está ativo; conexão recuperada pelo painel.';
             }
-            self::stop($service);
+            self::stop($service, $owner);
         }
 
-        self::start($service);
-        fileManagerConfig::setServiceEnabled($service, true);
+        self::start($service, $owner);
+        fileManagerConfig::setServiceEnabled($service, true, $owner);
 
         return $action === 'restart' ? "$name reiniciado." : "$name iniciado.";
     }
@@ -207,7 +207,7 @@ class fileManagerServices
             : [false, 'As dependências do serviço GPT não estão instaladas.'];
     }
 
-    private static function start(string $service): void
+    private static function start(string $service, string $owner): void
     {
         $definition = self::SERVICES[$service];
         if (self::portAlive($definition['port'])) {
@@ -226,11 +226,12 @@ class fileManagerServices
 
         $command = self::startCommand($service);
         $root = self::root();
-        $log = $root . '/' . $definition['log'];
+        $log = securityPolicy::dataPath($definition['log'], $root . '/' . $definition['log']);
         $escapedCommand = implode(' ', array_map('escapeshellarg', $command));
         $shellCommand = 'cd ' . escapeshellarg($root)
             . ' && nohup ' . $escapedCommand
             . ' >> ' . escapeshellarg($log) . ' 2>&1 < /dev/null &';
+        securityPolicy::requireAdmin($owner);
         exec($shellCommand);
 
         if (!self::waitForPort($definition['port'], true, 6.0)) {
@@ -240,7 +241,7 @@ class fileManagerServices
         }
     }
 
-    private static function stop(string $service): void
+    private static function stop(string $service, string $owner): void
     {
         $definition = self::SERVICES[$service];
         $pids = self::serviceProcessIds($service);
@@ -256,12 +257,14 @@ class fileManagerServices
 
         $targets = self::processTree($pids);
         foreach ($pids as $pid) {
+            securityPolicy::requireAdmin($owner);
             self::signal($pid, 15);
         }
 
         self::waitForPort($definition['port'], false, 3.0);
         foreach ($targets as $pid) {
             if (self::processExists($pid)) {
+                securityPolicy::requireAdmin($owner);
                 self::signal($pid, 9);
             }
         }

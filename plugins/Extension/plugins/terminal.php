@@ -31,7 +31,9 @@ class terminal
                 $write = $except = null;
                 // Sleep in the OS until output or EOF; no 100 Hz status polling.
                 if (@stream_select($ready, $write, $except, null) === false) {
-                    break;
+                    // pcntl signals interrupt select(). Keep draining the child
+                    // until EOF so graceful shutdown cannot lose its pipe IO.
+                    continue;
                 }
                 foreach ($ready as $pipe) {
                     $data = fread($pipe, 65536);
@@ -52,32 +54,19 @@ class terminal
             // Reap the child before returning; EOF is not a reason to kill an
             // already-reaped PID (which could have been reused by the OS).
             proc_close($process);
+            $sharedPid = null;
         }
     }
 
     public static function pKill(mixed $pid, mixed $sig_num = 9): bool
     {
-        shell_exec("pkill -9 -P $pid");return true;
-        $idProcess2 = (int)$pid - 1;
-        if (function_exists("posix_kill")) return posix_kill($idProcess, $sig_num);
-        if (function_exists("proc_terminate")) {
-            $process = proc_open("kill -s $sig_num $idProcess", [0 => ["pipe", "r"], 1 => ["pipe", "w"], 2 => ["pipe", "w"]], $pipes);
-            if (is_resource($process)) {
-                fclose($pipes[0]);
-                $output = stream_get_contents($pipes[1]);
-                fclose($pipes[1]);
-                fclose($pipes[2]);
-                proc_close($process);
-                return empty($output);
-            }
-        }
-        exec("/usr/bin/kill -s $sig_num $idProcess 2>&1", $junk, $return_code);
-        exec("/usr/bin/kill -s $sig_num $idProcess2 2>&1", $junk, $return_code2);
-        if ($return_code === 0 || $return_code2 === 0) {
-            return true;
-        } else {
-            print "Erro ao matar o processo $pid: " . implode("\n", $junk) . PHP_EOL;
-            return false;
-        }
+        if (!is_numeric($pid) || !is_numeric($sig_num)) return false;
+        $processId = (int) $pid; $signal = (int) $sig_num;
+        if ($processId <= 1 || $signal < 1 || $signal > 64) return false;
+        if (function_exists('posix_kill')) return posix_kill($processId, $signal);
+        $pipes = [];
+        $process = proc_open(['/usr/bin/kill', '-s', (string) $signal, '--', (string) $processId],
+            [['file', '/dev/null', 'r'], ['file', '/dev/null', 'w'], ['file', '/dev/null', 'w']], $pipes);
+        return is_resource($process) && proc_close($process) === 0;
     }
 }

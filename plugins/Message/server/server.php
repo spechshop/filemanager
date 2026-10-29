@@ -7,6 +7,7 @@ use Exception;
 use plugins\Extension\utilsFunction;
 use plugins\Request\appController;
 use plugins\Request\securityPolicy;
+use plugins\Request\safeFiles;
 use plugins\Start\cache;
 use plugins\websocket\OpenConnection;
 use Swoole\Coroutine;
@@ -64,6 +65,9 @@ class server extends OpenConnection
             foreach ($GLOBALS['xterm'] as $token => $terminal) {
                 if (($terminal['fd'] ?? null) === $fd) {
                     $GLOBALS['xterm'][$token]['fd'] = null;
+                    $GLOBALS['xterm'][$token]['wsClient'] = false;
+                    $GLOBALS['xterm'][$token]['relay'] = false;
+                    if (($terminal['wsClient'] ?? null) instanceof Client) $terminal['wsClient']->close();
                 }
             }
         }
@@ -72,6 +76,9 @@ class server extends OpenConnection
             foreach ($GLOBALS['lsp'] as $token => $session) {
                 if (($session['fd'] ?? null) === $fd) {
                     $GLOBALS['lsp'][$token]['fd'] = null;
+                    $GLOBALS['lsp'][$token]['chan'] = null;
+                    $GLOBALS['lsp'][$token]['worker'] = false;
+                    if (($session['chan'] ?? null) instanceof \Swoole\Coroutine\Channel) $session['chan']->close();
                 }
             }
         }
@@ -80,6 +87,9 @@ class server extends OpenConnection
             foreach ($GLOBALS['codexAgent'] as $token => $session) {
                 if (($session['fd'] ?? null) === $fd) {
                     $GLOBALS['codexAgent'][$token]['fd'] = null;
+                    $GLOBALS['codexAgent'][$token]['chan'] = null;
+                    $GLOBALS['codexAgent'][$token]['worker'] = false;
+                    if (($session['chan'] ?? null) instanceof \Swoole\Coroutine\Channel) $session['chan']->close();
                 }
             }
         }
@@ -87,7 +97,7 @@ class server extends OpenConnection
 
     public static function message(\Swoole\WebSocket\Server $server, Frame $frame)
     {
-        $object = strlen($frame->data) <= 131072 ? json_decode($frame->data, true) : null;
+        $object = strlen($frame->data) <= securityPolicy::limit('WS_MESSAGE_BYTES', 131072) ? json_decode($frame->data, true) : null;
         $socketToken = self::socketTokenForFd($frame->fd);
         $tokenClient = $GLOBALS['websocketConnections'][$frame->fd]['clientToken'] ?? '';
         $binding = $GLOBALS['websocketConnections'][$frame->fd]['identity'] ?? '';
@@ -97,8 +107,13 @@ class server extends OpenConnection
             securityPolicy::log('message_denied', 'websocket');
             return $server->disconnect($frame->fd, 1008, 'Unauthorized');
         }
+        if (array_key_exists('codexAgent', $object) && !securityPolicy::adminAllowed($tokenClient)) return $server->disconnect($frame->fd, 1008, 'Administrative permission required');
         $privileged = array_key_exists('isCodex', $object) || array_key_exists('codexAgent', $object) || array_key_exists('lsp', $object);
         if (!self::activeBinding($server, $frame->fd, $binding, $tokenClient, $privileged)) return;
+        if ($privileged) {
+            $GLOBALS['websocketConnections'][$frame->fd]['privileged'] = true;
+            $GLOBALS['websocketConnections'][$frame->fd]['capability'] = array_key_exists('codexAgent', $object) ? 'admin' : ($GLOBALS['websocketConnections'][$frame->fd]['capability'] ?? 'terminal');
+        }
         $tokenBrowser = $socketToken;
         if (!empty($GLOBALS["coroutinesProcess"][$tokenBrowser])) {
             $GLOBALS["coroutinesProcess"][$tokenBrowser]["fd"] = $frame->fd;
@@ -121,24 +136,24 @@ class server extends OpenConnection
                 }
             }
             if (!self::activeBinding($server, $frame->fd, $binding, $tokenClient, true)) return;
-            if (!is_string($payload) || $payload === '' || strlen($payload) > 131072) {
+            if (!is_string($payload) || $payload === '' || strlen($payload) > securityPolicy::limit('WS_MESSAGE_BYTES', 131072)) {
                 self::pushCodexAgentError($server, $frame->fd, 'Mensagem inválida ou muito grande.');
                 return;
             }
 
             $GLOBALS["codexAgent"][$tokenBrowser]["fd"] = $frame->fd;
             if (empty($GLOBALS["codexAgent"][$tokenBrowser]["chan"])) {
-                $GLOBALS["codexAgent"][$tokenBrowser]["chan"] = new \Swoole\Coroutine\Channel(1024);
+                $GLOBALS["codexAgent"][$tokenBrowser]["chan"] = new \Swoole\Coroutine\Channel(securityPolicy::limit('BRIDGE_QUEUE_MESSAGES', 32));
             }
             $channel = $GLOBALS["codexAgent"][$tokenBrowser]["chan"];
             if (empty($GLOBALS["codexAgent"][$tokenBrowser]["worker"])) {
                 $GLOBALS["codexAgent"][$tokenBrowser]["worker"] = true;
                 Coroutine::create(function () use ($tokenBrowser, $server) {
                     self::runCodexAgentWorker($tokenBrowser, $server);
-                    $GLOBALS["codexAgent"][$tokenBrowser]["worker"] = false;
+                    if (empty($GLOBALS["codexAgent"][$tokenBrowser]["chan"])) $GLOBALS["codexAgent"][$tokenBrowser]["worker"] = false;
                 });
             }
-            $channel->push($payload);
+            if (!$channel->push($payload, 0.05)) $server->disconnect($frame->fd, 1013, 'Bridge queue full');
             return;
         }
 
@@ -186,13 +201,13 @@ class server extends OpenConnection
                                     continue;
                                 }
 
-                                if (!securityPolicy::validToken(securityPolicy::socketOwner($tokenBrowser))) break;
+                                if (!securityPolicy::terminalAllowed(securityPolicy::socketOwner($tokenBrowser))) break;
                                 if (($GLOBALS['websocketConnections'][$fd]['token'] ?? '') !== $tokenBrowser) continue;
                                 $server->push($fd, (string) $message->data);
                             }
                         } finally {
-                            $GLOBALS["xterm"][$tokenBrowser]["relay"] = false;
                             if (($GLOBALS["xterm"][$tokenBrowser]["wsClient"] ?? null) === $wsClient) {
+                                $GLOBALS["xterm"][$tokenBrowser]["relay"] = false;
                                 $GLOBALS["xterm"][$tokenBrowser]["wsClient"] = false;
                             }
                             try {
@@ -246,7 +261,7 @@ class server extends OpenConnection
             // Canal de saída (browser -> language server). Criado de forma
             // síncrona para nunca perdermos o "initialize" inicial.
             if (empty($GLOBALS["lsp"][$tokenBrowser]["chan"])) {
-                $GLOBALS["lsp"][$tokenBrowser]["chan"] = new \Swoole\Coroutine\Channel(2048);
+                $GLOBALS["lsp"][$tokenBrowser]["chan"] = new \Swoole\Coroutine\Channel(securityPolicy::limit('BRIDGE_QUEUE_MESSAGES', 32));
             }
 
             $channel = $GLOBALS["lsp"][$tokenBrowser]["chan"];
@@ -254,12 +269,12 @@ class server extends OpenConnection
                 $GLOBALS["lsp"][$tokenBrowser]["worker"] = true;
                 Coroutine::create(function () use (&$tokenBrowser, $server) {
                     self::runLspWorker($tokenBrowser, $server);
-                    $GLOBALS["lsp"][$tokenBrowser]["worker"] = false;
+                    if (empty($GLOBALS["lsp"][$tokenBrowser]["chan"])) $GLOBALS["lsp"][$tokenBrowser]["worker"] = false;
                 });
             }
 
             if (isset($object["payload"]) && $object["payload"] !== "") {
-                $channel->push($object["payload"]);
+                if (!$channel->push($object['payload'], 0.05)) $server->disconnect($frame->fd, 1013, 'Bridge queue full');
             }
             return;
         } elseif (array_key_exists("searchInFile", $object)) {
@@ -314,7 +329,7 @@ class server extends OpenConnection
     /** File IO can yield in Swoole: check identity AFTER reading the credential store. */
     private static function activeBinding(\Swoole\WebSocket\Server $server, int $fd, string $binding, string $owner, bool $privileged = false): bool
     {
-        $valid = $privileged ? securityPolicy::terminalAllowed($owner) : securityPolicy::validToken($owner);
+        $valid = $privileged ? (($GLOBALS['websocketConnections'][$fd]['capability'] ?? '') === 'admin' ? securityPolicy::adminAllowed($owner) && securityPolicy::terminalAllowed($owner) : securityPolicy::terminalAllowed($owner)) : securityPolicy::validToken($owner);
         if ($binding === '' || ($GLOBALS['websocketConnections'][$fd]['identity'] ?? '') !== $binding) return false;
         if (!$valid) {
             securityPolicy::log('session_denied', 'websocket');
@@ -423,7 +438,7 @@ class server extends OpenConnection
 
         $binding = $GLOBALS['websocketConnections'][$fd]['identity'] ?? '';
         try {
-            $path = securityPolicy::path($object['path'] ?? securityPolicy::roots($clientToken)[0], $clientToken);
+            $path = securityPolicy::path($object['path'] ?? securityPolicy::initialPath($clientToken), $clientToken);
             securityPolicy::tree($path, $clientToken);
         } catch (\DomainException $e) { $server->disconnect($fd, 1008, 'Forbidden'); return; }
         if (!self::activeBinding($server, $fd, $binding, $clientToken)) return;
@@ -481,13 +496,7 @@ class server extends OpenConnection
         $limit = (int) $job['limit'];
 
         try {
-            $iterator = new \RecursiveIteratorIterator(
-                new \RecursiveDirectoryIterator(
-                    $path,
-                    \FilesystemIterator::SKIP_DOTS
-                ),
-                \RecursiveIteratorIterator::SELF_FIRST
-            );
+            $iterator = safeFiles::walk($path, $job['clientToken']);
         } catch (\UnexpectedValueException) {
             self::pushSearchEvent($server, $fd, [
                 'type' => 'status',
@@ -559,7 +568,7 @@ class server extends OpenConnection
                 ]);
             }
 
-            if (!$item->isFile()) {
+            if ($item['directory']) {
                 $batch++;
                 if ($batch % 40 === 0) {
                     Coroutine::sleep(0.02);
@@ -567,13 +576,12 @@ class server extends OpenConnection
                 continue;
             }
 
-            if ($item->isLink()) continue;
-            $pathFile = $item->getPathname();
+            $pathFile = $item['path'];
             $job['scanned']++;
 
-            if (\plugins\Request\searchInFile::fileContainsString($pathFile, $needle)) {
+            if (\plugins\Request\searchInFile::fileContainsString($pathFile, $needle, $job['clientToken'])) {
                 $job['found']++;
-                $size = @filesize($pathFile);
+                $size = $item['size'];
                 self::pushSearchEvent($server, $fd, [
                     'type' => 'result',
                     'item' => [
@@ -657,12 +665,18 @@ class server extends OpenConnection
      */
     private static function runCodexAgentWorker(string $tokenBrowser, \Swoole\WebSocket\Server $server): void
     {
-        self::runBridgeWorker('codexAgent', 3091, '/agent', $tokenBrowser, $server);
+        self::runBridgeWorker('codexAgent', (int) (getenv('CODEX_AGENT_PORT') ?: 3091), '/agent', $tokenBrowser, $server);
     }
 
     public static function runLspWorker(string $tokenBrowser, \Swoole\WebSocket\Server $server): void
     {
-        self::runBridgeWorker('lsp', 3057, '/' . $tokenBrowser, $tokenBrowser, $server);
+        self::runBridgeWorker('lsp', securityPolicy::limit('LSP_PORT', 3057), '/' . $tokenBrowser, $tokenBrowser, $server);
+    }
+
+    private static function bridgePermission(string $service, string $token): bool
+    {
+        $owner = securityPolicy::socketOwner($token);
+        return $service === 'codexAgent' ? securityPolicy::adminAllowed($owner) && securityPolicy::terminalAllowed($owner) : securityPolicy::terminalAllowed($owner);
     }
 
     private static function runBridgeWorker(string $service, int $port, string $path, string $token, \Swoole\WebSocket\Server $server): void
@@ -676,7 +690,7 @@ class server extends OpenConnection
             if (!$client->upgrade($path)) {
                 if ($service === 'codexAgent') {
                     $fd = $GLOBALS[$service][$token]['fd'] ?? null;
-                    if (is_int($fd) && securityPolicy::validToken(securityPolicy::socketOwner($token)) && $server->isEstablished($fd) && ($GLOBALS['websocketConnections'][$fd]['token'] ?? '') === $token) {
+                    if (is_int($fd) && self::bridgePermission($service, $token) && $server->isEstablished($fd) && ($GLOBALS['websocketConnections'][$fd]['token'] ?? '') === $token && ($GLOBALS[$service][$token]['chan'] ?? null) === $channel) {
                         self::pushCodexAgentError($server, $fd, 'O serviço Codex Agent não está disponível.');
                     }
                 }
@@ -696,7 +710,7 @@ class server extends OpenConnection
                         $payload = $service === 'codexAgent' ? json_decode($message->data, true) : $message->data;
                         if ($service === 'codexAgent' && !is_array($payload)) continue;
                         $fd = $GLOBALS[$service][$token]['fd'] ?? null;
-                        if (is_int($fd) && securityPolicy::validToken(securityPolicy::socketOwner($token)) && $server->isEstablished($fd) && ($GLOBALS['websocketConnections'][$fd]['token'] ?? '') === $token) {
+                        if (is_int($fd) && self::bridgePermission($service, $token) && $server->isEstablished($fd) && ($GLOBALS['websocketConnections'][$fd]['token'] ?? '') === $token && ($GLOBALS[$service][$token]['chan'] ?? null) === $channel) {
                             $server->push($fd, json_encode([$service => true, 'payload' => $payload], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
                         }
                     }
@@ -707,7 +721,7 @@ class server extends OpenConnection
                 }
             });
             while ($client->connected && ($payload = $channel->pop()) !== false) {
-                if (!securityPolicy::validToken(securityPolicy::socketOwner($token)) || !is_string($payload) || !$client->push($payload)) break;
+                if (!self::bridgePermission($service, $token) || !is_string($payload) || !$client->push($payload)) break;
             }
         } catch (Throwable) {
             // The next browser message may start a fresh bridge connection.

@@ -6,7 +6,7 @@ class toggleStubsPath
 {
     public static function api(Request $request, Response $response): ?bool
     {
-        if (!security::authorize($request, $response)) return true;
+        if (!security::authorize($request, $response, __CLASS__)) return true;
         $owner = securityPolicy::requestToken($request);
         $path = securityPolicy::path($request->get['path'] ?? '', $owner);
         $paths = is_file('stubs-paths.json') ? json_decode(file_get_contents('stubs-paths.json'), true) : [];

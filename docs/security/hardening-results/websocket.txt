@@ -1,0 +1,33 @@
+{"event":"connection_denied","channel":"websocket","time":1793243686}
+PASS unauthorized open has no session/process: missing
+{"event":"connection_denied","channel":"websocket","time":1793243686}
+PASS unauthorized open has no session/process: unknown
+{"event":"connection_denied","channel":"websocket","time":1793243686}
+PASS unauthorized open has no session/process: expired
+{"event":"connection_denied","channel":"websocket","time":1793243686}
+PASS unauthorized open has no session/process: revoked
+{"event":"connection_denied","channel":"websocket","time":1793243686}
+PASS invalid/missing origin has no session
+{"event":"connection_denied","channel":"websocket","time":1793243686}
+PASS invalid/missing origin has no session
+{"event":"connection_denied","channel":"websocket","time":1793243686}
+PASS invalid/missing origin has no session
+PASS connection binds authenticated owner
+PASS hyphenated token binds complete owner
+{"event":"message_denied","channel":"websocket","time":1793243686}
+PASS payload cannot steal another owner/session or send terminal input
+{"event":"session_denied","channel":"websocket","time":1793243686}
+PASS revoked active session cannot create terminal/send command
+{"event":"connection_denied","channel":"websocket","time":1793243686}
+PASS revoked reconnect has no replay or process
+{"event":"session_revoked","channel":"websocket","time":1793243686}
+PASS idle expiry actively disconnects and removes timer/binding
+PASS fd reused during credential IO cannot mutate or disconnect replacement session
+{"event":"session_denied","channel":"websocket","time":1793243686}
+PASS null service flag cannot bypass scoped credential permissions: isCodex
+{"event":"session_denied","channel":"websocket","time":1793243686}
+PASS null service flag cannot bypass scoped credential permissions: lsp
+PASS null service flag cannot bypass scoped credential permissions: codexAgent
+{"event":"message_denied","channel":"websocket","time":1793243686}
+PASS reused connection cannot inherit prior owner
+18 assertions, 0 failures

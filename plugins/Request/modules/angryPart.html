@@ -1,9 +1,13 @@
-<center style="margin-top: 20px; display: none" id="angryPart">
-    <div class="text-center" style="display: block">
-        <img style="height: auto; max-width: 100%" width="600" class="img-fluid" src="img/angry.png">
-    </div>
-    <h4 class="mt-4" style="font-weight: bold; margin-top: 40px !important;"><b class="fw-bold text-white">Acesso negado.</b></h4>
-    <div style="font-weight: 600 !important; margin-left: 5px; margin-right: 5px;">Se seu acesso foi excluído significa
-        que detectamos uma ação incomum com seu acesso.
-    </div>
-</center>
+<section id="angryPart" style="display: none; max-width: 640px; margin: 60px auto; padding: 24px; text-align: center;" aria-live="polite">
+    <h4 id="authErrorTitle" class="text-white">Acesso não autorizado</h4>
+    <p id="authErrorMessage">Este navegador precisa de uma credencial cadastrada para acessar o FileManager.</p>
+    <p>Código deste navegador:</p>
+    <code id="browserCredential" style="display: block; overflow-wrap: anywhere; margin-bottom: 16px;"></code>
+    <button type="button" class="btn btn-secondary" onclick="copyDivToClipboard('browserCredential')">Copiar código</button>
+    <button type="button" class="btn btn-primary" onclick="location.reload()">Tentar novamente</button>
+    <form id="registeredCredentialForm" style="margin-top: 24px;">
+        <label for="registeredCredential">Já possui uma credencial cadastrada?</label>
+        <input id="registeredCredential" type="password" class="form-control mt-2" required maxlength="256" autocomplete="off" placeholder="Cole sua credencial de acesso">
+        <button type="submit" class="btn btn-primary mt-2">Entrar</button>
+    </form>
+</section>

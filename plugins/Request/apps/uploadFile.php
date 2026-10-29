@@ -6,7 +6,7 @@ class uploadFile
 {
     public static function api(Request $request, Response $response)
     {
-        if (!security::authorize($request, $response)) return true;
+        if (!security::authorize($request, $response, __CLASS__)) return true;
         $token = securityPolicy::requestToken($request);
         $target = securityPolicy::path($request->get['path'] ?? '', $token);
         $files = $request->files['files'] ?? [];
@@ -21,10 +21,8 @@ class uploadFile
         foreach ($files as $file) {
             if (!securityPolicy::validToken($token)) return security::invalidToken($response);
             $path = securityPolicy::path($target . '/' . $file['name'], $token, false);
-            if (!move_uploaded_file($file['tmp_name'], $path)) {
-                $response->status(500);
-                return $response->end(json_encode(['success' => false, 'message' => 'Upload failed']));
-            }
+            safeFiles::upload($file['tmp_name'], $path, $token);
+            unlink($file['tmp_name']);
         }
         return $response->end(json_encode(['success' => true, 'information' => 'ok']));
     }

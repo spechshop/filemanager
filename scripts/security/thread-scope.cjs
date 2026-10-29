@@ -6,7 +6,7 @@ const auth = require('./bridge-auth.cjs');
 class ThreadScope {
     constructor(file) { this.file = file; }
     identity(session) {
-        if (!auth.valid(session)) throw new Error('Session expired');
+        if (!auth.valid(session, 'admin')) throw new Error('Session expired');
         return crypto.createHash('sha256').update(auth.owner(session)).digest('hex');
     }
     read() {

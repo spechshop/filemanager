@@ -1,0 +1,10 @@
+{
+    "php": "8.3.35",
+    "swoole": null,
+    "openssl": "OpenSSL 3.0.13 30 Jan 2024",
+    "advisoryDate": "2026-10-21",
+    "minimumPatchedPhp": "8.3.36",
+    "patchedPhp": false,
+    "requiredSwoolePresent": true,
+    "source": "https://www.php.net/archive/2026.php#2026-10-21-5"
+}

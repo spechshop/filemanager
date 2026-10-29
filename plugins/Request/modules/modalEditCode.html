@@ -1,7 +1,7 @@
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm/css/xterm.css"/>
-<script src="https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js"></script>
-<script src="https://unpkg.com/prettier/standalone.js"></script>
-<script src="https://unpkg.com/@prettier/plugin-php/standalone.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css"/>
+<script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js" crossorigin="anonymous" referrerpolicy="no-referrer" integrity="sha384-/nfmYPUzWMS6v2atn8hbljz7NE0EI1iGx34lJaNzyVjWGDzMv+ciUZUeJpKA3Glc"></script>
+<script src="https://unpkg.com/prettier@3.9.10/standalone.js" crossorigin="anonymous" referrerpolicy="no-referrer" integrity="sha384-3RquqZwSgZBTvvxL/DhOXolpM5QZBfS/D0WjyfeEYqchqBa8svDtZrEmCY72PNv0"></script>
+<script src="https://unpkg.com/@prettier/plugin-php@0.26.0/standalone.js" crossorigin="anonymous" referrerpolicy="no-referrer" integrity="sha384-7PE1/KIK9Xt6zDjfi4E3OgR3G1xxBKXCL5gyiNu+otED+F75TYuoRVn8ZvE9RyjT"></script>
 
 <script>
     async function sleep(ms) {
@@ -686,7 +686,6 @@
                             if (sock?.readyState === WebSocket.OPEN) {
                                 sock.send(JSON.stringify({
                                     command: 'resizeXtermHandlerCommand',
-                                    token: sock.url.split('/').pop(),
                                     cols: size.cols,
                                     rows: size.rows,
                                     isCodex: true,
@@ -869,7 +868,6 @@
                             try {
                                 termInfo.socket.send(JSON.stringify({
                                     command: 'closeXtermHandlerCommand',
-                                    token: termInfo.socket.url.split('/').pop(),
                                     isCodex: true,
                                 }));
                             } catch {}
@@ -973,7 +971,9 @@
                             : window.location.hostname;
                         const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
                         const wsToken = `${token}-${terminalId}`;
-                        const socket = new WebSocket(`${protocol}://${hostname}/${wsToken}`);
+                        let socket;
+                        try { socket = new WebSocket(await FMAuth.socketUrl(`${protocol}://${hostname}/${wsToken}`)); }
+                        catch (error) { if (terminals[terminalId] && FMAuth.shouldRetry(error)) setTimeout(() => initWebSocket(terminal, options), 3000); return; }
 
                         if (terminals[terminalId]) terminals[terminalId].socket = socket;
 
@@ -995,7 +995,7 @@
                         };
 
                         socket.onclose = () => {
-                            if (terminals[terminalId]) {
+                            if (terminals[terminalId] && FMAuth.shouldRetry()) {
                                 console.warn(`Terminal "${terminalId}" desconectado, reconectando em 3s...`);
                                 setTimeout(() => initWebSocket(terminal, options), 3000);
                             }
@@ -1011,7 +1011,6 @@
                             try {
                                 socket.send(JSON.stringify({
                                     command,
-                                    token: socket.url.split('/').pop(),
                                     isCodex: true,
                                 }));
                             } catch (e) {
@@ -1039,6 +1038,8 @@
                     // ---- Page load: restore saved terminals ----
                     document.onreadystatechange = async function () {
                         if (document.readyState !== 'complete') return;
+                        try { await FMAuth.ready(); }
+                        catch { return; }
 
                         const dims = getXtermDimensions();
                         const editorEl = document.getElementById('editor');
@@ -1222,7 +1223,7 @@
     }
 </style>
 
-<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.41.0/min/vs/loader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.41.0/min/vs/loader.js" crossorigin="anonymous" referrerpolicy="no-referrer" integrity="sha384-MmNdCvQGtzYhVMTKMxNqmu4vwsP7uCyWRfRdXPKcAlp1m6rbuGb3CGTvQtvO7MNR"></script>
 <script>
     let models = {}; // Para armazenar os modelos dos arquivos
     let cleanModelVersions = {}; // Última versão confirmada no disco por arquivo
@@ -1978,15 +1979,15 @@
                 } catch (e) { /* noop */ }
             }
 
-            function scheduleReconnect() {
-                if (reconnectTimer) return;
+            function scheduleReconnect(error) {
+                if (reconnectTimer || !FMAuth.shouldRetry(error)) return;
                 reconnectTimer = setTimeout(() => {
                     reconnectTimer = null;
                     connect();
                 }, 3000);
             }
 
-            function connect() {
+            async function connect() {
                 const token = $("#fp").text();
                 if (!token) { setTimeout(connect, 800); return; }
                 wsToken = token + "-lsp";
@@ -1995,8 +1996,8 @@
                     ? `${window.location.hostname}:${window.location.port}`
                     : window.location.hostname;
                 try {
-                    socket = new WebSocket(`${proto}://${hostname}/${wsToken}`);
-                } catch (e) { scheduleReconnect(); return; }
+                    socket = new WebSocket(await FMAuth.socketUrl(`${proto}://${hostname}/${wsToken}`));
+                } catch (e) { scheduleReconnect(e); return; }
                 socket.onopen = () => { doInitialize(); };
                 socket.onmessage = (ev) => { onFrame(ev.data); };
                 socket.onclose = () => {
@@ -4265,7 +4266,7 @@
                         let iconClass = "fa-code";
                         let colorClass = "default";
                         let isBrand = false;
-                        
+
                         if (ext === 'php') { iconClass = "fa-php"; colorClass = "php"; isBrand = true; }
                         else if (ext === 'html') { iconClass = "fa-html5"; colorClass = "html"; isBrand = true; }
                         else if (ext === 'css') { iconClass = "fa-css3-alt"; colorClass = "css"; isBrand = true; }
@@ -4318,7 +4319,7 @@
                             }
                             newTab.classList.add("active");
                             $('#searchFiles').text(nameFile);
-                            
+
                             // Atualizar título do modal com o nome do arquivo atual (estilo PhpStorm)
                             document.querySelector('.modal-title').innerHTML = `Editor - <span style="color: #A1A8B3">${FMUI.html(getFilename(nameFile))}</span>`;
 

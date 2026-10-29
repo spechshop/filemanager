@@ -15,7 +15,9 @@
     "test:security:pty": "node --test scripts/security/pty-integration.cjs",
     "test:security:threads": "node --test scripts/security/thread-regression.cjs",
     "test:security:lsp": "node --test scripts/security/lsp-integration.cjs",
-    "test:security:dependencies": "node --test scripts/security/dependency-regression.cjs"
+    "test:security:dependencies": "node --test scripts/security/dependency-regression.cjs",
+    "test:security:codex": "node --test scripts/security/codex-integration.cjs",
+    "test:security:transport": "node --test scripts/security/auth-transport-regression.cjs scripts/security/limits-regression.cjs"
   },
   "overrides": {
     "protobufjs": "^8.8.1",

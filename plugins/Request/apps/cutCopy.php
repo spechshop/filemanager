@@ -9,7 +9,7 @@ class cutCopy
 {
     public static function api(Request $request, Response $response): ?bool
     {
-        if (!security::authorize($request, $response)) return true;
+        if (!security::authorize($request, $response, __CLASS__)) return true;
         $response->header("Content-Type", "application/json");
         $data = count($request->post ?? []) > 0 ? $request->post : json_decode($request->rawContent(), true);
         $accept = ["move", "copy"];
@@ -55,7 +55,7 @@ class cutCopy
         } elseif ($data["type"] == "move") {
             foreach ($newFiles as $old => $new) {
                 if (!securityPolicy::validToken($owner)) return security::invalidToken($response);
-                rename(securityPolicy::path($old, $owner, false), securityPolicy::path($new, $owner, false));
+                safeFiles::move($old, $new, $owner);
             }
         }
         return $response->end(

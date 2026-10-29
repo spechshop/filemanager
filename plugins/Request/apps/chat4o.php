@@ -10,7 +10,7 @@ class chat4o
 {
     public static function api(Request $request, Response $response): ?bool
     {
-        if (!security::authorize($request, $response)) return true;
+        if (!security::authorize($request, $response, __CLASS__)) return true;
         $data = json_decode($request->rawContent(), true);
 
         $path = $request->server["request_uri"] ?? "";

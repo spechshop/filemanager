@@ -1,0 +1,1 @@
+Gitleaks full-history scan: 0 findings outside the reviewed baseline.

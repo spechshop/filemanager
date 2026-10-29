@@ -1,0 +1,35 @@
+               
+               
+┌─────────────┐
+│ Scan Status │
+└─────────────┘
+  Scanning 310 files tracked by git with 569 Code rules:
+                                                                                                                        
+  Language      Rules   Files          Origin      Rules                                                                
+ ─────────────────────────────        ───────────────────                                                               
+  <multilang>       7     310          Community     564                                                                
+  php              26      97          Custom          5                                                                
+  html              1      36                                                                                           
+  js               69      23                                                                                           
+  json              3      12                                                                                           
+  python          147      10                                                                                           
+  yaml             25       3                                                                                           
+                                                                                                                        
+                
+                
+┌──────────────┐
+│ Scan Summary │
+└──────────────┘
+✅ Scan completed successfully.
+ • Findings: 0 (0 blocking)
+ • Rules run: 278
+ • Targets scanned: 310
+ • Parsed lines: ~100.0%
+ • Scan skipped: 
+   ◦ Matching --exclude patterns: 175
+   ◦ Files matching .semgrepignore patterns: 8
+ • Scan was limited to files tracked by git
+ • For a detailed list of skipped files and lines, run semgrep with the --verbose flag
+Ran 278 rules on 310 files: 0 findings.
+(need more rules? `semgrep login` for additional free Semgrep Registry rules)
+

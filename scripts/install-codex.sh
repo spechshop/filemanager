@@ -15,6 +15,8 @@ CODEX_PREFIX="$RUNTIME_DIR/codex"
 STATE_FILE="$RUNTIME_DIR/codex-installer.json"
 AUDIT_FILE="$RUNTIME_DIR/npm-audit.json"
 LOCK_FILE="$RUNTIME_DIR/codex-installer.lock"
+CODEX_VERSION="${FILEMANAGER_CODEX_VERSION:-0.165.0}"
+[[ "$CODEX_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]] || exit 64
 MIN_NODE_MAJOR=22
 DEFAULT_MANAGED_NODE_MAJOR=24
 
@@ -97,19 +99,9 @@ fi
 
 json_state running "Verificando o ambiente..." null
 
-download() {
-    local url="$1" output="$2"
-    if command -v curl >/dev/null 2>&1; then
-        curl -k --fail --location --retry 3 --retry-delay 2 --output "$output" "$url" \
-            && return 0
-        warn "curl falhou; repetindo o download com wget quando disponível."
-    fi
-    if command -v wget >/dev/null 2>&1; then
-        wget --no-check-certificate --quiet --tries=3 --output-document="$output" "$url" \
-            && return 0
-    fi
-    return 1
-}
+# shellcheck source=secure-download.sh
+source "$SCRIPT_DIR/secure-download.sh" || exit 1
+download() { secure_download "$@"; }
 
 NATIVE_TOOLCHAIN_HELPER="$SCRIPT_DIR/install-codex-native.sh"
 if [ ! -r "$NATIVE_TOOLCHAIN_HELPER" ]; then
@@ -279,6 +271,7 @@ else
 fi
 
 run_npm() {
+    export npm_config_strict_ssl=true
     if [[ "$NPM_CLI" == *.js ]]; then
         "$NODE_BIN" "$NPM_CLI" "$@"
     else
@@ -294,7 +287,7 @@ fi
 json_state running "Instalando o Codex CLI oficial..." null
 log "Instalando @openai/codex no runtime gerenciado..."
 mkdir -p "$CODEX_PREFIX"
-if ! run_npm install --global --prefix "$CODEX_PREFIX" --no-audit --no-fund @openai/codex@latest; then
+if ! run_npm install --global --prefix "$CODEX_PREFIX" --no-audit --no-fund "@openai/codex@$CODEX_VERSION"; then
     LAST_MESSAGE="A instalação do pacote oficial @openai/codex falhou."
     exit 1
 fi

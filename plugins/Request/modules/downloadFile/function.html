@@ -1,9 +1,10 @@
 <script>
-    function downloadFile(path) {
-        const newPathencode = encodeURIComponent(path);
-        const token = $('#fp').text();
-        window.open(`/downloadFile?tokenBrowser=${token}&path=${newPathencode}`);
+    async function downloadFile(path) {
+        const tab = window.open('about:blank', '_blank');
+        if (tab) tab.opener = null;
+        try {
+            const url = await FMAuth.mediaUrl(path, 'downloadFile');
+            if (tab) tab.location.replace(url); else window.location.assign(url);
+        } catch (error) { if (tab) tab.close(); toast(error.message, 'Download', 3000, 'error'); }
     }
 </script>
-
-

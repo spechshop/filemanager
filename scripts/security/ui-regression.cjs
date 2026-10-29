@@ -12,7 +12,7 @@ function browser() {
     dom.window.$ = () => ({text: () => 'owner'});
     return dom;
 }
-const payloads = ['<img src=x onerror="window.pwned=1">', "x');window.pwned=1;//", '"><svg onload="window.pwned=1">', '` ${window.pwned=1}', 'a&b"\'<>'];
+const payloads = ['constructor', '__proto__', 'toString', 'hasOwnProperty', '<img src=x onerror="window.pwned=1">', "x');window.pwned=1;//", '"><svg onload="window.pwned=1">', '` ${window.pwned=1}', 'a&b"\'<>'];
 test('stored filenames render as text; clicking keeps the complete filename as data', () => {
     const dom = browser(), w = dom.window;
     try {
@@ -108,11 +108,11 @@ test('stored credentials and server welcome messages never enter HTML sinks', as
         w.jQuery.fn.modal = () => {};
         const welcome = w.document.createElement('div'); welcome.id = 'messageModalWelcome'; w.document.body.append(welcome);
         const source = read('js/jquery.toast.min.js');
-        const snippet = source.slice(source.indexOf('checkTokenBrowser = setTimeout'), source.indexOf('}, 800)', source.indexOf('checkTokenBrowser = setTimeout')) + '}, 800)'.length);
+        const snippet = source.slice(source.indexOf('function initializeBrowserCredential()'), source.indexOf('}, 800)', source.indexOf('checkTokenBrowser = setTimeout')) + '}, 800)'.length);
         let callback; w.setTimeout = fn => { callback = fn; return 1; }; w.refAll = () => {};
         for (const payload of payloads) {
             w.localStorage.setItem('tokenBrowser', payload);
-            w.jQuery.ajax = options => options.success({success: true, message: payload});
+            w.FMAuth = {ready: async () => ({success: true, message: payload})};
             w.eval(snippet); await callback();
             assert.equal(w.document.getElementById('fp').textContent, payload);
             assert.equal(welcome.textContent, payload);
@@ -138,4 +138,26 @@ test('new browser credentials use independent random bytes and preserve register
         assert.equal(first.window.initializeBrowserCredential(), 'previously-registered');
         assert.equal(first.window.document.getElementById('fp').textContent, 'previously-registered');
     } finally { first.window.close(); second.window.close(); }
+});
+
+test('denied access and network failures leave loading and show an actionable auth screen', async () => {
+    for (const status of [401, 403, 0]) {
+        const dom = browser(), w = dom.window;
+        try {
+            w.document.body.insertAdjacentHTML('beforeend', read('plugins/Request/modules/angryPart.html') + '<div id="loadingPage"></div><div id="navContent"></div>');
+            w.eval(read('js/jquery-3.3.1.min.js'));
+            w.localStorage.setItem('tokenBrowser', 'registered-or-new-credential');
+            w.FMAuth = {ready: async () => { throw Object.assign(new Error('denied'), {status}); }};
+            const source = read('js/jquery.toast.min.js');
+            let callback;
+            w.setTimeout = fn => { callback = fn; return 1; };
+            w.eval(source.slice(source.indexOf('function initializeBrowserCredential()'), source.indexOf('\nfunction copyDivToClipboard')));
+            await callback();
+            assert.equal(w.document.getElementById('loadingPage').style.display, 'none');
+            assert.equal(w.document.getElementById('navContent').style.display, 'none');
+            assert.equal(w.document.getElementById('angryPart').style.display, 'block');
+            assert.equal(w.document.getElementById('browserCredential').textContent, 'registered-or-new-credential');
+            assert.match(w.document.getElementById('authErrorTitle').textContent, status === 401 ? /não autorizado/ : status === 403 ? /bloqueado/ : /verificar/);
+        } finally { w.close(); }
+    }
 });

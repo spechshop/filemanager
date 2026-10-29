@@ -125,8 +125,8 @@
     </div>
 </div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js" data-manual></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js" data-manual crossorigin="anonymous" referrerpolicy="no-referrer" integrity="sha384-06z5D//U/xpvxZHuUz92xBvq3DqBBFi7Up53HRrbV7Jlv7Yvh/MZ7oenfUe9iCEt"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js" crossorigin="anonymous" referrerpolicy="no-referrer" integrity="sha384-Uq05+JLko69eOiPr39ta9bh7kld5PKZoU+fF7g0EXTAriEollhZ+DrN8Q/Oi8J2Q"></script>
 <script>
     (function () {
         const panel = document.getElementById('codexAgentPanel');
@@ -161,6 +161,7 @@
         const contextRisk = document.getElementById('codexAgentContextRisk');
 
         let socket = null;
+        let connecting = false;
         let reconnectTimer = null;
         let requestSequence = 1;
         let workspace = '/';
@@ -1180,14 +1181,17 @@
             pending.clear();
         }
 
-        function connect() {
-            if (socket && [WebSocket.OPEN, WebSocket.CONNECTING].includes(socket.readyState)) return;
+        async function connect() {
+            if (connecting || (socket && [WebSocket.OPEN, WebSocket.CONNECTING].includes(socket.readyState))) return;
             if (!browserToken()) {
                 reconnectTimer = setTimeout(connect, 700);
                 return;
             }
             const protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-            socket = new WebSocket(`${protocol}://${location.host}/${browserToken()}-codex-agent`);
+            connecting = true;
+            try { socket = new WebSocket(await FMAuth.socketUrl(`${protocol}://${location.host}/${browserToken()}-codex-agent`)); }
+            catch (error) { setStatus('disconnected', 'Não foi possível autorizar a conexão com o Codex.'); if (FMAuth.shouldRetry(error)) reconnectTimer = setTimeout(connect, 2000); return; }
+            finally { connecting = false; }
             setStatus('starting', 'Conectando ao Codex Agent...');
 
             socket.addEventListener('open', async () => {
@@ -1213,7 +1217,7 @@
                 rejectPending('A conexão com o Codex foi encerrada.');
                 if (activeTurnId) finishActivity('Conexão interrompida', true);
                 setStatus('disconnected', 'A conexão com o Codex foi encerrada.');
-                if (panelActive) {
+                if (panelActive && FMAuth.shouldRetry()) {
                     clearTimeout(reconnectTimer);
                     reconnectTimer = setTimeout(connect, 2000);
                 }

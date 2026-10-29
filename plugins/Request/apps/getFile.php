@@ -10,13 +10,13 @@ class getFile
 {
     public static function api(Request $request, Response $response)
     {
-        if (!security::authorize($request, $response)) return true;
+        if (!security::authorize($request, $response, __CLASS__)) return true;
         $path = securityPolicy::path($request->post['path'] ?? $request->get['path'] ?? '', securityPolicy::requestToken($request));
-        $folder = file_get_contents($path);
+        $folder = safeFiles::read($path, securityPolicy::requestToken($request));
 
         // detectar se contem caracteres especiais, se tiver usa um utf8_encode
         $encoded = false;
-        if (mb_detect_encoding($folder, "UTF-8", true) === false) {
+        if (preg_match('//u', $folder) !== 1) {
             $folder = base64_encode($folder);
             $encoded = true;
         }

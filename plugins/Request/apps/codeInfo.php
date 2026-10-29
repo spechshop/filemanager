@@ -22,7 +22,7 @@ class CodeInfo
 
     public static function api(Request $request, Response $response): ?bool
     {
-        if (!security::authorize($request, $response)) return true;
+        if (!security::authorize($request, $response, __CLASS__)) return true;
 
         $response->header(self::CONTENT_TYPE_JSON, self::MIME_TYPE_JSON);
 
@@ -33,7 +33,7 @@ class CodeInfo
         }
 
         $filePath = securityPolicy::path($data['nameFile'], securityPolicy::requestToken($request));
-        $fileContent = file_get_contents($filePath);
+        $fileContent = safeFiles::read($filePath, securityPolicy::requestToken($request));
 
         if (self::runBugfixScript($fileContent, $data['nameFile'])) {
             return self::sendJsonResponse($response, self::ERROR_IN_CODE_RESPONSE);

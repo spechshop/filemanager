@@ -10,12 +10,19 @@ class server
         $GLOBALS['dataKeys'] = \plugins\Database\call::data() ?? [];
         $GLOBALS['listRoutes'] = controller::listPages();
         $path = $request->server['path_info'];
+        $uploadPort = (int) (getenv('FILEMANAGER_UPLOAD_PORT') ?: 0);
+        if ($uploadPort > 0 && (int) ($request->server['server_port'] ?? 0) === $uploadPort) {
+            try { $uploadOperation = securityPolicy::operation($path); } catch (\DomainException $e) { $uploadOperation = ''; }
+            if ($uploadOperation !== 'uploadFile') { $response->status(404); return $response->end(); }
+        }
         $response->header('Content-Type', 'application/json');
         // liberar cors
         $response->header('X-Content-Type-Options', 'nosniff');
         $response->header('Referrer-Policy', 'no-referrer');
         $response->header('X-Frame-Options', 'DENY');
-        $response->header('Content-Security-Policy', "object-src 'none'; base-uri 'self'; frame-ancestors 'none'");
+        $response->header('Content-Security-Policy', "object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'");
+        // Observe stricter script/style requirements before migrating legacy inline handlers.
+        $response->header('Content-Security-Policy-Report-Only', "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://use.fontawesome.com; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com https://use.fontawesome.com; connect-src 'self'; worker-src 'self' blob:");
         if (!securityPolicy::originAllowed($request)) return security::deny($response);
 
 
@@ -39,7 +46,7 @@ class server
             return $response->end(cache::global()['cachePages']['index']);
         }
         $pages = cache::global()['listRoutes'];
-        $appReplace = str_replace('/', '', $path);
+        $appReplace = $path;
         foreach ($pages as $page) {
             $eRoute = explode('/', $page);
             $nameRoute = '/' . explode('.html', str_replace(['.php'], '', $eRoute[count($eRoute) - 1]))[0];

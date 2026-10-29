@@ -4,7 +4,7 @@ import os
 import subprocess
 import sys
 
-files = subprocess.check_output(['git', 'ls-files', '-z', '*.php']).decode().split('\0')
+files = subprocess.check_output(['git', 'ls-files', '--cached', '--others', '--exclude-standard', '-z', '*.php']).decode().split('\0')
 failed = []
 for file in filter(None, files):
     if not os.path.isfile(file):

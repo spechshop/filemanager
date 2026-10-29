@@ -34,6 +34,7 @@ tar -czf "$ARCHIVE" -C "$TEST_ROOT/archive" filemanager-test
 
 FILEMANAGER_TMP_DIR="$DESTINATION" \
 FILEMANAGER_ARCHIVE_URL="file://$ARCHIVE" \
+FILEMANAGER_ARCHIVE_SHA256="$(sha256sum "$ARCHIVE" | cut -d " " -f1)" \
     bash "$TMP_INSTALLER" >/dev/null 2>&1
 
 for executable in \
@@ -53,6 +54,7 @@ done
 # Uma segunda execução deve reutilizar a instalação válida.
 FILEMANAGER_TMP_DIR="$DESTINATION" \
 FILEMANAGER_ARCHIVE_URL="file://$ARCHIVE" \
+FILEMANAGER_ARCHIVE_SHA256="$(sha256sum "$ARCHIVE" | cut -d " " -f1)" \
     bash "$TMP_INSTALLER" >/dev/null 2>&1
 
 printf '[teste][ok] instalação dedicada em /tmp e chmod validados.\n'

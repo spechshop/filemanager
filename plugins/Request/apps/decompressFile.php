@@ -6,7 +6,7 @@ class decompressFile
 {
     public static function api(Request $request, Response $response)
     {
-        if (!security::authorize($request, $response)) return true;
+        if (!security::authorize($request, $response, __CLASS__)) return true;
         $token = securityPolicy::requestToken($request);
         $data = ($request->post ?: json_decode($request->rawContent(), true)) ?: [];
         $root = securityPolicy::path($data['path'] ?? '', $token);

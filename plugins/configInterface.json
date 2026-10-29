@@ -46,7 +46,7 @@
     "serverSettings": {
         "worker_num": 1,
         "max_request": 20000000,
-        "max_coroutine": 20000000,
+        "max_coroutine": 2048,
         "enable_coroutine": true,
         "enable_reuse_port": false,
         "open_cpu_affinity": false,
@@ -56,9 +56,10 @@
         "http_compression_level": 6,
         "compression_min_length": 1024,
         "package_max_length": 2147483648,
-        "socket_buffer_size": 2147483648,
+        "socket_buffer_size": 4194304,
         "open_http2_protocol": true,
         "ssl_cert_file": "fullchain.pem",
-        "ssl_key_file": "privkey.pem"
+        "ssl_key_file": "privkey.pem",
+        "upload_max_filesize": 2147483648
     }
 }

@@ -39,7 +39,7 @@ async function fixture(t, mode = 'real', relay = false) {
         if (mode === 'spawn-error') fs.writeFileSync(path.join(tmp, 'node_modules/.bin/intelephense'), '#!/nonexistent-fm-interpreter\n', {mode: 0o755});
         if (mode === 'stubborn') fs.writeFileSync(path.join(tmp, 'node_modules/.bin/intelephense'), '#!/usr/bin/env node\nprocess.on("SIGTERM", () => {}); setInterval(() => {}, 1000);', {mode: 0o755});
     }
-    const reservation = net.createServer(); reservation.listen(relay ? 3057 : 0, '127.0.0.1'); await once(reservation, 'listening');
+    const reservation = net.createServer(); reservation.listen(0, '127.0.0.1'); await once(reservation, 'listening');
     const port = reservation.address().port; await new Promise(resolve => reservation.close(resolve));
     const secret = crypto.randomBytes(32).toString('hex');
     const tokens = {owner: {expire: Math.floor(Date.now() / 1000) + 3600}};
@@ -69,7 +69,7 @@ async function fixture(t, mode = 'real', relay = false) {
         assert.equal(execFileSync(php, ['-r', 'echo extension_loaded("swoole") ? "yes" : "no";']).toString(), 'yes', 'real Swoole required');
         const reservation = net.createServer(); reservation.listen(0, '127.0.0.1'); await once(reservation, 'listening');
         const httpPort = reservation.address().port; await new Promise(resolve => reservation.close(resolve));
-        const phpChild = spawn(php, [path.join(ROOT, 'scripts/security/fixtures/swoole-server.php')], {cwd: tmp, env: {...process.env, SECURITY_HTTP_PORT: String(httpPort), FILEMANAGER_ORIGIN: 'http://localhost', FILEMANAGER_BRIDGE_SECRET: secret, FILEMANAGER_TOKENS_FILE: tokenFile}, stdio: ['ignore', 'pipe', 'pipe']});
+        const phpChild = spawn(php, [path.join(ROOT, 'scripts/security/fixtures/swoole-server.php')], {cwd: tmp, env: {...process.env, SECURITY_HTTP_PORT: String(httpPort), FILEMANAGER_LSP_PORT: String(port), FILEMANAGER_DATA_DIR: tmp, FILEMANAGER_ORIGIN: 'http://localhost', FILEMANAGER_BRIDGE_SECRET: secret, FILEMANAGER_TOKENS_FILE: tokenFile}, stdio: ['ignore', 'pipe', 'pipe']});
         let phpOutput = ''; phpChild.stdout.on('data', x => { phpOutput += x; }); phpChild.stderr.on('data', x => { phpOutput += x; });
         t.after(async () => {
             phpChild.kill('SIGTERM');
@@ -89,7 +89,7 @@ async function fixture(t, mode = 'real', relay = false) {
             if (relay && !frame.lsp) return;
             const msg = relay ? JSON.parse(frame.payload) : frame; ws.messages.push(msg);
             if (msg.method && msg.id !== undefined) {
-                const result = msg.method === 'workspace/configuration' ? msg.params.items.map(() => ({files: {exclude: ['**/node_modules/**']}})) : null;
+                const result = msg.method === 'workspace/configuration' ? msg.params.items.map(() => ({files: {exclude: ['**/node_modules/**']}, telemetry: {enabled: false}})) : null;
                 send({jsonrpc: '2.0', id: msg.id, result});
             }
         });
@@ -212,4 +212,7 @@ if (process.env.SECURITY_LSP_SWOOLE === '1') test('real Swoole relay forwards in
         await until(() => !alive(pid), 'relay server reaped'); ws.close();
         await until(() => ws.readyState === WebSocket.CLOSED, 'relay browser disconnected');
     }
+    const disconnected = await f.connect(); await f.initialize(disconnected); const disconnectedPid = await f.pid();
+    disconnected.close();
+    await until(() => !alive(disconnectedPid), 'browser disconnect closes relay and reaps LSP child');
 });

@@ -1,0 +1,12 @@
+test_all_production_installers_keep_tls_verification_enabled (__main__.DownloadTests.test_all_production_installers_keep_tls_verification_enabled) ... ok
+test_corrupt_artifact_is_removed (__main__.DownloadTests.test_corrupt_artifact_is_removed) ... ok
+test_https_redirect_cannot_downgrade_to_http (__main__.DownloadTests.test_https_redirect_cannot_downgrade_to_http) ... ok
+test_insecure_curl_configuration_cannot_disable_certificate_validation (__main__.DownloadTests.test_insecure_curl_configuration_cannot_disable_certificate_validation) ... ok
+test_local_archive_requires_explicit_integrity (__main__.DownloadTests.test_local_archive_requires_explicit_integrity) ... ok
+test_untrusted_certificate_is_rejected (__main__.DownloadTests.test_untrusted_certificate_is_rejected) ... ok
+test_valid_chain_and_digest_are_accepted (__main__.DownloadTests.test_valid_chain_and_digest_are_accepted) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.658s
+
+OK

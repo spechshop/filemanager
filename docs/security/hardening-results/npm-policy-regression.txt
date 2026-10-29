@@ -1,0 +1,13 @@
+✔ the documented eight findings match the exact accepted-risk baseline (1.306255ms)
+✔ a new vulnerable package is rejected even when it reuses an accepted advisory (0.494445ms)
+✔ severity or advisory drift in an accepted package is rejected (0.362406ms)
+✔ audit execution errors and inconsistent output are rejected (0.163583ms)
+✔ removing a known vulnerability is allowed and totals remain verified (0.202358ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 39.900858

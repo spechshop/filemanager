@@ -1,0 +1,1 @@
+PASS reserved formatter/PHPStan temporaries are cleaned; actual PHPStan detects the synthetic type error

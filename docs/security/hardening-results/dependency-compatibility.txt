@@ -1,0 +1,11 @@
+✔ basic-ftp override preserves get-uri downloads, MDTM, LIST fallback, cache and missing file errors (71.676222ms)
+✔ proxy-agent loads PAC over FTP and completes an HTTP request (50.435854ms)
+✔ FTP hostile listing parser remains bounded and still parses ordinary entries (22.39085ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 202.43728

@@ -1,0 +1,1 @@
+PASS: all five custom rules detect unsafe fixtures; the authorized handler stays clean.

@@ -2,14 +2,19 @@
 
 namespace plugins\Request;
 
+require_once __DIR__ . '/privateJson.php';
+
 class fileManagerConfig
 {
     private const CONFIG_FILE = __DIR__ . '/../../configInterface.json';
     private const CODEX_PREFERENCES_FILE = __DIR__ . '/../../../database/codex-preferences.lotus';
 
+    private static function configFile(): string { return getenv('FILEMANAGER_CONFIG_FILE') ?: self::CONFIG_FILE; }
+    private static function preferencesFile(): string { return securityPolicy::dataPath('codex-preferences.lotus', self::CODEX_PREFERENCES_FILE); }
+
     public static function read(): array
     {
-        $contents = @file_get_contents(self::CONFIG_FILE);
+        $contents = @file_get_contents(self::configFile());
         $config = is_string($contents) ? json_decode($contents, true) : null;
 
         if (!is_array($config)) {
@@ -19,7 +24,7 @@ class fileManagerConfig
         return $config;
     }
 
-    public static function write(array $config): void
+    public static function write(array $config, ?callable $authorize = null): void
     {
         $json = json_encode(
             $config,
@@ -29,21 +34,22 @@ class fileManagerConfig
             throw new \RuntimeException('Não foi possível serializar a configuração.');
         }
 
-        $directory = dirname(self::CONFIG_FILE);
+        $directory = dirname(self::configFile());
         $temporaryFile = tempnam($directory, '.configInterface.');
         if ($temporaryFile === false) {
             throw new \RuntimeException('Não foi possível preparar o arquivo de configuração.');
         }
 
         try {
-            $permissions = @fileperms(self::CONFIG_FILE);
+            $permissions = @fileperms(self::configFile());
             if (file_put_contents($temporaryFile, $json . PHP_EOL, LOCK_EX) === false) {
                 throw new \RuntimeException('Não foi possível salvar a configuração.');
             }
             if ($permissions !== false) {
                 @chmod($temporaryFile, $permissions & 0777);
             }
-            if (!@rename($temporaryFile, self::CONFIG_FILE)) {
+            if ($authorize !== null) $authorize();
+            if (!@rename($temporaryFile, self::configFile())) {
                 throw new \RuntimeException('Não foi possível aplicar a nova configuração.');
             }
         } finally {
@@ -53,13 +59,11 @@ class fileManagerConfig
         }
     }
 
-    public static function update(callable $mutator): array
+    public static function update(callable $mutator, ?callable $authorize = null): array
     {
-        $lockFile = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR)
-            . DIRECTORY_SEPARATOR . 'lotus-filemanager-config-'
-            . hash('sha256', self::CONFIG_FILE) . '.lock';
+        $lockFile = self::configFile() . '.lock';
         $lock = @fopen($lockFile, 'c');
-        if (!is_resource($lock) || !flock($lock, LOCK_EX)) {
+        if (!is_resource($lock) || !privateJson::lock($lock)) {
             if (is_resource($lock)) {
                 fclose($lock);
             }
@@ -72,7 +76,7 @@ class fileManagerConfig
             if (!is_array($updated)) {
                 throw new \RuntimeException('A atualização da configuração retornou um valor inválido.');
             }
-            self::write($updated);
+            self::write($updated, $authorize);
             $GLOBALS['interface'] = $updated;
             return $updated;
         } finally {
@@ -93,7 +97,7 @@ class fileManagerConfig
         return in_array($backend, ['auto', 'node', 'php'], true) ? $backend : 'auto';
     }
 
-    public static function setServiceEnabled(string $service, bool $enabled): array
+    public static function setServiceEnabled(string $service, bool $enabled, string $token): array
     {
         return self::update(static function (array $config) use ($service, $enabled): array {
             $config['fileManager'] = is_array($config['fileManager'] ?? null)
@@ -104,7 +108,7 @@ class fileManagerConfig
                 : [];
             $config['fileManager']['services'][$service] = $enabled;
             return $config;
-        });
+        }, static fn() => securityPolicy::requireAdmin($token));
     }
 
     public static function codexPreferences(array $config, string $token): array
@@ -112,9 +116,11 @@ class fileManagerConfig
         if ($token === '') {
             return ['model' => null, 'reasoningEffort' => null];
         }
-        self::migrateLegacyCodexPreferences($config);
+        securityPolicy::requireAdmin($token);
+        self::migrateLegacyCodexPreferences($config, $token);
         $key = hash('sha256', $token);
         $stored = self::readCodexPreferences()[$key] ?? [];
+        securityPolicy::requireAdmin($token);
         return [
             'model' => is_string($stored['model'] ?? null) && $stored['model'] !== ''
                 ? $stored['model']
@@ -132,7 +138,8 @@ class fileManagerConfig
             throw new \InvalidArgumentException('Token ausente para salvar as preferências do Codex.');
         }
         $config = self::read();
-        self::migrateLegacyCodexPreferences($config);
+        securityPolicy::requireAdmin($token);
+        self::migrateLegacyCodexPreferences($config, $token);
         $key = hash('sha256', $token);
         self::updateCodexPreferences(static function (array $preferences) use ($key, $model, $reasoningEffort): array {
             if ($model === null && $reasoningEffort === null) {
@@ -144,16 +151,16 @@ class fileManagerConfig
                 'reasoningEffort' => $reasoningEffort,
             ];
             return $preferences;
-        });
+        }, static fn() => securityPolicy::requireAdmin($token));
         return self::read();
     }
 
     private static function readCodexPreferences(): array
     {
-        if (!is_file(self::CODEX_PREFERENCES_FILE)) {
+        if (!is_file(self::preferencesFile())) {
             return [];
         }
-        $contents = @file_get_contents(self::CODEX_PREFERENCES_FILE);
+        $contents = @file_get_contents(self::preferencesFile());
         $preferences = is_string($contents) ? json_decode($contents, true) : null;
         if (!is_array($preferences)) {
             throw new \RuntimeException('Não foi possível ler as preferências privadas do Codex.');
@@ -161,13 +168,11 @@ class fileManagerConfig
         return $preferences;
     }
 
-    private static function updateCodexPreferences(callable $mutator): array
+    private static function updateCodexPreferences(callable $mutator, callable $authorize): array
     {
-        $lockFile = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR)
-            . DIRECTORY_SEPARATOR . 'lotus-filemanager-codex-preferences-'
-            . hash('sha256', self::CODEX_PREFERENCES_FILE) . '.lock';
+        $lockFile = self::preferencesFile() . '.lock';
         $lock = @fopen($lockFile, 'c');
-        if (!is_resource($lock) || !flock($lock, LOCK_EX)) {
+        if (!is_resource($lock) || !privateJson::lock($lock)) {
             if (is_resource($lock)) {
                 fclose($lock);
             }
@@ -179,7 +184,7 @@ class fileManagerConfig
             if (!is_array($updated)) {
                 throw new \RuntimeException('A atualização das preferências do Codex retornou um valor inválido.');
             }
-            self::writeCodexPreferences($updated);
+            self::writeCodexPreferences($updated, $authorize);
             return $updated;
         } finally {
             flock($lock, LOCK_UN);
@@ -187,7 +192,7 @@ class fileManagerConfig
         }
     }
 
-    private static function writeCodexPreferences(array $preferences): void
+    private static function writeCodexPreferences(array $preferences, callable $authorize): void
     {
         $json = json_encode(
             $preferences,
@@ -197,7 +202,7 @@ class fileManagerConfig
             throw new \RuntimeException('Não foi possível serializar as preferências do Codex.');
         }
 
-        $directory = dirname(self::CODEX_PREFERENCES_FILE);
+        $directory = dirname(self::preferencesFile());
         if (!is_dir($directory) || !is_writable($directory)) {
             throw new \RuntimeException('O diretório privado de preferências do Codex não está disponível.');
         }
@@ -211,10 +216,11 @@ class fileManagerConfig
                 throw new \RuntimeException('Não foi possível salvar as preferências privadas do Codex.');
             }
             @chmod($temporaryFile, 0600);
-            if (!@rename($temporaryFile, self::CODEX_PREFERENCES_FILE)) {
+            $authorize();
+            if (!@rename($temporaryFile, self::preferencesFile())) {
                 throw new \RuntimeException('Não foi possível aplicar as preferências privadas do Codex.');
             }
-            @chmod(self::CODEX_PREFERENCES_FILE, 0600);
+            @chmod(self::preferencesFile(), 0600);
         } finally {
             if (file_exists($temporaryFile)) {
                 @unlink($temporaryFile);
@@ -222,7 +228,7 @@ class fileManagerConfig
         }
     }
 
-    private static function migrateLegacyCodexPreferences(array $config): void
+    private static function migrateLegacyCodexPreferences(array $config, string $token): void
     {
         $legacy = $config['fileManager']['tokenPreferences'] ?? null;
         if (!is_array($legacy)) {
@@ -245,11 +251,11 @@ class fileManagerConfig
                 }
             }
             return $preferences;
-        });
+        }, static fn() => securityPolicy::requireAdmin($token));
 
         self::update(static function (array $current): array {
             unset($current['fileManager']['tokenPreferences']);
             return $current;
-        });
+        }, static fn() => securityPolicy::requireAdmin($token));
     }
 }

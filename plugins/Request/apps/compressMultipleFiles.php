@@ -9,7 +9,7 @@ class compressMultipleFiles
 {
     public static function api($request, $response)
     {
-        if (!security::authorize($request, $response)) return true;
+        if (!security::authorize($request, $response, __CLASS__)) return true;
 
         $response->header('Content-Type', 'application/json');
 
@@ -44,7 +44,7 @@ class compressMultipleFiles
         //var_dump($files);
         foreach ($files as $file) securityPolicy::tree($file, securityPolicy::requestToken($request));
         securityPolicy::path($destination, securityPolicy::requestToken($request), false);
-        if (!utilsFunction::createZipWithFolders($files, $destination)) {
+        if (!safeFiles::compress($files, $destination, securityPolicy::requestToken($request))) {
             return $response->end(json_encode([
                 'success' => false,
                 'message' => 'Failed to create zip'

@@ -9,7 +9,9 @@ class fileManagerRuntime
     public static function requestRestart(): void
     {
         $marker = self::restartMarker();
-        $temporary = tempnam(sys_get_temp_dir(), '.lotus-filemanager-restart.');
+        $directory = dirname($marker);
+        if (!is_dir($directory) && !mkdir($directory, 0700, true) && !is_dir($directory)) throw new \RuntimeException('Restart state directory unavailable');
+        $temporary = tempnam($directory, '.restart-request-');
         $payload = json_encode([
             'requestedAt' => time(),
             'middlewarePid' => getmypid(),
@@ -81,9 +83,6 @@ class fileManagerRuntime
 
     private static function restartMarker(): string
     {
-        $userId = function_exists('posix_geteuid') ? (string) posix_geteuid() : (string) getmyuid();
-        return rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR)
-            . DIRECTORY_SEPARATOR . 'lotus-filemanager-restart-'
-            . hash('sha256', $userId . ':' . dirname(__DIR__, 3)) . '.json';
+        return securityPolicy::dataPath('restart-request.json', dirname(__DIR__, 3) . '/.runtime/restart-request.json');
     }
 }

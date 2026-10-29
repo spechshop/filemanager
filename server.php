@@ -13,7 +13,6 @@
 
     $cwd      = __DIR__;
     $localPhp = $cwd . '/pcg';
-    $localPhp = "php";
 
     // Verifica se o runtime ./pcg local existe e tem Swoole.
     if (!file_exists($localPhp) || !is_executable($localPhp)) {
@@ -47,9 +46,11 @@
 // ============================================================
 // BLOCO 2: a partir daqui o Swoole está garantido.
 // ============================================================
-\Swoole\Runtime::enableCoroutine(SWOOLE_HOOK_ALL);
+// This process is a native, signal-driven supervisor, not a coroutine server.
+// Hooking proc_open/pipe IO here requires a scheduler and prevents reliable
+// pcntl shutdown. middleware.php enables its own hooks in a separate runtime.
+\Swoole\Runtime::enableCoroutine(0);
 use plugins\Start\console as consoleDeclares;
-use Swoole\Coroutine as co;
 $phpBinary = PHP_BINARY;
 
 function portAlive(mixed $port): bool
@@ -71,31 +72,14 @@ if (!is_file($deploymentAutoloader)) {
     throw new RuntimeException('Deployment dependency libspech is missing; use the documented installer in an isolated environment.');
 }
 require $deploymentAutoloader;
-\libspech\Cli\cli::pcl("Running Tests...");
-\co\run(function () use ($phpBinary) {
-    global $argv;
-    if (@$argv[1] !== '--fix')
-    \libspech\Cli\cli::pcl(shell_exec(escapeshellarg($phpBinary) . ' ' . escapeshellarg(__DIR__ . '/run-tests.php')));
-    $fixs = 'fixs.json';
-    if (file_exists($fixs)) {
-        $r = json_decode(file_get_contents($fixs), true)['fixes'];
-        print "Running fixes...\n";
-        foreach ($r as $fix) {
-            foreach ($fix['commands'] as $command) {
-              print  shell_exec($command);
-            }
-        }
-    }
-
-});
-
-
+// Diagnostics and migrations are explicit CLI operator actions. Never execute
+// commands from fixs.json or run installation/repair while starting HTTP.
 require_once __DIR__ . '/vendor/autoload.php';
 include_once 'plugins/autoload.php';
 
 function fileManagerAutoRestartEnabled(): bool
 {
-    $configPath = __DIR__ . '/plugins/configInterface.json';
+    $configPath = getenv('FILEMANAGER_CONFIG_FILE') ?: __DIR__ . '/plugins/configInterface.json';
     $contents = @file_get_contents($configPath);
     $config = is_string($contents) ? json_decode($contents, true) : null;
 
@@ -114,14 +98,13 @@ if (function_exists('pcntl_async_signals')) {
             posix_kill($sharedPid, SIGTERM);
         }
     };
-    pcntl_signal(SIGTERM, $stopSupervisor);
-    pcntl_signal(SIGINT, $stopSupervisor);
+    pcntl_signal(SIGTERM, $stopSupervisor, false);
+    pcntl_signal(SIGINT, $stopSupervisor, false);
 }
 
 while (!$stopping) {
     print "Starting server...\n";
     $sharedPid = null;
-    $pidRunner = null;
     // Native blocking pipe IO lets pcntl deliver termination signals while the
     // supervisor is asleep. The argv array makes the child PID the PHP process,
     // without an intermediate shell that could leave middleware orphaned.
@@ -133,8 +116,7 @@ while (!$stopping) {
 
     $sharedPid = null;
     if ($stopping) break;
-    Co\run(fn() => co::sleep(3));
-    print "Middleware stopped ($sharedPid, $pidRunner). Cleaning up...\n";
+    print "Middleware stopped. Cleaning up...\n";
 
     $explicitRestart = \plugins\Request\fileManagerRuntime::consumeRestartRequest();
     if (!$explicitRestart && !fileManagerAutoRestartEnabled()) {
@@ -145,4 +127,7 @@ while (!$stopping) {
     print $explicitRestart
         ? "Explicit restart requested. Restarting middleware...\n"
         : "Restarting middleware...\n";
+    // Native sleep is interruptible by the same stop handler. The loop checks
+    // the stop flag again before launching a child after this restart backoff.
+    sleep(3);
 }

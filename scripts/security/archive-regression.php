@@ -10,7 +10,8 @@ use plugins\Request\safeFiles;
 $tmp = sys_get_temp_dir() . '/fm-archive-' . bin2hex(random_bytes(8));
 mkdir($tmp, 0700); mkdir($tmp . '/files'); mkdir($tmp . '/outside');
 $token = 'archive-fixture';
-file_put_contents($tmp . '/tokens', json_encode([$token => ['expire' => time() + 3600]]));
+file_put_contents($tmp . '/tokens', json_encode([$token => ['expire' => time() + 3600, 'allowedRoots' => [$tmp . '/files']]]));
+putenv('FILEMANAGER_TEMP_DIR=' . $tmp . '/private');
 putenv('FILEMANAGER_ALLOWED_ROOTS=' . json_encode([$tmp . '/files'])); putenv('FILEMANAGER_TOKENS_FILE=' . $tmp . '/tokens');
 $fail = 0; $count = 0;
 function check($ok, $name) { global $count, $fail; $count++; if (!$ok) $fail++; echo ($ok ? 'PASS ' : 'FAIL ') . $name . "\n"; }
@@ -51,6 +52,10 @@ try {
     $zip = new ZipArchive(); $file = $tmp . '/files/valid.zip'; $zip->open($file, ZipArchive::CREATE); $zip->addFromString('nested/valid.txt', 'OK'); $zip->close();
     safeFiles::extract($file, $tmp . '/files/valid-output', $token);
     check(file_get_contents($tmp . '/files/valid-output/nested/valid.txt') === 'OK', 'authorized ZIP extraction preserved');
+    safeFiles::compress([$tmp . '/files/valid-output'], $tmp . '/files/generated.zip', $token);
+    $generated = new ZipArchive(); $generated->open($tmp . '/files/generated.zip');
+    check($generated->getFromName('valid-output/nested/valid.txt') === 'OK', 'authorized directory compression preserved through private snapshots');
+    $generated->close();
     $tar = new PharData($tmp . '/files/valid.tar'); $tar->addFromString('nested/valid.txt', 'TAR-OK'); unset($tar);
     safeFiles::extract($tmp . '/files/valid.tar', $tmp . '/files/tar-output', $token);
     check(file_get_contents($tmp . '/files/tar-output/nested/valid.txt') === 'TAR-OK', 'authorized TAR extraction preserved');

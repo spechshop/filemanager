@@ -13,14 +13,14 @@ class deleteMultipleFiles
 
     public static function api(Request $request, Response $response)
     {
-        if (!security::authorize($request, $response)) return true;
+        if (!security::authorize($request, $response, __CLASS__)) return true;
         $response->header('Content-Type', 'application/json');
         
         $owner = securityPolicy::requestToken($request);
-        $trashDir = securityPolicy::path(securityPolicy::roots($owner)[0] . '/.trash', $owner);
+        $trashDir = securityPolicy::path(securityPolicy::initialPath($owner) . '/.trash', $owner);
         // Garante que a pasta de lixeira existe
         if (!is_dir($trashDir)) {
-            mkdir($trashDir, 0750, true);
+            safeFiles::mkdir($trashDir, $owner);
         }
 
         $dirDelete = $request->get['path'];
@@ -31,7 +31,8 @@ class deleteMultipleFiles
         foreach ($request->post ?? [] as $key => $value) {
             if ($key === 'tokenBrowser') continue;
             foreach ($value as $idFile => $del) {
-                $nameFile = securityPolicy::path($del, securityPolicy::requestToken($request), false);
+                $nameFile = $del;
+                securityPolicy::entryPath($nameFile, $owner);
                 
                 if (file_exists($nameFile)) {
                     // Cria nome único para evitar conflitos
@@ -40,7 +41,7 @@ class deleteMultipleFiles
                     
                     // Move para lixeira ao invés de deletar
                     if (!securityPolicy::validToken($owner)) return security::invalidToken($response);
-                    if (rename(securityPolicy::path($nameFile, $owner, false), $trashName)) {
+                    if (safeFiles::move($nameFile, $trashName, $owner)) {
                         $movedFiles[] = $nameFile;
                     }
                 }

@@ -7,11 +7,10 @@ rules:
       include: ['**/plugins/Request/apps/**']
     patterns:
       - pattern: public static function api(...) { ... }
-      - pattern-not: |
-          public static function api(...) {
-            if (!security::authorize($request, $response)) return true;
-            ...
-          }
+      # __CLASS__ is context-dependent in PHP; an AST-only negative pattern
+      # can constant-fold it against the rule's synthetic class. Check source
+      # spelling at the first statement, with independent direct-handler tests.
+      - pattern-not-regex: '(?s)\bpublic\s+static\s+function\s+api\s*\([^)]*\)(?:\s*:\s*[?\\\w]+)?\s*\{\s*if\s*\(\s*!\s*security::authorize\s*\(\s*\$request\s*,\s*\$response\s*,\s*__CLASS__\s*\)\s*\)\s*return\s+true\s*;'
   - id: filemanager-auth-fallthrough
     languages: [php]
     message: Responding to an authentication failure does not stop execution. Return immediately.

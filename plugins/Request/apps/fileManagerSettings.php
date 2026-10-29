@@ -9,20 +9,25 @@ class fileManagerSettings
 {
     public static function api(Request $request, Response $response): bool
     {
-        if (!security::authorize($request, $response)) return true;
+        if (!security::authorize($request, $response, __CLASS__)) return true;
         if (!security::verifyToken($request)) {
             return (bool) security::invalidToken($response);
         }
 
         $response->header('Content-Type', 'application/json; charset=utf-8');
         $method = strtoupper($request->server['request_method'] ?? 'GET');
-        $token = trim((string) ($request->get['tokenBrowser'] ?? $request->post['tokenBrowser'] ?? ''));
+        $token = securityPolicy::requestToken($request);
 
         if ($method === 'GET') {
             try {
                 return self::respond($response, 200, [
                     'success' => true,
                     'settings' => self::publicSettings(fileManagerConfig::read(), $token),
+                ]);
+            } catch (\DomainException $exception) {
+                return self::respond($response, securityPolicy::validToken($token) ? 403 : 401, [
+                    'success' => false,
+                    'message' => 'Autorização alterada durante a operação.',
                 ]);
             } catch (\Throwable $exception) {
                 return self::respond($response, 500, [
@@ -74,12 +79,17 @@ class fileManagerSettings
                 $config['fileManager']['autoRestart'] = $autoRestart;
                 $config['fileManager']['ptyBackend'] = $ptyBackend;
                 return $config;
-            });
+            }, static fn() => securityPolicy::requireAdmin($token));
 
             return self::respond($response, 200, [
                 'success' => true,
                 'message' => 'Configurações salvas com sucesso.',
                 'settings' => self::publicSettings($config, $token),
+            ]);
+        } catch (\DomainException $exception) {
+            return self::respond($response, securityPolicy::validToken($token) ? 403 : 401, [
+                'success' => false,
+                'message' => 'Autorização alterada durante a operação.',
             ]);
         } catch (\Throwable $exception) {
             return self::respond($response, 500, [
@@ -122,6 +132,11 @@ class fileManagerSettings
                 'success' => true,
                 'message' => 'Preferências do Codex salvas somente para o seu token.',
                 'settings' => self::publicSettings($config, $token),
+            ]);
+        } catch (\DomainException $exception) {
+            return self::respond($response, securityPolicy::validToken($token) ? 403 : 401, [
+                'success' => false,
+                'message' => 'Autorização alterada durante a operação.',
             ]);
         } catch (\Throwable $exception) {
             return self::respond($response, 500, [

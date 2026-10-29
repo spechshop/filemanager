@@ -10,10 +10,14 @@ class getArchiveDetails
 {
     public static function api(Request $request, Response $response)
     {
-        if (!security::authorize($request, $response)) return true;
+        if (!security::authorize($request, $response, __CLASS__)) return true;
         $response->header('Content-Type', 'application/json');
         $data = $request->get;
-        $fileAddress =  $data['path'];
+        $original = $data['path'];
+        $snapshot = safeFiles::snapshot($original, securityPolicy::requestToken($request));
+        $fileAddress = $snapshot . '.' . pathinfo($original, PATHINFO_EXTENSION);
+        rename($snapshot, $fileAddress);
+        try {
 
 
 
@@ -22,5 +26,6 @@ class getArchiveDetails
             'success' => true,
             'list' => utilsFunction::listCompressedFileContents($fileAddress)
         ]));
+        } finally { @unlink($fileAddress); }
     }
 }

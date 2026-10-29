@@ -2,6 +2,9 @@
 
 require 'vendor/autoload.php';
 include 'libspech/plugins/autoloader.php';
+foreach (['appController', 'securityPolicy', 'safeFiles'] as $component) require_once __DIR__ . '/plugins/Request/components/' . $component . '.php';
+$scanOwner = getenv('FILEMANAGER_SCAN_TOKEN') ?: '';
+if ($scanOwner !== '') \plugins\Request\securityPolicy::requireAdmin($scanOwner);
 use PhpParser\Node;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
@@ -256,6 +259,16 @@ $visitor    = new SignatureExtractor;
 $traverser->addVisitor($visitor);
 
 if (!empty($stp)) {
+    if ($scanOwner !== '') {
+        foreach ($stp as $directory) foreach (\plugins\Request\safeFiles::walk($directory, $scanOwner) as $entry) {
+            if ($entry['directory'] || strtolower(pathinfo($entry['path'], PATHINFO_EXTENSION)) !== 'php') continue;
+            \plugins\Request\securityPolicy::requireAdmin($scanOwner);
+            try {
+                $ast = $parser->parse(\plugins\Request\safeFiles::read($entry['path'], $scanOwner));
+                if ($ast !== null) $traverser->traverse($ast);
+            } catch (\PhpParser\Error $e) { /* Never log source paths or content. */ }
+        }
+    } else {
     $finder = new Finder;
     $finder->files()->name('*.php')->in($stp)->exclude('vendor');
 
@@ -270,6 +283,8 @@ if (!empty($stp)) {
             fwrite(STDERR, "Parse error in {$file->getRealPath()}: {$e->getMessage()}\n");
         }
     }
+}
+
 }
 
 // ---- Reflect built-in / extension classes ----
@@ -330,6 +345,7 @@ $allFunctions = array_merge($visitor->functions, $builtinFunctions);
 $allClasses   = array_values(array_map('unserialize', array_unique(array_map('serialize', $allClasses))));
 $allFunctions = array_values(array_map('unserialize', array_unique(array_map('serialize', $allFunctions))));
 
+if ($scanOwner !== '') \plugins\Request\securityPolicy::requireAdmin($scanOwner);
 file_put_contents('stubs-generated.json', json_encode([
     'functions' => $allFunctions,
     'classes'   => $allClasses,

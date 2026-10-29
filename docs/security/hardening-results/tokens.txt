@@ -1,0 +1,1 @@
+PASS stale token editors cannot undo revocations; malformed stores are preserved

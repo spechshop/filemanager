@@ -12,7 +12,7 @@ class fileManagerSystem
 {
     public static function api(Request $request, Response $response): bool
     {
-        if (!security::authorize($request, $response)) return true;
+        if (!security::authorize($request, $response, __CLASS__)) return true;
         if (!security::verifyToken($request)) {
             return (bool) security::invalidToken($response);
         }
@@ -56,8 +56,10 @@ class fileManagerSystem
         }
 
         try {
-            fileManagerRuntime::requestRestart();
-            Timer::after(750, static function () use ($masterPid): void {
+            $owner = securityPolicy::requestToken($request);
+            Timer::after(750, static function () use ($masterPid, $owner): void {
+                if (!securityPolicy::adminAllowed($owner)) return;
+                fileManagerRuntime::requestRestart();
                 $currentProcessId = getmypid();
                 $processIds = fileManagerRuntime::middlewareProcessIds();
                 if (!in_array($masterPid, $processIds, true)) {

@@ -6,9 +6,11 @@ class deleteFile
 {
     public static function api(Request $request, Response $response)
     {
-        if (!security::authorize($request, $response)) return true;
+        if (!security::authorize($request, $response, __CLASS__)) return true;
         $token = securityPolicy::requestToken($request);
-        safeFiles::remove(securityPolicy::path($request->get['path'] ?? '', $token, false), $token);
+        $path = $request->get['path'] ?? '';
+        securityPolicy::entryPath($path, $token);
+        safeFiles::remove($path, $token);
         securityPolicy::log('file_deleted');
         return $response->end(json_encode(['success' => true, 'information' => 'ok']));
     }

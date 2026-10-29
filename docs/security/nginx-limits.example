@@ -1,0 +1,25 @@
+# Include in the existing HTTPS server block AFTER administrative review.
+# The main listener and the private upload listener must be unreachable externally.
+# This example assumes FILEMANAGER_UPLOAD_PORT=8081 and main HTTP on 127.0.0.1:8080.
+# Keep any existing TLS-to-upstream configuration if the main server uses TLS.
+client_max_body_size 8m;
+location = /uploadFile {
+    client_max_body_size 2g;
+    proxy_request_buffering off;
+    proxy_pass http://127.0.0.1:8081;
+    proxy_set_header Host $host;
+    proxy_read_timeout 300s;
+}
+location / {
+    proxy_pass http://127.0.0.1:8080;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_read_timeout 1800s;
+}
+# Access logs should record $uri rather than $request_uri/$request so even
+# legacy query credentials and scoped media tickets do not enter logs.
+# An example log_format in the http{} context:
+# log_format filemanager '$remote_addr $request_method $uri $status';
+# access_log /var/log/nginx/filemanager.log filemanager;

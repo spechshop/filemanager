@@ -11,13 +11,23 @@ class security
         return securityPolicy::validToken(securityPolicy::requestToken($request));
     }
 
-    public static function authorize(Request $request, Response $response): bool
+    public static function authorize(Request $request, Response $response, ?string $handler = null): bool
     {
         if (!self::verifyToken($request)) { self::invalidToken($response); return false; }
+        $operation = $handler === null ? '' : securityPolicy::handlerOperation($handler);
+        $limit = securityPolicy::limit($operation === 'uploadFile' ? 'UPLOAD_BYTES' : 'HTTP_BODY_BYTES', $operation === 'uploadFile' ? 2147483648 : 8388608);
+        if ((int) ($request->header['content-length'] ?? 0) > $limit || strlen($request->rawContent()) > $limit) {
+            $response->status(413); $response->end(); return false;
+        }
         if (!securityPolicy::originAllowed($request)) { self::deny($response); return false; }
-        try { securityPolicy::preflight($request, securityPolicy::requestToken($request)); }
+        try { securityPolicy::preflight($request, securityPolicy::requestToken($request), $handler === null ? null : securityPolicy::handlerOperation($handler)); }
         catch (\DomainException $e) { self::deny($response); return false; }
         if (!self::verifyToken($request)) { self::invalidToken($response); return false; }
+        $token = securityPolicy::requestToken($request);
+        $capability = securityPolicy::OPERATIONS[$operation] ?? null;
+        if (($capability === 'admin' && !securityPolicy::adminAllowed($token)) || ($capability === 'terminal' && !securityPolicy::terminalAllowed($token))) {
+            self::deny($response); return false;
+        }
         return true;
     }
 

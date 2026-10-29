@@ -1,0 +1,12 @@
+test_capability_removed_during_tool_kills_descendants (__main__.AuxiliaryTests.test_capability_removed_during_tool_kills_descendants) ... ok
+test_literal_arguments_nonzero_status_and_output (__main__.AuxiliaryTests.test_literal_arguments_nonzero_status_and_output) ... ok
+test_output_limit_and_timeout_are_enforced (__main__.AuxiliaryTests.test_output_limit_and_timeout_are_enforced) ... ok
+test_revocation_during_tool_kills_descendants (__main__.AuxiliaryTests.test_revocation_during_tool_kills_descendants) ... ok
+test_revoked_and_non_admin_tokens_never_start_tool (__main__.AuxiliaryTests.test_revoked_and_non_admin_tokens_never_start_tool) ... ok
+test_stopping_supervisor_kills_descendants (__main__.AuxiliaryTests.test_stopping_supervisor_kills_descendants) ... ok
+test_worker_death_cancels_supervisor_and_descendants (__main__.AuxiliaryTests.test_worker_death_cancels_supervisor_and_descendants) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 2.084s
+
+OK

@@ -8,7 +8,7 @@ const fs = require('fs');
 const path = require('path');
 
 const server = http.createServer();
-const wss = new WebSocket.Server({ noServer: true, maxPayload: 131072 });
+const wss = new WebSocket.Server({ noServer: true, maxPayload: bridgeAuth.limit('WS_MESSAGE_BYTES', 131072) });
 
 server.on('upgrade', (request, socket, head) => {
     if (!bridgeAuth.allowed(request, bridgeAuth.session(request))) return bridgeAuth.reject(socket);
@@ -20,9 +20,9 @@ const terminals = new Map();
 const terminalClients = new Map();
 const OUTPUT_CACHE_SIZE = 50000; // bytes to keep per terminal for reconnect replay
 
-const TERMINALS_FILE = './terminals.json';
+const TERMINALS_FILE = process.env.FILEMANAGER_DATA_DIR ? path.join(process.env.FILEMANAGER_DATA_DIR, 'terminals.json') : './terminals.json';
 
-const filesDir = path.join(process.cwd(), 'files');
+const filesDir = process.env.FILEMANAGER_INITIAL_DIRECTORY || path.join(process.cwd(), 'files');
 if (!fs.existsSync(filesDir)) {
     fs.mkdirSync(filesDir, { recursive: true });
     console.log('Directory "files" created.');
@@ -84,12 +84,13 @@ wss.on('connection', (ws, req) => {
     const userToken = parsedUrl.pathname.replace('/', '');
 
     let ptyProcess;
+    try {
     if (terminals.has(userToken)) {
         ptyProcess = terminals.get(userToken);
         if (!ptyProcess.killed) {
             // Replay cached output so reconnected client sees context
             if (outputCache[userToken]) {
-                ws.send(outputCache[userToken]);
+                bridgeAuth.send(ws, outputCache[userToken]);
             }
         } else {
             ptyProcess = createNewTerminal(userToken);
@@ -97,9 +98,11 @@ wss.on('connection', (ws, req) => {
     } else {
         ptyProcess = createNewTerminal(userToken);
     }
+    } catch { ws.close(1013, 'Terminal unavailable or quota exceeded'); return; }
     if (!terminalClients.has(userToken)) terminalClients.set(userToken, new Set());
     const clients = terminalClients.get(userToken);
     clients.add(ws);
+    ptyProcess.detachedAt = null;
 
     ws.on('message', command => {
         if (terminals.get(userToken) !== ptyProcess) {
@@ -140,6 +143,7 @@ wss.on('connection', (ws, req) => {
 
     ws.on('close', () => {
         clients.delete(ws);
+        if (!clients.size) ptyProcess.detachedAt = Date.now();
         // Do NOT close the terminal on disconnect so it survives reconnects
     });
 
@@ -150,13 +154,17 @@ wss.on('connection', (ws, req) => {
 });
 
 function createNewTerminal(userToken) {
-    const ptyProcess = pty.spawn(shell, [], {
+    const release = bridgeAuth.acquire('TERMINALS', userToken, 16, 128);
+    if (!release) throw new Error('Terminal quota exceeded');
+    let ptyProcess;
+    try { ptyProcess = pty.spawn(shell, [], {
         name: 'xterm-color',
         cols: 220,
         rows: 30,
         cwd: filesDir,
         env: terminalEnvironment(),
-    });
+    }); } catch (error) { release(); throw error; }
+    ptyProcess.releaseQuota = release;
     terminals.set(userToken, ptyProcess);
     termcw[userToken] = 0;
     outputCache[userToken] = '';
@@ -166,10 +174,12 @@ function createNewTerminal(userToken) {
         if (!bridgeAuth.valid(userToken)) { closeTerminal(userToken, ptyProcess); return; }
         outputCache[userToken] = ((outputCache[userToken] || '') + rawOutput).slice(-OUTPUT_CACHE_SIZE);
         for (const client of terminalClients.get(userToken) || []) {
-            if (client.readyState === WebSocket.OPEN) client.send(rawOutput);
+            if (client.readyState === WebSocket.OPEN) bridgeAuth.send(client, rawOutput);
         }
     });
     const exitSubscription = ptyProcess.onExit(() => {
+        ptyProcess.exitSeen = true;
+        ptyProcess.releaseQuota?.();
         dataSubscription.dispose();
         exitSubscription.dispose();
         forgetTerminal(userToken, ptyProcess);
@@ -184,6 +194,8 @@ function createNewTerminal(userToken) {
 
 function closeTerminal(userToken, ptyProcess) {
     try { ptyProcess.kill(); } catch {}
+    const deadline = setTimeout(() => { if (!ptyProcess.exitSeen) { try { ptyProcess.kill('SIGKILL'); } catch {} } }, 1500);
+    deadline.unref();
     forgetTerminal(userToken, ptyProcess);
 }
 
@@ -201,7 +213,7 @@ function forgetTerminal(userToken, ptyProcess) {
 }
 
 const authorizationTimer = setInterval(() => {
-    for (const [token, process] of terminals) if (!bridgeAuth.valid(token)) closeTerminal(token, process);
+    for (const [token, process] of terminals) if (!bridgeAuth.valid(token) || (process.detachedAt && Date.now() - process.detachedAt > bridgeAuth.limit('TERMINAL_DETACH_MS', 1800000))) closeTerminal(token, process);
 }, 500);
 authorizationTimer.unref();
 

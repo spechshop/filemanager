@@ -198,41 +198,34 @@ class utilsFunction
     }
     public static function toggleServer(string $idScreen, string $code): ?array
     {
-        if (strpos($code, '"') !== false) {
-            return [
-                "success" => false,
-                "message" => "Not allowed double quotes"
-            ];
+        if (!preg_match('/^[a-zA-Z0-9_][a-zA-Z0-9_-]{0,127}$/D', $idScreen) || $code === '' || str_contains($code, "\0")) {
+            return ['success' => false, 'message' => 'Invalid session or command'];
         }
-        if (empty($idScreen) || empty($code)) {
-            return [
-                "success" => false,
-                "message" => "Missing parameters"
-            ];
+        $listing = self::runProcess(['screen', '-ls']);
+        $mode = 'start';
+        preg_match_all('/^\s*(\d+\.([a-zA-Z0-9_-]+))\s+/m', $listing['output'], $matches, PREG_SET_ORDER);
+        foreach ($matches as $match) {
+            if ($match[2] !== $idScreen) continue;
+            $closed = self::runProcess(['screen', '-S', $match[1], '-X', 'quit']);
+            if ($closed['code'] !== 0) return ['success' => false, 'message' => 'Cannot stop session'];
+            $mode = 'restart';
         }
-        exec("screen -ls", $outputCommand);
-        $outputCommand = implode(" ", $outputCommand);
-        if (strpos($outputCommand, $idScreen) !== false) {
-            exec("screen -ls", $outputCommand);
-            $outputCommand = implode(" ", $outputCommand);
-            $splitLines = explode(" ", $outputCommand);
-            foreach ($splitLines as $s) {
-                $s = trim($s);
-                if (strpos($s, $idScreen) !== false) {
-                    $realWorker = explode("__", $s)[0];
-                    exec("screen -XS {$realWorker}__ quit");
-                }
-            }
-            $mode = "restart";
-        } else {
-            $mode = "start";
-        }
-        exec(sprintf("screen -dmS \"%s\" bash -c \"%s\"", $idScreen, $code));
-        return [
-            "success" => true,
-            "message" => $mode
-        ];
+        // The administrator intentionally supplies shell code. Pass it unchanged
+        // as ONE bash argument; screen and session identifiers never use a shell.
+        $result = self::runProcess(['screen', '-dmS', $idScreen, 'bash', '-c', $code]);
+        return ['success' => $result['code'] === 0, 'message' => $result['code'] === 0 ? $mode : 'Cannot start session'];
     }
+
+    public static function runProcess(array $arguments): array
+    {
+        $pipes = [];
+        $process = proc_open($arguments, [['file', '/dev/null', 'r'], ['pipe', 'w'], ['file', '/dev/null', 'w']], $pipes);
+        if (!is_resource($process)) return ['code' => 127, 'output' => ''];
+        try { $output = stream_get_contents($pipes[1], 1048576); }
+        finally { fclose($pipes[1]); }
+        return ['code' => proc_close($process), 'output' => (string) $output];
+    }
+
     public static function simplePost(string $url, string $data): ?string
     {
         $curl = curl_init($url);

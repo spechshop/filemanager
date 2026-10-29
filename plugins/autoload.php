@@ -1,6 +1,6 @@
 
 <?php
-$interface = json_decode(file_get_contents(__DIR__ . '/configInterface.json'), true);
+$interface = json_decode(file_get_contents(getenv('FILEMANAGER_CONFIG_FILE') ?: __DIR__ . '/configInterface.json'), true);
 $paths = $interface['autoload'];
 $allowObservable = $interface['allowObservable'];
 $nameFiles = [];
@@ -9,14 +9,14 @@ foreach ($paths as $path) {
     $directory = new DirectoryIterator(__DIR__ . "/{$path}");
     foreach ($directory as $fileInfo) {
         $nameFile = $fileInfo->getFilename();
-        if (strlen($nameFile) > 2) {
+        if ($fileInfo->isFile() && !$fileInfo->isLink() && $fileInfo->getExtension() === 'php') {
             $nameFiles[] = strlen($path) > 1 ? __DIR__ . '/' . $path . "/" . $nameFile : $nameFile;
         }
     }
 }
 
 foreach ($nameFiles as $key => $file) {
-    require $file;
+    require_once $file;
 }
 
 $dataKeys = \plugins\Database\call::data();

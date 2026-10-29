@@ -17,14 +17,14 @@ class phpParser
     private const ERROR_IN_CODE_RESPONSE = ["error" => "Error in code"];
     public static function api(Request $request, Response $response): ?bool
     {
-        if (!security::authorize($request, $response)) return true;
+        if (!security::authorize($request, $response, __CLASS__)) return true;
         $response->header(self::CONTENT_TYPE_JSON, self::MIME_TYPE_JSON);
         $data = json_decode($request->rawContent(), true);
         if (empty($data["nameFile"])) {
             return $response->end(json_encode(["error" => "nameFile is required"]));
         }
         $filePath = $data["nameFile"];
-        $code = file_get_contents($filePath);
+        $code = safeFiles::read($filePath, securityPolicy::requestToken($request));
         if (!str_starts_with($code, "<?php")) {
             return $response->end(json_encode(["error" => "File does not start with <?php"]));
         }

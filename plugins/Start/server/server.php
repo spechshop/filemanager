@@ -13,14 +13,15 @@ class server
         string $host
     ): void
     {
-        $runtimeDir = dirname(__DIR__, 3) . '/.runtime';
-        if (!is_dir($runtimeDir) && !@mkdir($runtimeDir, 0775, true) && !is_dir($runtimeDir)) {
+        $runtimeDir = getenv('FILEMANAGER_DATA_DIR') ?: dirname(__DIR__, 3) . '/.runtime';
+        if (!is_dir($runtimeDir) && !@mkdir($runtimeDir, 0700, true) && !is_dir($runtimeDir)) {
             error_log("[filemanager] Não foi possível criar o diretório de estado do servidor: {$runtimeDir}");
             return;
         }
 
         $addressFile = $runtimeDir . '/server-address';
-        $temporaryFile = $addressFile . '.tmp.' . getmypid();
+        $temporaryFile = tempnam($runtimeDir, '.server-address-');
+        if ($temporaryFile === false) return;
         $contents = sprintf(
             "%d %d %s %s\n",
             getmypid(),
@@ -38,7 +39,7 @@ class server
 
     private static function autoRestartEnabled(): bool
     {
-        $configPath = dirname(__DIR__, 2) . '/configInterface.json';
+        $configPath = getenv('FILEMANAGER_CONFIG_FILE') ?: dirname(__DIR__, 2) . '/configInterface.json';
         $contents = @file_get_contents($configPath);
         $config = is_string($contents) ? json_decode($contents, true) : null;
 

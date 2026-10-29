@@ -1,0 +1,4 @@
+Note: Using configuration file /home/lotus/projetos/filemanager/phpstan.neon.
+
+ [OK] No errors                                                                 
+

@@ -222,70 +222,8 @@ if ($composerCheck) {
 
 } else {
     printWarning("Composer não encontrado no sistema");
-    printInfo("Tentando instalar o Composer automaticamente...");
-
-    // Baixar o instalador do Composer
-    $setupFile = $projectRoot . '/composer-setup.php';
-    $composerPhar = $projectRoot . '/composer.phar';
-
-    echo "  → Baixando instalador do Composer...\n";
-    $downloadCode = 'copy('
-        . var_export('https://getcomposer.org/installer', true)
-        . ', '
-        . var_export($setupFile, true)
-        . ');';
-    shell_exec($phpBinary . ' -r ' . escapeshellarg($downloadCode) . ' 2>&1');
-
-    if (file_exists($setupFile)) {
-        echo "  → Instalando Composer...\n";
-        shell_exec($phpBinary . ' ' . escapeshellarg($setupFile) . ' --quiet 2>&1');
-
-        if (file_exists($composerPhar)) {
-            echo "  → Movendo para /usr/local/bin/composer...\n";
-            file_put_contents('composer', file_get_contents($composerPhar));
-            shell_exec('chmod -R 777 composer');
-            shell_exec(
-                $phpBinary
-                . ' '
-                . escapeshellarg($projectRoot . '/composer')
-                . ' install'
-            );
-            chmod('composer', 0755);
-
-
-
-
-            $moveOutput = shell_exec("sudo mv $composerPhar /usr/local/bin/composer && sudo chmod +x /usr/local/bin/composer 2>&1");
-
-            // Limpar arquivo de setup
-            @unlink($setupFile);
-
-            $verifyComposer = shell_exec("which composer 2>/dev/null");
-            if (!empty(trim($verifyComposer))) {
-                $versionOutput = shell_exec(
-                    $phpBinary
-                    . ' '
-                    . escapeshellarg(trim($verifyComposer))
-                    . ' --version 2>/dev/null'
-                );
-                $testsPassed++;
-                $composerExists = true;
-                printSuccess("Composer instalado com sucesso: " . trim($versionOutput));
-            } else {
-                $testsFailed++;
-                printError("Falha ao mover composer para /usr/local/bin (precisa de sudo)");
-                printInfo("Execute manualmente: sudo mv composer.phar /usr/local/bin/composer");
-            }
-        } else {
-            $testsFailed++;
-            printError("Falha ao executar o instalador do Composer");
-            @unlink($setupFile);
-        }
-    } else {
-        $testsFailed++;
-        printError("Falha ao baixar o instalador do Composer");
-        printInfo("Verifique sua conexão com a internet");
-    }
+    $testsFailed++;
+    printInfo("Instale o Composer pelo installer.sh revisado; este diagnóstico não executa downloads ou reparos.");
 }
 
 // ============================================================

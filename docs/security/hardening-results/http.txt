@@ -1,0 +1,293 @@
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS delete denied without effects: missing
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS freeRam denied without command: missing
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS delete denied without effects: invalid
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS freeRam denied without command: invalid
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS delete denied without effects: expired
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS freeRam denied without command: expired
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS delete denied without effects: revoked
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS freeRam denied without command: revoked
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS array credential denied without errors or effects
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS Git transport/injection denied without launching process
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS Git transport/injection denied without launching process
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS Git transport/injection denied without launching process
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS Git transport/injection denied without launching process
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS Git transport/injection denied without launching process
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS Git transport/injection denied without launching process
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS Git transport/injection denied without launching process
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS Git transport/injection denied without launching process
+PASS legacy millisecond expiration is normalized consistently
+PASS non-scalar expiration fails closed
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: accessTicket
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: chat4o
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: checkToken
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: codeGenerate
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: codeInfo
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: codex
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: compressMultipleFiles
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: cutCopy
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: decompressFile
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: deleteFile
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: deleteMultipleFiles
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: deleteTerminal
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: downloadFile
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: fileManagerDiagnostics
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: fileManagerServices
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: fileManagerSettings
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: fileManagerSystem
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: formatCode
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: freeRam
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: getArchiveDetails
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: getFile
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: getPreview
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: getTerminals
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: imageBase64
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: imageBase643
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: importGit
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: newFile
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: phpParser
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: phpParserBackup
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: phpstanCheck
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: refactorFile
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: renameItem
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: saveTerminal
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: schemaPath
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: searchInFile
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: stub
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: syncPath
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: toggleStubsPath
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: treeDetails
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS direct handler denies before work: uploadFile
+PASS complete HTTP handler inventory loaded (no silent skips)
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS conflicting credentials cannot choose another owner
+{"event":"authentication_denied","channel":"http","time":1793243685}
+PASS cross-owner metadata write leaves session unchanged
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS scoped token cannot read another workspace
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS scoped file credential cannot execute system commands
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: /chat4o
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: /CHAT4O
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: //chat4o///
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS direct handler uses its own policy: chat4o
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: /codeGenerate
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: /CODEGENERATE
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: //codegenerate///
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS direct handler uses its own policy: codeGenerate
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: /codex
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: /CODEX
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: //codex///
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS direct handler uses its own policy: codex
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: /fileManagerDiagnostics
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: /FILEMANAGERDIAGNOSTICS
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: //filemanagerdiagnostics///
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS direct handler uses its own policy: fileManagerDiagnostics
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: /fileManagerServices
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: /FILEMANAGERSERVICES
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: //filemanagerservices///
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS direct handler uses its own policy: fileManagerServices
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: /fileManagerSettings
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: /FILEMANAGERSETTINGS
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: //filemanagersettings///
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS direct handler uses its own policy: fileManagerSettings
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: /fileManagerSystem
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: /FILEMANAGERSYSTEM
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: //filemanagersystem///
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS direct handler uses its own policy: fileManagerSystem
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: /freeRam
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: /FREERAM
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: //freeram///
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS direct handler uses its own policy: freeRam
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: /phpstanCheck
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: /PHPSTANCHECK
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: //phpstancheck///
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS direct handler uses its own policy: phpstanCheck
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: /stub
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: /STUB
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: //stub///
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS direct handler uses its own policy: stub
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: /toggleStubsPath
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: /TOGGLESTUBSPATH
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS administrative dispatcher denial without effects: //togglestubspath///
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS direct handler uses its own policy: toggleStubsPath
+PASS internal or malformed route is not dispatchable: /security
+PASS internal or malformed route is not dispatchable: /appController
+PASS internal or malformed route is not dispatchable: /securityPolicy
+PASS internal or malformed route is not dispatchable: /file/ManagerSystem
+PASS internal or malformed route is not dispatchable: /%66reeRam
+PASS internal or malformed route is not dispatchable: /freeRam/extra
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS revocation during policy IO cannot fall back to global filesystem scope
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS download outside denied without disclosure
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS outside deletion denied without effects
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS download outside denied without disclosure
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS outside deletion denied without effects
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS download outside denied without disclosure
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS outside deletion denied without effects
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS symlink escape denied without disclosure
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS write outside denied without creation
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS cross-origin deletion denied without effects
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS invalid multipart filename leaves source/destination intact
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS invalid multipart filename leaves source/destination intact
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS invalid multipart filename leaves source/destination intact
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS upload destination outside denied without moving temp file
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS rename escape leaves source intact
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS move escape leaves source intact
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS workspace root cannot be deleted
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS late invalid batch item does not create trash or move earlier files
+PASS authorized batch deletion at workspace root preserved
+{"event":"access_denied","channel":"http","time":1793243685}
+PASS recursive symlink preflight leaves entire directory intact
+{"event":"file_deleted","channel":"http","time":1793243685}
+PASS deleting legitimate file symlink removes the link and preserves its target
+{"event":"file_deleted","channel":"http","time":1793243685}
+PASS deleting legitimate directory symlink preserves target directory
+{"event":"file_deleted","channel":"http","time":1793243685}
+PASS deleting a link to an authorized root preserves the root
+{"event":"file_deleted","channel":"http","time":1793243685}
+PASS unlinking an escaping link is safe and never accesses or deletes its target
+PASS trash moves a legitimate symlink without moving its referent
+PASS shell metacharacters are literal filename data
+{"event":"file_deleted","channel":"http","time":1793243686}
+PASS authorized deletion uses filesystem without shell
+PASS settings write uses central identity: query
+PASS settings read uses central identity: query
+PASS settings write uses central identity: post
+PASS settings read uses central identity: post
+PASS settings write uses central identity: bearer
+PASS settings read uses central identity: bearer
+PASS revocation during settings IO prevents publication: system
+PASS revocation during settings IO prevents publication: codex
+{"event":"access_denied","channel":"http","time":1793243686}
+PASS restoring administrator access does not widen legacy file-only tokens
+PASS full administrator reads absolute path outside initial directory
+PASS full administrator browses independent external directory
+PASS full administrator can navigate real filesystem root
+PASS editor reads an authorized external absolute path
+PASS full administrator creates outside initial directory
+PASS full administrator renames outside initial directory
+PASS scoped user follows legitimate link to second independent authorized root
+{"event":"access_denied","channel":"http","time":1793243686}
+PASS multiple-root user remains isolated from other directories
+{"event":"authentication_denied","channel":"http","time":1793243686}
+PASS revocation after successful use is observed immediately
+PASS authorized download preserved
+160 assertions, 0 failures

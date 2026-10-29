@@ -9,6 +9,10 @@ class OpenConnection
     public static function open(Server $server, Request $request): void
     {
         $socket = ltrim(explode('?', $request->server['request_uri'] ?? '/', 2)[0], '/');
+        if (str_starts_with($socket, 'ws/')) {
+            $ticket = securityPolicy::readTicket(substr($socket, 3), true);
+            $socket = ($ticket['kind'] ?? '') === 'websocket' ? ($ticket['socket'] ?? '') : '';
+        }
         $owner = securityPolicy::socketOwner($socket);
         if (!securityPolicy::originAllowed($request, true) || !securityPolicy::validToken($owner)) {
             securityPolicy::log('connection_denied', 'websocket');
@@ -22,7 +26,8 @@ class OpenConnection
         // Active and idle connections must be revoked, not only the next incoming frame.
         $timer = \Swoole\Timer::tick(1000, static function () use ($server, $fd, $owner, $identity): void {
             if (($GLOBALS['websocketConnections'][$fd]['identity'] ?? '') !== $identity) return;
-            $valid = securityPolicy::validToken($owner);
+            $capability = $GLOBALS['websocketConnections'][$fd]['capability'] ?? '';
+            $valid = $capability === 'admin' ? securityPolicy::adminAllowed($owner) && securityPolicy::terminalAllowed($owner) : (!empty($GLOBALS['websocketConnections'][$fd]['privileged']) ? securityPolicy::terminalAllowed($owner) : securityPolicy::validToken($owner));
             if (($GLOBALS['websocketConnections'][$fd]['identity'] ?? '') !== $identity) return;
             if (!$valid) {
                 securityPolicy::log('session_revoked', 'websocket');

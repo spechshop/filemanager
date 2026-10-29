@@ -8,9 +8,6 @@ parameters:
         - message: '~^Binary\ operation\ "\*"\ between\ string\ and\ int<1,\ 11>\ results\ in\ an\ error\.$~'
           count: 1
           path: plugins/Extension/plugins/StringUtils.php
-        - message: '~^Unreachable\ statement\ \-\ code\ above\ always\ terminates\.$~'
-          count: 1
-          path: plugins/Extension/plugins/terminal.php
         - message: '~^Method\ plugins\\Extension\\utilsFunction::getFilePermissions\(\)\ should\ return\ string\|null\ but\ returns\ false\.$~'
           count: 1
           path: plugins/Extension/plugins/utilsFunction.php
@@ -44,9 +41,6 @@ parameters:
         - message: '~^Variable\ \$files\ in\ empty\(\)\ always\ exists\ and\ is\ not\ falsy\.$~'
           count: 1
           path: plugins/Request/apps/compressMultipleFiles.php
-        - message: '~^Parameter\ \#2\ \$value\ of\ method\ Swoole\\Http\\Response::header\(\)\ expects\ array\|string,\ int<0,\ max>\|false\ given\.$~'
-          count: 1
-          path: plugins/Request/apps/downloadFile.php
         - message: '~^Offset\ 3\ on\ non\-empty\-list<string>\ on\ left\ side\ of\ \?\?\ always\ exists\ and\ is\ not\ nullable\.$~'
           count: 1
           path: plugins/Request/apps/fileManagerServices.php
@@ -56,15 +50,6 @@ parameters:
         - message: '~^Offset\ 9\ on\ non\-empty\-list<string>\ on\ left\ side\ of\ \?\?\ always\ exists\ and\ is\ not\ nullable\.$~'
           count: 1
           path: plugins/Request/apps/fileManagerServices.php
-        - message: '~^Offset\ 2\ on\ array\{non\-falsy\-string,\ numeric\-string,\ ''''\|numeric\-string\}\ in\ isset\(\)\ always\ exists\ and\ is\ not\ nullable\.$~'
-          count: 1
-          path: plugins/Request/apps/imageBase64.php
-        - message: '~^Parameter\ \#2\ \$value\ of\ method\ Swoole\\Http\\Response::header\(\)\ expects\ array\|string,\ int\ given\.$~'
-          count: 1
-          path: plugins/Request/apps/imageBase64.php
-        - message: '~^Parameter\ \#2\ \$value\ of\ method\ Swoole\\Http\\Response::header\(\)\ expects\ array\|string,\ int<0,\ max>\|false\ given\.$~'
-          count: 1
-          path: plugins/Request/apps/imageBase64.php
         - message: '~^Constant\ plugins\\Request\\phpParser::INVALID_TOKEN_RESPONSE\ is\ unused\.$~'
           count: 1
           path: plugins/Request/apps/phpParser.php
@@ -119,9 +104,6 @@ parameters:
         - message: '~^Static\ method\ plugins\\Request\\stub::parseAndTraverse\(\)\ is\ unused\.$~'
           count: 1
           path: plugins/Request/apps/stub.php
-        - message: '~^Offset\ 0\ on\ non\-empty\-list<string>\ in\ isset\(\)\ always\ exists\ and\ is\ not\ nullable\.$~'
-          count: 1
-          path: plugins/Request/apps/syncPath.php
         - message: '~^If\ condition\ is\ always\ true\.$~'
           count: 1
           path: plugins/Start/server/cache.php

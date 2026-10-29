@@ -1,0 +1,16 @@
+✔ real Intelephense through authenticated WebSocket: PHP features, updates, reconnect, resources and shutdown (11661.448533ms)
+ℹ Modules loaded by real LSP: {"braces":false,"micromatch":false,"fast-glob":false,"applicationinsights":false,"@opentelemetry/core":false,"basic-ftp":false}
+ℹ LSP resource samples: [{"cycle":0,"cpuTicks":116,"rssKiB":280316,"idleCpuMs":0},{"cycle":1,"cpuTicks":53,"rssKiB":192644,"idleCpuMs":0},{"cycle":2,"cpuTicks":54,"rssKiB":192732,"idleCpuMs":0}]
+✔ LSP disconnect, crash, session revocation and bridge SIGTERM reap real children (1408.139139ms)
+✔ LSP process failure: missing (176.42639ms)
+✔ LSP process failure: spawn-error (177.310298ms)
+✔ LSP process failure: stubborn (2007.501728ms)
+✔ real Swoole relay forwards initialize, PHP hover and shutdown to Intelephense (1401.264284ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 16893.951923

@@ -36,28 +36,44 @@ jobs:
       - name: Syntax (all tracked PHP, including tests)
         run: python3 scripts/security/php-lint.py
       - run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+      - run: php -n scripts/security/autoload-regression.php
       - run: php -n scripts/security/http-regression.php
       - run: php -n scripts/security/ws-regression.php
+      - run: python3 scripts/security/fs-regression.py
+      - run: python3 scripts/security/auxiliary-regression.py
+      - run: python3 scripts/security/download-regression.py
+      - run: php scripts/security/metadata-regression.php
+      - run: php scripts/security/tokens-regression.php
+      - run: php scripts/security/git-publication-regression.php
+      - run: php scripts/security/parser-regression.php
+      - run: php -n scripts/security/process-regression.php
+      - run: php -n scripts/security/temporary-regression.php
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends p7zip-full p7zip-rar xz-utils
       - run: php scripts/security/archive-regression.php
       - run: php scripts/tests/file-watcher-test.php
       - run: php scripts/tests/request-cache-test.php
   node:
-    name: Browser and real Node PTY regressions
+    name: Node ${{ matrix.node }} browser and real PTY regressions
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22', '24']
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: '24'
+          node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci --ignore-scripts
       - run: npm rebuild node-pty
       - run: npm run test:security:ui
       - run: npm run test:security:threads
+      - run: npm run test:security:codex
+      - run: npm run test:security:transport
       - run: npm run test:security:pty
       - run: npm run test:security:dependencies
       - run: npm run test:security:lsp
@@ -82,6 +98,7 @@ jobs:
         env:
           SECURITY_PTY_BACKEND: php
         run: npm run test:security:pty
+      - run: php scripts/security/auxiliary-quotas.php
       - run: node --test scripts/security/swoole-integration.cjs
       - name: Real LSP through the Swoole WebSocket relay
         env:

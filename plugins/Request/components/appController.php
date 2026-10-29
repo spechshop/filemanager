@@ -15,7 +15,9 @@ class appController
      */
     public static function pKill(mixed $pid, mixed $sig_num = 9): bool
     {
+        if (!is_numeric($pid) || !is_numeric($sig_num) || (int) $pid <= 1 || (int) $sig_num < 1 || (int) $sig_num > 64) return false;
         $idProcess = (int)$pid;
+        $sig_num = (int) $sig_num;
         if (function_exists("posix_kill")) return posix_kill($idProcess, $sig_num);
         exec("/usr/bin/kill -s $sig_num $idProcess 2>&1", $junk, $return_code);
         return !$return_code;
@@ -70,9 +72,11 @@ class appController
      */
     public static function call($request, $response, $app): ?bool
     {
-        if (!security::authorize($request, $response)) return true;
-        if (!preg_match('/^[a-zA-Z][a-zA-Z0-9]*$/D', $app)) return false;
-        $callable = "\\plugins\\Request\\$app::api";
+        try { $app = securityPolicy::operation($app); }
+        catch (\DomainException $e) { $response->status(404); $response->end(); return true; }
+        $handler = __NAMESPACE__ . '\\' . $app;
+        if (!security::authorize($request, $response, $handler)) return true;
+        $callable = $handler . '::api';
         if (!is_callable($callable)) return false;
         try { self::mountCallable($callable, $request, $response, $app); }
         catch (\DomainException $e) { security::deny($response); }

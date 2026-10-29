@@ -11,13 +11,13 @@ class renameItem
 {
     public static function api(Request $request, Response $response)
     {
-        if (!security::authorize($request, $response)) return true;
+        if (!security::authorize($request, $response, __CLASS__)) return true;
         $response->header('Content-Type', 'application/json');
         $data = $request->get;
         $path = str_replace('//', '/',  $data['path']);
         $newPath = str_replace('//', '/',  $data['newName']);
         if (file_exists($path)) {
-            if (utilsFunction::renameItem($path, $newPath)) {
+            if (safeFiles::move($path, $newPath, securityPolicy::requestToken($request))) {
                 return $response->end(json_encode([
                     'success' => true,
                     'message' => 'Rename success'

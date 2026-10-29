@@ -30,8 +30,8 @@
 </head>
 
 <body>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@18.1.2/lib/marked.umd.js" crossorigin="anonymous" integrity="sha384-nCN5FOaVTXXYilftBH/VQuC9ypBYOxrctAZn2x7ggYClXaporWSzM0y+ODhb8MTi"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25" crossorigin="anonymous" referrerpolicy="no-referrer" integrity="sha384-nLoOnA/BDh8A/jxqtckg4DumuCGOBYUnNJLZdQz/zfYNp3wcjGSoWTAzgko06G/2"></script>
 <script src="js/circle-progress.min.js"></script>
 @import(loadingPage)
 @import(homeModalWelcome)
@@ -236,20 +236,8 @@
     <button class="btn btn-warning" onclick="compressFiles()">
         <i class="fa-duotone fa-file-zip fa-lg"></i>&nbsp;Compactar selecionados
     </button>
-    <button class="btn btn-light" onclick="importRepGit()">
-        <div class="d-block">
-            <img src="/img/github.png" width="26" alt="import">
-            Git Clone
-        </div>
-    </button>
     @import(downloadFile/importRepGit)
 
-    <button class="btn btn-dark" onclick="chat()">
-        <div class="d-block">
-            <i class="fa-sharp-duotone fa-solid fa-microchip-ai"></i>
-            Chat 4o
-        </div>
-    </button>
     <button class="btn btn-light-green" onclick="$('#edit-code').modal('show')">
         <div class="d-block">
             <i class="fa-sharp-duoton fa-solid fa-code"></i>
@@ -398,7 +386,7 @@
     right: 62px;
     cursor: pointer;
     z-index: 100;
-    
+
     " id="clearSearchBtn" class="fa-duotone fa-circle-xmark clear-btn"
                        onclick="document.getElementById('searchInput').value=''; this.style.display='none'; document.getElementById('searchInput').dispatchEvent(new Event('input'));">
                     </i>
@@ -533,7 +521,7 @@ max-height: calc(-2px + 57vh);"></div>
             'filesList'
         );
 
-    });
+    }).catch(error => showAuthenticationError(error));
     const callback = async function (mutationsList, observer) {
         const fopenDynamicToken = $('#fp').text();
         const pathInvisible = $('#pathInvisible').text();
@@ -579,7 +567,7 @@ max-height: calc(-2px + 57vh);"></div>
 @import(utils/deleteFileList)
 @import(downloadFile/function)
 <script src="js/jquery.toast.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.0/dist/sweetalert2.all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.0/dist/sweetalert2.all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer" integrity="sha384-5VBAkNWNEnA0Y+L5aWNg6fHumW6MdNSl4unYF6X6pHsXjltAvKa6VxLur8ZAQlzu"></script>
 <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.0/dist/sweetalert2.min.css" rel="stylesheet">
 
 

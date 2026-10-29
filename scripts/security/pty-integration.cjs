@@ -44,7 +44,7 @@ for (const backend of backends) test(`real ${backend} PTY: unauthorized requests
     const save = () => { const staged = tokenFile + '.tmp'; fs.writeFileSync(staged, JSON.stringify(tokens)); fs.renameSync(staged, tokenFile); }; save();
     const p = await port(), address = `ws://127.0.0.1:${p}`;
     const secret = 's'.repeat(64), headers = {'X-FileManager-Bridge': secret};
-    const child = spawn(backend === 'node' ? process.execPath : php, [path.join(tmp, backend === 'node' ? 'pty.js' : 'pty.php')], {cwd: tmp, env: {...process.env, FILEMANAGER_PTY_PORT: String(p), FILEMANAGER_BRIDGE_SECRET: secret, FILEMANAGER_TOKENS_FILE: tokenFile}, stdio: ['ignore', 'pipe', 'pipe']});
+    const child = spawn(backend === 'node' ? process.execPath : php, [path.join(tmp, backend === 'node' ? 'pty.js' : 'pty.php')], {cwd: tmp, env: {...process.env, FILEMANAGER_PTY_PORT: String(p), FILEMANAGER_TERMINALS_PER_USER: '1', FILEMANAGER_BRIDGE_SECRET: secret, FILEMANAGER_TOKENS_FILE: tokenFile}, stdio: ['ignore', 'pipe', 'pipe']});
     let output = ''; child.stdout.on('data', x => { output += x; }); child.stderr.on('data', x => { output += x; });
     let ws;
     try {
@@ -56,6 +56,10 @@ for (const backend of backends) test(`real ${backend} PTY: unauthorized requests
             assert.equal(fs.existsSync(path.join(tmp, 'files/UNAUTHORIZED')), false, 'no command side effect');
         }
         ws = await connect(`${address}/${owner}-one`, headers);
+        const excess = await connect(`${address}/${owner}-excess`, headers);
+        if (excess.readyState !== WebSocket.CLOSED) await Promise.race([once(excess, 'close'), delay(2500).then(() => { throw new Error('terminal quota was not enforced'); })]);
+        assert.equal(excess.readyState, WebSocket.CLOSED);
+        assert.deepEqual(JSON.parse(fs.readFileSync(path.join(tmp, 'terminals.json'), 'utf8')), [owner + '-one'], 'quota denial creates no additional shell/session');
         ws.send("printf 'AUTHORIZED-CONTENT' > authorized.txt\n");
         await until(() => fs.existsSync(path.join(tmp, 'files/authorized.txt')), 'authorized command');
         assert.equal(fs.readFileSync(path.join(tmp, 'files/authorized.txt'), 'utf8'), 'AUTHORIZED-CONTENT');
@@ -63,6 +67,12 @@ for (const backend of backends) test(`real ${backend} PTY: unauthorized requests
         ws = await connect(`${address}/${owner}-one`, headers);
         ws.send("printf 'RECONNECTED' > reconnect.txt\n");
         await until(() => fs.existsSync(path.join(tmp, 'files/reconnect.txt')), 'reconnect command');
+        const permissionClosed = once(ws, 'close');
+        tokens[owner].terminal = false; save();
+        await Promise.race([permissionClosed, delay(2500).then(() => { throw new Error('terminal permission removal was ignored'); })]);
+        assert.equal(await denied(`${address}/${owner}-one`, headers), true, 'capability removal denies reconnect');
+        tokens[owner].terminal = true; save();
+        ws = await connect(`${address}/${owner}-one`, headers);
         const closed = once(ws, 'close');
         tokens[owner].revoked = true; save();
         await Promise.race([closed, delay(2500).then(() => { throw new Error('active session not revoked'); })]);

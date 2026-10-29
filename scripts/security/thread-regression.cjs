@@ -41,14 +41,34 @@ test('actual bridge action handlers reject another user before RPC and filter th
         scope.claim('owned-thread', 'owner-codex-agent'); scope.claim('other-thread', 'other-codex-agent');
         const before = fs.readFileSync(scope.file, 'utf8'); const calls = [];
         const source = fs.readFileSync(path.resolve(__dirname, '../../codex-agent.js'), 'utf8');
-        const context = vm.createContext({codexReady: true, threadScope: scope,
+        const context = vm.createContext({codexReady: true, threadScope: scope, WebSocket: {OPEN: 1}, bridgeAuth: require('./bridge-auth.cjs'),
             rpc: async (method, params) => { calls.push([method, params]); return {data: [{id: 'owned-thread'}, {id: 'other-thread'}, {id: 'legacy-unowned'}]}; }});
-        vm.runInContext(source.slice(source.indexOf('async function performAction('), source.indexOf('\nconst server = http.createServer')), context);
-        const client = {authSession: 'other-codex-agent'};
+        vm.runInContext(source.slice(source.indexOf('function assertClient('), source.indexOf('\nconst server = http.createServer')), context);
+        const client = {authSession: 'other-codex-agent', readyState: 1};
         await assert.rejects(context.performAction(client, {action: 'thread.resume', threadId: 'owned-thread'}), /não pertence/);
         assert.equal(calls.length, 0, 'denied resume produces no app-server RPC side effect');
         assert.equal(fs.readFileSync(scope.file, 'utf8'), before, 'denied resume does not claim the thread');
         const result = await context.performAction(client, {action: 'thread.list'});
         assert.deepEqual(Array.from(result.data, thread => thread.id), ['other-thread']);
+    } finally { if (previous === undefined) delete process.env.FILEMANAGER_TOKENS_FILE; else process.env.FILEMANAGER_TOKENS_FILE = previous; fs.rmSync(tmp, {recursive: true, force: true}); }
+});
+test('permission removal while awaiting preferences prevents a pending Codex turn from starting', async () => {
+    const vm = require('node:vm');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'fm-codex-revoke-'));
+    const previous = process.env.FILEMANAGER_TOKENS_FILE;
+    process.env.FILEMANAGER_TOKENS_FILE = path.join(tmp, 'tokens.json');
+    const records = {owner: {expire: 9999999999}};
+    const save = () => fs.writeFileSync(process.env.FILEMANAGER_TOKENS_FILE, JSON.stringify(records)); save();
+    try {
+        const calls = [], source = fs.readFileSync(path.resolve(__dirname, '../../codex-agent.js'), 'utf8');
+        const context = vm.createContext({codexReady: true, WebSocket: {OPEN: 1}, bridgeAuth: require('./bridge-auth.cjs'),
+            activeTurns: new Map(), turnContexts: new Map(), threadSessions: new Map(), threadWorkspaces: new Map(),
+            requireThread: () => tmp, checkTurnRate: () => {},
+            applyThreadPreferences: async () => { await Promise.resolve(); records.owner.admin = false; save(); },
+            rpc: async (...args) => { calls.push(args); return {}; }});
+        vm.runInContext(source.slice(source.indexOf('function assertClient('), source.indexOf('\nconst server = http.createServer')), context);
+        await assert.rejects(context.performAction({authSession: 'owner-agent', readyState: 1}, {action: 'turn.start', threadId: 'fixture', text: 'synthetic'}), /Session expired/);
+        assert.equal(calls.length, 0, 'revoked pending operation emits no turn/start RPC');
+        assert.equal(context.turnContexts.size, 0, 'pending quota reservation is released');
     } finally { if (previous === undefined) delete process.env.FILEMANAGER_TOKENS_FILE; else process.env.FILEMANAGER_TOKENS_FILE = previous; fs.rmSync(tmp, {recursive: true, force: true}); }
 });

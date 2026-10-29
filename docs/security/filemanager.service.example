@@ -1,0 +1,34 @@
+# Template for operator review. Not installed or enabled by these changes.
+[Unit]
+Description=FileManager
+After=network.target
+
+[Service]
+Type=simple
+User=filemanager
+Group=filemanager
+WorkingDirectory=/opt/filemanager
+ExecStart=/usr/local/bin/php /opt/filemanager/server.php
+EnvironmentFile=/etc/filemanager/service.env
+Environment=FILEMANAGER_DATA_DIR=/var/lib/filemanager
+Environment=FILEMANAGER_CONFIG_FILE=/var/lib/filemanager/configInterface.json
+Environment=FILEMANAGER_TOKENS_FILE=/etc/filemanager/tokens.lotus
+Environment=FILEMANAGER_INITIAL_DIRECTORY=/srv/projetos
+Environment=FILEMANAGER_UPLOAD_PORT=8081
+UMask=0077
+ReadOnlyPaths=/opt/filemanager /etc/filemanager
+# Keep filesystem navigation and the service user's OS permissions elsewhere.
+# Review the narrow sudo rule for freeRam separately. No blanket sudo rights.
+# freeRam uses the narrow sudo helper to write vm/drop_caches.
+ProtectKernelTunables=false
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+TasksMax=512
+MemoryMax=2G
+KillMode=control-group
+TimeoutStopSec=15
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

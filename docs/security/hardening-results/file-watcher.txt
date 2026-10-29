@@ -1,0 +1,23 @@
+PASS initial snapshot
+PASS unchanged
+PASS same-size save in same second
+PASS one notification per content change
+PASS touch without content change
+PASS create
+PASS rename
+PASS delete
+PASS ignored vendor
+PASS ignored node_modules
+PASS ignored files
+PASS ignored stubs
+PASS ignored terminals
+PASS does not recurse through symlinks
+PASS new directory
+PASS unreadable directory does not cause restart loop
+PASS permission recovery
+PASS deleted directory
+PASS empty extension list
+PASS unobserved extension
+PASS burst of saves coalesced
+PASS burst does not repeat
+22 assertions passed

@@ -1,0 +1,17 @@
+test_admin_absolute_external_paths_and_root (__main__.FilesystemTests.test_admin_absolute_external_paths_and_root) ... ok
+test_copy_supports_legitimate_source_and_destination_links (__main__.FilesystemTests.test_copy_supports_legitimate_source_and_destination_links) ... ok
+test_cross_volume_move (__main__.FilesystemTests.test_cross_volume_move) ... ok
+test_execute_only_parent_preserves_os_file_access (__main__.FilesystemTests.test_execute_only_parent_preserves_os_file_access) ... ok
+test_final_symlink_swap_at_actual_open_cannot_escape (__main__.FilesystemTests.test_final_symlink_swap_at_actual_open_cannot_escape) ... ok
+test_multiple_independent_roots_and_compatible_links (__main__.FilesystemTests.test_multiple_independent_roots_and_compatible_links) ... ok
+test_open_file_remains_original_object_after_rename (__main__.FilesystemTests.test_open_file_remains_original_object_after_rename) ... ok
+test_parent_swap_between_resolution_and_kernel_lookup (__main__.FilesystemTests.test_parent_swap_between_resolution_and_kernel_lookup) ... ok
+test_real_concurrent_parent_replacements_never_write_external_sentinel (__main__.FilesystemTests.test_real_concurrent_parent_replacements_never_write_external_sentinel) ... ok
+test_revocation_between_stream_chunks_stops_writes (__main__.FilesystemTests.test_revocation_between_stream_chunks_stops_writes) ... ok
+test_scope_escape_and_changed_scope_are_denied (__main__.FilesystemTests.test_scope_escape_and_changed_scope_are_denied) ... ok
+test_upload_provenance_is_private_and_never_follows_substituted_links (__main__.FilesystemTests.test_upload_provenance_is_private_and_never_follows_substituted_links) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 0.034s
+
+OK

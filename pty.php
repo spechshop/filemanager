@@ -32,16 +32,16 @@ use Swoole\WebSocket\Frame;
 const PTY_HOST         = '127.0.0.1';
 define('PTY_PORT', (int) (getenv('FILEMANAGER_PTY_PORT') ?: 6060));
 const OUTPUT_CACHE_SIZE = 50000; // bytes mantidos por terminal para replay
-const TERMINALS_FILE   = './terminals.json';
+define('TERMINALS_FILE', securityPolicy::dataPath('terminals.json', './terminals.json'));
 const DEFAULT_COLS     = 220;
 const DEFAULT_ROWS     = 30;
 
 $shell = (stripos(PHP_OS, 'WIN') === 0) ? 'powershell.exe' : 'bash';
 
 // Diretório onde os terminais iniciam (equivalente ao filesDir do pty.js).
-$filesDir = getcwd() . '/files';
+$filesDir = getenv('FILEMANAGER_INITIAL_DIRECTORY') ?: getcwd() . '/files';
 if (!is_dir($filesDir)) {
-    @mkdir($filesDir, 0777, true);
+    @mkdir($filesDir, 0750, true);
     echo "Directory \"files\" created.\n";
 }
 
@@ -62,6 +62,7 @@ if (!is_dir($filesDir)) {
  * ]
  */
 $GLOBALS['sessions']    = [];
+$GLOBALS['pendingTerminals'] = [];
 $GLOBALS['fdToToken']   = [];
 $GLOBALS['terminalIds'] = loadTerminalsFromFile();
 
@@ -119,10 +120,18 @@ function terminalEnvironment(): array
 // ---------------------------------------------------------------------
 // Criação / retomada de terminais
 // ---------------------------------------------------------------------
-function createNewTerminal(Server $server, string $token): bool
+function createNewTerminal(Server $server, string $token, int $fd): bool
 {
     global $shell, $filesDir;
 
+    $owner = securityPolicy::socketOwner($token);
+    if (!securityPolicy::terminalAllowed($owner)) return false;
+    $count = count(array_filter($GLOBALS['sessions'], static fn($session) => ($session['owner'] ?? '') === $owner));
+    $pending = $GLOBALS['pendingTerminals'][$owner] ?? 0;
+    if ($count + $pending >= securityPolicy::limit('TERMINALS_PER_USER', 16)
+        || count($GLOBALS['sessions']) + array_sum($GLOBALS['pendingTerminals']) >= securityPolicy::limit('TERMINALS_TOTAL', 128)) return false;
+    $GLOBALS['pendingTerminals'][$owner] = $pending + 1;
+    try {
     $descriptorspec = [['pty'], ['pty'], ['pty']];
 
     // Herdar o ambiente atual e ajustar o runtime/TERM/COLUMNS/LINES.
@@ -132,11 +141,14 @@ function createNewTerminal(Server $server, string $token): bool
     $env['LINES']   = (string) DEFAULT_ROWS;
 
     $pipes = [];
-    $proc  = @proc_open($shell, $descriptorspec, $pipes, $filesDir, $env);
+    $proc  = @proc_open([$shell], $descriptorspec, $pipes, $filesDir, $env);
     if (!is_resource($proc)) {
         return false;
     }
 
+    if (!securityPolicy::terminalAllowed($owner) || !$server->isEstablished($fd) || ($GLOBALS['fdToToken'][$fd] ?? null) !== $token) {
+        proc_terminate($proc, 9); foreach ($pipes as $pipe) if (is_resource($pipe)) fclose($pipe); proc_close($proc); return false;
+    }
     $master = $pipes[0]; // Com PTY, o master é compartilhado (leitura e escrita).
     stream_set_blocking($master, false);
 
@@ -153,6 +165,7 @@ function createNewTerminal(Server $server, string $token): bool
     }
 
     $GLOBALS['sessions'][$token] = [
+        'owner' => $owner,
         'proc'   => $proc,
         'master' => $master,
         'pid'    => $pid,
@@ -178,6 +191,10 @@ function createNewTerminal(Server $server, string $token): bool
     }
 
     return true;
+    } finally {
+        $GLOBALS['pendingTerminals'][$owner]--;
+        if ($GLOBALS['pendingTerminals'][$owner] === 0) unset($GLOBALS['pendingTerminals'][$owner]);
+    }
 }
 
 // Callback do reactor: há dados prontos no master do PTY.
@@ -188,8 +205,9 @@ function onMasterReadable(Server $server, string $token, $master): void
         return;
     }
 
-    if (!securityPolicy::validToken(securityPolicy::socketOwner($token))) { closeTerminal($token); return; }
+    if (!securityPolicy::terminalAllowed(securityPolicy::socketOwner($token))) { closeTerminal($token); return; }
     $data = @fread($master, 65536);
+    if (!securityPolicy::terminalAllowed(securityPolicy::socketOwner($token))) { closeTerminal($token); return; }
 
     // EOF / processo encerrado: limpar a sessão.
     if ($data === '' || $data === false) {
@@ -300,6 +318,7 @@ function destroyTerminal(string $token): void
 // ---------------------------------------------------------------------
 $server = new Server(PTY_HOST, PTY_PORT);
 $server->set([
+    'package_max_length' => securityPolicy::limit('WS_MESSAGE_BYTES', 131072),
     'worker_num'       => 1,   // processo único: todo o estado vive junto
     'log_level'        => 4,
     'daemonize'        => false,
@@ -318,6 +337,7 @@ $server->on('open', function (Server $server, Request $request) {
 
     if (isset($GLOBALS['sessions'][$token]) && isProcAlive($token)) {
         $GLOBALS['sessions'][$token]['fd'] = $request->fd;
+        $GLOBALS['sessions'][$token]['detachedAt'] = null;
         // Replay do cache para o cliente reconectado ver o contexto.
         if (!empty($GLOBALS['sessions'][$token]['cache'])) {
             $server->push($request->fd, $GLOBALS['sessions'][$token]['cache']);
@@ -329,9 +349,10 @@ $server->on('open', function (Server $server, Request $request) {
         destroyTerminal($token);
     }
 
-    if (createNewTerminal($server, $token)) {
+    if (createNewTerminal($server, $token, $request->fd)) {
         $GLOBALS['sessions'][$token]['fd'] = $request->fd;
-    }
+        $GLOBALS['sessions'][$token]['detachedAt'] = null;
+    } else $server->disconnect($request->fd, 1013, 'Terminal unavailable or quota exceeded');
 });
 
 $server->on('message', function (Server $server, Frame $frame) {
@@ -340,7 +361,8 @@ $server->on('message', function (Server $server, Frame $frame) {
         return;
     }
 
-    if (!securityPolicy::validToken(securityPolicy::socketOwner($token))) { closeTerminal($token); return; }
+    if (!securityPolicy::terminalAllowed(securityPolicy::socketOwner($token))) { closeTerminal($token); return; }
+    if (($GLOBALS['fdToToken'][$frame->fd] ?? null) !== $token || !$server->isEstablished($frame->fd)) return;
     $cmdStr = $frame->data;
     $trim   = trim($cmdStr);
 
@@ -392,13 +414,24 @@ $server->on('close', function (Server $server, int $fd) {
         // reconexões (idêntico ao pty.js).
         if (($GLOBALS['sessions'][$token]['fd'] ?? null) === $fd) {
             $GLOBALS['sessions'][$token]['fd'] = null;
+            $GLOBALS['sessions'][$token]['detachedAt'] = time();
         }
     }
 });
 
 $server->on('WorkerStart', static function () {
-    \Swoole\Timer::tick(500, static function () {
-        foreach (array_keys($GLOBALS['sessions']) as $token) if (!securityPolicy::validToken(securityPolicy::socketOwner($token))) closeTerminal($token);
+    $GLOBALS['terminalValidationTimer'] = \Swoole\Timer::tick(500, static function () {
+        foreach (array_keys($GLOBALS['sessions']) as $token) if (!securityPolicy::terminalAllowed(securityPolicy::socketOwner($token)) || (!empty($GLOBALS['sessions'][$token]['detachedAt']) && time() - $GLOBALS['sessions'][$token]['detachedAt'] > securityPolicy::limit('TERMINAL_DETACH_MS', 1800000) / 1000)) closeTerminal($token);
     });
+});
+$server->on('WorkerExit', static function () {
+    // A repeating timer and PTY read events otherwise keep the worker reactor
+    // alive until Swoole's forced-exit timeout. Sessions persist on disconnect,
+    // but their processes must be reaped when this worker actually shuts down.
+    if (isset($GLOBALS['terminalValidationTimer'])) {
+        \Swoole\Timer::clear($GLOBALS['terminalValidationTimer']);
+        unset($GLOBALS['terminalValidationTimer']);
+    }
+    foreach (array_keys($GLOBALS['sessions']) as $token) closeTerminal($token);
 });
 $server->start();

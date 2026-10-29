@@ -1,0 +1,609 @@
+FileManager — relatório de correção e fortalecimento
+Data: 28/10/2026. Branch de trabalho: newterm. Base: e11863c.
+
+Escopo e estado de entrega
+
+As alterações estão no working tree, sem commit, push, release ou implantação.
+Nenhuma credencial real foi usada nos testes. O .env real, a VPS, sipswoole,
+libspech e as evidências históricas do incidente não foram modificados.
+Os códigos A1/A2/A3/C1/C2/M1/M2/M3/B1/B2/B3 abaixo seguem a solicitação do usuário;
+não se presume uma equivalência inventada com a numeração S do audit.md histórico.
+
+Há correções implementadas e verificadas, mas esta entrega NÃO libera produção.
+As verificações de patches PHP e a política de advisories npm continuam
+bloqueantes. C2 exige migração administrativa da implantação; CSP bloqueante,
+retirada completa das credenciais do DOM e limites de transporte antes do handler
+têm condições e pendências explícitas. Não houve relaxamento de baseline para
+transformar esses resultados em sucesso artificial.
+
+Decisões de arquitetura estão em hardening-design.txt. Procedimentos, variáveis,
+requisitos e exemplos de implantação estão em hardening-deployment.txt,
+filemanager.service.example e nginx-limits.example. Nenhum exemplo foi aplicado.
+
+1. A1 — autorização canônica de operações
+
+securityPolicy::OPERATIONS declara as 40 operações HTTP e suas capacidades.
+operation() resolve um segmento completo, sem sensibilidade à capitalização,
+aceitando barras extras somente nas extremidades. Barras internas, sufixos,
+nomes internos e representações desconhecidas são negados, sem concatenar partes
+para inventar um nome de classe. appController::call() só despacha esse registro.
+O roteador entrega o caminho real ao dispatcher.
+
+Cada handler chama security::authorize(..., __CLASS__). handlerOperation()
+identifica a classe efetivamente executada: uma URL declarando checkToken não
+reduz a política de freeRam, settings ou outro handler administrativo chamado
+diretamente. A autorização exige token atual e a capacidade da operação.
+Terminal e administração são capacidades independentes em registros restritos.
+
+Foram cobertas todas as onze operações administrativas declaradas, com variantes
+de caixa/barras, chamadas diretas com URL enganosa e observação de efeitos
+colaterais. Classes internas e nomes de rotas compostos não são despacháveis.
+O carregador aceita somente arquivos PHP regulares, rejeita links e inclui
+dependências uma única vez. Uma fixture executa o carregador real, inclusive
+dependências circulares inofensivas, sem usar configuração ou banco reais.
+
+Arquivos centrais: securityPolicy.php (operation, handlerOperation, preflight),
+security.php (authorize), appController.php (call), Request/router/server.php,
+plugins/autoload.php e os handlers listados no inventário final.
+Evidência: autoload.txt, http.txt, semgrep-regression.txt.
+
+2. A2 — operações vinculadas a descritores e acesso flexível
+
+safeFiles delega operações de arquivos a fs-broker.py, um helper local Python,
+sem sudo, sem shell e sem listener de rede. O helper abre raízes/pais com
+descritores, usa openat2 com RESOLVE_BENEATH e RESOLVE_NO_MAGICLINKS e executa
+aberturas/mutações relativas a esses descritores. Os descritores de raiz não
+seguem symlinks durante a abertura. Leitura/escrita usam o arquivo já aberto;
+não o reabrem por seu nome depois da autorização.
+
+Assim, a troca de um diretório por symlink entre validação e abertura não leva
+a operação para fora da raiz. Um arquivo autorizado e aberto que é renomeado
+continua sendo o objeto originalmente autorizado; o descritor não autoriza seu
+substituto. Revalidações de token/escopo interrompem novos passos/chunks quando
+a credencial é revogada ou a política muda. realpath é apenas resolução inicial,
+nunca a proteção estrutural da operação. Não existe fallback inseguro quando o
+kernel/helper requerido está indisponível.
+
+Políticas preservadas/restauradas:
+  - Administrador sem allowedRoots: raiz efetiva '/', respeitando permissões
+    Unix. Caminhos absolutos e externos ao diretório inicial são permitidos.
+    FILEMANAGER_ALLOWED_ROOTS deixa de confinar esse administrador e continua
+    fornecendo a escolha inicial legada.
+  - Registro com allowedRoots: usa todos os diretórios independentes declarados,
+    sem exigir um ancestral artificial comum ou interseção com a raiz global.
+  - Credenciais legadas explicitamente sem administração/terminal e sem raízes
+    próprias conservam a fronteira antiga; não recebem acesso global por acidente.
+  - Links legítimos para objetos dentro de qualquer raiz autorizada funcionam,
+    inclusive entre duas raízes independentes. O alvo é aberto dentro da raiz
+    que o autoriza. Magic links e substituições concorrentes inseguras são negados.
+  - Exclusão/renomeação de um link atua na entrada, preservando o alvo. É possível
+    remover com segurança um link cujo alvo esteja fora do escopo, sem acessá-lo.
+  - Movimentação entre volumes usa cópia segura seguida de remoção. Ela não é
+    uma transação atômica: falha/revogação pode deixar uma cópia ou trabalho parcial.
+
+Conversões abrangem navegação, listagem, editor/parser, leitura/mídia/download,
+criação/edição, exclusão/lixeira, upload, cópia/movimentação, busca, compactação,
+extração e publicação de Git. Bibliotecas que exigem nomes recebem snapshots
+privados; as saídas são publicadas com safeFiles. phpParser usa o conteúdo lido
+com segurança, inclusive caminhos externos legitimamente autorizados. Estatísticas
+de diretórios continuam disponíveis na listagem detalhada, com orçamento de tempo
+configurável, sem fazer uma varredura recursiva de '/' em cada navegação.
+
+Git clona por HTTPS em staging privado, com hosts permitidos configuráveis,
+redirects/transporte local/ext/hooks desativados. Links do checkout são validados
+antes de criar o destino; links legítimos são preservados. Repositórios que
+dependem de outro host precisam de FILEMANAGER_GIT_HOSTS explícito. A operação
+não executa hooks nem scripts recebidos do repositório.
+
+Extração valida todos os membros antes de criar destinos: travessia, links de
+arquivo compactado e tipos especiais são rejeitados especificamente. Os demais
+arquivos dos formatos suportados continuam funcionando. Não houve bloqueio
+global de symlinks do sistema de arquivos.
+
+Evidência concreta:
+  - HTTP: leitura, edição/leitura pelo editor, criação e renomeação fora do
+    diretório inicial, navegação por '/' real e diretório externo independente.
+  - Helper: 12 testes, incluindo múltiplas raízes, links autorizados entre elas,
+    pais com permissão apenas de travessia e movimentação entre /tmp e /dev/shm.
+  - Corridas determinísticas na abertura e substituições de pais; também há
+    200 substituições concorrentes reais, sem alterar o sentinela externo.
+  - Revogação entre chunks interrompe a escrita; uploads não seguem links
+    substituídos no diretório temporário privado.
+  - HTTP, helper, parser e publicação Git negam caminhos externos não autorizados.
+  - Exclusão de links para arquivo, diretório, raiz autorizada e alvo externo
+    preserva os objetos referenciados. Lixeira preserva a semântica do link.
+
+Arquivos: safeFiles.php (start, reader/read, writeStream, listing, snapshot,
+remove, copy, move, publishGit, compress, extract), securityPolicy.php
+(roots, legacyRoots, initialPath, path, entryPath), fs-broker.py, r.php e handlers
+de arquivos no inventário. Evidência: filesystem.txt, http.txt, parser.txt,
+git-publication.txt, archives.txt, swoole-http-websocket.txt.
+
+3. C1 — instaladores e cadeia de downloads
+
+secure-download.sh centraliza HTTPS com verificação de CA e de redirects.
+curl não carrega .curlrc e recebe --no-insecure; wget força validação de
+certificados. Não existe retry que desligue TLS. Um digest divergente elimina
+o artefato, sem executá-lo. Arquivos locais/fallback de arquivo de código exigem
+SHA256 explícito revisado. A origem é selecionada pelo instalador, não por uma
+resposta de erro de TLS.
+
+PHP, Composer e micromamba têm artefatos/digests fixados; Node confere checksums
+da distribuição autenticada por HTTPS. Codex CLI usa versão específica 0.165.0
+(alterável por versão exata revisada), npm strict_ssl e npm ci/lock/integrity.
+Scripts do projeto vêm do checkout revisado, sem atualização automática por
+script de rede e sem curl|sh. Clones do instalador forçam TLS também quando
+GIT_SSL_NO_VERIFY está presente no ambiente.
+
+Isso autentica o artefato selecionado; não constitui garantia de ausência de
+vulnerabilidades nessa versão. O PHP pré-compilado atualmente fixado ainda é
+anterior ao patch exigido pelo guard do repositório. Antes de produção é
+necessário obter uma build corrigida confiável, revisar URL/digest e homologar.
+Não foi substituído o runtime da máquina nem aceita uma build desconhecida.
+
+Arquivos: installer.sh, install-tmp.sh, scripts/secure-download.sh,
+scripts/install-codex.sh, scripts/install-codex-native.sh, README.md, run-tests.php.
+Evidência: downloads.txt (7 testes TLS/digest/redirect/configuração hostil),
+install-codex-native.txt, installer-home.txt, install-tmp.txt, shellcheck.txt.
+
+4. C2 — privilégios e integridade: código preparado; migração pendente
+
+O servidor não executa fixs.json nem reparos/comandos de instalação ao iniciar.
+run-tests.php tornou-se diagnóstico, sem instalar Composer ou executar scripts
+baixados. O instalador permite conta existente FILEMANAGER_SERVICE_USER e exige
+FILEMANAGER_ALLOW_ROOT_SERVICE=1 para iniciar automaticamente no modo root legado.
+
+DATA_DIR, CONFIG_FILE e TOKENS_FILE permitem dados/configuração/segredos fora do
+código. Metadados, preferências, tickets, logs, registros de conversas, segredo do
+bridge e estado de execução respeitam essa separação. Temporários são privados.
+manage-tokens.php respeita o caminho de tokens e não restaura uma edição obsoleta
+por cima de uma revogação concorrente.
+
+Os exemplos propõem código/vendor/node_modules/scripts sob dono de implantação,
+somente leitura para HTTP; dados graváveis privados e tokens somente leitura.
+Nada foi movido, instalado, chown/chmod aplicado ou usuário criado na máquina.
+O layout legado continua funcionando até uma migração explícita do operador.
+Logo, não se afirma que a instalação existente já protege seu próprio código.
+
+Acesso administrativo completo continua significando todos os caminhos que o
+usuário Unix pode acessar, sem cerca artificial do FileManager. ACLs, contas
+administrativas e delegação específica permitem conceder o acesso necessário.
+freeRam conserva seu helper sudo específico. Não foi introduzido sudo genérico
+para Python/PHP/bash ou um broker root com filesystem irrestrito. Um serviço
+sem root não ganha automaticamente permissões que o SO lhe nega.
+
+Arquivos: server.php, run-tests.php, installer.sh, middleware.php,
+fileManagerConfig.php, fileManagerRuntime.php, securityPolicy.php, pty.php,
+bridge-auth.cjs, codex-agent.js, manage-tokens.php e exemplos de implantação.
+Evidência: tokens.txt, temporaries.txt, metadata.txt, testes de serviços/PTY.
+
+5. A3 — execução de comandos
+
+utilsFunction::toggleServer valida identificadores, seleciona a sessão screen
+exata e usa proc_open com argv separado para listar/parar/iniciar. O comando
+administrativo intencional é um único argumento de bash -c; aspas e metacaracteres
+não quebram uma camada externa de shell. Não se tenta tornar código de terminal
+seguro por uma lista incompleta de caracteres proibidos.
+
+Helpers de PID validam PID positivo >1 e sinal permitido; não aceitam IDs de
+grupo por acidente. PTY PHP usa argv para o shell. Importação Git, formatador,
+PHPStan e decoders usam argumentos separados. Os três primeiros usam também
+safeProcess/process-broker.py, com quotas e supervisão do grupo inteiro.
+O terminal e a execução administrativa intencional permanecem disponíveis.
+
+Evidência: process.txt observa argv/sessão exata sem executar o código de exemplo;
+temporaries.txt usa um formatador inofensivo e PHPStan reais; auxiliary.txt testa
+argumentos literais e subprocessos isolados; pty-node-php.txt usa shells reais
+somente em fixtures locais. Não foi iniciada uma sessão screen administrativa
+na instalação real.
+
+6. M1 — revogação, permissões e ciclo de vida
+
+HTTP/WS/PHP/Node leem a política atual, com expiração em segundos e compatibilidade
+com milissegundos legados. PTY PHP revalida antes/depois de operações assíncronas,
+na entrada, saída e timer, e verifica o vínculo atual do socket. PTY Node também
+revalida e encerra processos com escalonamento de sinal quando necessário.
+
+bridge-auth usa um snapshot coerente de token por autorização. Codex exige
+administração e terminal; contexto por requisição protege RPCs antes/depois de
+awaits. Uma resposta tardia de turn/start cancelado é interrompida, em vez de
+permitir que o turno continue sem dono. Filas, cotas e registros de propriedade
+isolam usuários e conexões. Uma revogação impede iniciar os próximos passos.
+
+Desconectar o navegador agora fecha também as conexões correspondentes dos
+bridges. LSP é encerrado; PTY permanece reconectável por prazo configurável
+(30 minutos padrão) e Codex por cinco minutos. Revogação/retirada de capacidade
+não concede esse prazo como autorização: interrompe a atividade privilegiada.
+Checks de identidade/canal impedem saída e callbacks de conexões antigas de
+atingirem uma sessão reconectada diferente.
+
+Configuração/preferências de Codex revalidam a autorização imediatamente antes
+da publicação atômica, depois de esperas/IO. A leitura também revalida antes de
+devolver preferências privadas. Duas regressões retiram admin durante a leitura
+de system/Codex e comprovam 403 sem alteração dos bytes persistidos.
+
+Ferramentas finitas são supervisionadas em grupo próprio sem shell. A política
+é revalidada durante a execução; timeout, revogação, remoção de admin, término
+do supervisor ou do worker encerram os descendentes, inclusive quem ignore
+SIGTERM. O supervisor usa subreaper Linux para recolher filhos adotados.
+
+Arquivos: securityPolicy.php, security.php, pty.php, pty.js, bridge-auth.cjs,
+Message/server/server.php, OpenConnection.php, codex-agent.js, lsp.js,
+fileManagerConfig.php, fileManagerSettings.php, safeProcess.php/process-broker.py.
+Evidência: websocket.txt, threads.txt, codex.txt, pty-node-php.txt,
+lsp-and-swoole-relay.txt, swoole-http-websocket.txt, http.txt, auxiliary.txt.
+
+7. M2 e B1 — interface, credenciais e CSP
+
+Foram mantidas/revisadas renderizações textuais e escapes contextuais para
+nomes/caminhos/erros/resultados de processos. Não foi reintroduzido innerHTML
+com saída bruta. setItemsInTbody verifica propriedades próprias em mapas de
+ícones/linguagens e no tipo de arquivo: constructor, __proto__, toString e
+hasOwnProperty não interrompem a tabela nem selecionam propriedades herdadas.
+
+auth-transport.js transporta credenciais duradouras por Bearer em fetch/XHR.
+Sockets novos usam ticket aleatório de uso único por 30s; mídia/download usa
+ticket limitado a arquivo/operação, revalidando o token. O input/resize/close
+do terminal usa a identidade vinculada pelo servidor, sem extrair o token da
+URL do socket (que agora contém um ticket). Reconexões tratam falhas de tickets.
+Credenciais conflitantes não são sobrescritas silenciosamente pelo adaptador:
+o servidor recusa a combinação, mantendo identidade inequívoca.
+
+CDNs revisados têm versões fixadas e SRI registrado em cdn-integrity.json.
+A URL UMD de Marked foi corrigida; Prettier/plugin PHP têm versões compatíveis.
+CSP existente é aplicada para object/base/framing/form; a política mais estrita
+de scripts/estilos/conexões é Report-Only para não quebrar handlers inline,
+Monaco, mídia e integrações. CSP não foi usada para substituir escape contextual.
+
+Pendências declaradas: login/abas ainda mantêm token no DOM/localStorage;
+clientes legados com query token continuam compatíveis. Tickets também são
+credenciais temporárias: logs de proxy devem omitir query, conforme exemplo.
+Recursos secundários de Monaco/Prism ainda devem ser hospedados/revisados antes
+de uma CSP bloqueante completa. Não se afirma eliminação de todos os caminhos
+possíveis de XSS apenas porque os testes/scan passaram.
+
+Arquivos: auth-transport.js, accessTicket.php, securityPolicy.php, middleware.php,
+makeTable/preloadScripts.html, includes/head.html/offCanvas.html, modalEditCode.html,
+codexAgent.html, páginas e demais templates do inventário.
+Evidência: ui.txt (JSDOM), transport-limits.txt (inclui comando de terminal real
+do template), inline-js.txt (42 scripts compilados), testes WS/HTTP.
+
+8. M3 — recursos e grandes arquivos
+
+Limites configuráveis cobrem corpo HTTP por operação, frame WS, filas e saída,
+terminais/usuário/total, LSP, RPCs/turnos Codex e operações de filesystem.
+Reservas ocorrem antes de criação assíncrona; encerramento libera as quotas.
+Formato/PHPStan/Git têm quota auxiliar própria por usuário/worker, prazo de
+cinco minutos e saída máxima de 16 MiB, todos configuráveis. Terminal/Codex
+interativos não recebem o prazo de ferramentas finitas.
+
+Há backpressure/desconexão para peers lentos e fila limitada de bridge. O máximo
+de corrotinas deixou de ser 20 milhões; buffers de socket/saída são proporcionais.
+Desconexão e revogação têm os comportamentos de encerramento descritos em M1.
+
+Uploads grandes continuam em streaming. FILEMANAGER_UPLOAD_PORT permite listener
+privado de loopback exclusivo para uploadFile: principal 8 MiB, upload 2 GiB.
+O teste real envia multipart de 16 MiB com sucesso nesse desenho.
+
+Condição importante: o protocolo Swoole compartilha package_max_length entre
+HTTP/WS no listener principal. Sem a separação opt-in, o teto legado de 2 GiB
+foi mantido para não quebrar uploads; o limite WS no handler não impede a
+alocação prévia do frame. Ativar proxy/listener separados antes de produção.
+Quotas PHP são por worker; multiplicar pelo worker_num ao dimensionar. Limites
+de cgroup/systemd adicionam proteção de memória/CPU e não foram ativados aqui.
+
+Evidência: transport-limits.txt, auxiliary.txt (7 testes), auxiliary-quotas.txt
+(concorrência real Swoole), pty-node-php.txt, codex.txt,
+lsp-and-swoole-relay.txt e swoole-http-websocket.txt (multipart real de 16 MiB).
+
+9. B2 — identidade de configurações
+
+fileManagerSettings usa requestToken central. Bearer (case-insensitive), query
+e POST suportados produzem a mesma identidade; conflitos são negados. Preferências
+privadas são segregadas por hash da identidade atual. Testes gravam/leem com
+os três métodos e exercitam a revogação durante IO. Evidência: http.txt.
+
+10. B3 — concorrência de sessões e metadados
+
+privateJson implementa lock lateral estável com espera não bloqueante para
+corrotinas e transação read/modify/write, seguida de rename atômico de temporário
+0600. saveTerminal, deleteTerminal e getTerminals respeitam propriedade e
+preservam dados de outros usuários. Configuração e preferências também mantêm
+lock por arquivo e escrita atômica. Dados malformados não são substituídos
+silenciosamente por um store vazio. Edições CLI obsoletas de tokens são rejeitadas.
+
+Evidência: metadata.txt (320 atualizações concorrentes de oito processos/donos,
+sessões únicas preservadas e transações negadas sem alteração); tokens.txt.
+
+11. Revisões complementares e limites da validação
+
+Temporários de formatCode/phpstanCheck/snapshots/Git são privados, com nomes
+reservados. Sufixos .php/.neon não deixam o arquivo original de tempnam órfão.
+PHPStan usa cache privado. Teste executa PHPStan e confirma o diagnóstico de um
+erro de tipo sintético, além da limpeza dos temporários, inclusive após negação.
+
+Semgrep inclui regressões positivas/negativas para as cinco regras locais e
+packs PHP/JS/OWASP. PHPStan nível 5 permanece sem novos ignores; seis entradas
+resolvidas foram retiradas da baseline. ShellCheck e actionlint foram executados.
+Gitleaks histórico respeita apenas a baseline anterior de credenciais já
+revogadas; o snapshot do working tree revisável também foi escaneado, sem ler
+o .env ignorado, databases locais, vendor ou evidências do incidente.
+
+Composer audit não retornou advisories/abandoned. npm audit retornou sete
+entradas vulneráveis (cinco moderate, duas low, nenhuma high/critical). A política
+recusa novos achados fora da baseline: deepmerge/html-to-text e a composição
+atual de Intelephense. Não houve novo aceite nem downgrade para Intelephense
+1.8.2 sugerido pelo audit; substituir majors internos de telemetria sem validar
+o bundle também não seria uma correção demonstrada. O upstream de deepmerge
+não oferece versão corrigida no advisory consultado. Alcance explorável no
+fluxo real do FileManager NÃO foi demonstrado; o achado permanece dependência
+afetada/condicional e bloqueio da política, sem atribuição do incidente a ele.
+
+Ambiente exercitado: Node 24.19.0; PHP convencional 8.3.35; PHP com Swoole 8.5.10
+e Swoole 6.3.0RC1. Os dois PHPs não atendem aos patches mínimos 8.3.36/8.5.12
+do guard existente. CI prevê PHP 8.3/8.4/8.5 e Node 22/24, mais Swoole 6.2.3;
+essa matriz remota ainda precisa ser executada após revisão/push pelo usuário.
+Suporte declarado não é apresentado como matriz inteira homologada localmente.
+
+Requisitos novos de arquivo seguro: Linux >=5.6, x86_64/aarch64 e Python >=3.9.
+Sem openat2, o helper falha de forma fechada. Isso exige conferir o host antes
+de atualizar; não há degradação silenciosa para resolução insegura por nomes.
+
+Os testes de Codex usam WebSocket/bridge reais e um app-server sintético local,
+sem conta OpenAI, credenciais ou modelo real. PTY Node/PHP usam shells locais
+isolados. LSP usa Intelephense real, inclusive relay Swoole e encerramento ao
+desconectar. UI usa JSDOM e compilação, sem homologação completa em navegador
+gráfico. Nenhuma fixture foi executada contra a VPS ou serviços reais da instalação.
+Strings de metacaracteres/XSS são dados inertes de teste; não foram executados
+comandos destrutivos ou código malicioso.
+
+12. Resultados consolidados e reprodução
+
+O comando abaixo executa testes existentes, regressões novas e gates atuais:
+  PHP_PLAIN=/usr/bin/php8.3 SECURITY_PHP_BINARY=php \
+    SECURITY_TOOLS_DIRECTORY="$PWD/.runtime/security-checks-fvhr84ku" \
+    python3 scripts/security/run-hardening-checks.py
+
+Ferramentas de análise foram disponibilizadas somente em .runtime ignorado;
+não foram instaladas globalmente nem alteradas permissões/contas do host.
+O caminho SECURITY_TOOLS_DIRECTORY é local desta execução: em outro ambiente,
+instalar as ferramentas aprovadas no PATH ou indicar outro diretório equivalente.
+
+O resumo legível por máquina, comandos, status e logs estão em
+hardening-results/summary.json e hardening-results/*.txt. O runner conserva
+exit code não zero quando um gate falha. npm-live-audit aceita exit 1 como
+execução válida do scanner COM ACHADOS; npm-live-policy é o gate que recusa
+achados não aceitos. Não interpretar a linha PASS do scanner como zero advisories.
+
+Resultados finais exatos são anexados ao final deste documento após a execução.
+
+13. Antes de voltar à produção
+
+  1) Revisar estas alterações e executar CI/matriz com runtimes corrigidos,
+     incluindo uma build PHP/Swoole confiável para a instalação.
+  2) Resolver ou avaliar formalmente os advisories npm pendentes com evidência
+     de compatibilidade/alcance; não ampliar automaticamente a baseline.
+  3) Migrar código/dados/segredos e usuário Unix conforme deployment/examples;
+     conceder ACL/delegação específica para os diretórios administrativos exigidos.
+     Conferir que HTTP não modifica código/dependências nem o store de tokens.
+  4) Ativar limite anterior ao handler com proxy + listener privado de uploads,
+     dimensionar quotas/worker_num/cgroups e evitar query strings nos logs.
+  5) Homologar fluxos gráficos/editor/terminal/Codex com a configuração real;
+     concluir política CSP e migração de credenciais conforme compatibilidade.
+  6) Tratar o incidente separadamente: preservar evidências, recuperar de fonte
+     confiável e rotacionar credenciais comprometidas. Esta alteração de código
+     não certifica a integridade do host invadido nem identifica o vetor original.
+
+Referências primárias consultadas
+
+openat2/RESOLVE flags: https://man7.org/linux/man-pages/man2/openat2.2.html
+proc_open/argv PHP: https://www.php.net/manual/en/function.proc-open.php
+Composer e digests: https://getcomposer.org/download/
+PHP/patches: https://www.php.net/archive/2026.php#2026-10-21-5
+deepmerge: https://github.com/advisories/GHSA-gcqx-w48m-w2h4
+OpenTelemetry: https://github.com/advisories/GHSA-8988-4f7v-96qf
+
+Inventário de arquivos e resultados exatos
+Execução consolidada: 45 verificações; 42 aprovadas; 3 bloqueadas.
+Bloqueios: npm-live-policy, runtime-plain, runtime-swoole.
+HTTP: 160 assertions, 0 failures. PHP syntax: 102 arquivos, incluindo novos.
+Semgrep: 278 regras, 310 arquivos, 0 achados e sem falhas de parsing.
+Gitleaks: histórico conforme baseline preexistente e working tree sem novos achados.
+Comandos/status completos estão em hardening-results/summary.json.
+
+Verificações e logs:
+PASS php-syntax -> hardening-results/php-syntax.txt (exit 0)
+PASS phpstan -> hardening-results/phpstan.txt (exit 0)
+PASS autoload -> hardening-results/autoload.txt (exit 0)
+PASS http -> hardening-results/http.txt (exit 0)
+PASS websocket -> hardening-results/websocket.txt (exit 0)
+PASS metadata -> hardening-results/metadata.txt (exit 0)
+PASS tokens -> hardening-results/tokens.txt (exit 0)
+PASS git-publication -> hardening-results/git-publication.txt (exit 0)
+PASS parser -> hardening-results/parser.txt (exit 0)
+PASS process -> hardening-results/process.txt (exit 0)
+PASS temporaries -> hardening-results/temporaries.txt (exit 0)
+PASS filesystem -> hardening-results/filesystem.txt (exit 0)
+PASS auxiliary -> hardening-results/auxiliary.txt (exit 0)
+PASS auxiliary-quotas -> hardening-results/auxiliary-quotas.txt (exit 0)
+PASS downloads -> hardening-results/downloads.txt (exit 0)
+PASS archives -> hardening-results/archives.txt (exit 0)
+PASS file-watcher -> hardening-results/file-watcher.txt (exit 0)
+PASS request-cache -> hardening-results/request-cache.txt (exit 0)
+PASS install-codex-native -> hardening-results/install-codex-native.txt (exit 0)
+PASS installer-home -> hardening-results/installer-home.txt (exit 0)
+PASS install-tmp -> hardening-results/install-tmp.txt (exit 0)
+PASS ui -> hardening-results/ui.txt (exit 0)
+PASS threads -> hardening-results/threads.txt (exit 0)
+PASS codex -> hardening-results/codex.txt (exit 0)
+PASS transport-limits -> hardening-results/transport-limits.txt (exit 0)
+PASS dependency-compatibility -> hardening-results/dependency-compatibility.txt (exit 0)
+PASS npm-policy-regression -> hardening-results/npm-policy-regression.txt (exit 0)
+PASS pty-node-php -> hardening-results/pty-node-php.txt (exit 0)
+PASS swoole-http-websocket -> hardening-results/swoole-http-websocket.txt (exit 0)
+PASS lsp-and-swoole-relay -> hardening-results/lsp-and-swoole-relay.txt (exit 0)
+PASS composer-validate -> hardening-results/composer-validate.txt (exit 0)
+PASS composer-audit -> hardening-results/composer-audit.txt (exit 0)
+PASS npm-live-audit -> hardening-results/npm-live-audit.txt (exit 1)
+BLOCKED npm-live-policy -> hardening-results/npm-live-policy.txt (exit 1)
+BLOCKED runtime-plain -> hardening-results/runtime-plain.txt (exit 1)
+BLOCKED runtime-swoole -> hardening-results/runtime-swoole.txt (exit 1)
+PASS inline-js -> hardening-results/inline-js.txt (exit 0)
+PASS semgrep-regression -> hardening-results/semgrep-regression.txt (exit 0)
+PASS semgrep -> hardening-results/semgrep.txt (exit 0)
+PASS shellcheck -> hardening-results/shellcheck.txt (exit 0)
+PASS actionlint -> hardening-results/actionlint.txt (exit 0)
+PASS gitleaks-regression -> hardening-results/gitleaks-regression.txt (exit 0)
+PASS gitleaks-history -> hardening-results/gitleaks-history.txt (exit 0)
+PASS gitleaks-working-tree -> hardening-results/gitleaks-working-tree.txt (exit 0)
+PASS diff-check -> hardening-results/diff-check.txt (exit 0)
+
+Funções adicionais modificadas (além das descritas nas seções):
+  Os handlers HTTP listados abaixo alteram api(), salvo indicação mais específica.
+  fileManagerSettings::api, saveCodexSettings, publicSettings;
+  fileManagerConfig::read, write, update, setServiceEnabled, codexPreferences,
+    setCodexPreferences, updateCodexPreferences, writeCodexPreferences,
+    migrateLegacyCodexPreferences e resolvedores de caminhos de configuração;
+  privateJson::lock, read, update; safeProcess::run, authorize;
+  fileManagerServices::executeAction, start, stop, startCommand e seleção de logs;
+  fileManagerRuntime::requestRestart, consumeRestartRequest, restartMarker;
+  Message/server::close, message, activeBinding, bridgePermission, runBridgeWorker;
+  OpenConnection::open e timer de revalidação;
+  Extension/terminal::asyncShell, pKill; utilsFunction::toggleServer, runProcess;
+  formatCode::runPhpCsFixer; imageBase64::api; r.php: leituras com token;
+  PTY Node/PHP: autenticação, criação/reservas, input/output, detach e encerramento;
+  Codex: handlePayload, RPCs/turnos/cancelamento, quotas e callbacks de conexão;
+  bridge-auth: validação atual, permissões, quotas e saída com backpressure;
+  UI: setItemsInTbody, transporte fetch/XHR/WS, reconexão e input/resize/close;
+  Scripts/top-level de inicialização: separação de estado e retirada de reparos;
+  Instaladores: secure_download/download, checksums, bootstrap e escolha de conta.
+
+Inventário revisável: 126 arquivos de código/teste/configuração/documentação.
+Os logs individuais são listados acima e não repetidos neste inventário.
+M = arquivo versionado modificado; A = arquivo novo ainda não adicionado ao índice.
+M .github/workflows/security.yml
+M .gitignore
+M .semgrep/security.yml
+M README.md
+M codex-agent.js
+A docs/security/cdn-integrity.json
+A docs/security/filemanager.service.example
+A docs/security/hardening-deployment.txt
+A docs/security/hardening-design.txt
+A docs/security/hardening-report.txt
+A docs/security/nginx-limits.example
+M install-tmp.sh
+M installer.sh
+A js/auth-transport.js
+M lsp.js
+M manage-tokens.php
+M middleware.php
+M package.json
+M phpstan-baseline.neon
+M plugins/Extension/plugins/terminal.php
+M plugins/Extension/plugins/utilsFunction.php
+M plugins/Message/server/server.php
+M plugins/OpenConnection/websocket/OpenConnection.php
+A plugins/Request/apps/accessTicket.php
+M plugins/Request/apps/chat4o.php
+M plugins/Request/apps/checkToken.php
+M plugins/Request/apps/codeGenerate.php
+M plugins/Request/apps/codeInfo.php
+M plugins/Request/apps/codex.php
+M plugins/Request/apps/compressMultipleFiles.php
+M plugins/Request/apps/cutCopy.php
+M plugins/Request/apps/decompressFile.php
+M plugins/Request/apps/deleteFile.php
+M plugins/Request/apps/deleteMultipleFiles.php
+M plugins/Request/apps/deleteTerminal.php
+M plugins/Request/apps/downloadFile.php
+M plugins/Request/apps/fileManagerDiagnostics.php
+M plugins/Request/apps/fileManagerServices.php
+M plugins/Request/apps/fileManagerSettings.php
+M plugins/Request/apps/fileManagerSystem.php
+M plugins/Request/apps/formatCode.php
+M plugins/Request/apps/freeRam.php
+M plugins/Request/apps/getArchiveDetails.php
+M plugins/Request/apps/getFile.php
+M plugins/Request/apps/getPreview.php
+M plugins/Request/apps/getTerminals.php
+M plugins/Request/apps/imageBase64.php
+M plugins/Request/apps/imageBase643.php
+M plugins/Request/apps/importGit.php
+M plugins/Request/apps/newFile.php
+M plugins/Request/apps/phpParser.php
+M plugins/Request/apps/phpParserBackup.php
+M plugins/Request/apps/phpstanCheck.php
+M plugins/Request/apps/refactorFile.php
+M plugins/Request/apps/renameItem.php
+M plugins/Request/apps/saveTerminal.php
+M plugins/Request/apps/schemaPath.php
+M plugins/Request/apps/searchInFile.php
+M plugins/Request/apps/stub.php
+M plugins/Request/apps/syncPath.php
+M plugins/Request/apps/toggleStubsPath.php
+M plugins/Request/apps/treeDetails.php
+M plugins/Request/apps/uploadFile.php
+M plugins/Request/components/appController.php
+M plugins/Request/components/fileManagerConfig.php
+M plugins/Request/components/fileManagerRuntime.php
+A plugins/Request/components/privateJson.php
+M plugins/Request/components/safeFiles.php
+A plugins/Request/components/safeProcess.php
+M plugins/Request/components/security.php
+M plugins/Request/components/securityPolicy.php
+M plugins/Request/modules/codexAgent.html
+M plugins/Request/modules/downloadFile/function.html
+M plugins/Request/modules/includes/head.html
+M plugins/Request/modules/includes/offCanvas.html
+M plugins/Request/modules/makeTable/preloadScripts.html
+M plugins/Request/modules/medc.html
+M plugins/Request/modules/mo2.html
+M plugins/Request/modules/modalEditCode.html
+M plugins/Request/pages/buildCurl.html
+M plugins/Request/pages/demo.html
+M plugins/Request/pages/gerador.html
+M plugins/Request/pages/index.html
+M plugins/Request/router/server.php
+M plugins/Start/server/server.php
+M plugins/autoload.php
+M plugins/configInterface.json
+M pty.js
+M pty.php
+M r.php
+M run-tests.php
+M scripts/install-codex-native.sh
+M scripts/install-codex.sh
+A scripts/secure-download.sh
+M scripts/security/archive-regression.php
+A scripts/security/auth-transport-regression.cjs
+A scripts/security/autoload-regression.php
+A scripts/security/auxiliary-quotas.php
+A scripts/security/auxiliary-regression.py
+M scripts/security/bridge-auth.cjs
+A scripts/security/codex-integration.cjs
+A scripts/security/download-regression.py
+M scripts/security/fixtures/swoole-server.php
+A scripts/security/fs-broker.py
+A scripts/security/fs-regression.py
+A scripts/security/git-publication-regression.php
+M scripts/security/http-regression.php
+A scripts/security/limits-regression.cjs
+M scripts/security/lsp-integration.cjs
+A scripts/security/metadata-regression.php
+A scripts/security/parser-regression.php
+M scripts/security/php-lint.py
+A scripts/security/process-broker.py
+A scripts/security/process-regression.php
+M scripts/security/pty-integration.cjs
+A scripts/security/run-hardening-checks.py
+M scripts/security/semgrep-regression.py
+M scripts/security/swoole-integration.cjs
+A scripts/security/temporary-regression.php
+M scripts/security/thread-regression.cjs
+M scripts/security/thread-scope.cjs
+A scripts/security/tokens-regression.php
+M scripts/security/ui-regression.cjs
+M scripts/tests/install-codex-native-test.sh
+M scripts/tests/install-tmp-test.sh
+M server.php

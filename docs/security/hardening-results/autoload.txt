@@ -1,0 +1,2 @@
+
+PASS actual loader includes dependent classes once and skips symlinks/non-PHP files

@@ -1,0 +1,1 @@
+PHP syntax: 102 tracked files checked

@@ -1,4 +1,4 @@
-<script src="https://unpkg.com/@dotlottie/player-component@latest/dist/dotlottie-player.mjs" type="module"></script>
+<script src="https://unpkg.com/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs" type="module" crossorigin="anonymous" referrerpolicy="no-referrer" integrity="sha384-ypAFdIpmPhrhuVLN9fmIZaqZHGUVSzHiiplL/kPO2+gJ4Na4yRVbVt0YhyvWdbwn"></script>
 <style>
     #offcanvasExample {
         --search-panel-width: 400px;
@@ -425,7 +425,8 @@
         }
     }
 
-    function ensureSearchSocket(token) {
+    async function ensureSearchSocket(token) {
+        const socketAddress = searchSocket && searchSocket.readyState < WebSocket.CLOSING ? null : await FMAuth.socketUrl(getSearchSocketUrl(`${token}-search`));
         return new Promise((resolve, reject) => {
             if (searchSocket && [WebSocket.OPEN, WebSocket.CONNECTING].includes(searchSocket.readyState)) {
                 if (searchSocket.readyState === WebSocket.OPEN) {
@@ -436,7 +437,7 @@
                 return;
             }
 
-            searchSocket = new WebSocket(getSearchSocketUrl(`${token}-search`));
+            searchSocket = new WebSocket(socketAddress);
             searchSocket.onopen = () => resolve(searchSocket);
             searchSocket.onmessage = handleSearchSocketMessage;
             searchSocket.onerror = (error) => {

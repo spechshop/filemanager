@@ -17,7 +17,8 @@ const COLOR_CYAN = "\033[36m";
 const COLOR_RESET = "\033[0m";
 
 $projectRoot = __DIR__;
-$tokensFile = $projectRoot . '/database/tokens.lotus';
+$tokensFile = getenv('FILEMANAGER_TOKENS_FILE') ?: $projectRoot . '/database/tokens.lotus';
+require_once __DIR__ . '/plugins/Request/components/privateJson.php';
 
 function printHeader(string $title): void
 {
@@ -55,15 +56,17 @@ function prompt(string $message): string
 function loadTokens(string $file): array
 {
     if (!file_exists($file)) {
+        $GLOBALS['loadedTokenSnapshots'][$file] = hash('sha256', '');
         return [];
     }
 
     $content = file_get_contents($file);
+    $GLOBALS['loadedTokenSnapshots'][$file] = hash('sha256', $content);
     $tokens = json_decode($content, true);
 
     if (json_last_error() !== JSON_ERROR_NONE) {
         printError("Erro ao ler tokens: " . json_last_error_msg());
-        return [];
+        throw new RuntimeException('Token store is invalid; preserve it and repair offline.');
     }
 
     return $tokens ?? [];
@@ -84,18 +87,19 @@ function saveTokens(string $file, array $tokens): bool
         mkdir($dir, 0700, true);
     }
 
-    $temporary = tempnam($dir, '.tokens-');
-    if ($temporary === false) return false;
     try {
-        chmod($temporary, 0600);
-        if (file_put_contents($temporary, $json . "\n", LOCK_EX) === false || !rename($temporary, $file)) {
-            printError("Erro ao salvar arquivo");
-            return false;
-        }
+        \plugins\Request\privateJson::update($file, static function (array $current) use ($file, $tokens): array {
+            $currentBytes = is_file($file) ? file_get_contents($file) : '';
+            if (($GLOBALS['loadedTokenSnapshots'][$file] ?? null) !== hash('sha256', $currentBytes)) throw new RuntimeException('Token store changed concurrently. Reload before saving.');
+            return $tokens;
+        });
+        $GLOBALS['loadedTokenSnapshots'][$file] = hash('sha256', file_get_contents($file));
         return true;
-    } finally {
-        if (file_exists($temporary)) unlink($temporary);
+    } catch (Throwable $error) {
+        printError('Token store was not changed: ' . $error->getMessage());
+        return false;
     }
+
 }
 
 function generateToken(): string
@@ -326,6 +330,8 @@ function showStatistics(array $tokens): void
 // =============================================================================
 // PROGRAMA PRINCIPAL
 // =============================================================================
+
+if (realpath($_SERVER['SCRIPT_FILENAME'] ?? '') !== __FILE__) return;
 
 printHeader("Gerenciador de Tokens - LIPC");
 

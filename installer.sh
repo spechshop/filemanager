@@ -61,6 +61,11 @@ if [ "$IS_ROOT" -eq 1 ] && [ -n "${SUDO_USER:-}" ] && [ "$SUDO_USER" != "root" ]
     FILEMANAGER_USER="$SUDO_USER"
 fi
 
+if [ -n "${FILEMANAGER_SERVICE_USER:-}" ]; then
+    id "$FILEMANAGER_SERVICE_USER" >/dev/null 2>&1 || { err "FILEMANAGER_SERVICE_USER deve identificar uma conta existente."; exit 1; }
+    FILEMANAGER_USER="$FILEMANAGER_SERVICE_USER"
+fi
+
 # ---------------------------------------------------------------------
 # 2) Diretório de binários do usuário (fallback quando não há root)
 # ---------------------------------------------------------------------
@@ -173,39 +178,33 @@ ensure_cmd() {
 # ---------------------------------------------------------------------
 # 4) Download resiliente (curl -> wget)
 # ---------------------------------------------------------------------
-download() {
-    local url="$1"; local out="$2"
-    if command -v curl >/dev/null 2>&1; then
-        curl -k -fL --retry 3 --retry-delay 2 -o "$out" "$url" && return 0
-    fi
-    if command -v wget >/dev/null 2>&1; then
-        wget --no-check-certificate -q -t 3 -O "$out" "$url" && return 0
-    fi
-    # última tentativa: instalar curl e repetir
-    ensure_cmd curl curl >/dev/null 2>&1
-    if command -v curl >/dev/null 2>&1; then
-        curl -k -fL --retry 3 -o "$out" "$url" && return 0
-    fi
-    return 1
-}
+# shellcheck source=scripts/secure-download.sh
+source "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)/scripts/secure-download.sh" || exit 1
+download() { secure_download "$@"; }
 
 # download_github_archive <owner/repo> <branch> <destination>
 # Fallback para sistemas antigos onde o gerenciador de pacotes não consegue
 # instalar Git. Extrai em diretório temporário e só então move para o destino.
 download_github_archive() {
     local repository="$1" branch="$2" destination="$3"
-    local repository_name archive_dir archive_file extracted_dir
+    local repository_name archive_dir archive_file extracted_dir expected
 
     if ! command -v tar >/dev/null 2>&1; then
         ensure_cmd tar tar >/dev/null 2>&1 || return 1
     fi
 
+    case "$repository" in
+        spechshop/filemanager) expected="${FILEMANAGER_SOURCE_SHA256:-}" ;;
+        spechshop/libspech) expected="${FILEMANAGER_LIBSPECH_SHA256:-}" ;;
+        *) return 1 ;;
+    esac
+    [[ "$expected" =~ ^[a-fA-F0-9]{64}$ ]] || { warn "O fallback de arquivo requer SHA256 revisado para $repository."; return 1; }
     repository_name="${repository##*/}"
     archive_dir="$(mktemp -d "${TMPDIR:-/tmp}/filemanager-archive.XXXXXX" 2>/dev/null)" || return 1
     archive_file="$archive_dir/source.tar.gz"
     extracted_dir="$archive_dir/$repository_name-$branch"
 
-    if ! download "https://github.com/$repository/archive/refs/heads/$branch.tar.gz" "$archive_file" \
+    if ! download "https://github.com/$repository/archive/refs/heads/$branch.tar.gz" "$archive_file" "$expected" \
         || ! tar -xzf "$archive_file" -C "$archive_dir" \
         || [ ! -d "$extracted_dir" ] \
         || ! mv -- "$extracted_dir" "$destination"; then
@@ -228,20 +227,13 @@ esac
 
 ensure_cmd git git
 ensure_cmd screen screen
+ensure_cmd python3 python3
 # Ferramenta de download: pelo menos uma
 command -v curl >/dev/null 2>&1 || command -v wget >/dev/null 2>&1 || ensure_cmd curl curl || ensure_cmd wget wget
 
-# Killport
-if command -v killport >/dev/null 2>&1; then
-    log "Killport já instalado. Pulando."
-elif ensure_cmd curl curl; then
-    log "Instalando Killport..."
-    curl -k -sL https://bit.ly/killport | sh \
-        && ok "Killport instalado." \
-        || warn "Falha ao instalar Killport (seguindo mesmo assim)."
-else
-    warn "curl indisponível; Killport não instalado."
-fi
+# Killport is optional; installation is an operator/package-manager action.
+command -v killport >/dev/null 2>&1 || warn "Killport opcional ausente; instale por uma origem revisada."
+
 
 # npm/node básico: o runtime compatível definitivo é preparado depois do clone.
 if ! command -v npm >/dev/null 2>&1; then
@@ -265,7 +257,7 @@ else
 
     FILEMANAGER_OBTAINED=0
     if command -v git >/dev/null 2>&1; then
-        if git -c http.sslVerify=false clone --branch newterm --single-branch \
+        if env -u GIT_SSL_NO_VERIFY git -c http.sslVerify=true -c http.followRedirects=false clone --branch newterm --single-branch \
             https://github.com/spechshop/filemanager filemanager; then
             FILEMANAGER_OBTAINED=1
         else
@@ -302,36 +294,8 @@ fi
 # Atualiza apenas os scripts de runtime antes de uma reparação. Isso permite
 # que uma segunda execução do instalador corrija instalações obtidas sem Git,
 # sem sobrescrever configurações ou outros arquivos do FileManager.
-refresh_codex_installer_scripts() {
-    local refresh_dir refreshed_main refreshed_native
-    refresh_dir="$(mktemp -d "${TMPDIR:-/tmp}/filemanager-codex-scripts.XXXXXX" 2>/dev/null)" || return 1
-    refreshed_main="$refresh_dir/install-codex.sh"
-    refreshed_native="$refresh_dir/install-codex-native.sh"
-
-    if ! download "https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/scripts/install-codex.sh" "$refreshed_main" \
-        || ! download "https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/scripts/install-codex-native.sh" "$refreshed_native" \
-        || ! bash -n "$refreshed_main" "$refreshed_native"; then
-        rm -rf -- "$refresh_dir"
-        return 1
-    fi
-    mkdir -p scripts || { rm -rf -- "$refresh_dir"; return 1; }
-    if ! mv -f -- "$refreshed_native" scripts/install-codex-native.sh \
-        || ! mv -f -- "$refreshed_main" scripts/install-codex.sh; then
-        rm -rf -- "$refresh_dir"
-        return 1
-    fi
-    chmod +x scripts/install-codex.sh 2>/dev/null
-    rm -rf -- "$refresh_dir"
-    return 0
-}
-
-if [ ! -e .git ]; then
-    if refresh_codex_installer_scripts; then
-        log "Scripts do runtime Node.js atualizados para a branch newterm."
-    else
-        warn "Não foi possível atualizar os scripts do runtime; usando a cópia local."
-    fi
-fi
+# Runtime scripts are shipped with this reviewed checkout. Updates use the
+# repository/package deployment, never unsigned scripts fetched at startup.
 
 if [ -f "scripts/install-codex.sh" ]; then
     log "Preparando Node.js compatível, dependências e Codex CLI..."
@@ -360,7 +324,7 @@ else
 
     LIBSPECH_OBTAINED=0
     if command -v git >/dev/null 2>&1; then
-        if git -c http.sslVerify=false clone --branch spech --single-branch \
+        if env -u GIT_SSL_NO_VERIFY git -c http.sslVerify=true -c http.followRedirects=false clone --branch spech --single-branch \
             https://github.com/spechshop/libspech libspech; then
             LIBSPECH_OBTAINED=1
         else
@@ -403,7 +367,7 @@ fi
 
 if [ ! -f "$PCG_RUNTIME" ]; then
     log "Baixando runtime PHP/Swoole (pcg)..."
-    if download "$PHP_URL" "$PCG_RUNTIME"; then
+    if download "$PHP_URL" "$PCG_RUNTIME" "${FILEMANAGER_PHP_SHA256:-9832bcfd4d731d69a30981e2e1cc5490a908e4f99abf4cc83ae0e5df4470ee78}"; then
         ok "Runtime pcg baixado."
     else
         warn "Falha ao baixar o runtime pcg."
@@ -479,7 +443,8 @@ COMPOSER_BIN="$CURRENT_DIR/composer"
 COMPOSER_DOWNLOAD="$CURRENT_DIR/.composer-download.$$"
 COMPOSER_READY=0
 log "Baixando o Composer local..."
-if download "https://getcomposer.org/composer-stable.phar" "$COMPOSER_DOWNLOAD" \
+if download "https://getcomposer.org/download/2.10.3/composer.phar" "$COMPOSER_DOWNLOAD" \
+    "7a2d379d5b8ffdaa028580ef26494c36d2feef4b178d3dd1473a4dbc5e17c8d6" \
     && "$PHP_BIN" "$COMPOSER_DOWNLOAD" --version >/dev/null 2>&1 \
     && chmod +x "$COMPOSER_DOWNLOAD" 2>/dev/null \
     && mv -f -- "$COMPOSER_DOWNLOAD" "$COMPOSER_BIN"; then
@@ -492,10 +457,8 @@ fi
 
 if [ "$COMPOSER_READY" -eq 1 ]; then
     log "Instalando dependências PHP (Composer)..."
-    if ! "$PHP_BIN" "$COMPOSER_BIN" install --no-interaction; then
-        warn "composer install falhou. Tentando com --ignore-platform-reqs..."
-        "$PHP_BIN" "$COMPOSER_BIN" install --no-interaction --ignore-platform-reqs \
-            || warn "composer install falhou mesmo com fallbacks."
+    if ! "$PHP_BIN" "$COMPOSER_BIN" install --no-interaction --no-plugins --no-scripts; then
+        warn "composer install falhou; corrija os requisitos da plataforma antes de continuar."
     else
         ok "Dependências PHP instaladas."
     fi
@@ -590,6 +553,10 @@ configure_drop_caches && FREE_RAM_OK=1
 # ---------------------------------------------------------------------
 # 12) Inicialização automática no boot (com cascata de fallbacks)
 # ---------------------------------------------------------------------
+if [ "$FILEMANAGER_USER" = root ] && [ "${FILEMANAGER_ALLOW_ROOT_SERVICE:-0}" != 1 ]; then
+    err "Serviço root não será iniciado automaticamente. Defina FILEMANAGER_SERVICE_USER para uma conta existente ou FILEMANAGER_ALLOW_ROOT_SERVICE=1 após revisão administrativa."
+    exit 1
+fi
 log "Configurando inicialização automática..."
 CURRENT_DIR="$(pwd)"
 RUNTIME_ADDRESS_FILE="$CURRENT_DIR/.runtime/server-address"

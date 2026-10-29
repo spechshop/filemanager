@@ -16,11 +16,13 @@ use Swoole\Http\Response;
  *
  * Resposta: { success, formatter, formatted } ou { success:false, message }.
  */
+require_once __DIR__ . '/../components/safeProcess.php';
+
 class formatCode
 {
     public static function api(Request $request, Response $response): ?bool
     {
-        if (!security::authorize($request, $response)) return true;
+        if (!security::authorize($request, $response, __CLASS__)) return true;
 
         $response->header('Content-Type', 'application/json');
         $data     = json_decode($request->rawContent(), true) ?: [];
@@ -28,7 +30,7 @@ class formatCode
         $nameFile = $data['nameFile'] ?? '';
 
         if ($code === '' && $nameFile !== '' && is_file($nameFile)) {
-            $code = (string) file_get_contents($nameFile);
+            $code = (string) safeFiles::read($nameFile, securityPolicy::requestToken($request));
         }
         if ($code === '') {
             return $response->end(json_encode([
@@ -40,7 +42,7 @@ class formatCode
         // 1) php-cs-fixer (ferramenta recomendada), se instalada.
         $fixer = self::findPhpCsFixer();
         if ($fixer !== null) {
-            $formatted = self::runPhpCsFixer($fixer, $code);
+            $formatted = self::runPhpCsFixer($fixer, $code, securityPolicy::requestToken($request));
             if ($formatted !== null && $formatted !== '') {
                 return $response->end(json_encode([
                     'success'   => true,
@@ -104,17 +106,17 @@ class formatCode
     /**
      * Roda o php-cs-fixer sobre um arquivo temporário e devolve o conteúdo formatado.
      */
-    private static function runPhpCsFixer(string $fixer, string $code): ?string
+    private static function runPhpCsFixer(string $fixer, string $code, string $token): ?string
     {
-        $tmp = tempnam(sys_get_temp_dir(), 'csfix_') . '.php';
+        $tmp = securityPolicy::temporary('csfix_', '.php');
         file_put_contents($tmp, $code);
 
-        $cmd = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($fixer) . ' fix ' . escapeshellarg($tmp)
-            . ' --using-cache=no --quiet --rules=@PSR12 2>/dev/null';
-        @shell_exec($cmd);
-
-        $out = @file_get_contents($tmp);
-        @unlink($tmp);
+        try {
+            if (!securityPolicy::validToken($token)) throw new \DomainException('revoked');
+            safeProcess::run([PHP_BINARY, $fixer, 'fix', $tmp, '--using-cache=no', '--quiet', '--rules=@PSR12'], $token);
+            if (!securityPolicy::validToken($token)) throw new \DomainException('revoked');
+            $out = @file_get_contents($tmp);
+        } finally { @unlink($tmp); }
 
         return $out !== false ? $out : null;
     }

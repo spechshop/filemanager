@@ -262,7 +262,7 @@ case_classifier_signatures() {
 case_micromamba_certificate_retry() {
     source "$HELPER"
     quiet_callbacks
-    local fixture calls first_call second_call
+    local fixture calls
     fixture="$(new_fixture)" || return 1
     calls="$fixture/micromamba-calls"
     RUNTIME_DIR="$fixture/project/.runtime"
@@ -309,19 +309,12 @@ case_micromamba_certificate_retry() {
         TOOLCHAIN_MAKE="$TOOLCHAIN_BIN/make"
     }
 
-    prepare_native_toolchain || return 1
-    assert_eq "$(wc -l < "$calls")" 2 || return 1
-    first_call="$(sed -n '1p' "$calls")"
-    second_call="$(sed -n '2p' "$calls")"
-    case " $first_call " in *" create "*) ;; *) return 1 ;; esac
-    case " $second_call " in *" create "*) ;; *) return 1 ;; esac
-    case " $first_call " in *" --no-rc "*) ;; *) return 1 ;; esac
-    case " $second_call " in *" --no-rc "*) ;; *) return 1 ;; esac
-    case " $first_call " in *" --ssl-verify "*) return 1 ;; esac
-    case " $first_call " in *" --override-channels --channel conda-forge --strict-channel-priority "*) ;; *) return 1 ;; esac
-    assert_contains "$calls" "python=3.12 make gcc_linux-64=14 gxx_linux-64=14 sysroot_linux-64=2.17" || return 1
-    assert_contains "$calls" "--ssl-verify false" || return 1
+    if prepare_native_toolchain; then return 1; fi
+    assert_eq "$(wc -l < "$calls")" 1 || return 1
+    ! grep -Fq -- '--ssl-verify false' "$calls" || return 1
+    assert_contains "$calls" "--ssl-verify true" || return 1
     assert_contains "$MICROMAMBA_TOOLCHAIN_LOG" "unable to get local issuer certificate"
+
 }
 
 case_existing_incomplete_toolchain_uses_install() {
@@ -404,7 +397,7 @@ run_case "C/D: GCC antigo aciona fallback local sem root" case_old_compiler_fall
 run_case "E: toolchain existente e reutilizado" case_existing_toolchain_reused
 run_case "F: erro de rede nao aciona fallback" case_network_failure_does_not_fallback
 run_case "assinaturas do classificador" case_classifier_signatures
-run_case "erro de certificado repete micromamba com TLS excepcional" case_micromamba_certificate_retry
+run_case "erro de certificado e rejeitado sem downgrade TLS" case_micromamba_certificate_retry
 run_case "ambiente incompleto existente usa micromamba install" case_existing_incomplete_toolchain_uses_install
 run_case "mapeamento Linux aarch64" case_arm64_package_mapping
 run_case "G: validacao real do node-pty" case_node_pty_validation

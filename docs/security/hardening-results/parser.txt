@@ -1,0 +1,2 @@
+{"event":"access_denied","channel":"http","time":1793243686}
+PASS actual phpParser handles independent authorized paths and links, and denies paths outside both roots

@@ -38,17 +38,20 @@ namespace {
     chdir($tmp);
     putenv('FILEMANAGER_ALLOWED_ROOTS=' . json_encode([$tmp . '/files']));
     putenv('FILEMANAGER_TOKENS_FILE=' . $tmp . '/tokens.json');
+    putenv('FILEMANAGER_DATA_DIR=' . $tmp);
+    putenv('FILEMANAGER_CONFIG_FILE=' . $tmp . '/config.json');
+    file_put_contents($tmp . '/config.json', json_encode(['fileManager' => ['autoRestart' => true]]));
     putenv('FILEMANAGER_ORIGIN=http://localhost');
     $valid = str_repeat('a', 32);
     $other = str_repeat('b', 32);
     $expired = str_repeat('c', 32);
-    $tokens = [$valid => ['expire' => time() + 3600], $other => ['expire' => time() + 3600], $expired => ['expire' => time() - 1]];
+    $tokens = [$valid => ['expire' => time() + 3600, 'allowedRoots' => [$tmp . '/files'], 'terminal' => true, 'admin' => true], $other => ['expire' => time() + 3600, 'allowedRoots' => [$tmp . '/files']], $expired => ['expire' => time() - 1]];
     file_put_contents($tmp . '/tokens.json', json_encode($tokens));
     $GLOBALS['dataKeys'] = $tokens;
     require $source . '/plugins/Start/server/cache.php';
     require $source . '/plugins/Request/components/appController.php';
     require $source . '/plugins/Request/components/security.php';
-    foreach (['securityPolicy', 'safeFiles'] as $component) {
+    foreach (['securityPolicy', 'safeFiles', 'fileManagerConfig'] as $component) {
         if (is_file($source . '/plugins/Request/components/' . $component . '.php')) require $source . '/plugins/Request/components/' . $component . '.php';
     }
     require $source . '/plugins/Database/call/call.php';
@@ -66,16 +69,17 @@ namespace {
         $count++; if (!$ok) $failed++;
         echo ($ok ? 'PASS ' : 'FAIL ') . $name . "\n";
     }
-    function invoke(string $handler, array $query = [], array $data = [], array $headers = [], array $files = []): \Swoole\Http\Response {
+    function invoke(string $handler, array $query = [], array $data = [], array $headers = [], array $files = [], ?string $route = null, bool $dispatch = false, string $method = 'GET'): \Swoole\Http\Response {
         $request = new \Swoole\Http\Request(); $response = new \Swoole\Http\Response();
         $request->get = $query; $request->body = json_encode($data); $request->files = $files;
-        if ($handler === 'deleteMultipleFiles') $request->post = $data;
+        if (in_array($handler, ['deleteMultipleFiles', 'fileManagerSettings'], true)) $request->post = $data;
+        $request->server['request_method'] = $method;
         $request->header = array_merge($request->header, $headers);
-        $request->server['path_info'] = '/' . $handler;
+        $request->server['path_info'] = $route ?? '/' . $handler;
         $request->server['request_uri'] = '/' . $handler;
         $GLOBALS['effects'] = [];
         ob_start();
-        try { ('\\plugins\\Request\\' . $handler)::api($request, $response); }
+        try { if ($dispatch) \plugins\Request\appController::call($request, $response, $request->server['path_info']); else ('\\plugins\\Request\\' . $handler)::api($request, $response); }
         catch (\DomainException $e) { \plugins\Request\security::deny($response); }
         catch (\Throwable $e) { $response->code = 599; $response->body = get_class($e); }
         finally { ob_end_clean(); }
@@ -98,6 +102,8 @@ namespace {
             check($r->code === 403 && !$GLOBALS['effects'] && !file_exists($tmp . '/files/INJECTED'), 'Git transport/injection denied without launching process');
         }
         // Every discoverable API must deny directly, as well as through the dispatcher.
+        check(\plugins\Request\securityPolicy::expiration((time() - 60) * 1000) < time(), 'legacy millisecond expiration is normalized consistently');
+        check(\plugins\Request\securityPolicy::expiration([time() + 3600]) === 0, 'non-scalar expiration fails closed');
         $apis = 0;
         foreach (glob($source . '/plugins/Request/apps/*.php') as $handlerFile) {
             $name = basename($handlerFile, '.php'); $class = '\\plugins\\Request\\' . $name;
@@ -117,11 +123,25 @@ namespace {
         mkdir($tmp . '/files/a'); mkdir($tmp . '/files/b');
         file_put_contents($tmp . '/files/b/secret', 'TENANT-B');
         $tokens[$valid]['allowedRoots'] = [$tmp . '/files/a'];
+        unset($tokens[$valid]['admin'], $tokens[$valid]['terminal']);
         file_put_contents($tmp . '/tokens.json', json_encode($tokens));
         $r = invoke('downloadFile', ['tokenBrowser' => $valid, 'path' => $tmp . '/files/b/secret']);
         check($r->code === 403 && !str_contains($r->body, 'TENANT-B'), 'scoped token cannot read another workspace');
         $r = invoke('freeRam', ['tokenBrowser' => $valid]);
         check($r->code === 403 && !$GLOBALS['effects'], 'scoped file credential cannot execute system commands');
+        foreach (\plugins\Request\securityPolicy::OPERATIONS as $operation => $capability) {
+            if ($capability !== 'admin') continue;
+            foreach (['/' . $operation, '/' . strtoupper($operation), '//' . strtolower($operation) . '///'] as $variant) {
+                $r = invoke($operation, ['tokenBrowser' => $valid], [], [], [], $variant, true);
+                check($r->code === 403 && !$GLOBALS['effects'], 'administrative dispatcher denial without effects: ' . $variant);
+            }
+            $r = invoke($operation, ['tokenBrowser' => $valid], [], [], [], '/checkToken');
+            check($r->code === 403 && !$GLOBALS['effects'], 'direct handler uses its own policy: ' . $operation);
+        }
+        foreach (['/security', '/appController', '/securityPolicy', '/file/ManagerSystem', '/%66reeRam', '/freeRam/extra'] as $variant) {
+            $r = invoke('freeRam', ['tokenBrowser' => $valid], [], [], [], $variant, true);
+            check($r->code === 404 && !$GLOBALS['effects'], 'internal or malformed route is not dispatchable: ' . $variant);
+        }
         $reads = 0;
         $GLOBALS['securityReadHook'] = function ($file) use (&$reads, &$tokens, $valid, $tmp) {
             if ($file !== $tmp . '/tokens.json' || ++$reads !== 2) return;
@@ -132,8 +152,7 @@ namespace {
         $r = invoke('newFile', ['tokenBrowser' => $valid], ['path' => $tmp . '/files/b', 'name' => 'after-revoke', 'type' => 'file', 'content' => 'evil']);
         check(in_array($r->code, [401, 403], true) && !file_exists($tmp . '/files/b/after-revoke') && !$GLOBALS['effects'], 'revocation during policy IO cannot fall back to global filesystem scope');
         unset($GLOBALS['securityReadHook']);
-        $tokens[$valid] = ['expire' => time() + 3600];
-        unset($tokens[$valid]['allowedRoots']); file_put_contents($tmp . '/tokens.json', json_encode($tokens));
+        $tokens[$valid] = ['expire' => time() + 3600, 'allowedRoots' => [$tmp . '/files'], 'terminal' => true]; file_put_contents($tmp . '/tokens.json', json_encode($tokens));
         }
         file_put_contents($tmp . '/outside/private', 'PRIVATE-SENTINEL');
         foreach ([$tmp . '/outside/private', $tmp . '/files/../outside/private', 'php://filter/resource=' . $tmp . '/outside/private'] as $path) {
@@ -172,11 +191,83 @@ namespace {
         symlink($tmp . '/outside', $tmp . '/files/recursive/link');
         $r = invoke('deleteFile', ['tokenBrowser' => $valid, 'path' => $tmp . '/files/recursive']);
         check($r->code === 403 && file_get_contents($tmp . '/files/recursive/first') === 'RECURSIVE' && is_link($tmp . '/files/recursive/link'), 'recursive symlink preflight leaves entire directory intact');
+        symlink($tmp . '/files/keep', $tmp . '/files/legitimate-file-link');
+        $r = invoke('deleteFile', ['tokenBrowser' => $valid, 'path' => $tmp . '/files/legitimate-file-link']);
+        check($r->code === 200 && !is_link($tmp . '/files/legitimate-file-link') && file_get_contents($tmp . '/files/keep') === 'sentinel', 'deleting legitimate file symlink removes the link and preserves its target');
+        symlink($tmp . '/files/a', $tmp . '/files/legitimate-directory-link');
+        $r = invoke('deleteFile', ['tokenBrowser' => $valid, 'path' => $tmp . '/files/legitimate-directory-link']);
+        check($r->code === 200 && !is_link($tmp . '/files/legitimate-directory-link') && is_dir($tmp . '/files/a'), 'deleting legitimate directory symlink preserves target directory');
+        symlink($tmp . '/files', $tmp . '/files/root-link');
+        $r = invoke('deleteFile', ['tokenBrowser' => $valid, 'path' => $tmp . '/files/root-link']);
+        check($r->code === 200 && !is_link($tmp . '/files/root-link') && file_get_contents($tmp . '/files/keep') === 'sentinel', 'deleting a link to an authorized root preserves the root');
+        symlink($tmp . '/outside/private', $tmp . '/files/escaping-link-entry');
+        $r = invoke('deleteFile', ['tokenBrowser' => $valid, 'path' => $tmp . '/files/escaping-link-entry']);
+        check($r->code === 200 && !is_link($tmp . '/files/escaping-link-entry') && file_get_contents($tmp . '/outside/private') === 'PRIVATE-SENTINEL', 'unlinking an escaping link is safe and never accesses or deletes its target');
+        symlink($tmp . '/files/keep', $tmp . '/files/legitimate-trash-link');
+        $r = invoke('deleteMultipleFiles', ['tokenBrowser' => $valid, 'path' => $tmp . '/files'], ['files' => [$tmp . '/files/legitimate-trash-link']]);
+        check($r->code === 200 && !is_link($tmp . '/files/legitimate-trash-link') && file_get_contents($tmp . '/files/keep') === 'sentinel', 'trash moves a legitimate symlink without moving its referent');
         $malicious = "x';touch INJECTED;# $(touch INJECTED2).txt";
         $r = invoke('newFile', ['tokenBrowser' => $valid], ['path' => $tmp . '/files', 'name' => $malicious, 'type' => 'file', 'content' => '<script>alert(1)</script>']);
         check($r->code === 200 && file_exists($tmp . '/files/' . $malicious) && !file_exists('INJECTED') && !file_exists('INJECTED2') && !$GLOBALS['effects'], 'shell metacharacters are literal filename data');
         $r = invoke('deleteFile', ['tokenBrowser' => $valid, 'path' => $tmp . '/files/' . $malicious]);
         check($r->code === 200 && !file_exists($tmp . '/files/' . $malicious) && !file_exists('INJECTED') && !$GLOBALS['effects'], 'authorized deletion uses filesystem without shell');
+        $tokens[$valid]['admin'] = true; file_put_contents($tmp . '/tokens.json', json_encode($tokens));
+        foreach (['query', 'post', 'bearer'] as $method) {
+            $query = $method === 'query' ? ['tokenBrowser' => $valid] : [];
+            $post = ['settingGroup' => 'codex', 'codexModel' => 'fixture-model', 'codexReasoningEffort' => 'medium'];
+            if ($method === 'post') $post['tokenBrowser'] = $valid;
+            $headers = $method === 'bearer' ? ['authorization' => 'bearer ' . $valid] : [];
+            $r = invoke('fileManagerSettings', $query, $post, $headers, [], null, false, 'POST');
+            $saved = json_decode($r->body, true);
+            check($r->code === 200 && ($saved['settings']['codex']['model'] ?? '') === 'fixture-model', 'settings write uses central identity: ' . $method);
+            $r = invoke('fileManagerSettings', $query, $method === 'post' ? ['tokenBrowser' => $valid] : [], $headers);
+            $saved = json_decode($r->body, true);
+            check($r->code === 200 && ($saved['settings']['codex']['model'] ?? '') === 'fixture-model', 'settings read uses central identity: ' . $method);
+        }
+        foreach (['system' => '/config.json', 'codex' => '/codex-preferences.lotus'] as $group => $suffix) {
+            $beforeSettings = file_get_contents($tmp . $suffix);
+            $GLOBALS['securityReadHook'] = static function ($file) use ($tmp, $suffix, &$tokens, $valid) {
+                if ($file !== $tmp . $suffix) return;
+                $tokens[$valid]['admin'] = false;
+                file_put_contents($tmp . '/tokens.json', json_encode($tokens));
+                unset($GLOBALS['securityReadHook']);
+            };
+            $r = invoke('fileManagerSettings', [], [
+                'settingGroup' => $group, 'autoRestart' => 'false', 'ptyBackend' => 'php',
+                'codexModel' => 'after-revocation', 'codexReasoningEffort' => 'high',
+            ], ['authorization' => 'Bearer ' . $valid], [], null, false, 'POST');
+            unset($GLOBALS['securityReadHook']);
+            check($r->code === 403 && file_get_contents($tmp . $suffix) === $beforeSettings,
+                'revocation during settings IO prevents publication: ' . $group);
+            $tokens[$valid]['admin'] = true;
+            file_put_contents($tmp . '/tokens.json', json_encode($tokens));
+        }
+        $fileOnly = 'legacy-files-only';
+        $tokens[$fileOnly] = ['expire' => time() + 3600, 'terminal' => false]; file_put_contents($tmp . '/tokens.json', json_encode($tokens));
+        $r = invoke('downloadFile', ['tokenBrowser' => $fileOnly, 'path' => $tmp . '/outside/private']);
+        check($r->code === 403 && !str_contains($r->body, 'PRIVATE-SENTINEL'), 'restoring administrator access does not widen legacy file-only tokens');
+        $admin = 'full-fixture-admin';
+        $tokens[$admin] = ['expire' => time() + 3600]; file_put_contents($tmp . '/tokens.json', json_encode($tokens));
+        // Explicit path outside the initial/global directory remains administratively accessible.
+        $r = invoke('downloadFile', ['path' => $tmp . '/outside/private'], [], ['authorization' => 'Bearer ' . $admin]);
+        check($r->code === 200 && $r->body === 'PRIVATE-SENTINEL', 'full administrator reads absolute path outside initial directory');
+        $r = invoke('treeDetails', ['dir' => $tmp . '/outside'], [], ['authorization' => 'Bearer ' . $admin]);
+        check($r->code === 200 && in_array('private', json_decode($r->body, true), true), 'full administrator browses independent external directory');
+        $r = invoke('treeDetails', ['dir' => '/'], [], ['authorization' => 'Bearer ' . $admin]);
+        check($r->code === 200 && $r->headers['x-filemanager-root'] === '/', 'full administrator can navigate real filesystem root');
+        $r = invoke('getFile', ['path' => $tmp . '/outside/private'], [], ['authorization' => 'Bearer ' . $admin]);
+        check($r->code === 200 && (json_decode($r->body, true)['information'] ?? '') === 'PRIVATE-SENTINEL', 'editor reads an authorized external absolute path');
+        $r = invoke('newFile', [], ['path' => $tmp . '/outside', 'name' => 'admin-created', 'type' => 'file', 'content' => 'ADMIN-WRITE'], ['authorization' => 'Bearer ' . $admin]);
+        check($r->code === 200 && file_get_contents($tmp . '/outside/admin-created') === 'ADMIN-WRITE', 'full administrator creates outside initial directory');
+        $r = invoke('renameItem', ['path' => $tmp . '/outside/admin-created', 'newName' => $tmp . '/outside/admin-renamed'], [], ['authorization' => 'Bearer ' . $admin]);
+        check($r->code === 200 && !file_exists($tmp . '/outside/admin-created') && file_get_contents($tmp . '/outside/admin-renamed') === 'ADMIN-WRITE', 'full administrator renames outside initial directory');
+        $tokens[$valid]['allowedRoots'] = [$tmp . '/files/a', $tmp . '/outside']; file_put_contents($tmp . '/tokens.json', json_encode($tokens));
+        symlink($tmp . '/outside', $tmp . '/files/a/authorized-link');
+        $r = invoke('downloadFile', ['tokenBrowser' => $valid, 'path' => $tmp . '/files/a/authorized-link/private']);
+        check($r->code === 200 && $r->body === 'PRIVATE-SENTINEL', 'scoped user follows legitimate link to second independent authorized root');
+        $r = invoke('downloadFile', ['tokenBrowser' => $valid, 'path' => $tmp . '/files/b/secret']);
+        check($r->code === 403 && !str_contains($r->body, 'TENANT-B'), 'multiple-root user remains isolated from other directories');
+        $tokens[$valid]['allowedRoots'] = [$tmp . '/files']; file_put_contents($tmp . '/tokens.json', json_encode($tokens));
         $tokens[$valid]['revoked'] = true; file_put_contents($tmp . '/tokens.json', json_encode($tokens));
         $r = invoke('deleteFile', ['tokenBrowser' => $valid, 'path' => $tmp . '/files/keep']);
         check($r->code === 401 && file_exists($tmp . '/files/keep') && !$GLOBALS['effects'], 'revocation after successful use is observed immediately');

@@ -10,12 +10,12 @@ class searchInFile
 {
     public static function api(Request $request, Response $response)
     {
-        if (!security::authorize($request, $response)) return true;
+        if (!security::authorize($request, $response, __CLASS__)) return true;
 
         $response->header("Content-Type", "application/json");
 
         $search = trim($request->post["search"] ?? "");
-        $currentPath = $request->post["path"] ?? securityPolicy::roots(securityPolicy::requestToken($request))[0];
+        $currentPath = $request->post["path"] ?? securityPolicy::initialPath(securityPolicy::requestToken($request));
         $limit = (int) ($request->post["limit"] ?? 1000);
 
         if (!$search) {
@@ -31,11 +31,11 @@ class searchInFile
         $path = is_file($currentPath) ? dirname($currentPath) : $currentPath;
         $path = rtrim(str_replace("//", "/", $path), "/");
 
-        $foundFiles = self::searchString($path, $search, $limit);
+        $foundFiles = self::searchString($path, $search, max(1, min(10000, $limit)), securityPolicy::requestToken($request));
         $results = [];
 
         foreach ($foundFiles as $filePath) {
-            $sizeKB = round(filesize($filePath) / 1024, 2) . " KB";
+            $sizeKB = "";
             $results[] = $filePath . " " . $sizeKB;
         }
 
@@ -47,101 +47,32 @@ class searchInFile
         );
     }
 
-    public static function searchString(string $local, string $string, int $limit, array &$found = []): array
+    public static function searchString(string $local, string $string, int $limit, string $owner, array &$found = [], array $seen = []): array
     {
-        if (!file_exists($local) || count($found) >= $limit) {
-            return $found;
+        $real = securityPolicy::path($local, $owner);
+        if (isset($seen[$real]) || count($found) >= $limit) return $found;
+        $seen[$real] = true;
+        foreach (safeFiles::listing($real, $owner) as $entry) {
+            if (count($found) >= $limit) break;
+            if ($entry['directory']) self::searchString($entry['path'], $string, $limit, $owner, $found, $seen);
+            elseif (self::fileContainsString($entry['path'], $string, $owner)) $found[] = $entry['path'];
         }
-
-        if (is_file($local)) {
-            if (self::fileContainsString($local, $string)) {
-                $found[] = $local;
-            }
-            return $found;
-        }
-
-        if (!is_dir($local)) {
-            return $found;
-        }
-
-        try {
-            $iterator = new \RecursiveIteratorIterator(
-                new \RecursiveDirectoryIterator(
-                    $local,
-                    \FilesystemIterator::SKIP_DOTS
-                ),
-                \RecursiveIteratorIterator::SELF_FIRST
-            );
-        } catch (\UnexpectedValueException $e) {
-            return $found;
-        }
-
-        $processed = 0;
-        foreach ($iterator as $item) {
-            if (count($found) >= $limit) {
-                return $found;
-            }
-
-            if ($item->isLink() || !$item->isFile()) {
-                continue;
-            }
-
-            if (self::fileContainsString($item->getPathname(), $string)) {
-                $found[] = $item->getPathname();
-            }
-
-            $processed++;
-            if ($processed % 50 === 0 && function_exists('gc_collect_cycles')) {
-                gc_collect_cycles();
-            }
-        }
-
         return $found;
     }
 
-    public static function fileContainsString(string $filePath, string $needle): bool
+    public static function fileContainsString(string $filePath, string $needle, string $owner): bool
     {
-        $needle = trim($needle);
-        if ($needle === '') {
-            return false;
-        }
-
-        $handle = @fopen($filePath, 'rb');
-        if ($handle === false) {
-            return false;
-        }
-
-        $needleLength = strlen($needle);
-        $chunkSize = self::getSearchChunkSize();
-        $tail = '';
-
-        while (!feof($handle)) {
-            $chunk = fread($handle, $chunkSize);
-            if ($chunk === false) {
-                break;
+        $operation = safeFiles::reader($filePath, $owner);
+        $tail = ''; $found = false;
+        try {
+            while (!feof($operation['stream'])) {
+                $chunk = fread($operation['stream'], self::getSearchChunkSize());
+                if ($chunk === false || $chunk === '') break;
+                if (stripos($tail . $chunk, $needle) !== false) { $found = true; break; }
+                $tail = strlen($needle) > 1 ? substr($tail . $chunk, -(strlen($needle) - 1)) : '';
             }
-
-            $buffer = $tail . $chunk;
-            if (stripos($buffer, $needle) !== false) {
-                fclose($handle);
-                return true;
-            }
-
-            if ($needleLength > 1) {
-                $tail = substr($buffer, -($needleLength - 1));
-            } else {
-                $tail = '';
-            }
-
-            unset($chunk, $buffer);
-
-            if (function_exists('gc_collect_cycles')) {
-                gc_collect_cycles();
-            }
-        }
-
-        fclose($handle);
-        return false;
+        } finally { safeFiles::close($operation, $found); }
+        return $found;
     }
 
     public static function getSearchChunkSize(): int

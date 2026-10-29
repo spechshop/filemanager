@@ -1,12 +1,13 @@
 "use strict";
 const bridgeAuth = require('./scripts/security/bridge-auth.cjs');
 
+const { AsyncLocalStorage } = require('node:async_hooks');
+const actionContext = new AsyncLocalStorage();
 const { spawn } = require("node:child_process");
 const fs = require("node:fs");
 const http = require("node:http");
 const os = require("node:os");
 const path = require("node:path");
-const readline = require("node:readline");
 const { WebSocketServer, WebSocket } = require("ws");
 
 const ROOT = fs.realpathSync(__dirname);
@@ -20,8 +21,8 @@ if (fs.existsSync(ENV_FILE)) {
 
 const HOST = "127.0.0.1";
 const PORT = Number.parseInt(process.env.CODEX_AGENT_PORT || "3091", 10);
-const FILES_ROOT = fs.realpathSync(path.join(ROOT, "files"));
-const MAX_MESSAGE_BYTES = 128 * 1024;
+const FILES_ROOT = fs.realpathSync(process.env.FILEMANAGER_INITIAL_DIRECTORY || path.join(ROOT, "files"));
+const MAX_MESSAGE_BYTES = bridgeAuth.limit('WS_MESSAGE_BYTES', 131072);
 const MAX_PROMPT_CHARS = 64 * 1024;
 const REQUEST_TIMEOUT_MS = 30_000;
 const LOGIN_TIMEOUT_MS = 30_000;
@@ -49,10 +50,12 @@ const clients = new Set();
 const pendingRpc = new Map();
 const pendingServerRequests = new Map();
 const ThreadScope = require('./scripts/security/thread-scope.cjs');
-const threadScope = new ThreadScope(path.join(ROOT, '.runtime', 'codex-thread-owners.json'));
+const threadScope = new ThreadScope(path.join(process.env.FILEMANAGER_DATA_DIR || path.join(ROOT, '.runtime'), 'codex-thread-owners.json'));
 const threadOwners = new Map();
 const threadWorkspaces = new Map();
 const activeTurns = new Map();
+const turnContexts = new Map();
+const threadSessions = new Map();
 const threadTokenUsage = new Map();
 
 function redact(value) {
@@ -103,6 +106,7 @@ function baseCodexEnvironment(managedPaths) {
     // --with-access-token`. Leaving the raw variable in app-server's environment
     // can override a healthy cached ChatGPT session with a revoked token.
     delete env.CODEX_ACCESS_TOKEN;
+    delete env.FILEMANAGER_BRIDGE_SECRET;
     return env;
 }
 
@@ -193,8 +197,8 @@ function resolveWorkspace(value) {
         relatives.push(relative.slice("files/".length));
     }
 
-    const candidates = relatives.map((item) => path.resolve(FILES_ROOT, item || "."));
-    if (relative && relative !== "files" && !relative.startsWith("files/")) {
+    const candidates = path.isAbsolute(normalized) ? [path.resolve(normalized)] : relatives.map((item) => path.resolve(FILES_ROOT, item || "."));
+    if (!path.isAbsolute(normalized) && relative && relative !== "files" && !relative.startsWith("files/")) {
         candidates.push(path.resolve(ROOT, relative));
     }
     if (path.isAbsolute(normalized)) candidates.push(path.resolve(normalized));
@@ -263,8 +267,8 @@ function publicPayload(value) {
 }
 
 function sendClient(client, payload) {
-    if (client.readyState !== WebSocket.OPEN || !bridgeAuth.valid(client.authSession)) return;
-    client.send(JSON.stringify(publicPayload(payload)));
+    if (client.readyState !== WebSocket.OPEN || !bridgeAuth.valid(client.authSession, 'admin')) return;
+    bridgeAuth.send(client, JSON.stringify(publicPayload(payload)));
 }
 
 function broadcastStatus(status, message) {
@@ -277,18 +281,22 @@ function sendCodex(message) {
     if (!codexProcess || !codexProcess.stdin.writable) {
         throw new Error("Codex app-server não está disponível.");
     }
+    if (codexProcess.stdin.writableLength > bridgeAuth.limit('CODEX_BUFFER_BYTES', 4194304)) throw new Error('Codex input backpressure');
     codexProcess.stdin.write(`${JSON.stringify(message)}\n`);
 }
 
 function rpc(method, params = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
     if (!codexProcess) return Promise.reject(new Error("Codex app-server não está disponível."));
+    if (pendingRpc.size >= bridgeAuth.limit('CODEX_PENDING_RPCS', 128)) return Promise.reject(new Error('Codex RPC quota exceeded'));
+    const client = actionContext.getStore();
+    if (client) assertClient(client);
     const id = nextRpcId++;
     return new Promise((resolve, reject) => {
         const timer = setTimeout(() => {
             pendingRpc.delete(id);
             reject(new Error(`Tempo limite excedido em ${method}.`));
         }, timeoutMs);
-        pendingRpc.set(id, { method, resolve, reject, timer });
+        pendingRpc.set(id, { method, params, resolve, reject, timer, client });
         try {
             sendCodex({ method, id, params });
         } catch (error) {
@@ -296,7 +304,7 @@ function rpc(method, params = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
             pendingRpc.delete(id);
             reject(error);
         }
-    });
+    }).then(result => { if (client) assertClient(client); return result; });
 }
 
 function notification(method, params = {}) {
@@ -341,6 +349,8 @@ function rememberThread(client, thread, workspace) {
     threadScope.require(threadId, client.authSession);
     threadOwners.get(threadId).add(client);
     threadWorkspaces.set(threadId, workspace);
+    threadSessions.set(threadId, client.authSession);
+    if (turnContexts.has(threadId)) turnContexts.get(threadId).detachedAt = null;
     const active = Array.isArray(thread.turns)
         ? thread.turns.find((turn) => turn.status === "inProgress")
         : null;
@@ -423,6 +433,12 @@ function handleCodexMessage(message) {
         if (!pending) return;
         pendingRpc.delete(message.id);
         clearTimeout(pending.timer);
+        if (pending.cancelled) {
+            if (pending.method === 'turn/start' && message.result?.turn?.id) {
+                rpc('turn/interrupt', {threadId: pending.params.threadId, turnId: message.result.turn.id}).catch(() => {});
+            }
+            return;
+        }
         if (message.error) {
             const error = new Error(message.error.message || `Falha em ${pending.method}.`);
             error.code = message.error.code;
@@ -485,6 +501,7 @@ function handleCodexMessage(message) {
         activeTurns.set(threadId, message.params.turn.id);
     }
     if (message.method === "turn/completed" && threadId) {
+        turnContexts.get(threadId)?.release(); turnContexts.delete(threadId);
         activeTurns.delete(threadId);
     }
     if (message.method === "thread/tokenUsage/updated" && threadId && message.params?.tokenUsage) {
@@ -568,12 +585,18 @@ async function startCodex() {
     codexStarting = false;
 
     const current = codexProcess;
-    const lines = readline.createInterface({ input: current.stdout });
-    lines.on("line", (line) => {
-        try {
-            handleCodexMessage(JSON.parse(line));
-        } catch (error) {
-            log(`Mensagem inválida do app-server: ${error.message}`);
+    let outputBuffer = '';
+    current.stdout.setEncoding('utf8');
+    current.stdout.on('data', chunk => {
+        outputBuffer += chunk;
+        if (Buffer.byteLength(outputBuffer) > bridgeAuth.limit('CODEX_BUFFER_BYTES', 8388608)) {
+            log('Codex output buffer exceeded'); current.kill('SIGTERM'); return;
+        }
+        let newline;
+        while ((newline = outputBuffer.indexOf('\n')) >= 0) {
+            const line = outputBuffer.slice(0, newline); outputBuffer = outputBuffer.slice(newline + 1);
+            try { handleCodexMessage(JSON.parse(line)); }
+            catch { log('Invalid app-server message'); }
         }
     });
     current.stderr.on("data", (chunk) => {
@@ -704,7 +727,12 @@ async function applyThreadPreferences(threadId, message) {
     });
 }
 
+function assertClient(client) {
+    if (client.readyState !== WebSocket.OPEN || !bridgeAuth.valid(client.authSession, 'admin')) throw new Error('Session expired');
+}
+
 async function performAction(client, message) {
+    assertClient(client);
     if (!codexReady && !["health", "file.resolve"].includes(message.action)) {
         throw new Error("Codex ainda não está pronto.");
     }
@@ -799,17 +827,25 @@ async function performAction(client, message) {
         const workspace = message.workspace === undefined
             ? previousWorkspace
             : resolveWorkspace(message.workspace);
-        if (activeTurns.has(message.threadId)) throw new Error("Esta conversa já possui uma tarefa ativa.");
+        if (activeTurns.has(message.threadId) || turnContexts.has(message.threadId)) throw new Error("Esta conversa já possui uma tarefa ativa.");
         checkTurnRate(client);
         threadWorkspaces.set(message.threadId, workspace);
+        const releaseTurn = bridgeAuth.acquire('CODEX_TURNS', client.authSession, 4, 16);
+        if (!releaseTurn) throw new Error('Codex turn quota exceeded');
+        turnContexts.set(message.threadId, {release: releaseTurn, session: client.authSession, detachedAt: null});
+        threadSessions.set(message.threadId, client.authSession);
+        try {
         await applyThreadPreferences(message.threadId, message);
+        assertClient(client);
         const result = await rpc("turn/start", {
             threadId: message.threadId,
             input: textInput(message.text),
             ...turnPolicy(workspace, message),
         });
         if (result?.turn?.id) activeTurns.set(message.threadId, result.turn.id);
+        else { releaseTurn(); turnContexts.delete(message.threadId); }
         return result;
+        } catch (error) { releaseTurn(); turnContexts.delete(message.threadId); throw error; }
     }
 
     if (action === "thread.settings.update") {
@@ -864,7 +900,7 @@ const wsServer = new WebSocketServer({ noServer: true, maxPayload: MAX_MESSAGE_B
 server.on("upgrade", (request, socket, head) => {
     const remote = request.socket.remoteAddress || "";
     const loopback = remote === "127.0.0.1" || remote === "::1" || remote === "::ffff:127.0.0.1";
-    if (request.url !== "/agent" || !loopback || !bridgeAuth.allowed(request, request.headers["x-filemanager-session"])) {
+    if (request.url !== "/agent" || !loopback || !bridgeAuth.allowed(request, request.headers["x-filemanager-session"], 'admin')) {
         socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
         socket.destroy();
         return;
@@ -891,14 +927,16 @@ wsServer.on("connection", (client, request) => {
     });
     client.on("message", async (raw) => {
         let message;
+        const release = bridgeAuth.acquire('CODEX_REQUESTS', client.authSession, 4, 32);
+        if (!release) { sendClient(client, {type: 'response', ok: false, error: 'Codex request quota exceeded'}); return; }
         try {
-            if (!bridgeAuth.valid(client.authSession)) { client.close(1008, "Session expired"); return; }
+            if (!bridgeAuth.valid(client.authSession, 'admin')) { client.close(1008, "Session expired"); return; }
             if (raw.length > MAX_MESSAGE_BYTES) throw new Error("Mensagem muito grande.");
             message = JSON.parse(raw.toString("utf8"));
             if (!message || typeof message !== "object" || typeof message.action !== "string") {
                 throw new Error("Mensagem inválida.");
             }
-            const data = await performAction(client, message);
+            const data = await actionContext.run(client, () => performAction(client, message));
             sendClient(client, {
                 type: "response",
                 requestId: message.requestId || null,
@@ -914,12 +952,15 @@ wsServer.on("connection", (client, request) => {
                 ok: false,
                 error: error.message || "Falha ao processar a solicitação.",
             });
-        }
+        } finally { release(); }
     });
 
     client.on("close", () => {
         clients.delete(client);
-        for (const owners of threadOwners.values()) owners.delete(client);
+        for (const [threadId, owners] of threadOwners) {
+            owners.delete(client);
+            if (!owners.size && turnContexts.has(threadId)) turnContexts.get(threadId).detachedAt = Date.now();
+        }
         for (const [id, record] of pendingServerRequests.entries()) {
             if (record.owner !== client) continue;
             clearTimeout(record.timer);
@@ -929,12 +970,35 @@ wsServer.on("connection", (client, request) => {
     });
 });
 
-const authTimer = setInterval(() => { for (const client of clients) if (!bridgeAuth.valid(client.authSession)) client.close(1008, "Session expired"); }, 500);
+function revokeClient(client) {
+    for (const [id, record] of pendingRpc) if (record.client === client) {
+        record.cancelled = true; record.reject(new Error('Session expired'));
+    }
+    for (const [threadId, owners] of threadOwners) {
+        if (!owners.has(client)) continue;
+        const turnId = activeTurns.get(threadId);
+        if (turnId) rpc('turn/interrupt', {threadId, turnId}).catch(() => {});
+        owners.delete(client);
+    }
+    client.close(1008, 'Session expired');
+}
+const authTimer = setInterval(() => {
+    for (const client of clients) if (!bridgeAuth.valid(client.authSession, 'admin')) revokeClient(client);
+    for (const [threadId, turnId] of activeTurns) {
+        const session = threadSessions.get(threadId);
+        const context = turnContexts.get(threadId);
+        if (!session) continue;
+        if (!bridgeAuth.valid(session, 'admin') || (context?.detachedAt && Date.now() - context.detachedAt > bridgeAuth.limit('CODEX_DETACH_MS', 300000))) {
+            activeTurns.delete(threadId); context?.release(); turnContexts.delete(threadId);
+            rpc('turn/interrupt', {threadId, turnId}).catch(() => {});
+        }
+    }
+}, 500);
 authTimer.unref();
 
 const heartbeat = setInterval(() => {
     for (const client of clients) {
-        if (!bridgeAuth.valid(client.authSession) || !client.isAlive) {
+        if (!bridgeAuth.valid(client.authSession, 'admin') || !client.isAlive) {
             client.terminate();
             continue;
         }

@@ -1,0 +1,1 @@
+PASS Git publication preserves legitimate links and rejects escaping links before any destination effect

@@ -46,7 +46,7 @@ class imageBase64
      */
     public static function api(Request $request, Response $response)
     {
-        if (!security::authorize($request, $response)) return true;
+        if (!security::authorize($request, $response, __CLASS__)) return true;
 
         $path = $request->get["path"] ?? null;
         if (!$path || !file_exists($path)) {
@@ -57,56 +57,38 @@ class imageBase64
         $realPath = securityPolicy::path($path, securityPolicy::requestToken($request));
         $response->header('Content-Security-Policy', "sandbox; default-src 'none'");
         $response->header('X-Content-Type-Options', 'nosniff');
-        $fileSize = filesize($realPath);
-        $mime = self::getMimeType($realPath);
-        if ($mime === 'application/octet-stream' || $mime === 'image/svg+xml') $response->header('Content-Disposition', 'attachment');
-        $start = 0;
-        $end = $fileSize - 1;
-
-        $response->header("Accept-Ranges", "bytes");
-        $response->header("Content-Type", $mime);
-
-        // Verifica se é uma requisição parcial (stream)
-        if (isset($request->header["range"]) && preg_match("/bytes=(\d+)-(\d*)/", $request->header["range"], $matches)) {
-            $start = intval($matches[1]);
-            if (isset($matches[2]) && $matches[2] !== "") {
-                $end = intval($matches[2]);
-            }
-
-            if ($start < 0 || $start >= $fileSize || $end < $start || $end >= $fileSize) { $response->status(416); return $response->end(); }
-            $length = $end - $start + 1;
-            $response->status(206);
-            $response->header("Content-Range", "bytes $start-$end/$fileSize");
-            $response->header("Content-Length", $length);
-
-            $fp = fopen($realPath, "rb");
-            fseek($fp, $start);
-
-            $remaining = $length;
-            while ($remaining > 0 && !feof($fp)) {
-                $readLength = min(8192, $remaining);
-                $buffer = fread($fp, $readLength);
-                if ($buffer === false) {
-                    break;
-                }
-                $response->write($buffer);
-                $remaining -= strlen($buffer);
-            }
-            fclose($fp);
-            return;
+        $owner = securityPolicy::requestToken($request);
+        $start = 0; $end = null;
+        $range = $request->header['range'] ?? '';
+        if ($range !== '') {
+            if (!preg_match('/^bytes=(\d+)-(\d*)$/D', $range, $matches)) { $response->status(416); return $response->end(); }
+            $start = (int) $matches[1];
+            $end = $matches[2] === '' ? null : (int) $matches[2];
+            if ($end !== null && $end < $start) { $response->status(416); return $response->end(); }
         }
-
-        // Envia arquivo completo em blocos (evita memory_limit)
-        $response->header("Content-Length", $fileSize);
-
-        $fp = fopen($realPath, "rb");
-        while (!feof($fp)) {
-            $buffer = fread($fp, 8192);
-            if ($buffer === false) {
-                break;
+        $operation = safeFiles::reader($realPath, $owner, $start, $end === null ? null : $end - $start + 1);
+        $cancel = false;
+        try {
+            $size = $operation['size'];
+            $end ??= $size - 1;
+            if ($range !== '' && ($start >= $size || $end >= $size)) {
+                $cancel = true; $response->status(416); return $response->end();
             }
-            $response->write($buffer);
-        }
-        fclose($fp);
+            $mime = self::getMimeType($realPath);
+            if ($mime === 'application/octet-stream' || $mime === 'image/svg+xml') $response->header('Content-Disposition', 'attachment');
+            $response->header('Accept-Ranges', 'bytes');
+            $response->header('Content-Type', $mime);
+            $response->header('Content-Length', (string) max(0, $end - $start + 1));
+            if ($range !== '') {
+                $response->status(206);
+                $response->header('Content-Range', "bytes $start-$end/$size");
+            }
+            while (!feof($operation['stream'])) {
+                $buffer = fread($operation['stream'], 262144);
+                if (!securityPolicy::validToken($owner) || $buffer === false || $buffer === '') { $cancel = true; break; }
+                if ($response->write($buffer) === false) { $cancel = true; break; }
+            }
+            return $response->end();
+        } finally { safeFiles::close($operation, $cancel); }
     }
 }

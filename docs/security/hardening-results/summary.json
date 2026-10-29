@@ -1,0 +1,692 @@
+[
+  {
+    "name": "php-syntax",
+    "command": [
+      "python3",
+      "scripts/security/php-lint.py"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 1.97,
+    "log": "php-syntax.txt"
+  },
+  {
+    "name": "phpstan",
+    "command": [
+      "/usr/bin/php8.3",
+      "vendor/bin/phpstan",
+      "analyse",
+      "--no-progress",
+      "--memory-limit=1G"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 0.72,
+    "log": "phpstan.txt"
+  },
+  {
+    "name": "autoload",
+    "command": [
+      "/usr/bin/php8.3",
+      "-n",
+      "scripts/security/autoload-regression.php"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 0.01,
+    "log": "autoload.txt"
+  },
+  {
+    "name": "http",
+    "command": [
+      "/usr/bin/php8.3",
+      "-n",
+      "scripts/security/http-regression.php"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 0.41,
+    "log": "http.txt"
+  },
+  {
+    "name": "websocket",
+    "command": [
+      "/usr/bin/php8.3",
+      "-n",
+      "scripts/security/ws-regression.php"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 0.03,
+    "log": "websocket.txt"
+  },
+  {
+    "name": "metadata",
+    "command": [
+      "/usr/bin/php8.3",
+      "scripts/security/metadata-regression.php"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 0.12,
+    "log": "metadata.txt"
+  },
+  {
+    "name": "tokens",
+    "command": [
+      "/usr/bin/php8.3",
+      "scripts/security/tokens-regression.php"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 0.03,
+    "log": "tokens.txt"
+  },
+  {
+    "name": "git-publication",
+    "command": [
+      "/usr/bin/php8.3",
+      "scripts/security/git-publication-regression.php"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 0.11,
+    "log": "git-publication.txt"
+  },
+  {
+    "name": "parser",
+    "command": [
+      "/usr/bin/php8.3",
+      "scripts/security/parser-regression.php"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 0.11,
+    "log": "parser.txt"
+  },
+  {
+    "name": "process",
+    "command": [
+      "/usr/bin/php8.3",
+      "-n",
+      "scripts/security/process-regression.php"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 0.03,
+    "log": "process.txt"
+  },
+  {
+    "name": "temporaries",
+    "command": [
+      "/usr/bin/php8.3",
+      "-n",
+      "scripts/security/temporary-regression.php"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 1.37,
+    "log": "temporaries.txt"
+  },
+  {
+    "name": "filesystem",
+    "command": [
+      "python3",
+      "scripts/security/fs-regression.py"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 0.12,
+    "log": "filesystem.txt"
+  },
+  {
+    "name": "auxiliary",
+    "command": [
+      "python3",
+      "scripts/security/auxiliary-regression.py"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 2.17,
+    "log": "auxiliary.txt"
+  },
+  {
+    "name": "auxiliary-quotas",
+    "command": [
+      "php",
+      "scripts/security/auxiliary-quotas.php"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 0.97,
+    "log": "auxiliary-quotas.txt"
+  },
+  {
+    "name": "downloads",
+    "command": [
+      "python3",
+      "scripts/security/download-regression.py"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 0.77,
+    "log": "downloads.txt"
+  },
+  {
+    "name": "archives",
+    "command": [
+      "php",
+      "scripts/security/archive-regression.php"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 0.82,
+    "log": "archives.txt"
+  },
+  {
+    "name": "file-watcher",
+    "command": [
+      "/usr/bin/php8.3",
+      "scripts/tests/file-watcher-test.php"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 0.03,
+    "log": "file-watcher.txt"
+  },
+  {
+    "name": "request-cache",
+    "command": [
+      "/usr/bin/php8.3",
+      "scripts/tests/request-cache-test.php"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 4.08,
+    "log": "request-cache.txt"
+  },
+  {
+    "name": "install-codex-native",
+    "command": [
+      "bash",
+      "scripts/tests/install-codex-native-test.sh"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 0.37,
+    "log": "install-codex-native.txt"
+  },
+  {
+    "name": "installer-home",
+    "command": [
+      "bash",
+      "scripts/tests/installer-home-test.sh"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 0.11,
+    "log": "installer-home.txt"
+  },
+  {
+    "name": "install-tmp",
+    "command": [
+      "bash",
+      "scripts/tests/install-tmp-test.sh"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 0.17,
+    "log": "install-tmp.txt"
+  },
+  {
+    "name": "ui",
+    "command": [
+      "node",
+      "--test",
+      "scripts/security/ui-regression.cjs"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 0.57,
+    "log": "ui.txt"
+  },
+  {
+    "name": "threads",
+    "command": [
+      "node",
+      "--test",
+      "scripts/security/thread-regression.cjs"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 0.12,
+    "log": "threads.txt"
+  },
+  {
+    "name": "codex",
+    "command": [
+      "node",
+      "--test",
+      "scripts/security/codex-integration.cjs"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 4.68,
+    "log": "codex.txt"
+  },
+  {
+    "name": "transport-limits",
+    "command": [
+      "node",
+      "--test",
+      "scripts/security/auth-transport-regression.cjs",
+      "scripts/security/limits-regression.cjs"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 0.42,
+    "log": "transport-limits.txt"
+  },
+  {
+    "name": "dependency-compatibility",
+    "command": [
+      "node",
+      "--test",
+      "scripts/security/dependency-regression.cjs"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 0.26,
+    "log": "dependency-compatibility.txt"
+  },
+  {
+    "name": "npm-policy-regression",
+    "command": [
+      "node",
+      "--test",
+      "scripts/security/npm-audit-policy.test.cjs"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 0.12,
+    "log": "npm-policy-regression.txt"
+  },
+  {
+    "name": "pty-node-php",
+    "command": [
+      "node",
+      "--test",
+      "scripts/security/pty-integration.cjs"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 4.38,
+    "log": "pty-node-php.txt"
+  },
+  {
+    "name": "swoole-http-websocket",
+    "command": [
+      "node",
+      "--test",
+      "scripts/security/swoole-integration.cjs"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 3.72,
+    "log": "swoole-http-websocket.txt"
+  },
+  {
+    "name": "lsp-and-swoole-relay",
+    "command": [
+      "node",
+      "--test",
+      "scripts/security/lsp-integration.cjs"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 16.96,
+    "log": "lsp-and-swoole-relay.txt"
+  },
+  {
+    "name": "composer-validate",
+    "command": [
+      "composer",
+      "validate",
+      "--no-check-publish"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 0.17,
+    "log": "composer-validate.txt"
+  },
+  {
+    "name": "composer-audit",
+    "command": [
+      "composer",
+      "audit",
+      "--locked",
+      "--format=json"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 0.77,
+    "log": "composer-audit.txt"
+  },
+  {
+    "name": "npm-live-audit",
+    "command": [
+      "npm",
+      "audit",
+      "--package-lock-only",
+      "--json"
+    ],
+    "exitCode": 1,
+    "accepted": [
+      0,
+      1
+    ],
+    "passed": true,
+    "seconds": 0.67,
+    "log": "npm-live-audit.txt"
+  },
+  {
+    "name": "npm-live-policy",
+    "command": [
+      "node",
+      "scripts/security/npm-audit-policy.cjs",
+      "/home/lotus/projetos/filemanager/docs/security/hardening-results/npm-live-audit.txt",
+      "docs/security/npm-audit-accepted-risks.json"
+    ],
+    "exitCode": 1,
+    "accepted": [
+      0
+    ],
+    "passed": false,
+    "seconds": 0.03,
+    "log": "npm-live-policy.txt"
+  },
+  {
+    "name": "runtime-plain",
+    "command": [
+      "/usr/bin/php8.3",
+      "scripts/security/runtime-check.php"
+    ],
+    "exitCode": 1,
+    "accepted": [
+      0
+    ],
+    "passed": false,
+    "seconds": 0.02,
+    "log": "runtime-plain.txt"
+  },
+  {
+    "name": "runtime-swoole",
+    "command": [
+      "php",
+      "scripts/security/runtime-check.php",
+      "--require-swoole"
+    ],
+    "exitCode": 1,
+    "accepted": [
+      0
+    ],
+    "passed": false,
+    "seconds": 0.03,
+    "log": "runtime-swoole.txt"
+  },
+  {
+    "name": "inline-js",
+    "exitCode": 0,
+    "passed": true,
+    "log": "inline-js.txt"
+  },
+  {
+    "name": "semgrep-regression",
+    "command": [
+      "python3",
+      "scripts/security/semgrep-regression.py"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 1.17,
+    "log": "semgrep-regression.txt"
+  },
+  {
+    "name": "semgrep",
+    "command": [
+      "semgrep",
+      "scan",
+      "--error",
+      "--strict",
+      "--metrics=off",
+      "--disable-version-check",
+      "--config",
+      ".semgrep/security.yml",
+      "--config",
+      "p/php",
+      "--config",
+      "p/javascript",
+      "--config",
+      "p/owasp-top-ten",
+      "--exclude",
+      "vendor",
+      "--exclude",
+      "node_modules",
+      "--exclude",
+      "libspech",
+      "--exclude",
+      "docs",
+      "--exclude",
+      "scripts/performance",
+      "--exclude",
+      "*.sh",
+      "--exclude",
+      "filemanagerctl"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 4.83,
+    "log": "semgrep.txt"
+  },
+  {
+    "name": "shellcheck",
+    "command": [
+      "shellcheck",
+      "--severity=warning",
+      "scripts/secure-download.sh",
+      "filemanagerctl",
+      "install-tmp.sh",
+      "installer.sh",
+      "scripts/install-codex-native.sh",
+      "scripts/install-codex.sh",
+      "scripts/security/reproduce-before.sh",
+      "scripts/tests/install-codex-native-test.sh",
+      "scripts/tests/install-tmp-test.sh",
+      "scripts/tests/installer-home-test.sh"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 1.07,
+    "log": "shellcheck.txt"
+  },
+  {
+    "name": "actionlint",
+    "command": [
+      "actionlint"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 0.03,
+    "log": "actionlint.txt"
+  },
+  {
+    "name": "gitleaks-regression",
+    "command": [
+      "python3",
+      "scripts/security/gitleaks_regression.py"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 4.97,
+    "log": "gitleaks-regression.txt"
+  },
+  {
+    "name": "gitleaks-history",
+    "command": [
+      "python3",
+      "scripts/security/gitleaks_scan.py"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 0.57,
+    "log": "gitleaks-history.txt"
+  },
+  {
+    "name": "gitleaks-working-tree",
+    "command": [
+      "gitleaks",
+      "dir",
+      "/tmp/fm-reviewable-source-iy5852jy",
+      "--redact=100",
+      "--no-banner",
+      "--config",
+      "/home/lotus/projetos/filemanager/.gitleaks.toml"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 0.42,
+    "log": "gitleaks-working-tree.txt"
+  },
+  {
+    "name": "diff-check",
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exitCode": 0,
+    "accepted": [
+      0
+    ],
+    "passed": true,
+    "seconds": 0.03,
+    "log": "diff-check.txt"
+  }
+]

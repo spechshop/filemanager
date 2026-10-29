@@ -1,0 +1,23 @@
+{
+  "https://cdn.jsdelivr.net/npm/marked@18.1.2/lib/marked.umd.js": "sha384-nCN5FOaVTXXYilftBH/VQuC9ypBYOxrctAZn2x7ggYClXaporWSzM0y+ODhb8MTi",
+  "https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25": "sha384-nLoOnA/BDh8A/jxqtckg4DumuCGOBYUnNJLZdQz/zfYNp3wcjGSoWTAzgko06G/2",
+  "https://cdn.jsdelivr.net/npm/sweetalert2@11.10.0/dist/sweetalert2.all.min.js": "sha384-5VBAkNWNEnA0Y+L5aWNg6fHumW6MdNSl4unYF6X6pHsXjltAvKa6VxLur8ZAQlzu",
+  "https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js": "sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49",
+  "https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js": "sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy",
+  "https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js": "sha384-/nfmYPUzWMS6v2atn8hbljz7NE0EI1iGx34lJaNzyVjWGDzMv+ciUZUeJpKA3Glc",
+  "https://cdn.jsdelivr.net/npm/monaco-editor@0.46.0/min/vs/loader.js": "sha384-s9sAjYOsnnr6dTRBtp4Wt2NcemdwBe1u+/P+pbmSduqn7HK9OY0RpGaCbJhvKnMV",
+  "https://unpkg.com/prettier@3.9.10/standalone.js": "sha384-3RquqZwSgZBTvvxL/DhOXolpM5QZBfS/D0WjyfeEYqchqBa8svDtZrEmCY72PNv0",
+  "https://unpkg.com/@prettier/plugin-php@0.26.0/standalone.js": "sha384-7PE1/KIK9Xt6zDjfi4E3OgR3G1xxBKXCL5gyiNu+otED+F75TYuoRVn8ZvE9RyjT",
+  "https://cdn.jsdelivr.net/npm/monaco-editor@0.43.0/dev/vs/loader.js": "sha384-G9gKWybXkIQzVUYKWv5zSmGxcikWVVagyHJea9OWy+gBvci1XmBd1BYQI4feVyzF",
+  "https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js": "sha512-v2CJ7UaYy4JwqLDIrZUI/4hqeoQieOmAZNXBeQyjo21dadnwR+8ZaIJVT8EE2iyI61OV8e6M8PP2/4hpQINQ/g==",
+  "https://cdn.jsdelivr.net/npm/bootstrap@5.3.1/dist/js/bootstrap.bundle.min.js": "sha384-HwwvtgBNo3bZJJLYd8oVXjrBZt8cqVSpeBNS5n7C8IVInixGAoxmnlMuBnhbgrkm",
+  "https://cdn.jsdelivr.net/npm/choices.js@11.2.4/public/assets/scripts/choices.min.js": "sha384-0dGX4oSRqvcKtSNa5YGzTI3pkW4p3uoor1Izx0R5/7emRjiR619oCIBVnvM9k3tj",
+  "https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/prism.min.js": "sha384-IiYPavEalWVlz8Tu/9VzJKCwV3LtyzujevfMy2zlvI/upVFqpJkbDQ0kIQL0obeR",
+  "https://cdnjs.cloudflare.com/ajax/libs/prism/1.24.1/components/prism-http.min.js": "sha384-UOO9V3tfAELPauZj8mXCL4nSlCDultX9oWB0Dex7hoAtFoBT0FmXG01ztD8y+WwA",
+  "https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js": "sha384-06z5D//U/xpvxZHuUz92xBvq3DqBBFi7Up53HRrbV7Jlv7Yvh/MZ7oenfUe9iCEt",
+  "https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js": "sha384-Uq05+JLko69eOiPr39ta9bh7kld5PKZoU+fF7g0EXTAriEollhZ+DrN8Q/Oi8J2Q",
+  "https://cdn.jsdelivr.net/npm/monaco-editor@0.41.0/min/vs/loader.js": "sha384-MmNdCvQGtzYhVMTKMxNqmu4vwsP7uCyWRfRdXPKcAlp1m6rbuGb3CGTvQtvO7MNR",
+  "https://unpkg.com/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs": "sha384-ypAFdIpmPhrhuVLN9fmIZaqZHGUVSzHiiplL/kPO2+gJ4Na4yRVbVt0YhyvWdbwn",
+  "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js": "sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz",
+  "https://unpkg.com/wavesurfer.js@8.0.3": "sha384-BRAbmpVEFcrH2Gk0ep73NKSLj2A0JsdRTfoNj3ElEjxSbdhyASY5GBenG+tMtVO+"
+}

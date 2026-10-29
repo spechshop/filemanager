@@ -3,7 +3,7 @@
 use libspech\Cache\cache as cacheLibSpech;
 use plugins\Start\cache;
 use Swoole\WebSocket\Server;
-Swoole\Runtime::enableCoroutine(SWOOLE_HOOK_ALL);
+Swoole\Runtime::enableCoroutine(0);
 global $server;
 global $coroutinesProcess;
 ini_set('memory_limit', '2000M');
@@ -16,6 +16,8 @@ require $deploymentAutoloader;
 require_once __DIR__ . '/vendor/autoload.php';
 sleep(1);
 include 'plugins/autoload.php';
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
 $serverSettings = cacheLibSpech::get('interface');
 $interfacetr = cacheLibSpech::get('interface');
 if (cacheLibSpech::get('interface')['ssl']) {
@@ -64,10 +66,10 @@ if (!function_exists('portAlive')) {
     }
 }
 
-$secretDirectory = __DIR__ . '/.runtime';
-if (!is_dir($secretDirectory)) mkdir($secretDirectory, 0700, true);
+$secretDirectory = getenv('FILEMANAGER_DATA_DIR') ?: __DIR__ . '/.runtime';
+if (!getenv('FILEMANAGER_BRIDGE_SECRET') && !is_dir($secretDirectory)) mkdir($secretDirectory, 0700, true);
 $secretFile = $secretDirectory . '/bridge-secret';
-if (!is_file($secretFile)) {
+if (!getenv('FILEMANAGER_BRIDGE_SECRET') && !is_file($secretFile)) {
     $handle = fopen($secretFile, 'x');
     if ($handle === false) throw new RuntimeException('Cannot initialize bridge authentication');
     chmod($secretFile, 0600);
@@ -148,6 +150,26 @@ if (!function_exists('nodePtyAvailable')) {
     }
 }
 
+/**
+ * Register foreground services before Server::start(). Swoole's manager owns
+ * these PIDs, restarts failed services, and sends SIGTERM + waitpid on shutdown.
+ * exec replaces the user process: there is no shell/screen/nohup child to orphan.
+ */
+function fileManagerAuxiliaryProcess(array $command): void
+{
+    global $server;
+    $process = new \Swoole\Process(static function (\Swoole\Process $process) use ($command): void {
+        // The callback runs in a dedicated user process, outside HTTP workers.
+        // It must exec in native mode even if the HTTP runtime enables hooks.
+        \Swoole\Runtime::enableCoroutine(0);
+        $process->exec($command[0], array_slice($command, 1));
+        throw new RuntimeException('Unable to execute auxiliary service');
+    }, false, 0, false);
+    if ($server->addProcess($process) === false) {
+        throw new RuntimeException('Unable to register auxiliary service');
+    }
+}
+
 if (!function_exists('startPtyServer')) {
     /**
      * Inicia o servidor de PTY conforme a escolha salva no painel. O modo
@@ -155,16 +177,11 @@ if (!function_exists('startPtyServer')) {
      */
     function startPtyServer(): void
     {
-        $hasScreen = trim((string) shell_exec('command -v screen 2>/dev/null')) !== '';
         $backend = fileManagerPtyBackend();
         $node = $backend !== 'php' ? fileManagerPtyNodeBinary() : '';
         if ($node !== '') {
             echo "Iniciando PTY via node (node-pty)...\n";
-            if ($hasScreen) {
-                shell_exec('screen -dmS nodePTY ' . escapeshellarg($node) . ' ' . escapeshellarg(__DIR__ . '/pty.js'));
-            } else {
-                shell_exec('nohup ' . escapeshellarg($node) . ' ' . escapeshellarg(__DIR__ . '/pty.js') . ' >> ' . escapeshellarg(__DIR__ . '/pty.log') . ' 2>&1 &');
-            }
+            fileManagerAuxiliaryProcess([$node, __DIR__ . '/pty.js']);
             return;
         }
         if ($backend === 'node') {
@@ -181,11 +198,7 @@ if (!function_exists('startPtyServer')) {
         echo $backend === 'php'
             ? "Iniciando PTY via PHP/Swoole...\n"
             : "node-pty indisponível; usando fallback em Swoole (pty.php)...\n";
-        if ($hasScreen) {
-            shell_exec('screen -dmS phpPTY ' . escapeshellarg($php) . ' ' . escapeshellarg($ptyPhp));
-        } else {
-            shell_exec('nohup ' . escapeshellarg($php) . ' ' . escapeshellarg($ptyPhp) . ' >> ' . escapeshellarg(__DIR__ . '/pty.log') . ' 2>&1 &');
-        }
+        fileManagerAuxiliaryProcess([$php, $ptyPhp]);
     }
 }
 
@@ -207,13 +220,8 @@ if (!function_exists('startLspServer')) {
             echo "Intelephense não instalado (npm install intelephense); LSP desativado.\n";
             return;
         }
-        $hasScreen = trim((string) shell_exec('command -v screen 2>/dev/null')) !== '';
         echo "Iniciando LSP PHP (Intelephense) via node...\n";
-        if ($hasScreen) {
-            shell_exec('screen -dmS nodeLSP ' . escapeshellarg($node) . ' ' . escapeshellarg(__DIR__ . '/lsp.js'));
-        } else {
-            shell_exec('nohup ' . escapeshellarg($node) . ' ' . escapeshellarg(__DIR__ . '/lsp.js') . ' >> ' . escapeshellarg(__DIR__ . '/lsp.log') . ' 2>&1 &');
-        }
+        fileManagerAuxiliaryProcess([$node, __DIR__ . '/lsp.js']);
     }
 }
 
@@ -226,7 +234,7 @@ if (!function_exists('fileManagerServiceEnabled')) {
             'gpt' => false,
             'codex' => false
         ];
-        $contents = @file_get_contents(__DIR__ . '/plugins/configInterface.json');
+        $contents = @file_get_contents(getenv('FILEMANAGER_CONFIG_FILE') ?: __DIR__ . '/plugins/configInterface.json');
         $config = is_string($contents) ? json_decode($contents, true) : null;
         if (!is_array($config)) {
             return $defaults[$service] ?? false;
@@ -238,7 +246,7 @@ if (!function_exists('fileManagerServiceEnabled')) {
 if (!function_exists('fileManagerPtyBackend')) {
     function fileManagerPtyBackend(): string
     {
-        $contents = @file_get_contents(__DIR__ . '/plugins/configInterface.json');
+        $contents = @file_get_contents(getenv('FILEMANAGER_CONFIG_FILE') ?: __DIR__ . '/plugins/configInterface.json');
         $config = is_string($contents) ? json_decode($contents, true) : null;
         $backend = is_array($config)
             ? strtolower(trim((string) ($config['fileManager']['ptyBackend'] ?? 'auto')))
@@ -255,13 +263,8 @@ if (!function_exists('startGptServer')) {
             echo "Node.js ou gpt.js indisponível; GPT Bridge não será iniciado.\n";
             return;
         }
-        $hasScreen = trim((string) shell_exec('command -v screen 2>/dev/null')) !== '';
         echo "Iniciando GPT Bridge via node...\n";
-        if ($hasScreen) {
-            shell_exec('screen -dmS nodeGPT ' . escapeshellarg($node) . ' ' . escapeshellarg(__DIR__ . '/gpt.js'));
-        } else {
-            shell_exec('nohup ' . escapeshellarg($node) . ' ' . escapeshellarg(__DIR__ . '/gpt.js') . ' >> ' . escapeshellarg(__DIR__ . '/gpt.log') . ' 2>&1 &');
-        }
+        fileManagerAuxiliaryProcess([$node, __DIR__ . '/gpt.js']);
     }
 }
 
@@ -275,25 +278,19 @@ if (!function_exists('startCodexAgentServer')) {
             return;
         }
         // codex-agent.js carrega CODEX_ACCESS_TOKEN e CODEX_BIN diretamente do .env.
-        $command = escapeshellarg($node) . ' ' . escapeshellarg($script);
-        $hasScreen = trim((string) shell_exec('command -v screen 2>/dev/null')) !== '';
         echo "Iniciando Codex Agent via app-server...\n";
-        if ($hasScreen) {
-            shell_exec('screen -dmS nodeCodexAgent ' . $command);
-        } else {
-            shell_exec('nohup ' . $command . ' >> ' . escapeshellarg(__DIR__ . '/codex-agent.log') . ' 2>&1 &');
-        }
+        fileManagerAuxiliaryProcess([$node, $script]);
     }
 }
 co\run(function () {
-    if (fileManagerServiceEnabled('pty') && !portAlive(6060)) {
+    if (fileManagerServiceEnabled('pty') && !portAlive((int) (getenv('FILEMANAGER_PTY_PORT') ?: 6060))) {
         startPtyServer();
     } elseif (!fileManagerServiceEnabled('pty')) {
         echo "PTY desativado nas configurações do File Manager.\n";
     } else {
         echo "Port 6060 is already in use.\n";
     }
-    if (fileManagerServiceEnabled('lsp') && !portAlive(3057)) {
+    if (fileManagerServiceEnabled('lsp') && !portAlive((int) (getenv('FILEMANAGER_LSP_PORT') ?: 3057))) {
         startLspServer();
     } elseif (!fileManagerServiceEnabled('lsp')) {
         echo "LSP desativado nas configurações do File Manager.\n";
@@ -307,7 +304,7 @@ co\run(function () {
     } else {
         echo "Port 3090 is already in use.\n";
     }
-    if (fileManagerServiceEnabled('codex') && !portAlive(3091)) {
+    if (fileManagerServiceEnabled('codex') && !portAlive((int) (getenv('CODEX_AGENT_PORT') ?: 3091))) {
         startCodexAgentServer();
     } elseif (!fileManagerServiceEnabled('codex')) {
         echo "Codex Agent desativado nas configurações do File Manager.\n";
@@ -319,6 +316,19 @@ if (cacheLibSpech::get('interface')['ssl']) {
     $serverSettings = cacheLibSpech::get('interface')['serverSettings'];
 }
 
+// Swoole 6 streams multipart files separately from the normal package budget.
+$uploadPort = (int) (getenv('FILEMANAGER_UPLOAD_PORT') ?: 0);
+$serverSettings['package_max_length'] = \plugins\Request\securityPolicy::limit($uploadPort > 0 ? 'HTTP_BODY_BYTES' : 'UPLOAD_BYTES', $uploadPort > 0 ? 8388608 : 2147483648);
+if ($uploadPort > 0) {
+    $uploadListener = $server->listen('127.0.0.1', $uploadPort, SWOOLE_SOCK_TCP);
+    if ($uploadListener === false) throw new RuntimeException('Cannot start private upload listener');
+    $uploadListener->set(['open_http_protocol' => true, 'open_websocket_protocol' => false, 'package_max_length' => \plugins\Request\securityPolicy::limit('UPLOAD_BYTES', 2147483648)]);
+}
+$uploadTemporary = \plugins\Request\securityPolicy::uploadDirectory();
+if (!is_dir($uploadTemporary) && !mkdir($uploadTemporary, 0700, true) && !is_dir($uploadTemporary)) throw new RuntimeException('Cannot prepare private upload directory');
+$serverSettings['upload_tmp_dir'] = $uploadTemporary;
+$serverSettings['upload_max_filesize'] = \plugins\Request\securityPolicy::limit('UPLOAD_BYTES', 2147483648);
+$serverSettings['socket_buffer_size'] = \plugins\Request\securityPolicy::limit('OUTPUT_BUFFER_BYTES', 4194304);
 $server->set($serverSettings);
 $server->on('open', '\plugins\server::open');
 $server->on('message', '\plugins\server::message');
@@ -327,4 +337,5 @@ $server->on('Start', '\plugins\Start\server::start');
 $server->on('BeforeShutdown', '\plugins\Start\server::stop');
 $server->on('WorkerExit', '\plugins\server::stopWorker');
 $server->on('Request', '\plugins\Request\server::request');
+Swoole\Runtime::enableCoroutine(SWOOLE_HOOK_ALL);
 $server->start();

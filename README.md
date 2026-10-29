@@ -30,7 +30,7 @@ The system features:
   - `phpstan/phpstan` - Static analysis tool
 
 ### Node.js Services
-- **Runtime**: Node.js 18+
+- **Runtime**: Node.js 22+
 - **Package Manager**: npm
 - **Dependencies**:
   - `ws` - WebSocket server
@@ -104,41 +104,27 @@ node -v
 
 ### 1. Clone Repository
 
-Using `curl`:
+Obtain a checkout over verified TLS and review its revision and installation scripts:
 
 ```bash
-curl -kfsSL https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/installer.sh -o installer.sh && chmod +x installer.sh && bash ./installer.sh
+git -c http.sslVerify=true clone --branch newterm https://github.com/spechshop/filemanager.git
+cd filemanager
+git log -1 --oneline
+# Review installer.sh and scripts/ before running the installer.
+bash ./installer.sh
 ```
 
-Using `wget`:
+Do not disable certificate validation. Fix the CA bundle or configure your
+organization's trusted CA. Executable releases have checked SHA256 digests;
+Node's checksums are retrieved over verified HTTPS. Non-Git source archive
+fallbacks require FILEMANAGER_SOURCE_SHA256 / FILEMANAGER_LIBSPECH_SHA256.
+The standalone install-tmp.sh requires FILEMANAGER_ARCHIVE_SHA256 from an
+independently reviewed archive before executing anything from that archive.
 
-```bash
-wget --no-check-certificate -qO installer.sh https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/installer.sh && chmod +x installer.sh && bash ./installer.sh
-```
-
-Alternatively, download the installer first so you can review it before running it:
-
-```bash
-wget --no-check-certificate -O installer.sh https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/installer.sh && chmod +x installer.sh
-```
-
-To install under `/tmp`, download the dedicated Bash installer and explicitly
-grant execution permission:
-
-```bash
-curl -kfsSL https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/install-tmp.sh -o /tmp/install-filemanager.sh && chmod +x /tmp/install-filemanager.sh && bash /tmp/install-filemanager.sh
-```
-
-Using `wget`:
-
-```bash
-wget --no-check-certificate -O /tmp/install-filemanager.sh https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/install-tmp.sh && chmod +x /tmp/install-filemanager.sh && bash /tmp/install-filemanager.sh
-```
-
-The dedicated script installs into `/tmp/filemanager` without requiring Git
-and reapplies `chmod +x` to the installer, control scripts, and downloaded
-runtimes before and after installation. It changes to the installation
-directory internally, so the command can be run from any directory.
+See [the hardening design](docs/security/hardening-design.txt) and
+[deployment requirements](docs/security/hardening-deployment.txt) before production.
+Linux >= 5.6 and Python >= 3.9 are required for descriptor-based filesystem IO.
+Node.js >= 22 is required by the current bridges.
 
 The installer keeps its PHP/Swoole runtime isolated under the `pcg` command;
 it does not replace the system `php` binary.

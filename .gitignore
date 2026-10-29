@@ -162,3 +162,6 @@ lerna-debug.log*
 
 /database/tokens.lotus
 /database/chat-*.lotus
+
+# Python security helper bytecode
+/scripts/security/__pycache__/

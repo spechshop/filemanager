@@ -1,0 +1,16 @@
+PASS malicious late ZIP entry rejected before any extraction: ../outside/pwned
+PASS malicious late ZIP entry rejected before any extraction: /tmp/fm-archive-d5f61a959a33e67a/outside/absolute-pwned
+PASS malicious late ZIP entry rejected before any extraction: safe/../../outside/pwned
+PASS malicious late ZIP entry rejected before any extraction: link
+PASS TAR traversal/link rejected before writing earlier safe entry: 0
+PASS TAR traversal/link rejected before writing earlier safe entry: 2
+PASS TAR traversal/link rejected before writing earlier safe entry: 1
+PASS existing symlink target unchanged
+PASS authorized ZIP extraction preserved
+PASS authorized directory compression preserved through private snapshots
+PASS authorized TAR extraction preserved
+PASS authorized TAR.XZ extraction preserved without filesystem extractor
+PASS authorized 7z extraction preserved via stdout decoder
+PASS authorized RAR preserved; decoder never creates links
+PASS 7z symlink metadata rejected before filesystem writes
+15 assertions, 0 failures

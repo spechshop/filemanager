@@ -138,7 +138,7 @@ run_npm_install_logged() {
         local -a pipeline_status
         cd "$PROJECT_ROOT" || exit 1
         set +e
-        run_npm install --no-audit --no-fund 2>&1 | tee "$log_file"
+        run_npm ci --no-audit --no-fund 2>&1 | tee "$log_file"
         pipeline_status=("${PIPESTATUS[@]}")
         [ "${pipeline_status[0]}" -ne 0 ] && exit "${pipeline_status[0]}"
         exit "${pipeline_status[1]}"
@@ -199,7 +199,7 @@ native_platform_packages() {
 }
 
 install_micromamba() {
-    local archive temp_dir extracted
+    local archive temp_dir extracted checksum
 
     if [ -x "$MICROMAMBA_BIN" ] && "$MICROMAMBA_BIN" --version >/dev/null 2>&1; then
         log "Reutilizando micromamba em .runtime/micromamba."
@@ -216,8 +216,13 @@ install_micromamba() {
     }
     archive="$temp_dir/micromamba.tar.bz2"
     extracted="$temp_dir/bin/micromamba"
+    case "$MICROMAMBA_PLATFORM" in
+        linux-64) checksum=9a97976244929bbae28fb1fae504e74a3e7e6d1932870e3a03321f01b7fbd07b ;;
+        linux-aarch64) checksum=890bc4906e6ab17f1b393f0da21547f75e000078e573a156316ec925b92a4a4c ;;
+        *) return 1 ;;
+    esac
     log "Baixando micromamba oficial para $MICROMAMBA_PLATFORM..."
-    if ! download "https://micro.mamba.pm/api/micromamba/$MICROMAMBA_PLATFORM/latest" "$archive" \
+    if ! download "https://github.com/mamba-org/micromamba-releases/releases/download/2.10.0-0/micromamba-$MICROMAMBA_PLATFORM.tar.bz2" "$archive" "$checksum" \
         || ! tar -xjf "$archive" -C "$temp_dir" bin/micromamba \
         || [ ! -x "$extracted" ]; then
         LAST_MESSAGE="Não foi possível baixar ou extrair o micromamba oficial."
@@ -308,20 +313,12 @@ run_micromamba_toolchain_action() {
     (
         local -a pipeline_status
         set +e
-        if [ "$tls_mode" = "insecure" ]; then
-            # A opcao na CLI nao altera arquivos .condarc/.mambarc e fica
-            # restrita ao retry excepcional causado por erro de certificado.
-            "$MICROMAMBA_BIN" --no-rc "$action" --yes --prefix "$TOOLCHAIN_DIR" \
-                --ssl-verify false \
-                --override-channels --channel conda-forge --strict-channel-priority \
-                python=3.12 make "$TOOLCHAIN_GCC_PACKAGE" "$TOOLCHAIN_GXX_PACKAGE" \
-                "$TOOLCHAIN_SYSROOT_PACKAGE" 2>&1 | tee -a "$MICROMAMBA_TOOLCHAIN_LOG"
-        else
-            "$MICROMAMBA_BIN" --no-rc "$action" --yes --prefix "$TOOLCHAIN_DIR" \
-                --override-channels --channel conda-forge --strict-channel-priority \
-                python=3.12 make "$TOOLCHAIN_GCC_PACKAGE" "$TOOLCHAIN_GXX_PACKAGE" \
-                "$TOOLCHAIN_SYSROOT_PACKAGE" 2>&1 | tee -a "$MICROMAMBA_TOOLCHAIN_LOG"
-        fi
+        [ "$tls_mode" = "secure" ] || exit 1
+        "$MICROMAMBA_BIN" --no-rc "$action" --yes --prefix "$TOOLCHAIN_DIR" \
+            --ssl-verify true \
+            --override-channels --channel conda-forge --strict-channel-priority \
+            python=3.12 make "$TOOLCHAIN_GCC_PACKAGE" "$TOOLCHAIN_GXX_PACKAGE" \
+            "$TOOLCHAIN_SYSROOT_PACKAGE" 2>&1 | tee -a "$MICROMAMBA_TOOLCHAIN_LOG"
         pipeline_status=("${PIPESTATUS[@]}")
         [ "${pipeline_status[0]}" -ne 0 ] && exit "${pipeline_status[0]}"
         exit "${pipeline_status[1]}"
@@ -337,7 +334,7 @@ remove_incomplete_native_toolchain() {
 }
 
 prepare_native_toolchain() {
-    local action certificate_failure=0
+    local action
 
     native_platform_packages || return 1
     if locate_native_toolchain; then
@@ -361,27 +358,9 @@ prepare_native_toolchain() {
 
     json_state running "Preparando o compilador C/C++ local..." null
     if ! run_micromamba_toolchain_action "$action" secure; then
-        if micromamba_log_has_certificate_failure "$MICROMAMBA_TOOLCHAIN_LOG"; then
-            certificate_failure=1
-        fi
-
-        # locate_native_toolchain ja determinou que este prefixo nao e valido.
-        # Remova inclusive ambientes com history: create/install podem gravar
-        # esse arquivo antes de falhar e nao devem contaminar outra tentativa.
         remove_incomplete_native_toolchain || return 1
-        if [ "$certificate_failure" -ne 1 ]; then
-            LAST_MESSAGE="Falha ao preparar o toolchain C/C++ local com micromamba. Consulte $MICROMAMBA_TOOLCHAIN_LOG."
-            return 1
-        fi
-
-        warn "A conexão TLS do micromamba falhou por causa da cadeia de certificados deste servidor."
-        warn "Repetindo somente o download do toolchain sem verificar o certificado TLS."
-        printf '%s\n' '--- nova tentativa: ssl_verify=false ---' >> "$MICROMAMBA_TOOLCHAIN_LOG"
-        if ! run_micromamba_toolchain_action create insecure; then
-            remove_incomplete_native_toolchain || return 1
-            LAST_MESSAGE="Falha ao preparar o toolchain local mesmo com o fallback TLS. Consulte $MICROMAMBA_TOOLCHAIN_LOG."
-            return 1
-        fi
+        LAST_MESSAGE="Falha ao preparar toolchain com TLS validado. Configure a cadeia de certificados e tente novamente; consulte $MICROMAMBA_TOOLCHAIN_LOG."
+        return 1
     fi
     if ! locate_native_toolchain; then
         remove_incomplete_native_toolchain || return 1
@@ -401,7 +380,7 @@ run_npm_install_with_local_toolchain() {
         export CXX="$TOOLCHAIN_CXX"
         export MAKE="$TOOLCHAIN_MAKE"
         export PATH="$TOOLCHAIN_BIN:${PATH:-}"
-        run_npm install --no-audit --no-fund
+        run_npm ci --no-audit --no-fund
     )
 }
 

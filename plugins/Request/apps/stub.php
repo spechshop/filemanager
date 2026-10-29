@@ -25,22 +25,15 @@ class stub
 
     public static function api(Request $request, Response $response): ?bool
     {
-        if (!security::authorize($request, $response)) return true;
+        if (!security::authorize($request, $response, __CLASS__)) return true;
 
         $response->header(self::CONTENT_TYPE_JSON, self::MIME_TYPE_JSON);
 
         $data = json_decode($request->rawContent(), true);
         $word = $data['word'] ?? null;
         $fullPath = $data['fullPath'] ?? null;
-        $workspace = securityPolicy::roots(securityPolicy::requestToken($request))[0];
-        securityPolicy::tree($workspace, securityPolicy::requestToken($request));
-        $x = \Composer\ClassMapGenerator\ClassMapGenerator::createMap($workspace);
-        $includes = [];
-        foreach ($x as $xc => $file) {
-            if (str_contains($xc, $word)) {
-                $includes[] = $file;
-            }
-        }
+        // The classmap was never consumed by the response. Do not recursively
+        // reopen the workspace through a pathname-based scanner here.
         $class = get_declared_classes();
         $functions = get_defined_functions();
         $calls = [];

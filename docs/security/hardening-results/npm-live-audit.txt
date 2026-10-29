@@ -1,0 +1,190 @@
+{
+  "auditReportVersion": 2,
+  "vulnerabilities": {
+    "@opentelemetry/core": {
+      "name": "@opentelemetry/core",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1153174,
+          "name": "@opentelemetry/core",
+          "dependency": "@opentelemetry/core",
+          "title": "OpenTelemetry Core: Unbounded memory allocation in W3C Baggage propagation",
+          "url": "https://github.com/advisories/GHSA-8988-4f7v-96qf",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-770"
+          ],
+          "cvss": {
+            "score": 5.3,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+          },
+          "range": "<2.8.0"
+        }
+      ],
+      "effects": [
+        "@opentelemetry/resources",
+        "@opentelemetry/sdk-trace-base",
+        "applicationinsights"
+      ],
+      "range": "<2.8.0",
+      "nodes": [
+        "node_modules/@opentelemetry/core"
+      ],
+      "fixAvailable": {
+        "name": "intelephense",
+        "version": "1.8.2",
+        "isSemVerMajor": true
+      }
+    },
+    "@opentelemetry/resources": {
+      "name": "@opentelemetry/resources",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "@opentelemetry/core"
+      ],
+      "effects": [],
+      "range": "0.8.0 - 2.7.1",
+      "nodes": [
+        "node_modules/@opentelemetry/resources"
+      ],
+      "fixAvailable": true
+    },
+    "@opentelemetry/sdk-trace-base": {
+      "name": "@opentelemetry/sdk-trace-base",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "@opentelemetry/core",
+        "@opentelemetry/resources"
+      ],
+      "effects": [
+        "applicationinsights"
+      ],
+      "range": "<=2.7.1",
+      "nodes": [
+        "node_modules/@opentelemetry/sdk-trace-base"
+      ],
+      "fixAvailable": {
+        "name": "intelephense",
+        "version": "1.8.2",
+        "isSemVerMajor": true
+      }
+    },
+    "applicationinsights": {
+      "name": "applicationinsights",
+      "severity": "moderate",
+      "isDirect": false,
+      "via": [
+        "@opentelemetry/core",
+        "@opentelemetry/sdk-trace-base"
+      ],
+      "effects": [
+        "intelephense"
+      ],
+      "range": "2.0.0-beta.200707.1 - 2.0.0-beta.201103.0 || 2.1.8 - 3.7.0",
+      "nodes": [
+        "node_modules/applicationinsights"
+      ],
+      "fixAvailable": {
+        "name": "intelephense",
+        "version": "1.8.2",
+        "isSemVerMajor": true
+      }
+    },
+    "deepmerge": {
+      "name": "deepmerge",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        {
+          "source": 1243505,
+          "name": "deepmerge",
+          "dependency": "deepmerge",
+          "title": "deepmerge mergeObject() allows prototype poisoning of returned objects",
+          "url": "https://github.com/advisories/GHSA-gcqx-w48m-w2h4",
+          "severity": "low",
+          "cwe": [
+            "CWE-1321"
+          ],
+          "cvss": {
+            "score": 5.3,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N"
+          },
+          "range": ">=4.2.0 <=4.3.1"
+        }
+      ],
+      "effects": [
+        "html-to-text"
+      ],
+      "range": ">=4.2.0",
+      "nodes": [
+        "node_modules/deepmerge"
+      ],
+      "fixAvailable": {
+        "name": "intelephense",
+        "version": "1.8.2",
+        "isSemVerMajor": true
+      }
+    },
+    "html-to-text": {
+      "name": "html-to-text",
+      "severity": "low",
+      "isDirect": false,
+      "via": [
+        "deepmerge"
+      ],
+      "effects": [
+        "intelephense"
+      ],
+      "range": "6.0.0 - 9.0.5",
+      "nodes": [
+        "node_modules/html-to-text"
+      ],
+      "fixAvailable": {
+        "name": "intelephense",
+        "version": "1.8.2",
+        "isSemVerMajor": true
+      }
+    },
+    "intelephense": {
+      "name": "intelephense",
+      "severity": "moderate",
+      "isDirect": true,
+      "via": [
+        "applicationinsights",
+        "html-to-text"
+      ],
+      "effects": [],
+      "range": ">=1.6.0",
+      "nodes": [
+        "node_modules/intelephense"
+      ],
+      "fixAvailable": {
+        "name": "intelephense",
+        "version": "1.8.2",
+        "isSemVerMajor": true
+      }
+    }
+  },
+  "metadata": {
+    "vulnerabilities": {
+      "info": 0,
+      "low": 2,
+      "moderate": 5,
+      "high": 0,
+      "critical": 0,
+      "total": 7
+    },
+    "dependencies": {
+      "prod": 130,
+      "dev": 38,
+      "optional": 1,
+      "peer": 0,
+      "peerOptional": 0,
+      "total": 168
+    }
+  }
+}

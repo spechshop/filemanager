@@ -16,11 +16,13 @@ use Swoole\Http\Response;
  * É a contraparte no backend das melhorias do editor: em vez de só sugerir,
  * o servidor passa a "entender" o código com as abordagens recomendadas.
  */
+require_once __DIR__ . '/../components/safeProcess.php';
+
 class phpstanCheck
 {
     public static function api(Request $request, Response $response): ?bool
     {
-        if (!security::authorize($request, $response)) return true;
+        if (!security::authorize($request, $response, __CLASS__)) return true;
 
         $response->header('Content-Type', 'application/json');
         $data = json_decode($request->rawContent(), true) ?: [];
@@ -45,7 +47,8 @@ class phpstanCheck
         // Alvo: arquivo real quando existir; senão grava o código num temporário.
         $tmpFile = null;
         if ($nameFile !== '' && is_file($nameFile)) {
-            $target = $nameFile;
+            $tmpFile = safeFiles::snapshot($nameFile, securityPolicy::requestToken($request), '.php');
+            $target = $tmpFile;
         } else {
             if ($code === null) {
                 return $response->end(json_encode([
@@ -54,13 +57,13 @@ class phpstanCheck
                     'diagnostics' => [],
                 ]));
             }
-            $tmpFile = tempnam(sys_get_temp_dir(), 'pstan_') . '.php';
+            $tmpFile = securityPolicy::temporary('pstan_', '.php');
             file_put_contents($tmpFile, $code);
             $target = $tmpFile;
         }
 
         // Config mínima temporária (inclui regras do projeto, mas isola o alvo).
-        $tmpConf  = tempnam(sys_get_temp_dir(), 'pstan_conf_') . '.neon';
+        $tmpConf = securityPolicy::temporary('pstan_conf_', '.neon');
         $autoload = $baseDir . 'vendor/autoload.php';
         $neonBase = $baseDir . 'phpstan.neon';
 
@@ -70,23 +73,23 @@ class phpstanCheck
         }
         $conf    .= "parameters:\n";
         $conf    .= "    level: {$level}\n";
+        $conf .= "    tmpDir: " . json_encode(securityPolicy::temporaryDirectory() . '/phpstan-cache') . "\n";
         $conf    .= "    reportUnmatchedIgnoredErrors: false\n";
         if (is_file($autoload)) {
             $conf .= "    bootstrapFiles:\n        - " . $autoload . "\n";
         }
         file_put_contents($tmpConf, $conf);
 
-        $cmd = escapeshellarg(PHP_BINARY) . ' ' . escapeshellarg($phpstan) . ' analyse'
-            . ' --no-progress --error-format=json'
-            . ' --configuration=' . escapeshellarg($tmpConf)
-            . ' ' . escapeshellarg($target) . ' 2>/dev/null';
-
-        $raw = shell_exec($cmd);
-
-        if ($tmpFile !== null) {
+        try {
+            securityPolicy::requireAdmin(securityPolicy::requestToken($request));
+            $result = safeProcess::run([PHP_BINARY, $phpstan, 'analyse', '--no-progress', '--error-format=json',
+                '--configuration=' . $tmpConf, $target], securityPolicy::requestToken($request), true);
+            $raw = $result['output'];
+            securityPolicy::requireAdmin(securityPolicy::requestToken($request));
+        } finally {
             @unlink($tmpFile);
+            @unlink($tmpConf);
         }
-        @unlink($tmpConf);
 
         $parsed      = json_decode((string) $raw, true);
         $diagnostics = [];
