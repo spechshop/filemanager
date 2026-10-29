@@ -21,6 +21,9 @@
   },
   "overrides": {
     "protobufjs": "^8.8.1",
+    "intelephense": {
+      "html-to-text": "10.0.1"
+    },
     "get-uri@6.0.5": {
       "basic-ftp": "6.2.3"
     }

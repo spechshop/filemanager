@@ -27,7 +27,7 @@ test('a new vulnerable package is rejected even when it reuses an accepted advis
     assert.throws(() => evaluate(changed, baseline, 1), /outside the accepted-risk baseline/);
 });
 
-test('severity or advisory drift in an accepted package is rejected', () => {
+test('increased severity or a new advisory in an accepted package is rejected', () => {
     const severity = clone(report);
     severity.vulnerabilities.braces.severity = 'critical';
     severity.metadata.vulnerabilities.high--;
@@ -37,6 +37,19 @@ test('severity or advisory drift in an accepted package is rejected', () => {
     const advisory = clone(report);
     advisory.vulnerabilities.braces.via[0].url = 'https://github.com/advisories/GHSA-0000-0000-0000';
     assert.throws(() => evaluate(advisory, baseline, 1), /outside the accepted-risk baseline/);
+});
+
+test('removing advisories and lowering severity within an accepted package is allowed', () => {
+    const improved = clone(report);
+    improved.vulnerabilities.intelephense.via = ['applicationinsights'];
+    improved.vulnerabilities.intelephense.severity = 'moderate';
+    improved.metadata.vulnerabilities.high--;
+    improved.metadata.vulnerabilities.moderate++;
+    assert.equal(evaluate(improved, baseline, 1).total, 8);
+
+    // Even an improvement in severity cannot authorize a different advisory.
+    improved.vulnerabilities.intelephense.via.push({url: 'https://github.com/advisories/GHSA-0000-0000-0000'});
+    assert.throws(() => evaluate(improved, baseline, 1), /outside the accepted-risk baseline/);
 });
 
 test('audit execution errors and inconsistent output are rejected', () => {

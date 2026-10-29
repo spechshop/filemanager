@@ -9,6 +9,17 @@ const {getUri} = require('get-uri');
 const {ProxyAgent} = require('proxy-agent');
 const {createRequire} = require('node:module');
 const getUriRequire = createRequire(require.resolve('get-uri'));
+const intelephenseRequire = createRequire(require.resolve('intelephense/package.json'));
+
+test('Intelephense HTML documentation conversion preserves formatting with the patched dependency', () => {
+    assert.equal(intelephenseRequire('html-to-text/package.json').version, '10.0.1');
+    const {convert, compile} = intelephenseRequire('html-to-text');
+    const html = '<p>Greeting <strong>details</strong> &amp; entities.</p><ul><li>First</li><li>Second</li></ul>';
+    const expected = 'Greeting details & entities.\n\n * First\n * Second';
+    assert.equal(convert(html), expected);
+    assert.equal(compile({wordwrap: false})(html), expected);
+    assert.throws(() => intelephenseRequire.resolve('deepmerge'), {code: 'MODULE_NOT_FOUND'});
+});
 async function listen(server) { server.listen(0, '127.0.0.1'); await once(server, 'listening'); return server.address().port; }
 async function contents(stream) { let text = ''; for await (const chunk of stream) text += chunk; return text; }
 // A real local FTP peer exercises the exact API get-uri uses, including LIST fallback.

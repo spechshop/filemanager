@@ -104,8 +104,8 @@ async function fixture(t, mode = 'real', relay = false) {
         return ws;
     }
     async function pid() { const value = await until(() => children(bridge.pid)[0], 'language server pid'); pids.add(value); return value; }
-    async function initialize(ws) {
-        const result = await ws.request('initialize', {processId: null, rootUri: null, capabilities: {workspace: {configuration: true}, textDocument: {completion: {completionItem: {snippetSupport: true}}, hover: {contentFormat: ['markdown', 'plaintext']}}}, initializationOptions: {storagePath: path.join(tmp, 'cache'), globalStoragePath: path.join(tmp, 'global')}});
+    async function initialize(ws, contentFormat = ['markdown', 'plaintext']) {
+        const result = await ws.request('initialize', {processId: null, rootUri: null, capabilities: {workspace: {configuration: true}, textDocument: {completion: {completionItem: {snippetSupport: true}}, hover: {contentFormat}}}, initializationOptions: {storagePath: path.join(tmp, 'cache'), globalStoragePath: path.join(tmp, 'global')}});
         assert.ok(result.capabilities.completionProvider); assert.ok(result.capabilities.hoverProvider); assert.ok(result.capabilities.definitionProvider);
         ws.notify('initialized', {}); return result;
     }
@@ -120,12 +120,18 @@ test('real Intelephense through authenticated WebSocket: PHP features, updates, 
     const samples = [];
     for (let cycle = 0; cycle < 3; cycle++) {
         const ws = await f.connect(), pid = await f.pid();
-        await f.initialize(ws);
+        await f.initialize(ws, cycle === 1 ? ['plaintext'] : ['markdown', 'plaintext']);
         const uri = pathToFileURL(path.join(f.tmp, 'document.php')).href;
-        const text = '<?php\n// Unicode: ação 漢字 — exercises Content-Length byte framing.\nfunction greet(string $name): string { return $name; }\n$value = greet("world");\n$obj = new WorkspaceSymbol();\n$obj->workspaceMethod();\n';
+        const text = '<?php\n// Unicode: ação 漢字 — exercises Content-Length byte framing.\n/** <p>Greeting <strong>details</strong> &amp; entities.</p> */ function greet(string $name): string { return $name; }\n$value = greet("world");\n$obj = new WorkspaceSymbol();\n$obj->workspaceMethod();\n';
         ws.notify('textDocument/didOpen', {textDocument: {uri, languageId: 'php', version: 1, text}});
         const hover = await ws.request('textDocument/hover', {textDocument: {uri}, position: {line: 3, character: 11}});
         assert.match(JSON.stringify(hover), /greet/);
+        assert.match(JSON.stringify(hover), /Greeting.*details.*entities\./);
+        if (cycle === 1) {
+            assert.equal(hover.contents.kind, 'plaintext');
+            // Intelephense preserves PHPDoc HTML in plaintext hover responses.
+            assert.match(hover.contents.value, /<p>Greeting <strong>details<\/strong> &amp; entities\.<\/p>/);
+        }
         const definitions = await ws.request('textDocument/definition', {textDocument: {uri}, position: {line: 3, character: 11}});
         const locations = Array.isArray(definitions) ? definitions : [definitions];
         assert.ok(locations.some(x => x.uri === uri && x.range.start.line === 2), JSON.stringify(definitions));

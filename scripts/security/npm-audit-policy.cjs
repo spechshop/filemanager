@@ -98,8 +98,10 @@ function evaluate(report, baseline, auditExitCode) {
         counts[item.severity]++;
         const actual = {severity: item.severity, advisories: advisorySet(name, vulnerabilities)};
         const allowed = accepted.get(name);
-        if (!allowed || allowed.severity !== actual.severity ||
-            JSON.stringify(allowed.advisories) !== JSON.stringify(actual.advisories)) {
+        // The accepted baseline is a ceiling: fixes may remove advisories or lower
+        // severity, but cannot introduce an advisory or increase severity.
+        if (!allowed || SEVERITIES.indexOf(actual.severity) > SEVERITIES.indexOf(allowed.severity) ||
+            actual.advisories.some(id => !allowed.advisories.includes(id))) {
             unexpected.push({package: name, ...actual});
         }
     }
