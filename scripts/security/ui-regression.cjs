@@ -162,3 +162,33 @@ test('denied access and network failures leave loading and show an actionable au
         } finally { w.close(); }
     }
 });
+
+
+test('lotus notifications stack safely and close or expire independently', () => {
+    const dom = browser(), w = dom.window;
+    try {
+        const source = read('plugins/Request/modules/includes/head.html');
+        const start = source.indexOf('    let toast;');
+        const end = source.indexOf('    toastLotus = toast;') + '    toastLotus = toast;'.length;
+        const timers = new Map();
+        let nextTimer = 0;
+        w.setInterval = callback => { timers.set(++nextTimer, callback); return nextTimer; };
+        w.clearInterval = id => timers.delete(id);
+        w.eval(source.slice(start, end));
+        const payload = '<img src=x onerror="window.pwned=1">';
+        w.toastLotus(payload, payload, 10, 'success');
+        w.toastLotus('Segundo aviso', 'Informação', 10, 'info');
+        const container = w.document.getElementById('lotus-toast-container');
+        assert.equal(container.children.length, 2);
+        assert.ok(container.textContent.includes(payload));
+        assert.equal(container.querySelectorAll('img,script,[onerror]').length, 0);
+        container.querySelector('button[aria-label="Fechar aviso"]').click();
+        assert.equal(container.children.length, 1);
+        assert.ok(container.textContent.includes('Segundo aviso'));
+        for (const callback of [...timers.values()]) callback();
+        assert.equal(container.children.length, 0);
+        w.toastLotus('Novo aviso', 'Informação', 10, 'info');
+        assert.equal(w.document.querySelectorAll('#lotus-toast-container').length, 1);
+        assert.equal(container.children.length, 1);
+    } finally { w.close(); }
+});

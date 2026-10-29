@@ -91,8 +91,6 @@
      * @param {string} type Tipo da mensagem (success, error, info, warning, danger, dark, default)
      */
     let toast;
-    let toastHeight = 0;
-    let toastZIndex = 3000;
 
     const themes = {
         success: {backgroundColor: "#2ecc71", color: "#fff", closeButtonColor: "#27ae60"},
@@ -105,12 +103,16 @@
     };
 
     toast = function (messageText, titleMessage, expire, type) {
-        updateToastPositions();
         const theme = themes[type] || themes.default;
 
         const toast = createToastElement(messageText, titleMessage, theme);
-        document.body.appendChild(toast);
-        toastHeight += toast.offsetHeight + 10; // Incrementa a altura acumulada
+        let container = document.getElementById('lotus-toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'lotus-toast-container';
+            document.body.appendChild(container);
+        }
+        container.appendChild(toast);
 
         animateProgressBar(toast.querySelector('.progress-bar'), expire, toast);
     }
@@ -119,10 +121,9 @@
         const toast = document.createElement("div");
         toast.classList.add("lotus-toast");
         Object.assign(toast.style, {
-            position: "fixed", top: `${10 + toastHeight}px`, right: "10px", padding: "10px",
+            padding: "10px",
             backgroundColor: theme.backgroundColor, color: theme.color, borderRadius: "5px",
-            boxShadow: "0 0 10px rgba(0, 0, 0, 0.2)", zIndex: toastZIndex++, // Incrementa o z-index
-            width: "300px", marginBottom: "10px", fontSize: "13px"
+            boxShadow: "0 0 10px rgba(0, 0, 0, 0.2)", fontSize: "13px"
         });
         toast.setAttribute('role', 'alert');  // Acessibilidade
         toast.setAttribute('aria-live', 'assertive');
@@ -152,9 +153,11 @@
         title.textContent = titleMessage;
         header.appendChild(title);
 
-        const close = document.createElement("span");
+        const close = document.createElement("button");
+        close.type = 'button';
+        close.setAttribute('aria-label', 'Fechar aviso');
         Object.assign(close.style, {
-            width: "20px", height: "20px", display: "flex", alignItems: "center",
+            width: "32px", height: "32px", border: "0", padding: "0", flexShrink: "0", display: "flex", alignItems: "center",
             justifyContent: "center", backgroundColor: theme.closeButtonColor,
             color: theme.color, borderRadius: "50%", fontSize: "16px", cursor: "pointer"
         });
@@ -202,18 +205,6 @@
 
     function removeToast(toast) {
         toast.remove();
-        toastHeight -= toast.offsetHeight + 10; // Ajusta a altura acumulada
-        updateToastPositions();
-    }
-
-    function updateToastPositions() {
-        const toasts = document.querySelectorAll(".lotus-toast");
-        let height = 10;
-        toasts.forEach(toast => {
-            toast.style.top = `${height}px`;
-            height += toast.offsetHeight + 10;
-        });
-        toastHeight = height - 10;
     }
     toastLotus = toast;
 

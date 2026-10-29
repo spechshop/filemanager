@@ -1,23 +1,15 @@
-<div class="modal fade" id="modal-welcome" tabindex="-1" role="dialog">
-    <div class="modal-dialog" role="document">
+<div class="modal fade" id="modal-welcome" tabindex="-1" aria-labelledby="messageModalWelcome" aria-describedby="welcomeDescription" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content headerModal" style="border-bottom: none; border-radius: 13px !important;">
-            <div class="modal-header" style="border: none !important;"></div>
-            <div class="modal-body text-center">
-                <center>
-                    <img src="img/startup.png" style="width: 30%;"/>
-                </center>
-                <center class="mt-2">
-                    <h4><b id="messageModalWelcome"></b></h4>
-                </center>
-                <center>
-                    <p>Seja bem vindo a nossa plataforma, o que vamos produzir de incrível hoje?</p>
-                </center>
-                <center class="mt-4">
-                    <button type="button" class="btn btn-block btn-secondary"
-                            style="background: #817CA8; border: none !important; width: 60%"
-                            data-dismiss="modal">Fechar
-                    </button>
-                </center>
+            <div class="modal-body text-center p-4">
+                <img src="img/startup.png" class="welcome-image" width="96" height="96" alt=""/>
+                <h4 class="mt-3"><b id="messageModalWelcome"></b></h4>
+                <p id="welcomeDescription">Seja bem vindo a nossa plataforma, o que vamos produzir de incrível hoje?</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center pt-0 pb-4">
+                <button type="button" class="btn btn-secondary px-5"
+                        style="background: #817CA8; border: none !important;"
+                        data-bs-dismiss="modal">Fechar</button>
             </div>
         </div>
     </div>
