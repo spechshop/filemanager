@@ -230,10 +230,10 @@
     })()"><i
             class="fa-duotone fa-cloud-arrow-up"></i>&nbsp;Upload
     </button>
-    <button class="btn btn-danger" onclick="deleteFileList()"><i class="fa-solid fa-trash-can-list"></i>&nbsp;Apagar
+    <button class="btn btn-danger d-none" data-selection-action onclick="deleteFileList()"><i class="fa-solid fa-trash-can-list"></i>&nbsp;Apagar
         selecionados
     </button>
-    <button class="btn btn-warning" onclick="compressFiles()">
+    <button class="btn btn-warning d-none" data-selection-action onclick="compressFiles()">
         <i class="fa-duotone fa-file-zip fa-lg"></i>&nbsp;Compactar selecionados
     </button>
     @import(downloadFile/importRepGit)
@@ -444,6 +444,7 @@
                                 FMUI.highlight(nameDiv, originalText, termo);
                             }
                         });
+                        updateSelectionActions();
                     });
                 </script>
 

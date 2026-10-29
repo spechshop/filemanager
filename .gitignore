@@ -12,6 +12,7 @@ $RECYCLE.BIN/
 .directory
 .Trash-*/
 .nfs*
+package-lock.json
 
 # Editors and local tooling
 /.idea/

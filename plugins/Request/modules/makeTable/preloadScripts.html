@@ -247,6 +247,7 @@
 
         const tbody = document.getElementById(tbodyId);
         tbody.innerHTML = '';
+        if (typeof updateSelectionActions === 'function') updateSelectionActions();
         let fileList;
         try {
             fileList = items.map(item => item.path); // Armazena os caminhos dos arquivos para navegação

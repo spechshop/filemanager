@@ -5,6 +5,17 @@
 </style>
 
 <script>
+    function updateSelectionActions() {
+        const hasSelection = Array.from(document.querySelectorAll('#filesList tr')).some(row =>
+            row.style.display !== 'none' && row.querySelector('.checkboxFileList:checked')
+        );
+        document.querySelectorAll('[data-selection-action]').forEach(button => {
+            button.classList.toggle('d-none', !hasSelection);
+        });
+    }
+
+    document.getElementById('filesList').addEventListener('change', updateSelectionActions);
+
     function toglleAllItens() {
         const list = document.getElementById('filesList').children;
         for (let i = 0; i < list.length; i++) {
@@ -14,6 +25,7 @@
                 list[i].children[0].children[0].checked = true;
             }
         }
+        updateSelectionActions();
     }
 
 
@@ -108,6 +120,7 @@
                     checkboxClone.checked = checkbox.checked;
                     checkboxClone.addEventListener('change', (e) => {
                         checkbox.checked = e.target.checked;
+                        checkbox.dispatchEvent(new Event('change', {bubbles: true}));
                         e.stopPropagation();
                     });
 
