@@ -7,7 +7,6 @@ use Exception;
 use plugins\Extension\utilsFunction;
 use plugins\Request\appController;
 use plugins\Request\securityPolicy;
-use plugins\Request\safeFiles;
 use plugins\Start\cache;
 use plugins\websocket\OpenConnection;
 use Swoole\Coroutine;
@@ -365,8 +364,13 @@ class server extends OpenConnection
             return;
         }
 
-        $jobSocket = $GLOBALS['searchInFileJobs'][$fd]['socketToken'] ?? '';
-        if (!securityPolicy::validToken(securityPolicy::socketOwner($jobSocket)) || ($GLOBALS['websocketConnections'][$fd]['token'] ?? '') !== $jobSocket) return;
+        $job = $GLOBALS['searchInFileJobs'][$fd] ?? null;
+        $jobSocket = $job['socketToken'] ?? self::socketTokenForFd($fd);
+        $binding = $job['binding'] ?? ($GLOBALS['websocketConnections'][$fd]['identity'] ?? '');
+        if (!securityPolicy::validToken(securityPolicy::socketOwner($jobSocket))
+            || ($GLOBALS['websocketConnections'][$fd]['token'] ?? '') !== $jobSocket
+            || ($GLOBALS['websocketConnections'][$fd]['identity'] ?? '') !== $binding
+            || ($GLOBALS['searchInFileJobs'][$fd]['id'] ?? null) !== ($job['id'] ?? null)) return;
         $server->push($fd, json_encode([
             'searchInFile' => true,
             'payload' => $payload,
@@ -439,10 +443,17 @@ class server extends OpenConnection
         $binding = $GLOBALS['websocketConnections'][$fd]['identity'] ?? '';
         try {
             $path = securityPolicy::path($object['path'] ?? securityPolicy::initialPath($clientToken), $clientToken);
-            securityPolicy::tree($path, $clientToken);
-        } catch (\DomainException $e) { $server->disconnect($fd, 1008, 'Forbidden'); return; }
+        } catch (\DomainException $e) {
+            if (!self::activeBinding($server, $fd, $binding, $clientToken)) return;
+            self::pushSearchEvent($server, $fd, [
+                'type' => 'status',
+                'status' => 'error',
+                'message' => 'A pasta de busca não está disponível ou não é permitida.',
+            ]);
+            return;
+        }
         if (!self::activeBinding($server, $fd, $binding, $clientToken)) return;
-        $limit = max(1, (int) ($object['limit'] ?? 1000));
+        $limit = max(1, min(10000, (int) ($object['limit'] ?? 1000)));
 
         if (!empty($job)) {
             $job['cancelled'] = true;
@@ -455,6 +466,7 @@ class server extends OpenConnection
             'id' => $jobId,
             'socketToken' => $socketToken,
             'clientToken' => $clientToken,
+            'binding' => $binding,
             'search' => $search,
             'path' => $path,
             'limit' => $limit,
@@ -477,7 +489,20 @@ class server extends OpenConnection
         ]);
 
         Coroutine::create(function () use ($server, $fd, $jobId) {
-            self::runSearchJob($server, $fd, $jobId);
+            try {
+                self::runSearchJob($server, $fd, $jobId);
+            } catch (Throwable $e) {
+                if (($GLOBALS['searchInFileJobs'][$fd]['id'] ?? null) !== $jobId) return;
+                self::pushSearchEvent($server, $fd, [
+                    'type' => 'status',
+                    'status' => 'error',
+                    'message' => 'Não foi possível concluir a busca. Verifique o acesso à pasta e tente novamente.',
+                    'found' => (int) $GLOBALS['searchInFileJobs'][$fd]['found'],
+                    'scanned' => (int) $GLOBALS['searchInFileJobs'][$fd]['scanned'],
+                ]);
+            } finally {
+                if (($GLOBALS['searchInFileJobs'][$fd]['id'] ?? null) === $jobId) unset($GLOBALS['searchInFileJobs'][$fd]);
+            }
         });
     }
 
@@ -492,30 +517,22 @@ class server extends OpenConnection
             return;
         }
         $path = $job['path'];
+        $owner = $job['clientToken'];
         $needle = $job['search'];
         $limit = (int) $job['limit'];
 
-        try {
-            $iterator = safeFiles::walk($path, $job['clientToken']);
-        } catch (\UnexpectedValueException) {
-            self::pushSearchEvent($server, $fd, [
-                'type' => 'status',
-                'status' => 'error',
-                'message' => 'Não foi possível abrir o diretório informado.',
-            ]);
-            unset($GLOBALS['searchInFileJobs'][$fd]);
-            return;
-        }
+        $iterator = \plugins\Request\searchInFile::walk($path, $owner);
 
         $batch = 0;
         foreach ($iterator as $item) {
-            if (!securityPolicy::validToken($job['clientToken']) || !$server->isEstablished($fd)) return;
+            if (!securityPolicy::validToken($owner) || !$server->isEstablished($fd)) return;
             if (!isset($GLOBALS['searchInFileJobs'][$fd])) {
                 return;
             }
             if (($job['id'] ?? null) !== $jobId) {
                 return;
             }
+            if (($GLOBALS['websocketConnections'][$fd]['identity'] ?? '') !== $job['binding']) return;
 
             if (!empty($job['cancelled'])) {
                 self::pushSearchEvent($server, $fd, [
@@ -525,7 +542,6 @@ class server extends OpenConnection
                     'found' => (int) $job['found'],
                     'scanned' => (int) $job['scanned'],
                 ]);
-                unset($GLOBALS['searchInFileJobs'][$fd]);
                 return;
             }
 
@@ -547,7 +563,7 @@ class server extends OpenConnection
                     ]);
                 }
                 Coroutine::sleep(0.25);
-                if (!securityPolicy::validToken($job['clientToken'])) return;
+                if (!securityPolicy::validToken($owner)) return;
             }
 
             if (!empty($job['cancelled'])) {
@@ -567,6 +583,7 @@ class server extends OpenConnection
                     'scanned' => (int) $job['scanned'],
                 ]);
             }
+            if (($GLOBALS['searchInFileJobs'][$fd]['id'] ?? null) !== $jobId) return;
 
             if ($item['directory']) {
                 $batch++;
@@ -579,7 +596,11 @@ class server extends OpenConnection
             $pathFile = $item['path'];
             $job['scanned']++;
 
-            if (\plugins\Request\searchInFile::fileContainsString($pathFile, $needle, $job['clientToken'])) {
+            $contains = \plugins\Request\searchInFile::fileContainsString($pathFile, $needle, $owner);
+            // Descriptor IO can yield while another command replaces or cancels this job.
+            if (($GLOBALS['searchInFileJobs'][$fd]['id'] ?? null) !== $jobId) return;
+            if (!empty($job['cancelled'])) continue;
+            if ($contains) {
                 $job['found']++;
                 $size = $item['size'];
                 self::pushSearchEvent($server, $fd, [
@@ -592,6 +613,7 @@ class server extends OpenConnection
                     'found' => (int) $job['found'],
                     'scanned' => (int) $job['scanned'],
                 ]);
+                if (($GLOBALS['searchInFileJobs'][$fd]['id'] ?? null) !== $jobId) return;
                 if ($job['found'] >= $limit) {
                     self::pushSearchEvent($server, $fd, [
                         'type' => 'status',
@@ -600,7 +622,6 @@ class server extends OpenConnection
                         'found' => (int) $job['found'],
                         'scanned' => (int) $job['scanned'],
                     ]);
-                    unset($GLOBALS['searchInFileJobs'][$fd]);
                     return;
                 }
             }
@@ -619,14 +640,14 @@ class server extends OpenConnection
             }
         }
 
+        if (($GLOBALS['searchInFileJobs'][$fd]['id'] ?? null) !== $jobId) return;
         self::pushSearchEvent($server, $fd, [
             'type' => 'status',
-            'status' => 'complete',
-            'message' => 'Busca concluída.',
+            'status' => !empty($job['cancelled']) ? 'cancelled' : 'complete',
+            'message' => !empty($job['cancelled']) ? 'Busca cancelada.' : 'Busca concluída.',
             'found' => (int) $job['found'],
             'scanned' => (int) $job['scanned'],
         ]);
-        unset($GLOBALS['searchInFileJobs'][$fd]);
     }
 
     /**

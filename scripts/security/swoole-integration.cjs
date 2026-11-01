@@ -101,6 +101,49 @@ test('real Swoole HTTP + WebSocket denied operations have no file/upload/process
             assert.ok(w.document.getElementById('listFoundSearch').textContent.includes(searchFile));
             assert.equal(w.document.getElementById('searchPauseBtn').disabled, true);
             assert.equal(w.document.getElementById('searchCancelBtn').disabled, true);
+            // A broken or out-of-scope link elsewhere in the tree must not
+            // disconnect a read-only search before it can return any results.
+            const nested = path.join(tmp, 'files/nested');
+            fs.mkdirSync(nested);
+            fs.writeFileSync(path.join(nested, '.env'), 'TOKEN=nested-fixture\n');
+            fs.writeFileSync(searchFile, 'TOKEN=root-fixture\n');
+            fs.writeFileSync(path.join(tmp, 'outside/.env'), 'TOKEN=outside-fixture\n');
+            const links = [path.join(tmp, 'files/broken'), path.join(tmp, 'files/escape'), path.join(nested, 'loop')];
+            fs.symlinkSync('missing-target', links[0]);
+            fs.symlinkSync(path.join(tmp, 'outside'), links[1]);
+            fs.symlinkSync(path.join(tmp, 'files'), links[2]);
+            w.document.getElementById('contentOffCanvasSearch').value = 'TOKEN=';
+            w.searchInternal();
+            for (let i = 0; i < 150 && !status.textContent.includes('Busca concluída.'); i++) await delay(20);
+            assert.match(status.textContent, /Busca concluída.*encontrados: 2/, output);
+            const found = w.document.getElementById('listFoundSearch').textContent;
+            assert.ok(found.includes(searchFile));
+            assert.ok(found.includes(path.join(nested, '.env')));
+            assert.ok(!found.includes('outside') && !found.includes('escape'));
+            assert.equal(sockets.at(-1).readyState, WebSocket.OPEN);
+            const httpSearch = await w.fetch('/searchInFile?tokenBrowser=owner', {
+                method: 'POST', headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: new URLSearchParams({search: 'TOKEN=', path: path.join(tmp, 'files')}),
+            });
+            assert.equal(httpSearch.status, 200);
+            const httpResults = await httpSearch.json();
+            assert.equal(httpResults.success, true);
+            assert.equal(httpResults.information.length, 2);
+            assert.ok(httpResults.information.every(file => !file.includes('outside') && !file.includes('escape')));
+            for (const invalidDirectory of [path.join(tmp, 'outside'), path.join(tmp, 'files/missing')]) {
+                directory.textContent = invalidDirectory;
+                w.beginSearch('TOKEN=');
+                for (let i = 0; i < 150 && !/não está disponível|Não foi possível concluir/.test(status.textContent); i++) await delay(20);
+                assert.match(status.textContent, /não está disponível|Não foi possível concluir/, output);
+                assert.equal(sockets.at(-1).readyState, WebSocket.OPEN);
+                assert.equal(w.document.getElementById('searchCancelBtn').disabled, true);
+            }
+            directory.textContent = path.join(tmp, 'files');
+            w.beginSearch('TOKEN=');
+            for (let i = 0; i < 150 && !status.textContent.includes('Busca concluída.'); i++) await delay(20);
+            assert.match(status.textContent, /Busca concluída.*encontrados: 2/, output);
+            for (const link of links) fs.unlinkSync(link);
+            fs.rmSync(nested, {recursive: true});
             fs.unlinkSync(searchFile);
         } finally { browser.window.close(); }
         for (const token of ['', 'invalid', 'expired', 'revoked']) {

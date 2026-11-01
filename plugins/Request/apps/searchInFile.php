@@ -2,7 +2,6 @@
 
 namespace plugins\Request;
 
-use plugins\Start\cache;
 use Swoole\Http\Request;
 use Swoole\Http\Response;
 
@@ -18,7 +17,7 @@ class searchInFile
         $currentPath = $request->post["path"] ?? securityPolicy::initialPath(securityPolicy::requestToken($request));
         $limit = (int) ($request->post["limit"] ?? 1000);
 
-        if (!$search) {
+        if ($search === '') {
             return $response->end(
                 json_encode([
                     "success" => false,
@@ -27,9 +26,8 @@ class searchInFile
             );
         }
 
-        securityPolicy::tree($currentPath, securityPolicy::requestToken($request));
+        $currentPath = securityPolicy::path($currentPath, securityPolicy::requestToken($request));
         $path = is_file($currentPath) ? dirname($currentPath) : $currentPath;
-        $path = rtrim(str_replace("//", "/", $path), "/");
 
         $foundFiles = self::searchString($path, $search, max(1, min(10000, $limit)), securityPolicy::requestToken($request));
         $results = [];
@@ -49,30 +47,57 @@ class searchInFile
 
     public static function searchString(string $local, string $string, int $limit, string $owner, array &$found = [], array $seen = []): array
     {
-        $real = securityPolicy::path($local, $owner);
-        if (isset($seen[$real]) || count($found) >= $limit) return $found;
-        $seen[$real] = true;
-        foreach (safeFiles::listing($real, $owner) as $entry) {
+        if (count($found) >= $limit) return $found;
+        foreach (self::walk($local, $owner, $seen) as $entry) {
             if (count($found) >= $limit) break;
-            if ($entry['directory']) self::searchString($entry['path'], $string, $limit, $owner, $found, $seen);
-            elseif (self::fileContainsString($entry['path'], $string, $owner)) $found[] = $entry['path'];
+            if (!$entry['directory'] && self::fileContainsString($entry['path'], $string, $owner)) $found[] = $entry['path'];
         }
         return $found;
     }
 
+    /** Read-only traversal: skip inaccessible children, without weakening mutation preflights. */
+    public static function walk(string $path, string $owner, array $seen = []): \Generator
+    {
+        $root = securityPolicy::path($path, $owner);
+        $pending = [$root];
+        while ($pending !== []) {
+            $directory = array_pop($pending);
+            try {
+                $real = securityPolicy::path($directory, $owner);
+                if (isset($seen[$real])) continue;
+                $seen[$real] = true;
+                // listing() filters broken and out-of-scope links using the descriptor broker.
+                $entries = safeFiles::listing($real, $owner);
+            } catch (\DomainException $e) {
+                if ($directory === $root || !securityPolicy::validToken($owner)) throw $e;
+                continue;
+            }
+            foreach ($entries as $entry) {
+                yield $entry;
+                if ($entry['directory']) $pending[] = $entry['path'];
+            }
+        }
+    }
+
     public static function fileContainsString(string $filePath, string $needle, string $owner): bool
     {
-        $operation = safeFiles::reader($filePath, $owner);
-        $tail = ''; $found = false;
         try {
-            while (!feof($operation['stream'])) {
-                $chunk = fread($operation['stream'], self::getSearchChunkSize());
-                if ($chunk === false || $chunk === '') break;
-                if (stripos($tail . $chunk, $needle) !== false) { $found = true; break; }
-                $tail = strlen($needle) > 1 ? substr($tail . $chunk, -(strlen($needle) - 1)) : '';
-            }
-        } finally { safeFiles::close($operation, $found); }
-        return $found;
+            $operation = safeFiles::reader($filePath, $owner);
+            $tail = ''; $found = false;
+            try {
+                while (!feof($operation['stream'])) {
+                    $chunk = fread($operation['stream'], self::getSearchChunkSize());
+                    if ($chunk === false || $chunk === '') break;
+                    if (stripos($tail . $chunk, $needle) !== false) { $found = true; break; }
+                    $tail = strlen($needle) > 1 ? substr($tail . $chunk, -(strlen($needle) - 1)) : '';
+                }
+            } finally { safeFiles::close($operation, $found); }
+            return $found;
+        } catch (\DomainException $e) {
+            // A file can disappear or become unreadable after its directory was listed.
+            if (!securityPolicy::validToken($owner)) throw $e;
+            return false;
+        }
     }
 
     public static function getSearchChunkSize(): int

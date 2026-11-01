@@ -54,6 +54,8 @@ run('downloads', ['python3', 'scripts/security/download-regression.py'])
 run('archives', [SWOOLE, 'scripts/security/archive-regression.php'])
 run('file-watcher', [PLAIN, 'scripts/tests/file-watcher-test.php'])
 run('request-cache', [PLAIN, 'scripts/tests/request-cache-test.php'])
+run('search-files', [PLAIN, 'scripts/tests/search-files-test.php'])
+run('search-ui', ['node', 'scripts/tests/search-ui-test.cjs'])
 for name in ['install-codex-native', 'installer-home', 'install-tmp']:
     run(name, ['bash', 'scripts/tests/' + name + '-test.sh'])
 for name, files in [
