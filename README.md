@@ -102,6 +102,14 @@ node -v
 
 ## Installation
 
+### Quick Install
+
+Run the installer directly with:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/spechshop/filemanager/refs/heads/newterm/installer.sh | bash
+```
+
 ### 1. Clone Repository
 
 Obtain a checkout over verified TLS and review its revision and installation scripts:

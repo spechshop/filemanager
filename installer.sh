@@ -426,6 +426,51 @@ else
     warn "Nenhum runtime PHP disponível; tentando o comando 'php'."
 fi
 
+# BEGIN installer token generation
+generate_installer_token() {
+    FILEMANAGER_INSTALLER_ROOT="$CURRENT_DIR" "$PHP_BIN" -r '
+declare(strict_types=1);
+ini_set("display_errors", "stderr");
+
+try {
+$root = getenv("FILEMANAGER_INSTALLER_ROOT");
+if (!is_string($root) || $root === "") throw new RuntimeException("Project root unavailable");
+require $root . "/plugins/Request/components/privateJson.php";
+
+$tokenFile = getenv("FILEMANAGER_TOKENS_FILE");
+if (!is_string($tokenFile) || $tokenFile === "") $tokenFile = $root . "/database/tokens.lotus";
+elseif ($tokenFile[0] !== "/") $tokenFile = $root . "/" . $tokenFile;
+$directory = dirname($tokenFile);
+if (is_link($directory) || is_link($tokenFile) || is_link($tokenFile . ".lock")) throw new RuntimeException("Unsafe token store path");
+if (!is_dir($directory) && !mkdir($directory, 0700, true) && !is_dir($directory)) throw new RuntimeException("Token store directory unavailable");
+if (is_link($directory)) throw new RuntimeException("Unsafe token store directory");
+
+$secret = null;
+$expire = time() + 365 * 24 * 60 * 60;
+\plugins\Request\privateJson::update($tokenFile, static function (array $tokens) use (&$secret, $expire): array {
+    foreach ($tokens as $key => $record) {
+        if (!is_string($key) || !is_array($record)) throw new RuntimeException("Invalid token store entry");
+    }
+    do { $secret = bin2hex(random_bytes(32)); } while (array_key_exists($secret, $tokens));
+    $tokens[$secret] = [
+        "nameClient" => "FileManager Installer",
+        "expire" => $expire,
+        "admin" => true,
+        "terminal" => true,
+    ];
+    return $tokens;
+});
+
+if (!is_string($secret) || !chmod($tokenFile, 0600)) throw new RuntimeException("Token store permissions unavailable");
+if (!chmod($tokenFile . ".lock", 0600)) throw new RuntimeException("Token lock permissions unavailable");
+echo $secret;
+} catch (Throwable $error) {
+    exit(1);
+}
+'
+}
+# END installer token generation
+
 # ---------------------------------------------------------------------
 # 10) Composer (garantir binário) e install com fallbacks
 # ---------------------------------------------------------------------
@@ -462,6 +507,23 @@ if [ "$COMPOSER_READY" -eq 1 ]; then
     else
         ok "Dependências PHP instaladas."
     fi
+fi
+
+INSTALLER_TOKEN=""
+TOKEN_STORE_PATH="${FILEMANAGER_TOKENS_FILE:-$CURRENT_DIR/database/tokens.lotus}"
+case "$TOKEN_STORE_PATH" in
+    /*) ;;
+    *) TOKEN_STORE_PATH="$CURRENT_DIR/$TOKEN_STORE_PATH" ;;
+esac
+if INSTALLER_TOKEN="$(generate_installer_token 2>/dev/null)" && [ -n "$INSTALLER_TOKEN" ]; then
+    if [ "$IS_ROOT" -eq 1 ] && [ "$FILEMANAGER_USER" != "root" ]; then
+        TOKEN_STORE_DIR="$(dirname -- "$TOKEN_STORE_PATH")"
+        if ! run_priv chown "$FILEMANAGER_USER" "$TOKEN_STORE_DIR" "$TOKEN_STORE_PATH" "$TOKEN_STORE_PATH.lock" 2>/dev/null; then
+            INSTALLER_TOKEN=""
+        fi
+    fi
+else
+    INSTALLER_TOKEN=""
 fi
 
 # ---------------------------------------------------------------------
@@ -751,6 +813,12 @@ fi
 
 ok "Instalação concluída!"
 log "Acesse o sistema em: $PROTOCOL://$IP_ADDR:$PORT"
+if [ -n "$INSTALLER_TOKEN" ]; then
+    log "Token administrativo: $INSTALLER_TOKEN"
+    log "Validade do token: 365 dias."
+else
+    warn "Não foi possível gerar o token administrativo; consulte as permissões e o armazenamento de tokens."
+fi
 if [ "$FREE_RAM_OK" -ne 1 ]; then
     warn "Instalação concluída sem freeRam; essa função exige root ou sudo não interativo durante a instalação."
 fi
