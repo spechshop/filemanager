@@ -77,6 +77,31 @@ test('real Swoole HTTP + WebSocket denied operations have no file/upload/process
             const listing = await w.fetch('/syncPath?tokenBrowser=owner&path=');
             assert.equal(listing.status, 200);
             assert.ok((await listing.json()).information.some(entry => entry.path === sentinel));
+            // Run the actual search panel through ticket issuance and message
+            // authentication, not just an independently constructed WS payload.
+            const searchFile = path.join(tmp, 'files/.env');
+            fs.writeFileSync(searchFile, 'KEY=synthetic-fixture\n');
+            const searchPage = new JSDOM(fs.readFileSync(path.join(ROOT, 'plugins/Request/pages/index.html'), 'utf8'));
+            w.document.body.insertAdjacentHTML('beforeend', searchPage.window.document.getElementById('offcanvasExample').outerHTML);
+            searchPage.window.close();
+            const directory = w.document.createElement('div');
+            directory.id = 'pathInvisible'; directory.textContent = path.join(tmp, 'files'); w.document.body.append(directory);
+            w.WebSocket = class extends WebSocket {
+                constructor(url) { super(url, {origin: 'http://localhost'}); sockets.push(this); }
+            };
+            w.getIconFile = () => '';
+            w.Swal = {fire: options => { throw new Error(JSON.stringify(options)); }};
+            const searchSource = fs.readFileSync(path.join(ROOT, 'plugins/Request/modules/includes/offCanvas.html'), 'utf8');
+            w.eval(searchSource.match(/<script>([\s\S]*?)<\/script>/)[1]);
+            w.document.getElementById('contentOffCanvasSearch').value = 'KEY=';
+            w.searchInternal();
+            const status = w.document.getElementById('searchStatus');
+            for (let i = 0; i < 150 && !status.textContent.includes('Busca concluída.'); i++) await delay(20);
+            assert.match(status.textContent, /Busca concluída.*encontrados: 1.*analisados: 2/, output);
+            assert.ok(w.document.getElementById('listFoundSearch').textContent.includes(searchFile));
+            assert.equal(w.document.getElementById('searchPauseBtn').disabled, true);
+            assert.equal(w.document.getElementById('searchCancelBtn').disabled, true);
+            fs.unlinkSync(searchFile);
         } finally { browser.window.close(); }
         for (const token of ['', 'invalid', 'expired', 'revoked']) {
             const response = await fetch(`${base}/deleteFile?tokenBrowser=${token}&path=${encodeURIComponent(sentinel)}`);

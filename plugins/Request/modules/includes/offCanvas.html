@@ -426,7 +426,7 @@
     }
 
     async function ensureSearchSocket(token) {
-        const socketAddress = searchSocket && searchSocket.readyState < WebSocket.CLOSING ? null : await FMAuth.socketUrl(getSearchSocketUrl(`${token}-search`));
+        const socketAddress = searchSocket && searchSocket.readyState < WebSocket.CLOSING ? null : await FMAuth.socketUrl(getSearchSocketUrl(token));
         return new Promise((resolve, reject) => {
             if (searchSocket && [WebSocket.OPEN, WebSocket.CONNECTING].includes(searchSocket.readyState)) {
                 if (searchSocket.readyState === WebSocket.OPEN) {
@@ -448,9 +448,14 @@
                 reject(error);
             };
             searchSocket.onclose = () => {
+                const wasActive = searchSession.active;
                 searchSession.active = false;
                 searchSession.paused = false;
                 setSearchControls();
+                if (wasActive) {
+                    setSearchStatus('A conexão de busca foi encerrada. Inicie a busca novamente.');
+                }
+                reject(new Error('Conexão de busca encerrada.'));
             };
         });
     }
@@ -472,7 +477,7 @@
         searchSession = {
             active: true,
             paused: false,
-            token: $('#fp').text(),
+            token: `${$('#fp').text().trim()}-search`,
             query,
             found: 0,
             scanned: 0,
@@ -499,6 +504,7 @@
                 searchSession.active = false;
                 searchSession.paused = false;
                 setSearchControls();
+                setSearchStatus('Não foi possível iniciar a busca. Tente novamente.');
                 Swal.fire({
                     icon: 'error',
                     background: '#1c2f48',
