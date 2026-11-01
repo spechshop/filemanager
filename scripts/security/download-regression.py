@@ -15,6 +15,8 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class DownloadTests(unittest.TestCase):
+    download_command = 'source "$1"; secure_download "$2" "$3" "$4"'
+
     @classmethod
     def setUpClass(cls):
         cls.temp = tempfile.TemporaryDirectory(prefix='fm-download-')
@@ -51,7 +53,7 @@ class DownloadTests(unittest.TestCase):
         output = self.base / self._testMethodName
         env = {**os.environ, 'CURL_CA_BUNDLE': str(self.cert) if trust else '/etc/ssl/certs/ca-certificates.crt'}
         env.update(environment or {})
-        result = subprocess.run(['bash', '-c', 'source "$1"; secure_download "$2" "$3" "$4"', 'fixture', str(ROOT / 'scripts/secure-download.sh'), url, str(output), digest], env=env, capture_output=True, timeout=15)
+        result = subprocess.run(['bash', '-c', self.download_command, 'fixture', str(ROOT / 'scripts/secure-download.sh'), url, str(output), digest], env=env, capture_output=True, timeout=15)
         return result, output
 
     def test_all_production_installers_keep_tls_verification_enabled(self):
@@ -97,6 +99,11 @@ class DownloadTests(unittest.TestCase):
         result, output = self.download(fixture.as_uri(), '')
         self.assertNotEqual(result.returncode, 0)
         self.assertFalse(output.exists())
+
+
+class InstallerDownloadTests(DownloadTests):
+    source = (ROOT / 'installer.sh').read_text()
+    download_command = source[source.index('# 4) Download resiliente'):source.index('# 5) Atualização do sistema')] + '\ndownload "$2" "$3" "$4"'
 
 
 if __name__ == '__main__': unittest.main(verbosity=2)
