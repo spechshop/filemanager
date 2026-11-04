@@ -80,6 +80,7 @@ class StartupTest(unittest.TestCase):
         (self.root / 'files').mkdir()
         (self.root / 'tokens.json').write_text(json.dumps({'fixture': {'expire': 9999999999}}))
         self.config = json.loads((ROOT / 'plugins/configInterface.json').read_text())
+        self.http_host = '127.0.0.1'
         self.ports = [free_port() for _ in range(3)]
         self.config.update(host='127.0.0.1', port=self.ports[0], ssl=True)
         self.config['serverSettings'].update(
@@ -118,11 +119,14 @@ class StartupTest(unittest.TestCase):
             if pid == previous:
                 return False
             try:
-                with self.http.open(f'https://127.0.0.1:{self.ports[0]}/', timeout=0.5) as response:
+                with self.http.open(f'https://{self.http_host}:{self.ports[0]}/', timeout=0.5) as response:
                     return pid if response.status == 200 and b'<html' in response.read().lower() else False
             except (OSError, urllib.error.URLError):
                 return False
-        return until(check)
+        try:
+            return until(check)
+        except AssertionError as error:
+            raise AssertionError(str(error) + '\n' + self.output()) from error
 
     def output(self):
         return (self.root / 'startup.log').read_text()
@@ -210,6 +214,54 @@ ws.on('close', () => process.exit(0));
         self.assert_reaped(self.owned)
         self.assertIn('Autorestart disabled', self.output())
         self.assertEqual(self.output().count('Starting server...'), 1)
+
+    def test_dual_stack_http_and_tls(self):
+        self.config['host'] = '0.0.0.0'
+        self.config['fileManager']['services'] = dict.fromkeys(['pty', 'lsp', 'gpt', 'codex'], False)
+        self.start()
+        for host in ['127.0.0.1', '[::1]']:
+            url = f'https://{host}:{self.ports[0]}'
+            self.assertIn(url, self.output())
+            request = urllib.request.Request(url + '/', headers={'Accept-Encoding': 'gzip'})
+            with self.http.open(request, timeout=2) as response:
+                self.assertEqual(response.status, 200)
+                self.assertIsNone(response.headers.get('Content-Encoding'))
+                self.assertIn(b'<html', response.read().lower())
+
+        for version in [ssl.TLSVersion.TLSv1_2, ssl.TLSVersion.TLSv1_3]:
+            context = ssl._create_unverified_context()
+            context.minimum_version = context.maximum_version = version
+            context.set_alpn_protocols(['h2'])
+            with socket.create_connection(('::1', self.ports[0]), timeout=2) as connection:
+                with context.wrap_socket(connection, server_hostname='localhost') as tls:
+                    self.assertEqual(tls.version(), version.name.replace('_', '.'))
+                    self.assertEqual(tls.selected_alpn_protocol(), 'h2')
+
+        script = """
+const WebSocket = require('ws');
+const ws = new WebSocket('wss://[::1]:' + process.argv[1] + '/fixture-ipv6', {
+  origin: process.env.FILEMANAGER_ORIGIN, rejectUnauthorized: false
+});
+ws.on('error', () => process.exit(1));
+ws.on('open', () => ws.ping());
+ws.on('pong', () => ws.close(1000));
+ws.on('close', code => process.exit(code === 1000 ? 0 : 1));
+"""
+        subprocess.run(['node', '-e', script, str(self.ports[0])], cwd=self.root,
+            env=self.env, check=True, timeout=5, capture_output=True)
+        self.stop()
+
+    def test_explicit_ipv6_bind(self):
+        self.config['host'] = '::1'
+        self.http_host = '[::1]'
+        self.config['fileManager']['services'] = dict.fromkeys(['pty', 'lsp', 'gpt', 'codex'], False)
+        self.start()
+        self.assertIn(f'https://[::1]:{self.ports[0]}', self.output())
+        self.assertNotIn(f'https://127.0.0.1:{self.ports[0]}', self.output())
+        with self.assertRaises(OSError):
+            socket.create_connection(('127.0.0.1', self.ports[0]), timeout=0.3)
+        self.assertEqual((self.root / '.runtime/server-address').read_text().split()[3], '::1')
+        self.stop()
 
     def test_explicit_restart_and_stop_during_backoff(self):
         self.config['fileManager']['autoRestart'] = False

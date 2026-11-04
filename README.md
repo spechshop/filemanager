@@ -200,7 +200,14 @@ For production, update certificate paths in `plugins/configInterface.json`.
     "max_request": 20000000,
     "max_coroutine": 20000000,
     "enable_coroutine": true,
+    "enable_static_handler": false,
+    "http_compression": false,
     "open_http2_protocol": true,
+    "ssl_protocols": 96,
+    "ssl_ciphers": "ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256",
+    "open_tcp_nodelay": true,
+    "tcp_fastopen": true,
+    "enable_reuse_port": true,
     "ssl_cert_file": "fullchain.pem",
     "ssl_key_file": "privkey.pem"
   }
@@ -217,6 +224,17 @@ For production, update certificate paths in `plugins/configInterface.json`.
 - **`autoload`** - Plugin directories to autoload
 - **`allowExtensions`** - MIME types for static file serving
 - **`serverSettings`** - Swoole server configuration
+
+The HTTP transport settings follow `berzersks/sipswoole`'s `manage/server.php`:
+TLS 1.2/1.3 (`ssl_protocols: 96`), its TLS cipher list, HTTP/2, TCP Fast Open,
+TCP_NODELAY, port reuse, and disabled HTTP compression and automatic static
+handling. Worker count, application port, certificate paths and File Manager
+upload/buffer limits remain application-specific.
+
+With `host: "0.0.0.0"`, the server also listens on IPv6 (`::`) on the same
+port when IPv6 is available. Startup lists IPv4 and IPv6 URLs, including
+`https://[::1]:8080`. An explicit IPv4 or IPv6 host binds only that address;
+IPv6 URLs use square brackets around the address.
 
 The **Settings > System > Restart now** action restarts only the supervised web
 server. PTY sessions, commands and auxiliary services stay alive. In

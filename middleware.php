@@ -2,7 +2,6 @@
 
 use libspech\Cache\cache as cacheLibSpech;
 use plugins\Start\cache;
-use Swoole\WebSocket\Server;
 Swoole\Runtime::enableCoroutine(0);
 global $server;
 global $coroutinesProcess;
@@ -54,9 +53,9 @@ if (cacheLibSpech::get('interface')['ssl']) {
 }
 
 if (!function_exists('portAlive')) {
-    function portAlive(mixed $port): bool
+    function portAlive(mixed $port, string $host = '0.0.0.0'): bool
     {
-        $host = "0.0.0.0";
+        if (str_contains($host, ':')) $host = 'tcp://[' . $host . ']';
         $fp = @fsockopen($host, $port, $errno, $errstr, 5);
         if (!$fp) {
             return false;
@@ -77,13 +76,14 @@ if (!getenv('FILEMANAGER_BRIDGE_SECRET') && !is_file($secretFile)) {
     fclose($handle);
 }
 if (strlen(\plugins\Request\securityPolicy::bridgeSecret()) < 32) throw new RuntimeException('Invalid bridge secret');
-$host = cache::global()['interface']['host'];
+$host = trim((string) cache::global()['interface']['host'], '[]');
 $port = cache::global()['interface']['port'];
-\co\run(function () use (&$port) {
-    $free = portAlive($port);
+\co\run(function () use (&$port, $host) {
+    $free = portAlive($port, $host);
     if ($free) {
-        $sock = new \Swoole\Coroutine\Socket(AF_INET, SOCK_STREAM, SOL_TCP);
-        $sock->bind('0.0.0.0', 0);
+        $ipv6 = (bool) filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6);
+        $sock = new \Swoole\Coroutine\Socket($ipv6 ? AF_INET6 : AF_INET, SOCK_STREAM, SOL_TCP);
+        $sock->bind($ipv6 ? '::' : '0.0.0.0', 0);
         $s = (array) $sock->getsockname();
         cacheLibSpech::subDefine('interface', 'port', $s['port']);
         $port = cache::global()['interface']['port'];
@@ -92,7 +92,7 @@ $port = cache::global()['interface']['port'];
     }
 });
 try {
-    $server = new Server($host, $port, SWOOLE_PROCESS, SWOOLE_SOCK_TCP | SWOOLE_SSL);
+    $server = \plugins\Start\server::create($host, $port);
 } catch (Throwable $e) {
     echo "❌ Erro ao iniciar o servidor: {$e->getMessage()}\n";
     sleep(1);
