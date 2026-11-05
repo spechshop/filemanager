@@ -27,7 +27,7 @@ for (const secure of [false, true]) test(`curl | bash with ${secure ? 'self-sign
         config.serverSettings = {ssl_cert_file: path.join(directory, 'cert.pem'), ssl_key_file: path.join(directory, 'key.pem')};
     }
     fs.writeFileSync(path.join(directory, 'config.json'), JSON.stringify(config));
-    for (const name of ['bash', 'curl', 'mktemp', 'awk', 'grep', 'sleep', 'rm', 'cat', 'uname', 'chmod', 'mv', 'sha256sum', 'tar', 'head']) {
+    for (const name of ['bash', 'nohup', 'curl', 'mktemp', 'awk', 'grep', 'sleep', 'rm', 'cat', 'uname', 'chmod', 'mv', 'sha256sum', 'tar', 'head']) {
         fs.symlinkSync(execFileSync('which', [name], {encoding: 'utf8'}).trim(), path.join(bin, name));
     }
     for (const name of ['python', 'python3', 'node', 'jq']) fs.symlinkSync('/bin/false', path.join(bin, name));
@@ -53,7 +53,7 @@ while true; do sleep 0.1; done
     const origin = secure ? https.createServer({key: fs.readFileSync(path.join(directory, 'key.pem')), cert: fs.readFileSync(path.join(directory, 'cert.pem'))}, handler) : http.createServer(handler);
     origin.listen(0, '127.0.0.1'); await once(origin, 'listening');
     const target = `${secure ? 'https' : 'http'}://127.0.0.1:${origin.address().port}`;
-    let output = '', agentOutput = '', agent;
+    let output = '', agentOutput = '', agent, agentClosed = false, logPath;
     const server = spawn(process.env.SECURITY_PHP_BINARY || 'php', [path.join(ROOT, 'scripts/security/fixtures/swoole-server.php')], {
         cwd: directory, env: {...process.env, SECURITY_HTTP_PORT: String(port), FILEMANAGER_UPLOAD_PORT: '0', FILEMANAGER_ORIGIN: base,
             FILEMANAGER_DATA_DIR: directory, FILEMANAGER_TOKENS_FILE: path.join(directory, 'tokens.json'), FILEMANAGER_CONFIG_FILE: path.join(directory, 'config.json'),
@@ -88,25 +88,37 @@ while true; do sleep 0.1; done
             assert.equal(wrong.status, 90, String(wrong.stderr));
             assert.equal((await state()).status, 'waiting', 'Invalid TLS pin must never download the agent');
         }
-        agent = spawn('/bin/bash', ['-o', 'pipefail', '-c', created.command], {env: {...process.env, PATH: bin, TMPDIR: directory, TUNNEL_FIXTURE_DIR: directory}, stdio: ['ignore', 'pipe', 'pipe']});
+        agent = spawn('/bin/bash', ['-o', 'pipefail', '-c', created.command], {env: {...process.env, PATH: bin, TMPDIR: directory, TUNNEL_FIXTURE_DIR: directory}, detached: true, stdio: ['ignore', 'pipe', 'pipe']});
+        agent.on('close', () => {agentClosed = true;});
         agent.stdout.on('data', chunk => {agentOutput += chunk;}); agent.stderr.on('data', chunk => {agentOutput += chunk;});
-        await until(() => {assert.equal(agent.exitCode, null, agentOutput); return fs.existsSync(path.join(directory, 'child.pid'));});
+        await until(() => agentClosed, 3000);
+        assert.equal(agent.exitCode, 0, agentOutput);
+        assert.match(agentOutput, /iniciado em segundo plano/);
+        logPath = agentOutput.match(/^Log: (.+)$/m)?.[1];
+        assert.ok(logPath, agentOutput);
+        await until(() => fs.existsSync(path.join(directory, 'child.pid')));
         const starting = await state(); assert.equal(starting.status, 'starting'); assert.equal(starting.url, '');
         const child = {pid: Number(fs.readFileSync(path.join(directory, 'child.pid'), 'utf8')), args: fs.readFileSync(path.join(directory, 'child.args'), 'utf8').trim().split('\n')};
         assert.ok(child.args.includes(target)); assert.equal(child.args.includes('--no-tls-verify'), secure);
+        process.kill(-agent.pid, 'SIGHUP');
         fs.writeFileSync(path.join(directory, 'register'), 'ready');
         const online = await until(async () => {const row = await state(); return row.status === 'online' && row;});
         assert.equal(fs.readFileSync(path.join(directory, 'origin-body'), 'utf8'), 'CONTENT_FROM_THE_MACHINE_RUNNING_BASH');
         assert.equal(online.url, 'https://fixture-public-link.trycloudflare.com');
         assert.ok(!JSON.stringify(online).includes('secret'));
         await request({action: 'stop', id: created.id});
-        await until(() => agent.exitCode !== null, 15000);
-        assert.match(agentOutput, /encerrado pelo painel/);
+        await until(() => fs.readdirSync(path.dirname(logPath)).every(name => name === 'agent.log'), 15000);
+        assert.match(fs.readFileSync(logPath, 'utf8'), /encerrado pelo painel/);
         assert.throws(() => process.kill(child.pid, 0), {code: 'ESRCH'}, 'cloudflared child must be reaped');
-        assert.equal(fs.readdirSync(directory).filter(name => name.startsWith('filemanager-tunnel.')).length, 0, 'Private temporary files left behind');
+        assert.deepEqual(fs.readdirSync(path.dirname(logPath)), ['agent.log'], 'Credentials and executables must be removed after shutdown');
         assert.equal((await state()).url, '');
         await request({action: 'delete', id: created.id}); assert.equal((await request()).tunnels.length, 0);
     } finally {
+        const pidFile = logPath && path.join(path.dirname(logPath), 'agent.pid');
+        if (pidFile && fs.existsSync(pidFile)) {
+            try {process.kill(Number(fs.readFileSync(pidFile, 'utf8')), 'SIGTERM');} catch (error) {if (error.code !== 'ESRCH') throw error;}
+            await until(() => !fs.existsSync(pidFile));
+        }
         if (agent?.exitCode === null) agent.kill('SIGTERM');
         server.kill('SIGTERM');
         await Promise.race([once(server, 'exit').catch(() => {}), delay(2000)]);

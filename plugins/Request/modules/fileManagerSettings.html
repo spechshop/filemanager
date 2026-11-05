@@ -271,7 +271,7 @@
                                 <label class="small mt-3 d-block"><input type="checkbox" id="tunnelNoTlsVerify"> Permitir certificado autoassinado no serviço HTTPS local</label>
                                 <button class="btn btn-primary btn-sm mt-3" id="createTunnel" type="submit">Criar túnel e gerar comando</button>
                             </form>
-                            <p class="settings-description small">Cole o comando curl … | bash na máquina que tem o serviço rodando, sem sudo e sem Python. Mantenha o terminal aberto. O link aparece automaticamente após a conexão. O endereço público temporário é fornecido pelo Cloudflare.</p>
+                            <p class="settings-description small">Cole o comando curl … | bash na máquina que tem o serviço rodando, sem sudo e sem Python. O túnel inicia em segundo plano e continua ativo ao fechar o terminal ou a sessão SSH. O link aparece automaticamente após a conexão. Para encerrar, use Desconectar.</p>
                             <div id="tunnelsStatus" class="small mb-2" role="status" aria-live="polite"></div>
                             <div id="tunnelCommandBox" class="settings-section p-3 mb-3 d-none">
                                 <label class="form-label small" for="tunnelCommand">Comando para executar na outra máquina</label>

@@ -3,9 +3,12 @@
 fm_tunnel_main() {
     # FILEMANAGER_CONFIG
     umask 077
+    local FM_LAUNCH_DIR=$1
     local FM_WORK FM_BINARY FM_CHILD='' FM_INSTALL='' FM_NEXT_REPORT=0 FM_LAST_ACK=$SECONDS
     local FM_LAST_ONLINE=$SECONDS FM_FINAL_STATUS=offline FM_EXIT_CODE=0 FM_PUBLIC_URL=''
-    FM_WORK=$(mktemp -d "${TMPDIR:-/tmp}/filemanager-tunnel.XXXXXXXX") || return 1
+    # The worker has already parsed its private script; remove the credential copy.
+    rm -f -- "$FM_LAUNCH_DIR/agent.sh"
+    FM_WORK=$(mktemp -d "$FM_LAUNCH_DIR/work.XXXXXXXX") || return 1
     : > "$FM_WORK/cloudflared.log"
     printf 'header = "Authorization: Bearer %s"\n' "$FM_SECRET" > "$FM_WORK/auth.conf"
 
@@ -86,16 +89,18 @@ fm_tunnel_main() {
             wait "$FM_INSTALL" 2>/dev/null || true
         fi
         if [ "$FM_FINAL_STATUS" = error ]; then
-            fm_report error '' 'Não foi possível manter o túnel. Consulte o terminal na máquina remota.' || true
+            fm_report error '' 'Não foi possível manter o túnel. Consulte o log informado ao iniciar o comando.' || true
         else
             fm_report offline '' 'Conexão encerrada na máquina remota.' || true
         fi
         rm -rf -- "$FM_WORK"
+        rm -f -- "$FM_LAUNCH_DIR/agent.pid"
         exit "$code"
     }
     trap fm_cleanup EXIT
     trap 'exit 130' INT
     trap 'exit 143' TERM HUP
+    printf '%s\n' "$$" > "$FM_LAUNCH_DIR/agent.pid"
 
     fm_install_cloudflared() {
         local FM_ASSET FM_SHA256 digest member download=''
@@ -162,7 +167,7 @@ fm_tunnel_main() {
     local arguments=(tunnel --config "$FM_WORK/config.yml" --no-autoupdate --url "$FM_TARGET"
         --protocol http2 --ha-connections 1 --metrics 127.0.0.1:0)
     if [ "$FM_NO_TLS_VERIFY" = true ]; then arguments+=(--no-tls-verify); fi
-    printf 'Transmitindo o serviço %s desta máquina. Mantenha este terminal aberto; Ctrl+C encerra o túnel.\n' "$FM_TARGET"
+    printf 'Transmitindo o serviço %s desta máquina em segundo plano.\n' "$FM_TARGET"
     "$FM_BINARY" "${arguments[@]}" > "$FM_WORK/cloudflared.log" 2>&1 &
     FM_CHILD=$!
     FM_LAST_ONLINE=$SECONDS
@@ -183,4 +188,30 @@ fm_tunnel_main() {
     [ "$FM_EXIT_CODE" -ne 0 ] && exit "$FM_EXIT_CODE"
     exit 1
 }
-fm_tunnel_main
+
+fm_tunnel_start() {
+    umask 077
+    local launch_dir agent_pid
+    if ! command -v nohup >/dev/null 2>&1; then
+        printf '%s\n' 'Não foi encontrado nohup para iniciar o túnel em segundo plano.' >&2
+        return 1
+    fi
+    launch_dir=$(mktemp -d "${TMPDIR:-/tmp}/filemanager-tunnel.XXXXXXXX") || return 1
+    # Serialize the complete worker, including its configuration, before detaching.
+    # All three standard streams must be detached from the curl | bash pipeline.
+    if ! {
+        printf '#!/usr/bin/env bash\n'
+        declare -f fm_tunnel_main
+        printf 'fm_tunnel_main "$1"\n'
+    } > "$launch_dir/agent.sh"; then
+        rm -rf -- "$launch_dir"
+        return 1
+    fi
+    nohup bash "$launch_dir/agent.sh" "$launch_dir" </dev/null >"$launch_dir/agent.log" 2>&1 &
+    agent_pid=$!
+    disown "$agent_pid" 2>/dev/null || true
+    printf 'Túnel iniciado em segundo plano (PID %s). Você pode fechar este terminal ou a sessão SSH.\n' "$agent_pid"
+    printf 'Log: %s/agent.log\n' "$launch_dir"
+    printf '%s\n' 'Acompanhe o link e encerre a conexão na seção Túneis do File Manager.'
+}
+fm_tunnel_start

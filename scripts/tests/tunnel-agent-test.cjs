@@ -16,7 +16,7 @@ async function until(fn, timeout = 10000) {
 function fixture(tampered = false) {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fm-bash-agent-'));
     const bin = path.join(directory, 'bin'); fs.mkdirSync(bin);
-    for (const name of ['bash', 'mktemp', 'awk', 'grep', 'sleep', 'rm', 'cat', 'uname', 'chmod', 'mv', 'sha256sum', 'tar', 'head', 'cp']) {
+    for (const name of ['bash', 'nohup', 'mktemp', 'awk', 'grep', 'sleep', 'rm', 'cat', 'uname', 'chmod', 'mv', 'sha256sum', 'tar', 'head', 'cp']) {
         fs.symlinkSync(execFileSync('which', [name], {encoding: 'utf8'}).trim(), path.join(bin, name));
     }
     for (const name of ['python', 'python3', 'node', 'jq']) fs.symlinkSync('/bin/false', path.join(bin, name));
@@ -53,36 +53,58 @@ fi
     const source = fs.readFileSync(path.join(ROOT, 'scripts/tunnel-agent.sh'), 'utf8').replace('# FILEMANAGER_CONFIG', header)
         .replace('# FILEMANAGER_PLATFORMS', cases).replaceAll('FILEMANAGER_CLOUDFLARED_VERSION', 'fixture');
     const script = path.join(directory, 'agent.sh'); fs.writeFileSync(script, source);
-    const child = spawn('/bin/bash', [script], {env: {...process.env, PATH: bin, TMPDIR: directory, TUNNEL_FIXTURE_DIR: directory}, stdio: ['ignore', 'pipe', 'pipe']});
-    let output = '';
+    const child = spawn('/bin/bash', [script], {env: {...process.env, PATH: bin, TMPDIR: directory, TUNNEL_FIXTURE_DIR: directory}, detached: true, stdio: ['ignore', 'pipe', 'pipe']});
+    let output = '', closed = false;
+    child.on('close', () => {closed = true;});
     child.stdout.on('data', chunk => {output += chunk;}); child.stderr.on('data', chunk => {output += chunk;});
-    return {directory, child, output: () => output,
+    const logPath = () => output.match(/^Log: (.+)$/m)?.[1];
+    return {directory, child, output: () => output, closed: () => closed, logPath,
+        log: () => output + (logPath() && fs.existsSync(logPath()) ? fs.readFileSync(logPath(), 'utf8') : ''),
+        stopped: () => logPath() && fs.readdirSync(path.dirname(logPath())).every(name => name === 'agent.log'),
+        stop: async () => {
+            const pidFile = logPath() && path.join(path.dirname(logPath()), 'agent.pid');
+            if (pidFile && fs.existsSync(pidFile)) {
+                try {process.kill(Number(fs.readFileSync(pidFile, 'utf8')), 'SIGTERM');} catch (error) {if (error.code !== 'ESRCH') throw error;}
+                await until(() => !fs.existsSync(pidFile));
+            }
+            if (child.exitCode === null) child.kill('SIGTERM');
+        },
         reports: () => fs.existsSync(path.join(directory, 'reports')) ? fs.readFileSync(path.join(directory, 'reports'), 'utf8').trim().split('\n').filter(Boolean).map(JSON.parse) : []};
 }
-test('Bash downloads and verifies an executable, reports the remote service and stops without Python, jq or sudo', {timeout: 20000}, async () => {
+test('Bash releases the terminal, survives session hangup, downloads and verifies the agent and stops from the panel', {timeout: 20000}, async () => {
     const f = fixture();
     try {
-        await until(() => {assert.equal(f.child.exitCode, null, f.output()); return f.reports().some(row => row.status === 'online');});
+        await until(f.closed, 3000);
+        assert.equal(f.child.exitCode, 0, f.log());
+        assert.match(f.output(), /iniciado em segundo plano/);
+        await until(() => f.reports().some(row => row.status === 'online'));
+        const reports = f.reports().length;
+        process.kill(-f.child.pid, 'SIGHUP');
+        await until(() => f.reports().length > reports);
+        assert.equal(f.reports().at(-1).status, 'online', f.log());
         const args = fs.readFileSync(path.join(f.directory, 'child.args'), 'utf8').trim().split('\n');
         assert.ok(args.includes('http://127.0.0.1:8080'));
         assert.equal(fs.readFileSync(path.join(f.directory, 'download-url'), 'utf8'), 'https://github.com/cloudflare/cloudflared/releases/download/fixture/cloudflared-linux-amd64');
         const pid = Number(fs.readFileSync(path.join(f.directory, 'child.pid'), 'utf8'));
         assert.equal(f.reports().find(row => row.status === 'online').url, 'https://downloaded-agent.trycloudflare.com');
         fs.writeFileSync(path.join(f.directory, 'stop'), 'stop');
-        await until(() => f.child.exitCode !== null);
-        assert.match(f.output(), /encerrado pelo painel/);
+        await until(f.stopped);
+        assert.match(f.log(), /encerrado pelo painel/);
         assert.throws(() => process.kill(pid, 0), {code: 'ESRCH'});
-        assert.equal(fs.readdirSync(f.directory).filter(name => name.startsWith('filemanager-tunnel.')).length, 0);
-    } finally { if (f.child.exitCode === null) {f.child.kill('SIGTERM'); await delay(1500);} fs.rmSync(f.directory, {recursive: true, force: true}); }
+        assert.deepEqual(fs.readdirSync(path.dirname(f.logPath())), ['agent.log']);
+        assert.equal(fs.statSync(f.logPath()).mode & 0o777, 0o600);
+    } finally { await f.stop(); fs.rmSync(f.directory, {recursive: true, force: true}); }
 });
 test('Bash refuses a modified download before executing it and reports the error', {timeout: 15000}, async () => {
     const f = fixture(true);
     try {
-        await until(() => f.child.exitCode !== null);
-        assert.notEqual(f.child.exitCode, 0);
-        assert.match(f.output(), /SHA256.*falhou/);
+        await until(f.closed, 3000);
+        assert.equal(f.child.exitCode, 0, f.log());
+        await until(() => f.reports().at(-1)?.status === 'error');
+        await until(f.stopped);
+        assert.match(f.log(), /SHA256.*falhou/);
         assert.equal(fs.existsSync(path.join(f.directory, 'child.pid')), false);
         assert.equal(f.reports().at(-1).status, 'error');
-        assert.equal(fs.readdirSync(f.directory).filter(name => name.startsWith('filemanager-tunnel.')).length, 0);
-    } finally { if (f.child.exitCode === null) {f.child.kill('SIGTERM'); await delay(1500);} fs.rmSync(f.directory, {recursive: true, force: true}); }
+        assert.deepEqual(fs.readdirSync(path.dirname(f.logPath())), ['agent.log']);
+    } finally { await f.stop(); fs.rmSync(f.directory, {recursive: true, force: true}); }
 });
