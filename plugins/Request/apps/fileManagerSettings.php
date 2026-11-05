@@ -19,6 +19,26 @@ class fileManagerSettings
         $token = securityPolicy::requestToken($request);
 
         $response->header('Cache-Control', 'no-store');
+        if (($request->get['settingGroup'] ?? $request->post['settingGroup'] ?? '') === 'tunnels') {
+            try {
+                if ($method === 'GET') return self::respond($response, 200, tunnelManager::listing($token));
+                if ($method !== 'POST') return self::respond($response, 405, ['success' => false, 'message' => 'Método não permitido.']);
+                $origin = getenv('FILEMANAGER_ORIGIN') ?: ($request->post['panelUrl'] ?? '');
+                $host = $request->header['host'] ?? '';
+                if (!getenv('FILEMANAGER_ORIGIN') && !in_array($origin, ['https://' . $host, 'http://' . $host], true)) {
+                    throw new \InvalidArgumentException('Endereço do painel inválido.');
+                }
+                return self::respond($response, 200, tunnelManager::mutate($token, $request->post ?? [], $origin));
+            } catch (\InvalidArgumentException $error) {
+                return self::respond($response, 422, ['success' => false, 'message' => $error->getMessage()]);
+            } catch (\UnexpectedValueException $error) {
+                return self::respond($response, 409, ['success' => false, 'message' => $error->getMessage()]);
+            } catch (\DomainException $error) {
+                return self::respond($response, 403, ['success' => false, 'message' => 'Permissão administrativa removida.']);
+            } catch (\Throwable $error) {
+                return self::respond($response, 500, ['success' => false, 'message' => 'Não foi possível gerenciar os túneis.']);
+            }
+        }
         if (($request->get['settingGroup'] ?? $request->post['settingGroup'] ?? '') === 'tokens') {
             try {
                 if ($method === 'GET') return self::respond($response, 200, tokenManager::listing($token));

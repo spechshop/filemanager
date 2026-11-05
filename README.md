@@ -214,6 +214,45 @@ For production, update certificate paths in `plugins/configInterface.json`.
 }
 ```
 
+### Remote tunnels
+
+Open **Configurações > Túneis** with an administrator token, enter the remote
+service's local host (for example `127.0.0.1`) and port (`8080`), and select HTTP
+or HTTPS. A host such as `https://localhost` also selects HTTPS. Create the tunnel
+and copy its single-line command to a terminal on the other machine.
+
+The command has the form `curl -fsS 'http://FILEMANAGER_IP:PORT/tunnel/KEY' | bash`.
+Its IP/domain, port and protocol come from the address used to open the panel,
+so each installation generates its own address automatically. The machine where
+you paste it downloads and runs the agent using Bash and curl, without Python,
+Node.js, jq or sudo. The configured `127.0.0.1:8080` is the service **on that
+machine**; the File Manager address only downloads the agent and receives status.
+
+On Linux and macOS the script downloads the official Cloudflare `cloudflared`
+executable into a temporary directory and verifies its SHA256 against the pinned
+official release manifest in `scripts/tunnel-cloudflared.json`. An existing
+`cloudflared` in PATH is reused. Keep the terminal open; Ctrl+C closes the tunnel.
+
+The panel displays the public `https://….trycloudflare.com` link after the
+connection registers and refreshes its status every two seconds. HTTP, HTTPS
+origins and WebSocket upgrades are supported. These are temporary Cloudflare
+Quick Tunnels, without a Cloudflare account or a fixed hostname. The link is
+public: use authentication in the exposed application. Cloudflare Quick Tunnels
+do not support Server-Sent Events (SSE) and have provider connection limits.
+
+The remote machine must reach the panel address used to generate the command.
+Behind a reverse proxy, set `FILEMANAGER_ORIGIN` to the public panel origin.
+For the default self-signed panel, curl falls back to the exact configured public
+key pinned by SHA256, without changing system CAs. After replacing the server key,
+generate a new command. For a self-signed
+certificate on the **local target service**, enable the corresponding checkbox.
+
+Each command uses a separate tunnel capability, never the administrator key.
+**Desconectar**, deleting a tunnel, generating another command, or revoking its
+owner stops its remote connection on the next heartbeat, normally within 15
+seconds. Lost heartbeats remove the live link within 40 seconds. Definitions
+persist privately under `.runtime/tunnels/` (or `FILEMANAGER_DATA_DIR/tunnels/`).
+
 ### Key Configuration Options
 - **`host`** - Server bind address (default: `0.0.0.0`)
 - **`port`** - WebSocket server port (default: `8080`)

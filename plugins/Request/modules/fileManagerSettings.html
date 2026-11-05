@@ -105,6 +105,10 @@
                                 data-settings-pane="settingsServicesPane" type="button">
                             <i class="fa-duotone fa-network-wired me-2"></i>Serviços
                         </button>
+                        <button class="btn settings-nav-button w-100 text-start mb-1"
+                                data-settings-pane="settingsTunnelsPane" type="button">
+                            <i class="fa-duotone fa-link me-2"></i>Túneis
+                        </button>
                         <button class="btn settings-nav-button w-100 text-start"
                                 data-settings-pane="settingsDiagnosticsPane" type="button">
                             <i class="fa-duotone fa-screwdriver-wrench me-2"></i>Diagnóstico
@@ -235,6 +239,49 @@
                                 <button type="button" id="hideAccessToken" class="btn btn-outline-light btn-sm">Ocultar</button>
                             </div>
                             <div id="accessTokensList" class="d-grid gap-2"></div>
+                        </section>
+
+                        <section class="p-4 settings-pane d-none" id="settingsTunnelsPane">
+                            <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
+                                <div>
+                                    <h6 class="mb-1">Túneis</h6>
+                                    <p class="settings-description small mb-0">Transmita um serviço da máquina onde você colar o comando e acesse por um link HTTPS público, com suporte a WebSocket.</p>
+                                </div>
+                                <button class="btn btn-sm btn-outline-light" id="refreshTunnels" type="button">Atualizar</button>
+                            </div>
+                            <form id="tunnelForm" class="settings-section p-3 mb-3">
+                                <label class="form-label small" for="tunnelName">Nome (opcional)</label>
+                                <input class="form-control form-control-sm mb-3" id="tunnelName" maxlength="120" placeholder="Meu ambiente de desenvolvimento">
+                                <div class="fw-semibold small mb-2">Serviço a transmitir na máquina onde o comando será executado</div>
+                                <div class="row g-2">
+                                    <div class="col-sm-3">
+                                        <label class="form-label small" for="tunnelProtocol">Protocolo do serviço</label>
+                                        <select class="form-select form-select-sm" id="tunnelProtocol"><option value="http">HTTP</option><option value="https">HTTPS</option></select>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label small" for="tunnelHost">Host do serviço</label>
+                                        <input class="form-control form-control-sm" id="tunnelHost" value="127.0.0.1" placeholder="127.0.0.1" maxlength="253" required>
+                                    </div>
+                                    <div class="col-sm-3">
+                                        <label class="form-label small" for="tunnelPort">Porta do serviço</label>
+                                        <input class="form-control form-control-sm" id="tunnelPort" type="number" min="1" max="65535" step="1" value="8080" required>
+                                    </div>
+                                </div>
+                                <div class="settings-description small mt-2">Exemplo: 127.0.0.1:8080 acessa o serviço que está rodando na VPS onde você colar o comando. Também pode informar https://localhost no host.</div>
+                                <label class="small mt-3 d-block"><input type="checkbox" id="tunnelNoTlsVerify"> Permitir certificado autoassinado no serviço HTTPS local</label>
+                                <button class="btn btn-primary btn-sm mt-3" id="createTunnel" type="submit">Criar túnel e gerar comando</button>
+                            </form>
+                            <p class="settings-description small">Cole o comando curl … | bash na máquina que tem o serviço rodando, sem sudo e sem Python. Mantenha o terminal aberto. O link aparece automaticamente após a conexão. O endereço público temporário é fornecido pelo Cloudflare.</p>
+                            <div id="tunnelsStatus" class="small mb-2" role="status" aria-live="polite"></div>
+                            <div id="tunnelCommandBox" class="settings-section p-3 mb-3 d-none">
+                                <label class="form-label small" for="tunnelCommand">Comando para executar na outra máquina</label>
+                                <div class="settings-description small text-break mb-2" id="tunnelPanelAddress"></div>
+                                <textarea id="tunnelCommand" class="form-control form-control-sm mb-2" rows="4" readonly spellcheck="false" style="font-family: monospace; overflow-wrap: anywhere"></textarea>
+                                <button id="copyTunnelCommand" class="btn btn-outline-light btn-sm" type="button">Copiar comando</button>
+                                <button id="hideTunnelCommand" class="btn btn-outline-light btn-sm" type="button">Ocultar</button>
+                                <div class="settings-description small mt-2">O comando contém uma chave exclusiva deste túnel. Gere outro comando para invalidar o anterior. A outra máquina precisa conseguir acessar este painel.</div>
+                            </div>
+                            <div id="tunnelsList" class="d-grid gap-2" aria-live="polite"></div>
                         </section>
 
                         <section class="p-4 settings-pane d-none" id="settingsServicesPane">
@@ -1042,7 +1089,139 @@
             } catch (_) { tokenField('Secret').select(); tokenMessage('Selecione a chave e copie com Ctrl+C.', true); }
         });
 
+        const tunnelPane = document.getElementById('settingsTunnelsPane');
+        const tunnelList = document.getElementById('tunnelsList');
+        const tunnelStatus = document.getElementById('tunnelsStatus');
+        const tunnelCommand = document.getElementById('tunnelCommand');
+        const tunnelCommandBox = document.getElementById('tunnelCommandBox');
+        let tunnels = [];
+        let tunnelInterval = null;
+        let tunnelBusy = false;
+        let tunnelLoading = false;
+        let tunnelVersion = 0;
+        let renderedTunnels = '';
+        function tunnelMessage(message, error = false) {
+            tunnelStatus.textContent = message;
+            tunnelStatus.className = `small mb-2 ${error ? 'text-danger' : 'text-info'}`;
+        }
+        function hideTunnelCommand() {
+            tunnelCommand.value = '';
+            tunnelCommandBox.classList.add('d-none');
+        }
+        function stopTunnelPolling() {
+            clearInterval(tunnelInterval);
+            tunnelInterval = null;
+            tunnelVersion++;
+            hideTunnelCommand();
+            tunnels = [];
+            renderedTunnels = '';
+            tunnelList.replaceChildren();
+        }
+        async function tunnelRequest(values = null) {
+            const parameters = new URLSearchParams({settingGroup: 'tunnels', ...values});
+            if (values) parameters.set('panelUrl', window.location.origin);
+            const response = await fetch(`/fileManagerSettings${values ? '' : '?' + parameters}`, {
+                method: values ? 'POST' : 'GET', cache: 'no-store',
+                headers: {Authorization: `Bearer ${tokenBrowser()}`, ...(values ? {'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'} : {})},
+                ...(values ? {body: parameters.toString()} : {})
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.message || 'Não foi possível gerenciar os túneis.');
+            return data;
+        }
+        function renderTunnels() {
+            const labels = {waiting: 'Aguardando conexão', starting: 'Conectando', online: 'Conectado', offline: 'Desconectado', stopped: 'Desativado', error: 'Falha na conexão'};
+            const colors = {waiting: 'secondary', starting: 'info', online: 'success', offline: 'secondary', stopped: 'secondary', error: 'danger'};
+            tunnelList.innerHTML = tunnels.map((entry) => {
+                // Only provider HTTPS URLs become clickable, even if a response is malformed.
+                const url = /^https:\/\/[a-z0-9]+(?:-[a-z0-9]+)*\.trycloudflare\.com$/.test(entry.url) && entry.status === 'online' ? entry.url : '';
+                const action = (name, label, disabled = false) => `<button type="button" class="btn btn-sm btn-outline-light" data-tunnel-action="${name}" data-tunnel-id="${escapeHtml(entry.id)}" ${tunnelBusy || disabled ? 'disabled' : ''}>${label}</button>`;
+                return `<article class="settings-section p-3">
+                    <div class="d-flex flex-wrap justify-content-between gap-2"><strong class="text-break">${escapeHtml(entry.name)}</strong><span class="badge text-bg-${colors[entry.status] || 'secondary'}">${labels[entry.status] || 'Desconectado'}</span></div>
+                    <div class="settings-description small text-break mt-1">${escapeHtml(entry.target)}${entry.noTlsVerify ? ' · Certificado local autoassinado permitido' : ''}</div>
+                    ${url ? `<div class="mt-2 text-break"><a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a></div>` : ''}
+                    ${entry.message ? `<div class="settings-description small mt-1">${escapeHtml(entry.message)}</div>` : ''}
+                    <div class="d-flex flex-wrap gap-2 mt-3">${url ? action('copy', 'Copiar link') : ''}${action('command', 'Gerar novo comando')}${action('stop', 'Desconectar', entry.status === 'stopped')}${action('delete', 'Excluir')}</div>
+                </article>`;
+            }).join('');
+            if (!tunnels.length) tunnelList.textContent = 'Nenhum túnel cadastrado.';
+        }
+        async function loadTunnels() {
+            if (tunnelLoading || tunnelBusy) return;
+            tunnelLoading = true;
+            const version = ++tunnelVersion;
+            try {
+                const data = await tunnelRequest();
+                if (version !== tunnelVersion || activePaneId !== 'settingsTunnelsPane') return;
+                tunnels = data.tunnels;
+                const snapshot = JSON.stringify(tunnels);
+                if (snapshot !== renderedTunnels) { renderTunnels(); renderedTunnels = snapshot; }
+            } catch (error) {
+                if (version !== tunnelVersion || activePaneId !== 'settingsTunnelsPane') return;
+                tunnels = [];
+                renderedTunnels = '';
+                tunnelList.replaceChildren();
+                hideTunnelCommand();
+                tunnelMessage(error.message, true);
+            } finally { tunnelLoading = false; }
+        }
+        async function mutateTunnel(values) {
+            if (tunnelBusy) return;
+            tunnelBusy = true;
+            const version = ++tunnelVersion;
+            hideTunnelCommand();
+            tunnelPane.querySelectorAll('button').forEach(button => button.disabled = true);
+            try {
+                const data = await tunnelRequest(values);
+                if (version !== tunnelVersion || activePaneId !== 'settingsTunnelsPane') return;
+                tunnelMessage(data.command ? 'Comando pronto. Execute na outra máquina e aguarde a conexão.' : data.message);
+                if (data.command) {
+                    tunnelCommand.value = data.command;
+                    document.getElementById('tunnelPanelAddress').textContent = `File Manager: ${window.location.origin}. Usado para baixar o agente e receber o status.`;
+                    tunnelCommandBox.classList.remove('d-none');
+                }
+            } catch (error) {
+                if (version === tunnelVersion && activePaneId === 'settingsTunnelsPane') tunnelMessage(error.message, true);
+            } finally {
+                tunnelBusy = false;
+                tunnelPane.querySelectorAll('button').forEach(button => button.disabled = false);
+                if (version === tunnelVersion && activePaneId === 'settingsTunnelsPane') loadTunnels();
+            }
+        }
+        document.getElementById('tunnelForm').addEventListener('submit', event => {
+            event.preventDefault();
+            mutateTunnel({action: 'create', name: document.getElementById('tunnelName').value,
+                protocol: document.getElementById('tunnelProtocol').value, localHost: document.getElementById('tunnelHost').value,
+                localPort: document.getElementById('tunnelPort').value, noTlsVerify: document.getElementById('tunnelNoTlsVerify').checked ? 'true' : 'false'});
+        });
+        document.getElementById('refreshTunnels').addEventListener('click', () => { tunnelMessage(''); loadTunnels(); });
+        document.getElementById('hideTunnelCommand').addEventListener('click', hideTunnelCommand);
+        document.getElementById('copyTunnelCommand').addEventListener('click', async () => {
+            try { await navigator.clipboard.writeText(tunnelCommand.value); tunnelMessage('Comando copiado.'); }
+            catch (_) { tunnelCommand.focus(); tunnelCommand.select(); tunnelMessage('Selecione o comando e copie com Ctrl+C.'); }
+        });
+        tunnelList.addEventListener('click', async event => {
+            const button = event.target.closest('[data-tunnel-action]');
+            if (!button || tunnelBusy) return;
+            const entry = tunnels.find(item => item.id === button.dataset.tunnelId);
+            if (!entry) return;
+            const action = button.dataset.tunnelAction;
+            if (action === 'copy') {
+                try { await navigator.clipboard.writeText(entry.url); tunnelMessage('Link copiado.'); }
+                catch (_) { tunnelMessage('Copie o endereço pelo link do túnel.'); }
+                return;
+            }
+            if (action === 'delete' || (action === 'command' && ['online', 'starting'].includes(entry.status))) {
+                const confirmation = await Swal.fire({title: action === 'delete' ? 'Excluir este túnel?' : 'Substituir a conexão atual?',
+                    text: 'A conexão atual será encerrada na outra máquina em até 15 segundos.', icon: 'warning', showCancelButton: true,
+                    confirmButtonText: action === 'delete' ? 'Excluir' : 'Gerar comando', cancelButtonText: 'Cancelar', background: '#1c2438', color: '#fff'});
+                if (!confirmation.isConfirmed || activePaneId !== 'settingsTunnelsPane') return;
+            }
+            mutateTunnel({action, id: entry.id});
+        });
+
         function selectPane(paneId) {
+            if (paneId !== 'settingsTunnelsPane') stopTunnelPolling();
             if (paneId !== 'settingsTokensPane') hideTokenSecret();
             activePaneId = paneId;
             modal.querySelectorAll('.settings-pane').forEach((pane) => {
@@ -1051,12 +1230,18 @@
             navButtons.forEach((button) => {
                 button.classList.toggle('active', button.dataset.settingsPane === paneId);
             });
-            const actionPane = paneId === 'settingsServicesPane' || paneId === 'settingsDiagnosticsPane' || paneId === 'settingsTokensPane';
+            const actionPane = paneId === 'settingsServicesPane' || paneId === 'settingsDiagnosticsPane' || paneId === 'settingsTokensPane' || paneId === 'settingsTunnelsPane';
             saveButton.classList.toggle('d-none', actionPane);
             saveButton.disabled = formBusy || (paneId === 'settingsCodexPane' && codexModels.length === 0);
             if (paneId === 'settingsTokensPane') loadAccessTokens();
             if (paneId === 'settingsServicesPane') loadServices();
             if (paneId === 'settingsDiagnosticsPane') loadDiagnostics();
+            if (paneId === 'settingsTunnelsPane') {
+                tunnelMessage('');
+                loadTunnels();
+                clearInterval(tunnelInterval);
+                tunnelInterval = setInterval(loadTunnels, 2000);
+            }
         }
 
         toggle.addEventListener('change', updateStatus);
@@ -1087,6 +1272,7 @@
             }, 5000);
         });
         modal.addEventListener('hidden.bs.modal', () => {
+            stopTunnelPolling();
             hideTokenSecret();
             tokenForm.classList.add('d-none');
             editingToken = null;

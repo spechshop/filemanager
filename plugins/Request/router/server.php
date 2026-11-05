@@ -25,6 +25,12 @@ class server
         $response->header('Content-Security-Policy-Report-Only', "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; style-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com https://use.fontawesome.com; img-src 'self' data: blob:; font-src 'self' https://fonts.gstatic.com https://use.fontawesome.com; connect-src 'self'; worker-src 'self' blob:");
         if (!securityPolicy::originAllowed($request)) return security::deny($response);
 
+        // Remote agents use a tunnel capability, never a File Manager access token.
+        if ($path === '/fileManagerTunnelAgent') return fileManagerTunnelAgent::api($request, $response);
+        if (preg_match('~^/tunnel/([a-f0-9]{64})$~D', $path, $tunnelMatch)) {
+            return fileManagerTunnelAgent::api($request, $response, $tunnelMatch[1]);
+        }
+
 
         
         $assetsBuilder = loadRouter::view($path, $response);

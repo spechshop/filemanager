@@ -5,9 +5,13 @@ if (!extension_loaded('swoole')) { fwrite(STDERR, "REQUIRED: Swoole; no test exe
 $source = dirname(__DIR__, 3);
 foreach (['Request/components/appController.php', 'Request/components/securityPolicy.php', 'Request/components/security.php', 'Request/components/safeFiles.php', 'Request/components/checkRoute.php', 'Request/views/controller.php', 'Request/views/loadRouter.php', 'Request/router/server.php', 'Start/server/cache.php', 'Database/call/call.php', 'Extension/plugins/utilsFunction.php', 'OpenConnection/websocket/OpenConnection.php', 'Message/server/server.php'] as $file) require $source . '/plugins/' . $file;
 foreach (['checkToken', 'accessTicket', 'deleteFile', 'downloadFile', 'uploadFile', 'newFile', 'freeRam', 'chat4o', 'treeDetails', 'syncPath', 'searchInFile'] as $name) require $source . '/plugins/Request/apps/' . $name . '.php';
+foreach (['privateJson', 'tunnelManager', 'fileManagerTunnelAgent'] as $name) require $source . '/plugins/Request/components/' . $name . '.php';
+require $source . '/plugins/Request/apps/fileManagerSettings.php';
 $GLOBALS['interface'] = ['allowExtensions' => ['json' => 'application/json', 'js' => 'text/javascript']];
 $GLOBALS['cachePages']['404'] = 'Not found';
-$server = new Swoole\WebSocket\Server('127.0.0.1', (int) getenv('SECURITY_HTTP_PORT'));
+$tls = getenv('TUNNEL_FIXTURE_CERT') !== false && getenv('TUNNEL_FIXTURE_CERT') !== '';
+$server = new Swoole\WebSocket\Server('127.0.0.1', (int) getenv('SECURITY_HTTP_PORT'), SWOOLE_PROCESS, SWOOLE_SOCK_TCP | ($tls ? SWOOLE_SSL : 0));
+if ($tls) $server->set(['ssl_cert_file' => getenv('TUNNEL_FIXTURE_CERT'), 'ssl_key_file' => getenv('TUNNEL_FIXTURE_KEY')]);
 $temporaryUploads = \plugins\Request\securityPolicy::uploadDirectory();
 mkdir($temporaryUploads, 0700, true);
 $server->set(['upload_tmp_dir' => $temporaryUploads, 'worker_num' => 1, 'log_file' => '/dev/null', 'package_max_length' => 8388608, 'upload_max_filesize' => 2147483648]);

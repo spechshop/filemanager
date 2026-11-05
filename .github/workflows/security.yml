@@ -38,6 +38,7 @@ jobs:
       - run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
       - run: php -n scripts/security/autoload-regression.php
       - run: php -n scripts/security/http-regression.php
+      - run: php -n scripts/tests/tunnels-test.php
       - run: php -n scripts/security/ws-regression.php
       - run: python3 scripts/security/fs-regression.py
       - run: python3 scripts/security/auxiliary-regression.py
@@ -71,6 +72,8 @@ jobs:
       - run: npm ci --ignore-scripts
       - run: npm rebuild node-pty
       - run: npm run test:security:ui
+      - run: node --test scripts/tests/tunnels-ui-test.cjs
+      - run: node --test scripts/tests/tunnel-agent-test.cjs
       - run: npm run test:security:threads
       - run: npm run test:security:codex
       - run: npm run test:security:transport
@@ -100,6 +103,7 @@ jobs:
         run: npm run test:security:pty
       - run: php scripts/security/auxiliary-quotas.php
       - run: node --test scripts/security/swoole-integration.cjs
+      - run: node --test scripts/tests/tunnels-integration-test.cjs
       - name: Real LSP through the Swoole WebSocket relay
         env:
           SECURITY_LSP_SWOOLE: '1'
