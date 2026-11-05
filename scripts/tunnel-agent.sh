@@ -103,32 +103,57 @@ fm_tunnel_main() {
     printf '%s\n' "$$" > "$FM_LAUNCH_DIR/agent.pid"
 
     fm_install_cloudflared() {
-        local FM_ASSET FM_SHA256 digest member download=''
+        local FM_ASSET FM_SHA256 digest member download='' code
         trap 'if [ -n "$download" ]; then kill "$download" 2>/dev/null; wait "$download" 2>/dev/null; fi; exit 143' INT TERM HUP
         case "$(uname -s):$(uname -m)" in
             # FILEMANAGER_PLATFORMS
             *) printf '%s\n' 'Sistema não suportado. Use Linux ou macOS, ou instale cloudflared no PATH.' >&2; return 1;;
         esac
-        printf '%s\n' 'Baixando cloudflared oficial, sem sudo...'
-        curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 --connect-timeout 15 --max-time 180 \
-            --max-filesize 104857600 --output "$FM_WORK/download" \
-            "https://github.com/cloudflare/cloudflared/releases/download/FILEMANAGER_CLOUDFLARED_VERSION/$FM_ASSET" &
+        fm_verify_download() {
+            if command -v sha256sum >/dev/null 2>&1; then
+                digest=$(sha256sum "$FM_WORK/download") || return 1
+                digest=${digest%% *}
+            elif command -v shasum >/dev/null 2>&1; then
+                digest=$(shasum -a 256 "$FM_WORK/download") || return 1
+                digest=${digest%% *}
+            else
+                printf '%s\n' 'Não foi encontrado sha256sum ou shasum para verificar o download.' >&2
+                return 1
+            fi
+            [ "$digest" = "$FM_SHA256" ]
+        }
+        printf '%s\n' 'Baixando cloudflared oficial pelo File Manager, sem sudo...'
+        curl --fail --silent --show-error --connect-timeout 10 --max-time 180 --retry 4 --retry-delay 3 --retry-max-time 240 \
+            --config "$FM_WORK/auth.conf" --max-filesize 104857600 --output "$FM_WORK/download" \
+            "$FM_ENDPOINT?asset=$FM_ASSET&session=$FM_SESSION" &
         download=$!
-        wait "$download" || return 1
+        wait "$download"; code=$?
         download=''
-        if command -v sha256sum >/dev/null 2>&1; then
-            digest=$(sha256sum "$FM_WORK/download") || return 1
-            digest=${digest%% *}
-        elif command -v shasum >/dev/null 2>&1; then
-            digest=$(shasum -a 256 "$FM_WORK/download") || return 1
-            digest=${digest%% *}
-        else
-            printf '%s\n' 'Não foi encontrado sha256sum ou shasum para verificar o download.' >&2
-            return 1
+        if [ "$code" -eq 60 ] && [ -n "$FM_PANEL_PIN" ]; then
+            curl --fail --silent --show-error --connect-timeout 10 --max-time 180 --retry 4 --retry-delay 3 --retry-max-time 240 \
+                --insecure --pinnedpubkey "$FM_PANEL_PIN" --config "$FM_WORK/auth.conf" \
+                --max-filesize 104857600 --output "$FM_WORK/download" "$FM_ENDPOINT?asset=$FM_ASSET&session=$FM_SESSION" &
+            download=$!
+            wait "$download"; code=$?
+            download=''
         fi
-        if [ "$digest" != "$FM_SHA256" ]; then
-            printf '%s\n' 'A verificação SHA256 do cloudflared falhou.' >&2
-            return 1
+        if [ "$code" -ne 0 ] || ! fm_verify_download; then
+            printf '%s\n' 'Download pelo File Manager indisponível. Tentando o GitHub com novas tentativas automáticas...'
+            # Never send the File Manager credential to GitHub or its redirects.
+            curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 --connect-timeout 10 --max-time 60 \
+                --retry 2 --retry-delay 2 --retry-max-time 90 --max-filesize 104857600 --output "$FM_WORK/download" \
+                "https://github.com/cloudflare/cloudflared/releases/download/FILEMANAGER_CLOUDFLARED_VERSION/$FM_ASSET" &
+            download=$!
+            wait "$download"; code=$?
+            download=''
+            if [ "$code" -ne 0 ]; then
+                printf '%s\n' 'Não foi possível baixar cloudflared pelo File Manager nem pelo GitHub. Verifique a conexão e gere um novo comando no painel.' >&2
+                return 1
+            fi
+            if ! fm_verify_download; then
+                printf '%s\n' 'A verificação SHA256 do cloudflared falhou.' >&2
+                return 1
+            fi
         fi
         case "$FM_ASSET" in
             *.tgz)

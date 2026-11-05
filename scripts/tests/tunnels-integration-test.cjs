@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
+const crypto = require('node:crypto');
 const net = require('node:net');
 const http = require('node:http');
 const https = require('node:https');
@@ -31,7 +32,8 @@ for (const secure of [false, true]) test(`curl | bash with ${secure ? 'self-sign
         fs.symlinkSync(execFileSync('which', [name], {encoding: 'utf8'}).trim(), path.join(bin, name));
     }
     for (const name of ['python', 'python3', 'node', 'jq']) fs.symlinkSync('/bin/false', path.join(bin, name));
-    const fake = path.join(bin, 'cloudflared');
+    const cache = path.join(directory, 'tunnel-binaries'); fs.mkdirSync(cache, {mode: 0o700});
+    const fake = path.join(cache, '0.0.0-cloudflared-linux-amd64');
     fs.writeFileSync(fake, `#!/bin/bash
 printf '%s' "$$" > "$TUNNEL_FIXTURE_DIR/child.pid"
 printf '%s\\n' "$@" > "$TUNNEL_FIXTURE_DIR/child.args"
@@ -45,7 +47,19 @@ printf '%s\\n' 'https://fixture-public-link.trycloudflare.com'
 while [ ! -f "$TUNNEL_FIXTURE_DIR/register" ]; do sleep 0.05; done
 printf '%s\\n' 'Registered tunnel connection connIndex=0'
 while true; do sleep 0.1; done
-`, {mode: 0o700});
+`, {mode: 0o600});
+    const platform = execFileSync('uname', ['-s'], {encoding: 'utf8'}).trim() + ':' + execFileSync('uname', ['-m'], {encoding: 'utf8'}).trim();
+    fs.writeFileSync(path.join(directory, 'manifest.json'), JSON.stringify({version: '0.0.0', assets: {
+        [platform]: {name: 'cloudflared-linux-amd64', sha256: crypto.createHash('sha256').update(fs.readFileSync(fake)).digest('hex')}
+    }}));
+    // Test-only manifest: exercise actual authenticated sendfile, TLS pinning and SHA256
+    // with an inert local binary, without downloading or contacting a public provider.
+    fs.writeFileSync(path.join(directory, 'release.php'), `<?php
+namespace plugins\\Request;
+function file_get_contents($file, ...$args) {
+    return \\file_get_contents(str_ends_with($file, '/scripts/tunnel-cloudflared.json') ? __DIR__ . '/manifest.json' : $file, ...$args);
+}
+`);
     const reservation = net.createServer(); reservation.listen(0, '127.0.0.1'); await once(reservation, 'listening');
     const port = reservation.address().port; await new Promise(resolve => reservation.close(resolve));
     const base = `${secure ? 'https' : 'http'}://127.0.0.1:${port}`;
@@ -54,7 +68,7 @@ while true; do sleep 0.1; done
     origin.listen(0, '127.0.0.1'); await once(origin, 'listening');
     const target = `${secure ? 'https' : 'http'}://127.0.0.1:${origin.address().port}`;
     let output = '', agentOutput = '', agent, agentClosed = false, logPath;
-    const server = spawn(process.env.SECURITY_PHP_BINARY || 'php', [path.join(ROOT, 'scripts/security/fixtures/swoole-server.php')], {
+    const server = spawn(process.env.SECURITY_PHP_BINARY || 'php', ['-d', 'auto_prepend_file=' + path.join(directory, 'release.php'), path.join(ROOT, 'scripts/security/fixtures/swoole-server.php')], {
         cwd: directory, env: {...process.env, SECURITY_HTTP_PORT: String(port), FILEMANAGER_UPLOAD_PORT: '0', FILEMANAGER_ORIGIN: base,
             FILEMANAGER_DATA_DIR: directory, FILEMANAGER_TOKENS_FILE: path.join(directory, 'tokens.json'), FILEMANAGER_CONFIG_FILE: path.join(directory, 'config.json'),
             TUNNEL_FIXTURE_CERT: secure ? path.join(directory, 'cert.pem') : '', TUNNEL_FIXTURE_KEY: secure ? path.join(directory, 'key.pem') : ''}, stdio: ['ignore', 'pipe', 'pipe']
@@ -97,6 +111,8 @@ while true; do sleep 0.1; done
         logPath = agentOutput.match(/^Log: (.+)$/m)?.[1];
         assert.ok(logPath, agentOutput);
         await until(() => fs.existsSync(path.join(directory, 'child.pid')));
+        assert.match(fs.readFileSync(logPath, 'utf8'), /Baixando cloudflared oficial pelo File Manager/);
+        assert.ok(!fs.readFileSync(logPath, 'utf8').includes('Tentando o GitHub'), 'Remote download must use the panel');
         const starting = await state(); assert.equal(starting.status, 'starting'); assert.equal(starting.url, '');
         const child = {pid: Number(fs.readFileSync(path.join(directory, 'child.pid'), 'utf8')), args: fs.readFileSync(path.join(directory, 'child.args'), 'utf8').trim().split('\n')};
         assert.ok(child.args.includes(target)); assert.equal(child.args.includes('--no-tls-verify'), secure);

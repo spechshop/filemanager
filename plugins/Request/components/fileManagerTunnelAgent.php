@@ -27,6 +27,17 @@ final class fileManagerTunnelAgent
         }
         if ($secret === '') { $response->status(401); return $response->end(json_encode(['success' => false])); }
         try {
+            if ($method === 'GET' && isset($request->get['asset'])) {
+                $asset = $request->get['asset'];
+                $session = $request->get['session'] ?? '';
+                if ($bootstrapSecret !== '' || !is_string($asset) || !is_string($session)) throw new \InvalidArgumentException('Invalid binary request');
+                tunnelManager::authorizeDownload($secret, $session);
+                $file = tunnelBinaryCache::file($asset);
+                tunnelManager::authorizeDownload($secret, $session);
+                $response->header('Content-Type', 'application/octet-stream');
+                $response->header('Content-Disposition', 'attachment; filename="' . $asset . '"');
+                return $response->sendfile($file);
+            }
             $report = null;
             if ($method === 'POST') {
                 $report = json_decode($request->rawContent(), true, 16, JSON_THROW_ON_ERROR);
@@ -44,6 +55,9 @@ final class fileManagerTunnelAgent
             $response->status(409);
         } catch (\InvalidArgumentException | \JsonException $error) {
             $response->status(422);
+        } catch (\RuntimeException $error) {
+            $response->status(503);
+            $response->header('Retry-After', '5');
         } catch (\Throwable $error) {
             $response->status(500);
         }

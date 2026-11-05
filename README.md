@@ -226,12 +226,18 @@ Its IP/domain, port and protocol come from the address used to open the panel,
 so each installation generates its own address automatically. The machine where
 you paste it downloads and runs the agent using Bash and curl, without Python,
 Node.js, jq or sudo. The configured `127.0.0.1:8080` is the service **on that
-machine**; the File Manager address only downloads the agent and receives status.
+machine**; the File Manager address distributes the agent and receives status.
 
 On Linux and macOS the script downloads the official Cloudflare `cloudflared`
 executable into a temporary directory and verifies its SHA256 against the pinned
 official release manifest in `scripts/tunnel-cloudflared.json`. An existing
-`cloudflared` in PATH is reused. The launcher starts the agent in the background
+`cloudflared` in PATH is reused. Downloads first use the File Manager, which
+caches verified official binaries privately under `.runtime/tunnel-binaries/`
+(or `FILEMANAGER_DATA_DIR/tunnel-binaries/`). This lets remote machines download
+without direct GitHub access. Transient errors such as HTTP 504 are retried;
+if downloading through the panel fails, the agent tries GitHub directly.
+Both sources require the pinned SHA256 before execution.
+The launcher starts the agent in the background
 with `nohup`, prints its PID and private log path, and releases the terminal.
 The tunnel keeps running after the terminal or SSH session closes. Use
 **Desconectar** in the panel to stop it. It is not registered as a boot service.

@@ -16,13 +16,48 @@ namespace Swoole\Http {
         public function header($key, $value): void { $this->headers[strtolower($key)] = $value; }
         public function status($code): void { $this->code = $code; }
         public function end($body = ''): bool { $this->body = $body; return true; }
+        public function sendfile($file): bool { $this->body = file_get_contents($file); return true; }
+    }
+}
+namespace plugins\Request {
+    // Intercept only release metadata and HTTPS downloads; storage and hashing use real files.
+    function file_get_contents($filename, ...$arguments) {
+        if (str_ends_with($filename, '/scripts/tunnel-cloudflared.json') && isset($GLOBALS['tunnelTestManifest'])) return json_encode($GLOBALS['tunnelTestManifest']);
+        return \file_get_contents($filename, ...$arguments);
+    }
+    function fopen($filename, ...$arguments) {
+        if (str_starts_with($filename, 'https://')) {
+            $GLOBALS['tunnelTestRequests'][] = $filename;
+            $options = stream_context_get_options($arguments[2]);
+            \check($options['ssl']['verify_peer'] && $options['ssl']['verify_peer_name'] && !$options['ssl']['allow_self_signed'], 'Upstream TLS verification disabled');
+            \check($options['http']['follow_location'] === 0, 'Unvalidated redirects enabled');
+            $reply = array_shift($GLOBALS['tunnelTestReplies']);
+            if ($reply === null) throw new \RuntimeException('Unexpected network request');
+            if (isset($reply['onOpen'])) ($reply['onOpen'])();
+            if ($reply['status'] === 0) return false;
+            $stream = \fopen('php://temp', 'w+b');
+            fwrite($stream, $reply['body'] ?? ''); rewind($stream);
+            $headers = ['HTTP/1.1 ' . $reply['status']];
+            if (isset($reply['location'])) $headers[] = 'Location: ' . $reply['location'];
+            $GLOBALS['tunnelTestStreams'][(int) $stream] = $headers;
+            return $stream;
+        }
+        return \fopen($filename, ...$arguments);
+    }
+    function stream_get_meta_data($stream) {
+        if (isset($GLOBALS['tunnelTestStreams'][(int) $stream])) return ['wrapper_data' => $GLOBALS['tunnelTestStreams'][(int) $stream]];
+        return \stream_get_meta_data($stream);
+    }
+    function fclose($stream) {
+        unset($GLOBALS['tunnelTestStreams'][(int) $stream]);
+        return \fclose($stream);
     }
 }
 namespace {
-    use plugins\Request\{privateJson, securityPolicy, tunnelManager, fileManagerTunnelAgent, fileManagerSettings};
+    use plugins\Request\{privateJson, securityPolicy, tunnelManager, tunnelBinaryCache, fileManagerTunnelAgent, fileManagerSettings};
     use Swoole\Http\{Request, Response};
     $root = dirname(__DIR__, 2);
-    foreach (['privateJson', 'securityPolicy', 'security', 'tunnelManager', 'fileManagerTunnelAgent'] as $name) require $root . '/plugins/Request/components/' . $name . '.php';
+    foreach (['privateJson', 'securityPolicy', 'security', 'tunnelManager', 'tunnelBinaryCache', 'fileManagerTunnelAgent'] as $name) require $root . '/plugins/Request/components/' . $name . '.php';
     require $root . '/plugins/Request/apps/fileManagerSettings.php';
     $directory = sys_get_temp_dir() . '/fm-tunnels-' . bin2hex(random_bytes(8));
     mkdir($directory, 0700);
@@ -48,6 +83,13 @@ namespace {
         $request->header['authorization'] = 'Bearer ' . $secret;
         if ($report !== null) $request->body = json_encode($report);
         fileManagerTunnelAgent::api($request, $response);
+        return $response;
+    }
+    function binaryRequest(string $secret, string $session, $asset = 'cloudflared-linux-amd64', bool $bootstrap = false): Response {
+        $request = new Request(); $response = new Response();
+        $request->header['authorization'] = 'Bearer ' . $secret;
+        $request->get = ['asset' => $asset, 'session' => $session];
+        fileManagerTunnelAgent::api($request, $response, $bootstrap ? $secret : '');
         return $response;
     }
     try {
@@ -88,6 +130,53 @@ namespace {
         check(agentRequest($secret)->code === 409, 'Duplicate connection accepted');
         $registry = privateJson::read($directory . '/tunnels/registry.json');
         $session = $registry[$id]['session'];
+        $binary = "fixture official binary\n";
+        $GLOBALS['tunnelTestManifest'] = ['version' => '0.0.0', 'assets' => [['name' => 'cloudflared-linux-amd64', 'sha256' => hash('sha256', $binary)]]];
+        $GLOBALS['tunnelTestRequests'] = []; $GLOBALS['tunnelTestReplies'] = [];
+        check(binaryRequest('', $session)->code === 401, 'Anonymous binary download allowed');
+        check(binaryRequest(str_repeat('b', 64), $session)->code === 403, 'Wrong capability downloaded binary');
+        check(binaryRequest($secret, str_repeat('c', 48))->code === 403, 'Wrong session downloaded binary');
+        check(binaryRequest($secret, $session, '../registry.json')->code === 422, 'Unlisted asset accepted');
+        check(binaryRequest($secret, $session, ['cloudflared-linux-amd64'])->code === 422, 'Array asset accepted');
+        check(binaryRequest($secret, $session, 'cloudflared-linux-amd64', true)->code === 422, 'Bootstrap URL served binaries');
+        check(!$GLOBALS['tunnelTestRequests'], 'Invalid requests reached upstream');
+        $GLOBALS['tunnelTestReplies'] = [['status' => 504]];
+        $unavailable = binaryRequest($secret, $session);
+        check($unavailable->code === 503 && $unavailable->headers['retry-after'] === '5', 'Upstream 504 not retryable');
+        check(!glob($directory . '/tunnel-binaries/.cloudflared-*'), 'Failed download left temporary files');
+        $GLOBALS['tunnelTestReplies'] = [['status' => 302, 'location' => 'https://release-assets.githubusercontent.com/fixture'], ['status' => 200, 'body' => $binary]];
+        $download = binaryRequest($secret, $session);
+        check($download->code === 200 && $download->body === $binary && $download->headers['content-type'] === 'application/octet-stream', 'Verified binary not served');
+        check(privateJson::read($directory . '/tunnels/registry.json') === $registry, 'Download altered session or lease');
+        $count = count($GLOBALS['tunnelTestRequests']);
+        check(binaryRequest($secret, $session)->body === $binary && count($GLOBALS['tunnelTestRequests']) === $count, 'Verified cache not reused');
+        $cache = $directory . '/tunnel-binaries/0.0.0-cloudflared-linux-amd64';
+        check((fileperms($cache) & 0077) === 0, 'Cached binary is not private');
+        file_put_contents($cache, 'corrupted cache');
+        $GLOBALS['tunnelTestReplies'] = [['status' => 200, 'body' => 'corrupted upstream']];
+        check(binaryRequest($secret, $session)->code === 503, 'Corrupted binary served');
+        check(!glob($directory . '/tunnel-binaries/.cloudflared-*'), 'Corrupted download left temporary files');
+        $GLOBALS['tunnelTestReplies'] = [['status' => 200, 'body' => $binary]];
+        check(binaryRequest($secret, $session)->body === $binary, 'Corrupted cache could not recover');
+        unlink($cache);
+        foreach (['http://github.com/fixture', 'https://evil.example/fixture', 'https://github.com:8443/fixture', 'https://user@github.com/fixture', 'file:///etc/passwd'] as $location) {
+            $GLOBALS['tunnelTestReplies'] = [['status' => 302, 'location' => $location]];
+            $count = count($GLOBALS['tunnelTestRequests']);
+            check(binaryRequest($secret, $session)->code === 503 && count($GLOBALS['tunnelTestRequests']) === $count + 1, 'Unsafe redirect followed: ' . $location);
+        }
+        $GLOBALS['tunnelTestReplies'] = array_fill(0, 6, ['status' => 302, 'location' => 'https://github.com/loop']);
+        check(binaryRequest($secret, $session)->code === 503 && !$GLOBALS['tunnelTestReplies'], 'Redirect limit missing');
+        symlink($directory . '/tokens.json', $cache);
+        check(binaryRequest($secret, $session)->code === 503, 'Symlink cache served'); unlink($cache);
+        $lock = fopen($cache . '.lock', 'c'); flock($lock, LOCK_EX);
+        check(binaryRequest($secret, $session)->code === 503, 'Concurrent download blocked heartbeat worker');
+        flock($lock, LOCK_UN); fclose($lock);
+        $GLOBALS['tunnelTestReplies'] = [['status' => 200, 'body' => $binary, 'onOpen' => function () use ($directory) {
+            privateJson::update($directory . '/tokens.json', function ($data) { $data['admin-fixture']['revoked'] = true; return $data; });
+        }]];
+        check(binaryRequest($secret, $session)->code === 403, 'Access was not rechecked after download');
+        privateJson::update($directory . '/tokens.json', function ($data) { $data['admin-fixture']['revoked'] = false; return $data; });
+        unset($GLOBALS['tunnelTestManifest']);
         $report = ['session' => $session, 'status' => 'online', 'url' => 'https://fixture-demo.trycloudflare.com'];
         check(agentRequest($secret, 'POST', $report)->code === 200, 'Connection report rejected');
         check(tunnelManager::listing('admin-fixture')['tunnels'][0]['url'] === $report['url'], 'Live link missing');
@@ -96,10 +185,12 @@ namespace {
         privateJson::update($directory . '/tunnels/registry.json', function ($data) use ($id) { $data[$id]['lastSeen'] = time() - 50; return $data; });
         $offline = tunnelManager::listing('admin-fixture')['tunnels'][0];
         check($offline['status'] === 'offline' && $offline['url'] === '', 'Stale connection kept live link');
+        check(binaryRequest($secret, $session)->code === 403, 'Stale session downloaded binary');
         $newSession = tunnelManager::agent($secret)['session'];
         check($newSession !== $session && agentRequest($secret, 'POST', $report)->code === 403, 'Replaced process can still report');
         tunnelManager::mutate('admin-fixture', ['action' => 'stop', 'id' => $id], 'https://panel.example');
         check(agentRequest($secret, 'POST', array_replace($report, ['session' => $newSession]))->code === 403, 'Stopped tunnel remained authorized');
+        check(binaryRequest($secret, $newSession)->code === 403, 'Stopped tunnel downloaded binary');
         $rotated = tunnelManager::mutate('admin-fixture', ['action' => 'command', 'id' => $id], 'https://panel.example');
         check(agentRequest($secret)->code === 403, 'Previous command remained valid');
         preg_match('~/tunnel/([a-f0-9]{64})~', $rotated['command'], $match);
@@ -116,8 +207,10 @@ namespace {
         $request->post = fields() + ['settingGroup' => 'tunnels'];
         fileManagerSettings::api($request, $response);
         check($response->code === 200 && isset(json_decode($response->body, true)['command']), 'Settings API failed');
-        echo "PASS tunnels: input validation, scoped credentials, generated agent, connection, lease, rotation, stop, revocation, deletion and settings API\n";
+        echo "PASS tunnels: input validation, scoped credentials, verified binary cache, redirects, download authorization, connection, lease, rotation, stop, revocation, deletion and settings API\n";
     } finally {
+        foreach (glob($directory . '/tunnel-binaries/*') ?: [] as $file) unlink($file);
+        if (is_dir($directory . '/tunnel-binaries')) rmdir($directory . '/tunnel-binaries');
         foreach (glob($directory . '/tunnels/*') ?: [] as $file) unlink($file);
         if (is_dir($directory . '/tunnels')) rmdir($directory . '/tunnels');
         foreach (glob($directory . '/*') as $file) unlink($file);

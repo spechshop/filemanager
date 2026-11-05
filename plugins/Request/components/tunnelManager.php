@@ -168,6 +168,18 @@ final class tunnelManager
         return $result;
     }
 
+    /** Binary requests cannot claim sessions or extend their heartbeat lease. */
+    public static function authorizeDownload(string $secret, string $session): void
+    {
+        if (!preg_match('/^[a-f0-9]{64}$/D', $secret) || !preg_match('/^[a-f0-9]{48}$/D', $session)) throw new \DomainException('Invalid agent credential');
+        $hash = hash('sha256', $secret);
+        foreach (privateJson::read(self::path()) as $entry) {
+            if (hash_equals($entry['secretHash'], $hash) && $entry['enabled'] && hash_equals($entry['session'], $session)
+                && $entry['lastSeen'] >= time() - self::LEASE_SECONDS && self::ownerActive($entry['owner'])) return;
+        }
+        throw new \DomainException('Agent download denied');
+    }
+
     /** GET claims a session; subsequent heartbeats cannot be replayed by an older process. */
     public static function agent(string $secret, ?array $report = null): array
     {

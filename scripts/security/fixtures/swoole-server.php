@@ -5,7 +5,7 @@ if (!extension_loaded('swoole')) { fwrite(STDERR, "REQUIRED: Swoole; no test exe
 $source = dirname(__DIR__, 3);
 foreach (['Request/components/appController.php', 'Request/components/securityPolicy.php', 'Request/components/security.php', 'Request/components/safeFiles.php', 'Request/components/checkRoute.php', 'Request/views/controller.php', 'Request/views/loadRouter.php', 'Request/router/server.php', 'Start/server/cache.php', 'Database/call/call.php', 'Extension/plugins/utilsFunction.php', 'OpenConnection/websocket/OpenConnection.php', 'Message/server/server.php'] as $file) require $source . '/plugins/' . $file;
 foreach (['checkToken', 'accessTicket', 'deleteFile', 'downloadFile', 'uploadFile', 'newFile', 'freeRam', 'chat4o', 'treeDetails', 'syncPath', 'searchInFile'] as $name) require $source . '/plugins/Request/apps/' . $name . '.php';
-foreach (['privateJson', 'tunnelManager', 'fileManagerTunnelAgent'] as $name) require $source . '/plugins/Request/components/' . $name . '.php';
+foreach (['privateJson', 'tunnelManager', 'tunnelBinaryCache', 'fileManagerTunnelAgent'] as $name) require $source . '/plugins/Request/components/' . $name . '.php';
 require $source . '/plugins/Request/apps/fileManagerSettings.php';
 $GLOBALS['interface'] = ['allowExtensions' => ['json' => 'application/json', 'js' => 'text/javascript']];
 $GLOBALS['cachePages']['404'] = 'Not found';
