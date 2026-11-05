@@ -135,6 +135,7 @@ for (const options of [{panelFails: true}, {panelTampered: true}]) test(`Bash fa
         assert.ok(!args.includes('--config') && !args.includes('Authorization') && !args.includes('a'.repeat(64)), 'Panel credential must never go to GitHub');
         assert.match(args, /--retry\n2\n/);
         assert.match(f.log(), /Tentando o GitHub/);
+        if (options.panelFails) assert.match(f.log(), /curl: \(22\).*504/, 'A final download failure must remain visible');
     } finally { await f.stop(); fs.rmSync(f.directory, {recursive: true, force: true}); }
 });
 test('Bash refuses a modified download before executing it and reports the error', {timeout: 15000}, async () => {

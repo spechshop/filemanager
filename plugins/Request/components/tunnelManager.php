@@ -157,10 +157,13 @@ final class tunnelManager
             $url = escapeshellarg($origin . '/tunnel/' . $secret);
             $download = 'curl -fsS --connect-timeout 10 --max-time 30 ' . $url;
             if (str_starts_with($origin, 'https://') && $panelPin !== '') {
-                // Retry a CA/hostname validation failure only with the configured server key pinned.
-                $download = '(' . $download . '; fm_curl_status=$?; if [ "$fm_curl_status" -eq 60 ]; then '
+                // Buffer the script so a recovered CA/hostname failure is never printed as an error.
+                // A failed download must never pass diagnostic text or a partial script to Bash.
+                $download = '(fm_curl_error=$(mktemp) || exit 1; trap \'rm -f -- "$fm_curl_error"\' EXIT; '
+                    . 'fm_tunnel_script=$(' . $download . ' 2>"$fm_curl_error"); fm_curl_status=$?; if [ "$fm_curl_status" -eq 60 ]; then '
                     . 'curl -fsS --connect-timeout 10 --max-time 30 --insecure --pinnedpubkey ' . escapeshellarg($panelPin) . ' ' . $url
-                    . '; else exit "$fm_curl_status"; fi)';
+                    . '; elif [ "$fm_curl_status" -eq 0 ]; then printf \'%s\\n\' "$fm_tunnel_script"; '
+                    . 'else cat "$fm_curl_error" >&2; exit "$fm_curl_status"; fi)';
             }
             $result['command'] = $download . ' | bash';
         }

@@ -17,7 +17,8 @@ async function until(fn, timeout = 10000) {
     while (Date.now() < deadline) { const value = await fn(); if (value) return value; await delay(50); }
     throw new Error('Timed out waiting for tunnel state');
 }
-for (const secure of [false, true]) test(`curl | bash with ${secure ? 'self-signed HTTPS' : 'HTTP'} panel works without Python or jq and transmits the remote service`, {timeout: 30000}, async () => {
+for (const mode of ['http', 'self-signed', 'hostname-mismatch']) test(`curl | bash with ${mode} panel works without Python or jq and transmits the remote service`, {timeout: 30000}, async () => {
+    const secure = mode !== 'http';
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fm-tunnel-integration-'));
     const bin = path.join(directory, 'bin'); fs.mkdirSync(bin); fs.mkdirSync(path.join(directory, 'files'));
     fs.writeFileSync(path.join(directory, 'tokens.json'), JSON.stringify({fixtureAdmin: {expire: Math.floor(Date.now()/1000) + 3600, admin: true}}));
@@ -98,11 +99,32 @@ function file_get_contents($file, ...$args) {
         if (secure) {
             assert.ok(created.command.includes('--pinnedpubkey'));
             const url = created.command.match(/https:\/\/[^']+\/tunnel\/[a-f0-9]{64}/)[0];
-            const wrong = spawnSync('curl', ['-fsS', '--max-time', '3', '--insecure', '--pinnedpubkey', 'sha256//' + Buffer.alloc(32).toString('base64'), url]);
+            if (mode === 'hostname-mismatch') {
+                const mismatch = spawnSync('curl', ['-fsS', '--max-time', '3', '--cacert', path.join(directory, 'cert.pem'), url]);
+                assert.equal(mismatch.status, 60, String(mismatch.stderr));
+                assert.match(String(mismatch.stderr), /no alternative certificate subject name|certificate subject name.*does not match/);
+            }
+            const wrongCommand = created.command.replace(/sha256\/\/[A-Za-z0-9+/=]+/, 'sha256//' + Buffer.alloc(32).toString('base64'));
+            const wrong = spawnSync('/bin/bash', ['-o', 'pipefail', '-c', wrongCommand]);
             assert.equal(wrong.status, 90, String(wrong.stderr));
+            assert.match(String(wrong.stderr), /curl: \(90\)/, 'An actual panel key mismatch must remain visible');
+            assert.doesNotMatch(String(wrong.stderr), /curl: \(60\)|curl failed to verify/, 'Only the final TLS failure should be displayed');
+            assert.equal(String(wrong.stdout), '', 'A failed bootstrap must never run the agent');
             assert.equal((await state()).status, 'waiting', 'Invalid TLS pin must never download the agent');
+            const brokenBin = path.join(directory, 'broken-bin'); fs.mkdirSync(brokenBin);
+            fs.writeFileSync(path.join(brokenBin, 'curl'), `#!/bin/bash
+printf '%s\\n' 'echo PARTIAL_SCRIPT_EXECUTED'
+printf '%s\\n' 'curl: (18) Transferred a partial file' >&2
+exit 18
+`, {mode: 0o700});
+            const partial = spawnSync('/bin/bash', ['-o', 'pipefail', '-c', created.command], {env: {...process.env, PATH: brokenBin + ':' + bin, TMPDIR: directory}});
+            assert.equal(partial.status, 18, String(partial.stderr));
+            assert.match(String(partial.stderr), /curl: \(18\)/);
+            assert.doesNotMatch(String(partial.stderr), /PARTIAL_SCRIPT_EXECUTED/, 'A partial script can contain credentials and must never be logged');
+            assert.equal(String(partial.stdout), '', 'An interrupted bootstrap must never execute a partial script');
         }
-        agent = spawn('/bin/bash', ['-o', 'pipefail', '-c', created.command], {env: {...process.env, PATH: bin, TMPDIR: directory, TUNNEL_FIXTURE_DIR: directory}, detached: true, stdio: ['ignore', 'pipe', 'pipe']});
+        agent = spawn('/bin/bash', ['-o', 'pipefail', '-c', created.command], {env: {...process.env, PATH: bin, TMPDIR: directory, TUNNEL_FIXTURE_DIR: directory,
+            ...(mode === 'hostname-mismatch' ? {CURL_CA_BUNDLE: path.join(directory, 'cert.pem')} : {})}, detached: true, stdio: ['ignore', 'pipe', 'pipe']});
         agent.on('close', () => {agentClosed = true;});
         agent.stdout.on('data', chunk => {agentOutput += chunk;}); agent.stderr.on('data', chunk => {agentOutput += chunk;});
         await until(() => agentClosed, 3000);
@@ -111,6 +133,8 @@ function file_get_contents($file, ...$args) {
         logPath = agentOutput.match(/^Log: (.+)$/m)?.[1];
         assert.ok(logPath, agentOutput);
         await until(() => fs.existsSync(path.join(directory, 'child.pid')));
+        assert.doesNotMatch(agentOutput, /curl: \(60\)|curl failed to verify/, 'A successful pinned bootstrap must not display a certificate failure');
+        assert.doesNotMatch(fs.readFileSync(logPath, 'utf8'), /curl: \(60\)|curl failed to verify/, 'A successful pinned download must not display a certificate failure');
         assert.match(fs.readFileSync(logPath, 'utf8'), /Baixando cloudflared oficial pelo File Manager/);
         assert.ok(!fs.readFileSync(logPath, 'utf8').includes('Tentando o GitHub'), 'Remote download must use the panel');
         const starting = await state(); assert.equal(starting.status, 'starting'); assert.equal(starting.url, '');

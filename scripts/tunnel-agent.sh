@@ -125,18 +125,21 @@ fm_tunnel_main() {
         printf '%s\n' 'Baixando cloudflared oficial pelo File Manager, sem sudo...'
         curl --fail --silent --show-error --connect-timeout 10 --max-time 180 --retry 4 --retry-delay 3 --retry-max-time 240 \
             --config "$FM_WORK/auth.conf" --max-filesize 104857600 --output "$FM_WORK/download" \
-            "$FM_ENDPOINT?asset=$FM_ASSET&session=$FM_SESSION" &
+            "$FM_ENDPOINT?asset=$FM_ASSET&session=$FM_SESSION" 2> "$FM_WORK/download-error" &
         download=$!
         wait "$download"; code=$?
         download=''
         if [ "$code" -eq 60 ] && [ -n "$FM_PANEL_PIN" ]; then
             curl --fail --silent --show-error --connect-timeout 10 --max-time 180 --retry 4 --retry-delay 3 --retry-max-time 240 \
                 --insecure --pinnedpubkey "$FM_PANEL_PIN" --config "$FM_WORK/auth.conf" \
-                --max-filesize 104857600 --output "$FM_WORK/download" "$FM_ENDPOINT?asset=$FM_ASSET&session=$FM_SESSION" &
+                --max-filesize 104857600 --output "$FM_WORK/download" "$FM_ENDPOINT?asset=$FM_ASSET&session=$FM_SESSION" 2> "$FM_WORK/download-error" &
             download=$!
             wait "$download"; code=$?
             download=''
         fi
+        # A certificate name mismatch can be recovered using the exact panel key.
+        # Show curl diagnostics only if the final authenticated attempt also fails.
+        if [ "$code" -ne 0 ]; then cat "$FM_WORK/download-error" >&2; fi
         if [ "$code" -ne 0 ] || ! fm_verify_download; then
             printf '%s\n' 'Download pelo File Manager indisponível. Tentando o GitHub com novas tentativas automáticas...'
             # Never send the File Manager credential to GitHub or its redirects.
