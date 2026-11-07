@@ -105,6 +105,9 @@ namespace {
         [$id, $secret, $command] = create(['name' => '<img src=x>', 'localHost' => 'https://[::1]', 'localPort' => '8443', 'noTlsVerify' => 'true']);
         $entry = tunnelManager::listing('admin-fixture')['tunnels'][0];
         check($entry['target'] === 'https://[::1]:8443' && $entry['noTlsVerify'] && $entry['status'] === 'waiting', 'Target or initial state incorrect');
+        check($entry['mode'] === 'cloudflare', 'Default mode changed');
+        privateJson::update($directory . '/tunnels/registry.json', function ($data) use ($id) { unset($data[$id]['mode'], $data[$id]['remotePort']); return $data; });
+        check(tunnelManager::listing('admin-fixture')['tunnels'][0]['mode'] === 'cloudflare', 'Legacy definitions no longer use Cloudflare');
         check(!str_contains($command, "\n") && !str_contains($command, 'admin-fixture') && !str_contains($command, 'sudo'), 'Command is not self-contained and scoped');
         check(str_starts_with($command, 'curl -fsS ') && str_ends_with($command, ' | bash') && !str_contains($command, 'python'), 'Command requires an extra runtime');
         foreach (['http://10.0.0.10:8080', 'http://193.203.174.212:8080', 'http://197.111.111.200:8080'] as $origin) {
@@ -201,6 +204,33 @@ namespace {
         privateJson::update($directory . '/tokens.json', function ($data) { $data['admin-fixture']['revoked'] = false; return $data; });
         tunnelManager::mutate('admin-fixture', ['action' => 'delete', 'id' => $id], 'https://panel.example');
         check(!tunnelManager::listing('admin-fixture')['tunnels'] && agentRequest($secret)->code === 403, 'Delete did not revoke agent');
+        denied(fn() => create(['mode' => 'unknown']), InvalidArgumentException::class);
+        foreach (['0', '80', '1023', '65536', '', '18080;id', ['18080']] as $port) {
+            denied(fn() => create(['mode' => 'direct', 'remotePort' => $port]), InvalidArgumentException::class);
+        }
+        [$directId, $directSecret] = create(['mode' => 'direct', 'remotePort' => '18080']);
+        denied(fn() => create(['mode' => 'direct', 'remotePort' => '18080']), InvalidArgumentException::class);
+        denied(fn() => tunnelManager::mutate('admin-fixture', fields(['mode' => 'direct', 'remotePort' => '8080']), 'https://panel.example:8080'), InvalidArgumentException::class);
+        $directConfig = tunnelManager::agent($directSecret);
+        check($directConfig['mode'] === 'direct', 'Direct mode not passed to agent');
+        $directScript = tunnelManager::script($directConfig);
+        check(str_contains($directScript, 'Node.js 22') && !str_contains($directScript, 'cloudflared'), 'Direct installer depends on Cloudflare');
+        file_put_contents($directory . '/bootstrap.sh', $directScript);
+        $compile = proc_open(['bash', '-n', $directory . '/bootstrap.sh'], [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+        foreach ($pipes as $pipe) fclose($pipe);
+        check(proc_close($compile) === 0, 'Generated direct launcher is invalid');
+        $directEntry = tunnelManager::authorizeDirect($directSecret, $directConfig['session']);
+        check(tunnelManager::directUrl($directEntry) === 'http://panel.example:18080', 'Direct address is not on the panel host');
+        check(tunnelManager::directUrl(array_replace($directEntry, ['origin' => 'https://[::1]:8080', 'target' => 'https://localhost:8443'])) === 'https://[::1]:18080', 'IPv6 direct address invalid');
+        $directReport = ['session' => $directConfig['session'], 'status' => 'online', 'url' => 'http://panel.example:18080'];
+        check(agentRequest($directSecret, 'POST', $directReport)->code === 200, 'Direct report rejected');
+        foreach (['https://fixture.trycloudflare.com', 'http://evil.example:18080', 'http://panel.example:18081', 'javascript:alert(1)'] as $url) {
+            check(agentRequest($directSecret, 'POST', array_replace($directReport, ['url' => $url]))->code === 422, 'Untrusted direct URL accepted');
+        }
+        $directListing = tunnelManager::listing('admin-fixture')['tunnels'][0];
+        check($directListing['mode'] === 'direct' && $directListing['remotePort'] === 18080 && $directListing['url'] === $directReport['url'], 'Direct listing incorrect');
+        tunnelManager::mutate('admin-fixture', ['action' => 'delete', 'id' => $directId], 'https://panel.example');
+        denied(fn() => tunnelManager::authorizeDirect($directSecret, $directConfig['session']), DomainException::class);
         $request = new Request(); $response = new Response();
         $request->header['authorization'] = 'Bearer admin-fixture';
         $request->server['request_method'] = 'POST';

@@ -104,6 +104,7 @@ jobs:
       - run: php scripts/security/auxiliary-quotas.php
       - run: node --test scripts/security/swoole-integration.cjs
       - run: node --test scripts/tests/tunnels-integration-test.cjs
+      - run: node --test scripts/tests/tunnels-direct-integration-test.cjs
       - name: Real LSP through the Swoole WebSocket relay
         env:
           SECURITY_LSP_SWOOLE: '1'

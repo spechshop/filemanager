@@ -43,6 +43,13 @@ final class tunnelManager
     public static function script(array $config): string
     {
         $root = dirname(__DIR__, 3);
+        if (($config['mode'] ?? 'cloudflare') === 'direct') {
+            $source = file_get_contents($root . '/scripts/tunnel-direct-agent.cjs');
+            $launcher = file_get_contents($root . '/scripts/tunnel-direct-agent.sh');
+            if ($source === false || $launcher === false) throw new \RuntimeException('Direct tunnel installer unavailable');
+            $payload = base64_encode(str_replace('// FILEMANAGER_CONFIG', 'const config = ' . json_encode($config, JSON_THROW_ON_ERROR) . ';', $source));
+            return str_replace('FILEMANAGER_AGENT_BASE64', $payload, $launcher);
+        }
         $source = file_get_contents($root . '/scripts/tunnel-agent.sh');
         $manifest = json_decode((string) file_get_contents($root . '/scripts/tunnel-cloudflared.json'), true, 16, JSON_THROW_ON_ERROR);
         if ($source === false || !preg_match('/^[0-9.]+$/D', $manifest['version'] ?? '')) throw new \RuntimeException('Tunnel installer unavailable');
@@ -72,6 +79,7 @@ final class tunnelManager
             elseif (in_array($status, ['online', 'starting'], true) && $entry['lastSeen'] < time() - self::LEASE_SECONDS) $status = 'offline';
             $result[] = [
                 'id' => $id, 'name' => $entry['name'], 'target' => $entry['target'],
+                'mode' => $entry['mode'] ?? 'cloudflare', 'remotePort' => $entry['remotePort'] ?? null,
                 'noTlsVerify' => $entry['noTlsVerify'], 'status' => $status,
                 'url' => $status === 'online' ? $entry['url'] : '',
                 'lastSeen' => $entry['lastSeen'], 'message' => $entry['message'],
@@ -126,12 +134,28 @@ final class tunnelManager
             if ($action === 'create') {
                 if (count($entries) >= 100) throw new \InvalidArgumentException('Limite de 100 túneis atingido.');
                 $target = self::target($input);
+                $mode = $input['mode'] ?? 'cloudflare';
+                if (!in_array($mode, ['cloudflare', 'direct'], true)) throw new \InvalidArgumentException('Modo de túnel inválido.');
+                $remotePort = null;
+                if ($mode === 'direct') {
+                    $value = $input['remotePort'] ?? '';
+                    if (!is_string($value) || !preg_match('/^[0-9]{4,5}$/D', $value) || (int) $value < 1024 || (int) $value > 65535) {
+                        throw new \InvalidArgumentException('Informe uma porta de 1024 a 65535 para abrir no host do File Manager.');
+                    }
+                    $remotePort = (int) $value;
+                    foreach ($entries as $entry) {
+                        if (($entry['mode'] ?? 'cloudflare') === 'direct' && $entry['remotePort'] === $remotePort) throw new \InvalidArgumentException('Esta porta já está reservada por outro túnel.');
+                    }
+                    if ($remotePort === (int) (parse_url($origin, PHP_URL_PORT) ?: (str_starts_with($origin, 'https://') ? 443 : 80))) {
+                        throw new \InvalidArgumentException('Escolha uma porta diferente da porta do painel.');
+                    }
+                }
                 $name = $input['name'] ?? '';
                 if (!is_string($name) || strlen($name) > 120) throw new \InvalidArgumentException('Use um nome de até 120 caracteres.');
                 if (!in_array($input['noTlsVerify'] ?? 'false', ['true', 'false'], true)) throw new \InvalidArgumentException('Opção TLS inválida.');
                 $id = bin2hex(random_bytes(12));
-                $entries[$id] = ['name' => trim($name) ?: $target, 'target' => $target,
-                    'noTlsVerify' => str_starts_with($target, 'https://') && ($input['noTlsVerify'] ?? 'false') === 'true'];
+                $entries[$id] = ['name' => trim($name) ?: $target, 'target' => $target, 'mode' => $mode, 'remotePort' => $remotePort,
+                    'noTlsVerify' => $mode === 'cloudflare' && str_starts_with($target, 'https://') && ($input['noTlsVerify'] ?? 'false') === 'true'];
             } elseif (!is_string($id) || !isset($entries[$id])) {
                 throw new \InvalidArgumentException('Túnel não encontrado. Atualize a lista.');
             }
@@ -183,6 +207,23 @@ final class tunnelManager
         throw new \DomainException('Agent download denied');
     }
 
+    public static function directUrl(array $entry): string
+    {
+        return parse_url($entry['target'], PHP_URL_SCHEME) . '://' . parse_url($entry['origin'], PHP_URL_HOST) . ':' . $entry['remotePort'];
+    }
+
+    /** A direct relay may only bind the port reserved by its active capability. */
+    public static function authorizeDirect(string $secret, string $session): array
+    {
+        if (!preg_match('/^[a-f0-9]{64}$/D', $secret) || !preg_match('/^[a-f0-9]{48}$/D', $session)) throw new \DomainException('Invalid agent credential');
+        foreach (privateJson::read(self::path()) as $entry) {
+            if (($entry['mode'] ?? 'cloudflare') === 'direct' && hash_equals($entry['secretHash'], hash('sha256', $secret))
+                && $entry['enabled'] && hash_equals($entry['session'], $session)
+                && $entry['lastSeen'] >= time() - self::LEASE_SECONDS && self::ownerActive($entry['owner'])) return $entry;
+        }
+        throw new \DomainException('Direct tunnel denied');
+    }
+
     /** GET claims a session; subsequent heartbeats cannot be replayed by an older process. */
     public static function agent(string $secret, ?array $report = null): array
     {
@@ -202,14 +243,18 @@ final class tunnelManager
                     $entry['url'] = '';
                     $entry['message'] = '';
                     $result = ['endpoint' => $entry['origin'] . '/fileManagerTunnelAgent', 'secret' => $secret,
+                        'mode' => $entry['mode'] ?? 'cloudflare',
                         'panelPin' => str_starts_with($entry['panelPin'] ?? '', 'sha256//') ? $entry['panelPin'] : '',
                         'session' => $entry['session'], 'target' => $entry['target'], 'noTlsVerify' => $entry['noTlsVerify']];
                 } else {
                     if (!is_string($report['session'] ?? null) || !hash_equals($entry['session'], $report['session'])) throw new \DomainException('Session replaced');
                     $status = $report['status'] ?? '';
                     $url = $report['url'] ?? '';
+                    $validUrl = ($entry['mode'] ?? 'cloudflare') === 'direct'
+                        ? $url === self::directUrl($entry)
+                        : is_string($url) && preg_match('~^https://[a-z0-9]+(?:-[a-z0-9]+)*\.trycloudflare\.com$~D', $url);
                     if (!in_array($status, ['starting', 'online', 'offline', 'error'], true) || !is_string($url)
-                        || ($url !== '' && !preg_match('~^https://[a-z0-9]+(?:-[a-z0-9]+)*\.trycloudflare\.com$~D', $url))
+                        || ($url !== '' && !$validUrl)
                         || ($status === 'online' && $url === '')) throw new \InvalidArgumentException('Estado do túnel inválido.');
                     $message = $report['message'] ?? '';
                     if (!is_string($message) || strlen($message) > 300) throw new \InvalidArgumentException('Mensagem inválida.');

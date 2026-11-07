@@ -60,6 +60,7 @@ run('tunnels', [PLAIN, '-n', 'scripts/tests/tunnels-test.php'])
 run('tunnel-agent', ['node', '--test', 'scripts/tests/tunnel-agent-test.cjs'])
 run('tunnels-ui', ['node', '--test', 'scripts/tests/tunnels-ui-test.cjs'])
 run('tunnels-integration', ['node', '--test', 'scripts/tests/tunnels-integration-test.cjs'], {'SECURITY_PHP_BINARY': SWOOLE})
+run('tunnels-direct-integration', ['node', '--test', 'scripts/tests/tunnels-direct-integration-test.cjs'], {'SECURITY_PHP_BINARY': SWOOLE})
 for name in ['install-codex-native', 'installer-home', 'install-tmp']:
     run(name, ['bash', 'scripts/tests/' + name + '-test.sh'])
 for name, files in [

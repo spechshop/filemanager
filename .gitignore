@@ -94,6 +94,9 @@ lerna-debug.log*
 /files/**
 !/files/.gitkeep
 !/files/README.md
+!/files/webhook/
+!/files/webhook/**
+/files/webhook/storage/
 /database/codex-preferences.lotus
 /.runtime/
 /sessions-terminals.json

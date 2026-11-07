@@ -245,11 +245,21 @@
                             <div class="d-flex justify-content-between align-items-start gap-3 mb-3">
                                 <div>
                                     <h6 class="mb-1">Túneis</h6>
-                                    <p class="settings-description small mb-0">Transmita um serviço da máquina onde você colar o comando e acesse por um link HTTPS público, com suporte a WebSocket.</p>
+                                    <p class="settings-description small mb-0">Transmita um serviço da máquina onde você colar o comando pelo Cloudflare ou por uma conexão direta ao host do File Manager.</p>
                                 </div>
                                 <button class="btn btn-sm btn-outline-light" id="refreshTunnels" type="button">Atualizar</button>
                             </div>
                             <form id="tunnelForm" class="settings-section p-3 mb-3">
+                                <label class="form-label small" for="tunnelMode">Modo de conexão</label>
+                                <select class="form-select form-select-sm mb-2" id="tunnelMode">
+                                    <option value="cloudflare">Cloudflare — link HTTPS temporário</option>
+                                    <option value="direct">Direto — porta fixa no host do File Manager</option>
+                                </select>
+                                <div id="tunnelDirectOptions" class="d-none mb-3">
+                                    <label class="form-label small" for="tunnelRemotePort">Porta no host do File Manager</label>
+                                    <input class="form-control form-control-sm" id="tunnelRemotePort" type="number" min="1024" max="65535" step="1" value="18080" disabled>
+                                    <div class="settings-description small mt-2">Libere essa porta no firewall e, se necessário, encaminhe-a no roteador. O endereço usa o host deste painel e permanece o mesmo ao reconectar. O agente precisa de Node.js 22 ou superior. HTTP, HTTPS, WebSocket e SSE são encaminhados diretamente; HTTPS usa o certificado do serviço remoto.</div>
+                                </div>
                                 <label class="form-label small" for="tunnelName">Nome (opcional)</label>
                                 <input class="form-control form-control-sm mb-3" id="tunnelName" maxlength="120" placeholder="Meu ambiente de desenvolvimento">
                                 <div class="fw-semibold small mb-2">Serviço a transmitir na máquina onde o comando será executado</div>
@@ -268,10 +278,10 @@
                                     </div>
                                 </div>
                                 <div class="settings-description small mt-2">Exemplo: 127.0.0.1:8080 acessa o serviço que está rodando na VPS onde você colar o comando. Também pode informar https://localhost no host.</div>
-                                <label class="small mt-3 d-block"><input type="checkbox" id="tunnelNoTlsVerify"> Permitir certificado autoassinado no serviço HTTPS local</label>
+                                <label class="small mt-3 d-block" id="tunnelTlsOption"><input type="checkbox" id="tunnelNoTlsVerify"> Permitir certificado autoassinado no serviço HTTPS local</label>
                                 <button class="btn btn-primary btn-sm mt-3" id="createTunnel" type="submit">Criar túnel e gerar comando</button>
                             </form>
-                            <p class="settings-description small">Cole o comando curl … | bash na máquina que tem o serviço rodando, sem sudo e sem Python. O túnel inicia em segundo plano e continua ativo ao fechar o terminal ou a sessão SSH. O link aparece automaticamente após a conexão. Para encerrar, use Desconectar.</p>
+                            <p class="settings-description small">Cole o comando curl … | bash na máquina que tem o serviço rodando, sem sudo. Cloudflare usa Bash e curl; o modo direto também precisa de Node.js 22 ou superior. O túnel continua ativo ao fechar o terminal ou a sessão SSH. O link aparece após a conexão. Para encerrar, use Desconectar. O serviço fica acessível a quem alcançar o link; use a autenticação do próprio serviço.</p>
                             <div id="tunnelsStatus" class="small mb-2" role="status" aria-live="polite"></div>
                             <div id="tunnelCommandBox" class="settings-section p-3 mb-3 d-none">
                                 <label class="form-label small" for="tunnelCommand">Comando para executar na outra máquina</label>
@@ -1133,12 +1143,21 @@
             const labels = {waiting: 'Aguardando conexão', starting: 'Conectando', online: 'Conectado', offline: 'Desconectado', stopped: 'Desativado', error: 'Falha na conexão'};
             const colors = {waiting: 'secondary', starting: 'info', online: 'success', offline: 'secondary', stopped: 'secondary', error: 'danger'};
             tunnelList.innerHTML = tunnels.map((entry) => {
-                // Only provider HTTPS URLs become clickable, even if a response is malformed.
-                const url = /^https:\/\/[a-z0-9]+(?:-[a-z0-9]+)*\.trycloudflare\.com$/.test(entry.url) && entry.status === 'online' ? entry.url : '';
+                let validUrl = /^https:\/\/[a-z0-9]+(?:-[a-z0-9]+)*\.trycloudflare\.com$/.test(entry.url);
+                if (entry.mode === 'direct') {
+                    validUrl = false;
+                    try {
+                        const protocol = new URL(entry.target).protocol;
+                        const port = Number(entry.remotePort);
+                        validUrl = ['http:', 'https:'].includes(protocol) && Number.isInteger(port) && port >= 1024 && port <= 65535
+                            && entry.url === `${protocol}//${window.location.hostname}:${port}`;
+                    } catch (_) {}
+                }
+                const url = validUrl && entry.status === 'online' ? entry.url : '';
                 const action = (name, label, disabled = false) => `<button type="button" class="btn btn-sm btn-outline-light" data-tunnel-action="${name}" data-tunnel-id="${escapeHtml(entry.id)}" ${tunnelBusy || disabled ? 'disabled' : ''}>${label}</button>`;
                 return `<article class="settings-section p-3">
                     <div class="d-flex flex-wrap justify-content-between gap-2"><strong class="text-break">${escapeHtml(entry.name)}</strong><span class="badge text-bg-${colors[entry.status] || 'secondary'}">${labels[entry.status] || 'Desconectado'}</span></div>
-                    <div class="settings-description small text-break mt-1">${escapeHtml(entry.target)}${entry.noTlsVerify ? ' · Certificado local autoassinado permitido' : ''}</div>
+                    <div class="settings-description small text-break mt-1">${escapeHtml(entry.target)} · ${entry.mode === 'direct' ? `Direto · Porta ${escapeHtml(String(entry.remotePort))} no File Manager` : 'Cloudflare'}${entry.noTlsVerify ? ' · Certificado local autoassinado permitido' : ''}</div>
                     ${url ? `<div class="mt-2 text-break"><a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}</a></div>` : ''}
                     ${entry.message ? `<div class="settings-description small mt-1">${escapeHtml(entry.message)}</div>` : ''}
                     <div class="d-flex flex-wrap gap-2 mt-3">${url ? action('copy', 'Copiar link') : ''}${action('command', 'Gerar novo comando')}${action('stop', 'Desconectar', entry.status === 'stopped')}${action('delete', 'Excluir')}</div>
@@ -1177,7 +1196,7 @@
                 tunnelMessage(data.command ? 'Comando pronto. Execute na outra máquina e aguarde a conexão.' : data.message);
                 if (data.command) {
                     tunnelCommand.value = data.command;
-                    document.getElementById('tunnelPanelAddress').textContent = `File Manager: ${window.location.origin}. Usado para baixar o agente e receber o status.`;
+                    document.getElementById('tunnelPanelAddress').textContent = `File Manager: ${window.location.origin}. Usado para baixar o agente e manter a conexão e o status.`;
                     tunnelCommandBox.classList.remove('d-none');
                 }
             } catch (error) {
@@ -1188,9 +1207,17 @@
                 if (version === tunnelVersion && activePaneId === 'settingsTunnelsPane') loadTunnels();
             }
         }
+        document.getElementById('tunnelMode').addEventListener('change', () => {
+            const direct = document.getElementById('tunnelMode').value === 'direct';
+            document.getElementById('tunnelDirectOptions').classList.toggle('d-none', !direct);
+            document.getElementById('tunnelRemotePort').disabled = !direct;
+            document.getElementById('tunnelRemotePort').required = direct;
+            document.getElementById('tunnelTlsOption').classList.toggle('d-none', direct);
+            document.getElementById('tunnelNoTlsVerify').disabled = direct;
+        });
         document.getElementById('tunnelForm').addEventListener('submit', event => {
             event.preventDefault();
-            mutateTunnel({action: 'create', name: document.getElementById('tunnelName').value,
+            mutateTunnel({action: 'create', mode: document.getElementById('tunnelMode').value, remotePort: document.getElementById('tunnelRemotePort').value, name: document.getElementById('tunnelName').value,
                 protocol: document.getElementById('tunnelProtocol').value, localHost: document.getElementById('tunnelHost').value,
                 localPort: document.getElementById('tunnelPort').value, noTlsVerify: document.getElementById('tunnelNoTlsVerify').checked ? 'true' : 'false'});
         });

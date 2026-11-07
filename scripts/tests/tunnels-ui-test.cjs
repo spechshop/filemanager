@@ -67,3 +67,32 @@ test('a command returned after closing settings stays hidden', async () => {
         assert.equal(d.getElementById('tunnelCommandBox').classList.contains('d-none'), true);
     } finally { release?.(); w.close(); }
 });
+test('direct mode requests a fixed host port and only renders the expected direct address', async () => {
+    const f = fixture(), {d, w} = f;
+    try {
+        d.querySelector('[data-settings-pane="settingsTunnelsPane"]').click(); await settle();
+        d.getElementById('tunnelMode').value = 'direct';
+        d.getElementById('tunnelMode').dispatchEvent(new w.Event('change'));
+        assert.equal(d.getElementById('tunnelDirectOptions').classList.contains('d-none'), false);
+        assert.equal(d.getElementById('tunnelRemotePort').required, true);
+        assert.equal(d.getElementById('tunnelNoTlsVerify').disabled, true);
+        d.getElementById('tunnelRemotePort').value = '18081';
+        d.getElementById('tunnelForm').dispatchEvent(new w.Event('submit', {cancelable: true})); await settle();
+        const body = new URLSearchParams(f.calls.find(call => call.options.method === 'POST').options.body);
+        assert.equal(body.get('mode'), 'direct'); assert.equal(body.get('remotePort'), '18081');
+        const entry = {id: 'direct', mode: 'direct', name: 'Direct', target: 'http://127.0.0.1:8080', remotePort: 18081, status: 'online', url: 'http://panel.example:18081'};
+        f.entries([entry]); await f.timers.at(-1)();
+        assert.equal(d.querySelector('#tunnelsList a').href, 'http://panel.example:18081/');
+        assert.match(d.getElementById('tunnelsList').textContent, /Direto · Porta 18081/);
+        d.querySelector('[data-tunnel-action="copy"]').click(); await settle();
+        assert.equal(f.copied(), entry.url);
+        for (const url of ['javascript:alert(1)', 'http://evil.example:18081', 'http://panel.example:18082', 'http://user@panel.example:18081', 'http://panel.example:18081/path', 'https://panel.example:18081']) {
+            f.entries([{...entry, url}]); await f.timers.at(-1)();
+            assert.equal(d.querySelector('#tunnelsList a'), null, url);
+        }
+        d.getElementById('tunnelMode').value = 'cloudflare';
+        d.getElementById('tunnelMode').dispatchEvent(new w.Event('change'));
+        assert.equal(d.getElementById('tunnelRemotePort').disabled, true);
+        assert.equal(d.getElementById('tunnelNoTlsVerify').disabled, false);
+    } finally { w.close(); }
+});

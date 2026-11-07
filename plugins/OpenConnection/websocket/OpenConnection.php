@@ -8,6 +8,10 @@ class OpenConnection
 {
     public static function open(Server $server, Request $request): void
     {
+        if (explode('?', $request->server['request_uri'] ?? '/', 2)[0] === '/fileManagerTunnelDirect') {
+            \plugins\Request\tunnelDirect::open($server, $request);
+            return;
+        }
         $socket = ltrim(explode('?', $request->server['request_uri'] ?? '/', 2)[0], '/');
         if (str_starts_with($socket, 'ws/')) {
             $ticket = securityPolicy::readTicket(substr($socket, 3), true);

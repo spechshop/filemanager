@@ -221,12 +221,38 @@ service's local host (for example `127.0.0.1`) and port (`8080`), and select HTT
 or HTTPS. A host such as `https://localhost` also selects HTTPS. Create the tunnel
 and copy its single-line command to a terminal on the other machine.
 
+Select **Cloudflare** for a temporary provider URL or **Direto** for a fixed
+port on the host running File Manager. Existing tunnels continue using Cloudflare.
+
+In **Direto** mode, choose an unused port from `1024` to `65535` (for example
+`18080`). The remote machine needs **Node.js 22 or later**, Bash, curl and nohup;
+no npm packages, Cloudflare account or cloudflared binary are needed. The agent
+opens an outbound WebSocket directly to the File Manager address. File Manager
+listens on the selected port and forwards TCP streams to the remote service.
+For example, `http://panel.example:8080` with port `18080` exposes an HTTP service
+at `http://panel.example:18080`. The port follows File Manager's bind address;
+a loopback-only installation remains local. Allow this port through the host
+firewall and forward it through NAT if applicable. A reverse proxy serving the
+panel must also forward WebSocket upgrades for `/fileManagerTunnelDirect`;
+the service port must reach File Manager directly.
+
+The direct address stays the same when reconnecting, without a provider expiry.
+The agent retries transport failures automatically, including File Manager worker
+restarts. Raw TCP forwarding preserves paths, binary uploads, HTTP streaming,
+WebSocket and SSE. HTTPS is passed through using the **remote service's**
+certificate, which must be valid for the public hostname; the local self-signed
+checkbox applies to Cloudflare mode. The service is accessible to anyone who can
+reach that port, so use authentication in the exposed application. Stopping or
+deleting the tunnel, rotating its command or revoking its owner closes the
+listener and active streams. The command runs in the background and prints a
+private log path, just like Cloudflare mode.
+
 The command has the form `curl -fsS 'http://FILEMANAGER_IP:PORT/tunnel/KEY' | bash`.
 Its IP/domain, port and protocol come from the address used to open the panel,
-so each installation generates its own address automatically. The machine where
-you paste it downloads and runs the agent using Bash and curl, without Python,
-Node.js, jq or sudo. The configured `127.0.0.1:8080` is the service **on that
-machine**; the File Manager address distributes the agent and receives status.
+so each installation generates its own address automatically. The configured
+`127.0.0.1:8080` is the service **on the machine where you run the command**.
+In Cloudflare mode, the agent needs only Bash and curl, without Python, Node.js,
+jq or sudo; the File Manager address distributes the agent and receives status.
 
 On Linux and macOS the script downloads the official Cloudflare `cloudflared`
 executable into a temporary directory and verifies its SHA256 against the pinned

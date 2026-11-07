@@ -24,6 +24,7 @@ class server extends OpenConnection
 
     public static function stopWorker(): void
     {
+        if (class_exists(\plugins\Request\tunnelDirect::class, false)) \plugins\Request\tunnelDirect::stopWorker();
         self::$metricsPending = self::$metricsNextAt = [];
         foreach ($GLOBALS['searchInFileJobs'] ?? [] as $fd => $_) {
             $GLOBALS['searchInFileJobs'][$fd]['cancelled'] = true;
@@ -43,6 +44,10 @@ class server extends OpenConnection
 
     public static function close(\Swoole\WebSocket\Server $server, int $fd): void
     {
+        if (class_exists(\plugins\Request\tunnelDirect::class, false) && \plugins\Request\tunnelDirect::has($fd)) {
+            \plugins\Request\tunnelDirect::close($fd);
+            return;
+        }
         if (isset($GLOBALS['websocketConnections'][$fd]['timer'])) \Swoole\Timer::clear($GLOBALS['websocketConnections'][$fd]['timer']);
         unset(self::$metricsPending[$fd], self::$metricsNextAt[$fd]);
         unset($GLOBALS['fdToToken'][$fd], $GLOBALS['websocketConnections'][$fd]);
@@ -96,6 +101,10 @@ class server extends OpenConnection
 
     public static function message(\Swoole\WebSocket\Server $server, Frame $frame)
     {
+        if (class_exists(\plugins\Request\tunnelDirect::class, false) && \plugins\Request\tunnelDirect::has($frame->fd)) {
+            \plugins\Request\tunnelDirect::message($server, $frame);
+            return;
+        }
         $object = strlen($frame->data) <= securityPolicy::limit('WS_MESSAGE_BYTES', 131072) ? json_decode($frame->data, true) : null;
         $socketToken = self::socketTokenForFd($frame->fd);
         $tokenClient = $GLOBALS['websocketConnections'][$frame->fd]['clientToken'] ?? '';
