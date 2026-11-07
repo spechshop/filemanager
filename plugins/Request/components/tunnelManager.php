@@ -188,21 +188,45 @@ final class tunnelManager
         });
         $result = ['success' => true, 'message' => $action === 'stop' ? 'Desconexão solicitada; a máquina remota encerrará o túnel em até 15 segundos.' : 'Operação concluída.', 'id' => $id];
         if ($secret !== null) {
-            $url = escapeshellarg($origin . '/tunnel/' . $secret);
-            $download = 'curl -fsS --connect-timeout 10 --max-time 30 ' . $url;
-            if (str_starts_with($origin, 'https://') && $panelPin !== '') {
-                // Buffer the script so a recovered CA/hostname failure is never printed as an error.
-                // A failed download must never pass diagnostic text or a partial script to Bash.
-                $download = '(fm_curl_error=$(mktemp) || exit 1; trap \'rm -f -- "$fm_curl_error"\' EXIT; '
-                    . 'fm_tunnel_script=$(' . $download . ' 2>"$fm_curl_error"); fm_curl_status=$?; if [ "$fm_curl_status" -eq 60 ]; then '
-                    . 'curl -fsS --connect-timeout 10 --max-time 30 --insecure --pinnedpubkey ' . escapeshellarg($panelPin) . ' ' . $url
-                    . '; elif [ "$fm_curl_status" -eq 0 ]; then printf \'%s\\n\' "$fm_tunnel_script"; '
-                    . 'else cat "$fm_curl_error" >&2; exit "$fm_curl_status"; fi)';
-            }
-            $result['command'] = $download . ' | bash';
+            $result['command'] = self::bootstrapCommand($origin . '/tunnel/' . $secret, $panelPin);
         }
         securityPolicy::requireAdmin($actor);
         return $result;
+    }
+
+    private static function bootstrapCommand(string $url, string $pin): string
+    {
+        // One Bash process owns download validation and execution. A plain curl | bash
+        // pipeline reports success when curl fails or returns an empty HTTP 200 response.
+        $download = 'curl -fsS --connect-timeout 10 --max-time 30 --max-filesize 1048576 --output "$fm_work/agent.sh" --write-out "%{http_code}"';
+        $source = implode(' ', [
+            'umask 077;',
+            'printf "%s\\n" "Conectando ao File Manager para preparar o túnel..." >&2;',
+            'fm_work=$(mktemp -d "${TMPDIR:-/tmp}/filemanager-bootstrap.XXXXXXXX") || { printf "%s\\n" "Não foi possível criar a pasta temporária do agente." >&2; exit 1; };',
+            'trap \'rm -rf -- "$fm_work"\' EXIT;',
+            'fm_http=$(' . $download . ' "$1" 2>"$fm_work/error"); fm_code=$?;',
+            'if [ "$fm_code" -eq 60 ] && [ -n "$2" ]; then fm_http=$(' . $download . ' --insecure --pinnedpubkey "$2" "$1" 2>"$fm_work/error"); fm_code=$?; fi;',
+            'case "$fm_http" in [0-9][0-9][0-9]) ;; *) fm_http=000;; esac;',
+            'if [ "$fm_code" -ne 0 ]; then',
+            'case "$fm_http" in',
+            '403) printf "%s\\n" "Este comando foi revogado. Gere um novo comando no painel." >&2;;',
+            '409) printf "%s\\n" "Este comando já está conectado. Gere um novo comando para substituir a conexão." >&2;;',
+            '*) printf "Não foi possível baixar o agente (HTTP %s, curl %s). Verifique o endereço e a conexão com o painel.\\n" "$fm_http" "$fm_code" >&2;;',
+            'esac;',
+            'cat "$fm_work/error" >&2; exit "$fm_code"; fi;',
+            'if [ "$fm_http" != 200 ]; then printf "O painel respondeu HTTP %s em vez do agente. Verifique o endereço e o proxy.\\n" "$fm_http" >&2; exit 22; fi;',
+            'if [ ! -s "$fm_work/agent.sh" ]; then printf "%s\\n" "O painel devolveu uma resposta vazia. O agente não foi iniciado." >&2; exit 65; fi;',
+            'fm_script=$(<"$fm_work/agent.sh");',
+            'case "$fm_script" in',
+            '$\'#!/usr/bin/env bash\\n# FILEMANAGER_TUNNEL_AGENT\\n\'*$\'\\nfm_tunnel_start\') ;;',
+            '*) printf "%s\\n" "A resposta do painel não contém um agente completo do File Manager. Verifique o endereço e o proxy." >&2; exit 65;;',
+            'esac;',
+            'if ! bash -n "$fm_work/agent.sh" 2>"$fm_work/syntax-error"; then printf "%s\\n" "O agente recebido está incompleto ou inválido. Gere um novo comando no painel." >&2; exit 65; fi;',
+            'unset fm_script;',
+            'printf "%s\\n" "Agente recebido. Iniciando a preparação..." >&2;',
+            'bash "$fm_work/agent.sh";',
+        ]);
+        return 'bash -c ' . escapeshellarg($source) . ' -- ' . escapeshellarg($url) . ' ' . escapeshellarg($pin);
     }
 
     /** Binary requests cannot claim sessions or extend their heartbeat lease. */

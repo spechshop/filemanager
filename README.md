@@ -257,7 +257,14 @@ deleting the tunnel, rotating its command or revoking its owner closes the
 listener and active streams. The command runs in the background and prints a
 private log path, just like Cloudflare mode.
 
-The command has the form `curl -fsS 'http://FILEMANAGER_IP:PORT/tunnel/KEY' | bash`.
+The generated command uses Bash and curl to download
+`http://FILEMANAGER_IP:PORT/tunnel/KEY`. It prints a connection message before
+the request, verifies that the response contains the complete File Manager agent,
+and only then runs it. Empty responses, proxy/login pages, interrupted transfers
+and revoked or already connected commands show an error and return a nonzero
+status, without executing or printing the response body. Direct mode also shows
+the first seconds of preparation output before returning to the prompt; further
+progress is recorded at the printed private log path.
 Its IP/domain, port and protocol come from the address used to open the panel,
 so each installation generates its own address automatically. The configured
 `127.0.0.1:8080` is the service **on the machine where you run the command**.

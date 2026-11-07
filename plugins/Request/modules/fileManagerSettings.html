@@ -281,7 +281,7 @@
                                 <label class="small mt-3 d-block" id="tunnelTlsOption"><input type="checkbox" id="tunnelNoTlsVerify"> Permitir certificado autoassinado no serviço HTTPS local</label>
                                 <button class="btn btn-primary btn-sm mt-3" id="createTunnel" type="submit">Criar túnel e gerar comando</button>
                             </form>
-                            <p class="settings-description small">Cole o comando curl … | bash na máquina que tem o serviço rodando. A preparação é automática, sem sudo, npm ou instalação manual de Node.js. O túnel continua ativo ao fechar o terminal ou a sessão SSH. O link aparece após a conexão. Para encerrar, use Desconectar. O serviço fica acessível a quem alcançar o link; use a autenticação do próprio serviço.</p>
+                            <p class="settings-description small">Cole o comando gerado na máquina que tem o serviço rodando. O terminal mostra a conexão com o painel e o progresso inicial da preparação, que é automática, sem sudo, npm ou instalação manual de Node.js. O túnel continua ativo ao fechar o terminal ou a sessão SSH. O link aparece após a conexão. Para encerrar, use Desconectar. O serviço fica acessível a quem alcançar o link; use a autenticação do próprio serviço.</p>
                             <div id="tunnelsStatus" class="small mb-2" role="status" aria-live="polite"></div>
                             <div id="tunnelCommandBox" class="settings-section p-3 mb-3 d-none">
                                 <label class="form-label small" for="tunnelCommand">Comando para executar na outra máquina</label>

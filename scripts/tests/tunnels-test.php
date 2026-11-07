@@ -110,7 +110,9 @@ namespace {
         privateJson::update($directory . '/tunnels/registry.json', function ($data) use ($id) { unset($data[$id]['mode'], $data[$id]['remotePort']); return $data; });
         check(tunnelManager::listing('admin-fixture')['tunnels'][0]['mode'] === 'cloudflare', 'Legacy definitions no longer use Cloudflare');
         check(!str_contains($command, "\n") && !str_contains($command, 'admin-fixture') && !str_contains($command, 'sudo'), 'Command is not self-contained and scoped');
-        check(str_starts_with($command, 'curl -fsS ') && str_ends_with($command, ' | bash') && !str_contains($command, 'python'), 'Command requires an extra runtime');
+        check(str_starts_with($command, 'bash -c ') && str_contains($command, 'curl -fsS ') && !str_contains($command, 'python'), 'Command requires an extra runtime');
+        check(str_contains($command, 'resposta vazia') && str_contains($command, 'FILEMANAGER_TUNNEL_AGENT'), 'Bootstrap does not validate its response');
+        check(strlen($command) < 4096, 'Generated command exceeds the terminal canonical line limit');
         foreach (['http://10.0.0.10:8080', 'http://193.203.174.212:8080', 'http://197.111.111.200:8080'] as $origin) {
             $generated = tunnelManager::mutate('admin-fixture', ['action' => 'command', 'id' => $id], $origin);
             check(str_contains($generated['command'], $origin . '/tunnel/'), 'Panel address hardcoded');

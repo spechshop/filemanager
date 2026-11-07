@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# FILEMANAGER_TUNNEL_AGENT
 # This entire function is received before execution when downloaded with curl | bash.
 fm_tunnel_main() {
     # FILEMANAGER_CONFIG

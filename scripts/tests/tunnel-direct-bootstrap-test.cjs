@@ -96,7 +96,8 @@ for (const options of [{installed: true}, {panelFails: true}, {incompatible: tru
     test(`direct bootstrap: ${Object.keys(options)[0]}`, {timeout: 20000}, async () => {
         const f = fixture(options);
         try {
-            await until(f.closed, 3000); assert.equal(f.child.exitCode, 0, f.log());
+            await until(f.closed, 5000); assert.equal(f.child.exitCode, options.tampered ? 1 : 0, f.log());
+            assert.match(f.log(), /Preparando o túnel direto nesta máquina/);
             if (options.blocked) {
                 await until(() => fs.existsSync(path.join(f.directory, 'panel.args')));
                 const pid = Number(fs.readFileSync(path.join(path.dirname(f.logPath()), 'agent.pid'), 'utf8'));
@@ -109,6 +110,7 @@ for (const options of [{installed: true}, {panelFails: true}, {incompatible: tru
                 await until(() => f.reports().some(report => report.status === 'error'));
                 await until(f.stopped); assert.equal(f.started(), false, f.log());
                 assert.match(f.log(), /SHA256.*falhou/);
+                assert.match(f.log(), /encerrou durante a preparação/);
             } else {
                 await until(f.started);
                 assert.ok(f.reports().some(report => report.status === 'starting'));

@@ -17,7 +17,7 @@ async function until(fn, timeout = 10000) {
     while (Date.now() < deadline) { const value = await fn(); if (value) return value; await delay(50); }
     throw new Error('Timed out waiting for tunnel state');
 }
-for (const mode of ['http', 'self-signed', 'hostname-mismatch']) test(`curl | bash with ${mode} panel works without Python or jq and transmits the remote service`, {timeout: 30000}, async () => {
+for (const mode of ['http', 'self-signed', 'hostname-mismatch']) test(`validated bootstrap with ${mode} panel works without Python or jq and transmits the remote service`, {timeout: 30000}, async () => {
     const secure = mode !== 'http';
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fm-tunnel-integration-'));
     const bin = path.join(directory, 'bin'); fs.mkdirSync(bin); fs.mkdirSync(path.join(directory, 'files'));
@@ -95,7 +95,50 @@ function file_get_contents($file, ...$args) {
         const anonymous = await fetchFixture(base + '/fileManagerTunnelAgent'); assert.equal(anonymous.status, 401);
         const created = await request({action: 'create', name: 'Service on the machine running Bash', localHost: `${secure ? 'https' : 'http'}://127.0.0.1`, localPort: String(origin.address().port), noTlsVerify: secure ? 'true' : 'false'});
         assert.ok(!created.command.includes('\n') && !created.command.includes('fixtureAdmin') && !created.command.includes('python'));
-        assert.ok(created.command.includes(base + '/tunnel/') && created.command.endsWith(' | bash'));
+        assert.ok(created.command.includes(base + '/tunnel/') && created.command.startsWith('bash -c '));
+        const failures = [
+            {name: 'empty', body: '', code: 0, http: 200, expected: /resposta vazia/, status: 65},
+            {name: 'html', body: '<html>Login do proxy</html>', code: 0, http: 200, expected: /não contém um agente completo/, status: 65},
+            {name: 'partial', body: '#!/usr/bin/env bash\n# FILEMANAGER_TUNNEL_AGENT\necho PARTIAL_SCRIPT_EXECUTED', code: 18, http: 200, expected: /curl 18/, status: 18},
+            {name: 'syntax', body: '#!/usr/bin/env bash\n# FILEMANAGER_TUNNEL_AGENT\nfm_tunnel_main() {\necho PAYLOAD_SHOULD_STAY_PRIVATE\nfm_tunnel_start', code: 0, http: 200, expected: /incompleto ou inválido/, status: 65},
+            {name: 'redirect', body: '', code: 0, http: 302, expected: /HTTP 302/, status: 22},
+            {name: 'revoked', body: '', code: 22, http: 403, expected: /comando foi revogado/, status: 22},
+            {name: 'connected', body: '', code: 22, http: 409, expected: /comando já está conectado/, status: 22},
+        ];
+        for (const failure of failures) {
+            const fakeBin = path.join(directory, 'broken-' + failure.name); fs.mkdirSync(fakeBin);
+            // Write the body to curl's output file. Returning HTTP 200 with no body
+            // used to execute an empty Bash pipeline and silently report success.
+            fs.writeFileSync(path.join(fakeBin, 'curl'), `#!/bin/bash
+while [ "$#" -gt 0 ]; do
+    case "$1" in --output) output=$2; shift;; esac
+    shift
+done
+printf '%s' '${failure.body.replaceAll("'", "'\\''")}' > "$output"
+printf '${failure.http}'
+exit ${failure.code}
+`, {mode: 0o700});
+            const result = spawnSync('/bin/bash', ['-c', created.command], {env: {...process.env, PATH: fakeBin + ':' + bin, TMPDIR: directory}});
+            assert.equal(result.status, failure.status, String(result.stderr));
+            assert.match(String(result.stderr), /Conectando ao File Manager/);
+            assert.match(String(result.stderr), failure.expected);
+            assert.equal(String(result.stdout), '', 'Invalid or partial server content must never execute');
+            assert.doesNotMatch(String(result.stderr), /PARTIAL_SCRIPT_EXECUTED|PAYLOAD_SHOULD_STAY_PRIVATE|Login do proxy/, 'Server response bodies must not be logged');
+            assert.equal((await state()).status, 'waiting');
+            assert.equal(fs.readdirSync(directory).some(name => name.startsWith('filemanager-bootstrap.')), false, 'Temporary credentials must be removed');
+        }
+        if (mode === 'http') {
+            const slowBin = path.join(directory, 'slow-bootstrap'); fs.mkdirSync(slowBin);
+            fs.writeFileSync(path.join(slowBin, 'curl'), '#!/bin/bash\nsleep 1\nprintf 200\n', {mode: 0o700});
+            const waiting = spawn('/bin/bash', ['-c', created.command], {env: {...process.env, PATH: slowBin + ':' + bin, TMPDIR: directory}, stdio: ['ignore', 'pipe', 'pipe']});
+            let messages = '', finished = false;
+            const completion = once(waiting, 'close'); waiting.once('close', () => {finished = true;});
+            waiting.stderr.on('data', chunk => {messages += chunk;});
+            await until(() => messages.includes('Conectando ao File Manager'), 800);
+            assert.equal(finished, false, 'Connection feedback must appear while the download is still pending');
+            assert.equal((await completion)[0], 65);
+            assert.match(messages, /resposta vazia/);
+        }
         if (secure) {
             assert.ok(created.command.includes('--pinnedpubkey'));
             const url = created.command.match(/https:\/\/[^']+\/tunnel\/[a-f0-9]{64}/)[0];

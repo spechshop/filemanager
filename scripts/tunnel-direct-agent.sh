@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# FILEMANAGER_TUNNEL_AGENT
 # Parse the complete worker before executing a script received through curl | bash.
 fm_tunnel_main() {
     # FILEMANAGER_CONFIG
@@ -139,10 +140,12 @@ fm_tunnel_main() {
         fi
     }
 
+    printf '%s\n' 'Validando a conexão com o File Manager...'
     FM_FINAL_STATUS=error
     fm_keepalive || exit 1
     if command -v node >/dev/null 2>&1 && fm_node_compatible "$(command -v node)"; then
         FM_NODE=$(command -v node)
+        printf '%s\n' 'Runtime compatível encontrado. Preparando o agente...'
     else
         FM_NODE="$FM_WORK/node"
         (trap - EXIT INT TERM; fm_install_node) &
@@ -155,6 +158,7 @@ fm_tunnel_main() {
         "$FM_WORK/agent.cjs" 'FILEMANAGER_AGENT_BASE64' || exit 1
     fm_keepalive || exit 1
     FM_FINAL_STATUS=offline
+    printf '%s\n' 'Conectando o túnel direto ao host do File Manager...'
     "$FM_NODE" "$FM_WORK/agent.cjs" &
     FM_CHILD=$!
     wait "$FM_CHILD"; code=$?; FM_CHILD=''
@@ -162,8 +166,12 @@ fm_tunnel_main() {
 }
 fm_tunnel_start() {
     umask 077
-    local launch_dir agent_pid
-    launch_dir=$(mktemp -d "${TMPDIR:-/tmp}/filemanager-tunnel.XXXXXXXX") || return 1
+    local launch_dir agent_pid attempt shown=0 lines message
+    printf '%s\n' 'Preparando o túnel direto nesta máquina...'
+    launch_dir=$(mktemp -d "${TMPDIR:-/tmp}/filemanager-tunnel.XXXXXXXX") || {
+        printf '%s\n' 'Não foi possível criar a pasta privada do túnel. Verifique TMPDIR e as permissões do usuário.' >&2
+        return 1
+    }
     if ! {
         printf '#!/usr/bin/env bash\n'
         declare -f fm_tunnel_main
@@ -174,6 +182,20 @@ fm_tunnel_start() {
     disown "$agent_pid" 2>/dev/null || true
     printf 'Túnel direto iniciado em segundo plano (PID %s). Você pode fechar este terminal ou a sessão SSH.\n' "$agent_pid"
     printf 'Log: %s/agent.log\n' "$launch_dir"
-    printf '%s\n' 'A preparação é automática. Acompanhe o link e encerre a conexão na seção Túneis do File Manager.'
+    # Show initial progress while the detached worker keeps running independently.
+    for attempt in 1 2; do
+        sleep 1
+        lines=0
+        while IFS= read -r message; do
+            lines=$((lines + 1))
+            if [ "$lines" -gt "$shown" ]; then printf '%s\n' "$message"; fi
+        done < "$launch_dir/agent.log"
+        shown=$lines
+        if ! kill -0 "$agent_pid" 2>/dev/null; then
+            printf 'O agente encerrou durante a preparação. Consulte o log: %s/agent.log\n' "$launch_dir" >&2
+            return 1
+        fi
+    done
+    printf '%s\n' 'O agente continua em segundo plano. Acompanhe o link e encerre a conexão na seção Túneis do File Manager.'
 }
 fm_tunnel_start
