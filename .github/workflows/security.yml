@@ -74,6 +74,7 @@ jobs:
       - run: npm run test:security:ui
       - run: node --test scripts/tests/tunnels-ui-test.cjs
       - run: node --test scripts/tests/tunnel-agent-test.cjs
+      - run: node --test scripts/tests/tunnel-direct-bootstrap-test.cjs
       - run: npm run test:security:threads
       - run: npm run test:security:codex
       - run: npm run test:security:transport

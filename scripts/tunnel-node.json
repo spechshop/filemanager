@@ -1,0 +1,20 @@
+{
+  "version": "22.23.4",
+  "assets": {
+    "Linux:x86_64": {"name": "node-v22.23.4-linux-x64.tar.gz", "sha256": "b8492284c76a54baf58d61668dd0e41ee0fc98adabf9503d30f05d08f55b4406", "host": "nodejs.org"},
+    "Linux:amd64": {"name": "node-v22.23.4-linux-x64.tar.gz", "sha256": "b8492284c76a54baf58d61668dd0e41ee0fc98adabf9503d30f05d08f55b4406", "host": "nodejs.org"},
+    "Linux:arm64": {"name": "node-v22.23.4-linux-arm64.tar.gz", "sha256": "f7a1e486dbc8b286847815b477d4fb5e9fb963ed4489c3e1588853d685f589f9", "host": "nodejs.org"},
+    "Linux:aarch64": {"name": "node-v22.23.4-linux-arm64.tar.gz", "sha256": "f7a1e486dbc8b286847815b477d4fb5e9fb963ed4489c3e1588853d685f589f9", "host": "nodejs.org"},
+    "Linux:armv7l": {"name": "node-v22.23.4-linux-armv7l.tar.gz", "sha256": "4318e0c68f62e18583dae85eb645f55c7f2b8a2e8d1fffe91a2e8abd046880ab", "host": "nodejs.org"},
+    "Linux:ppc64le": {"name": "node-v22.23.4-linux-ppc64le.tar.gz", "sha256": "6684903ee2795aafe639dc07203e8a51ed20ae161cf21b6da7c213c8abfed442", "host": "nodejs.org"},
+    "Linux:s390x": {"name": "node-v22.23.4-linux-s390x.tar.gz", "sha256": "0bdc80fa27331e7f416d1d8553b9aabbc3c158709dc32859e4e85724ac1ac302", "host": "nodejs.org"},
+    "Darwin:x86_64": {"name": "node-v22.23.4-darwin-x64.tar.gz", "sha256": "efcc2b0db6f94bf53eddb038fe2b370277a042bd29e4f19b8f8e23598795b819", "host": "nodejs.org"},
+    "Darwin:arm64": {"name": "node-v22.23.4-darwin-arm64.tar.gz", "sha256": "c9e1dbc748b33ed2d14f42445191ecaf14c56259c7a9a26d0042c49ec2b66428", "host": "nodejs.org"},
+    "Linux:x86_64:musl": {"name": "node-v22.23.4-linux-x64-musl.tar.gz", "sha256": "63189402eaa222aabf51b4983e512592131cd2d4a9efc3ad9bf291fe74e3e4de", "host": "nodejs.org"},
+    "Linux:amd64:musl": {"name": "node-v22.23.4-linux-x64-musl.tar.gz", "sha256": "63189402eaa222aabf51b4983e512592131cd2d4a9efc3ad9bf291fe74e3e4de", "host": "nodejs.org"},
+    "Linux:x86_64:compat": {"name": "node-v22.23.4-linux-x64-glibc-217.tar.gz", "sha256": "d78ff597c40339cd3f40c7f33abe7a46a16c30899c3323a90263e4f028acf870", "host": "unofficial-builds.nodejs.org"},
+    "Linux:amd64:compat": {"name": "node-v22.23.4-linux-x64-glibc-217.tar.gz", "sha256": "d78ff597c40339cd3f40c7f33abe7a46a16c30899c3323a90263e4f028acf870", "host": "unofficial-builds.nodejs.org"},
+    "Linux:arm64:musl": {"name": "node-v22.23.4-linux-arm64-musl.tar.gz", "sha256": "78acbffed1d4095e8b4db55eb8b43ae928b2d41d14ab2ade9ee46a1ca6e677df", "host": "unofficial-builds.nodejs.org"},
+    "Linux:aarch64:musl": {"name": "node-v22.23.4-linux-arm64-musl.tar.gz", "sha256": "78acbffed1d4095e8b4db55eb8b43ae928b2d41d14ab2ade9ee46a1ca6e677df", "host": "unofficial-builds.nodejs.org"}
+  }
+}

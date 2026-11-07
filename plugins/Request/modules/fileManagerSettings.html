@@ -258,7 +258,7 @@
                                 <div id="tunnelDirectOptions" class="d-none mb-3">
                                     <label class="form-label small" for="tunnelRemotePort">Porta no host do File Manager</label>
                                     <input class="form-control form-control-sm" id="tunnelRemotePort" type="number" min="1024" max="65535" step="1" value="18080" disabled>
-                                    <div class="settings-description small mt-2">Libere essa porta no firewall e, se necessário, encaminhe-a no roteador. O endereço usa o host deste painel e permanece o mesmo ao reconectar. O agente precisa de Node.js 22 ou superior. HTTP, HTTPS, WebSocket e SSE são encaminhados diretamente; HTTPS usa o certificado do serviço remoto.</div>
+                                    <div class="settings-description small mt-2">Libere essa porta no firewall e, se necessário, encaminhe-a no roteador. O endereço usa o host deste painel e permanece o mesmo ao reconectar. O comando prepara tudo automaticamente na outra máquina, sem sudo ou instalação manual. HTTP, HTTPS, WebSocket e SSE são encaminhados diretamente; HTTPS usa o certificado do serviço remoto.</div>
                                 </div>
                                 <label class="form-label small" for="tunnelName">Nome (opcional)</label>
                                 <input class="form-control form-control-sm mb-3" id="tunnelName" maxlength="120" placeholder="Meu ambiente de desenvolvimento">
@@ -281,7 +281,7 @@
                                 <label class="small mt-3 d-block" id="tunnelTlsOption"><input type="checkbox" id="tunnelNoTlsVerify"> Permitir certificado autoassinado no serviço HTTPS local</label>
                                 <button class="btn btn-primary btn-sm mt-3" id="createTunnel" type="submit">Criar túnel e gerar comando</button>
                             </form>
-                            <p class="settings-description small">Cole o comando curl … | bash na máquina que tem o serviço rodando, sem sudo. Cloudflare usa Bash e curl; o modo direto também precisa de Node.js 22 ou superior. O túnel continua ativo ao fechar o terminal ou a sessão SSH. O link aparece após a conexão. Para encerrar, use Desconectar. O serviço fica acessível a quem alcançar o link; use a autenticação do próprio serviço.</p>
+                            <p class="settings-description small">Cole o comando curl … | bash na máquina que tem o serviço rodando. A preparação é automática, sem sudo, npm ou instalação manual de Node.js. O túnel continua ativo ao fechar o terminal ou a sessão SSH. O link aparece após a conexão. Para encerrar, use Desconectar. O serviço fica acessível a quem alcançar o link; use a autenticação do próprio serviço.</p>
                             <div id="tunnelsStatus" class="small mb-2" role="status" aria-live="polite"></div>
                             <div id="tunnelCommandBox" class="settings-section p-3 mb-3 d-none">
                                 <label class="form-label small" for="tunnelCommand">Comando para executar na outra máquina</label>

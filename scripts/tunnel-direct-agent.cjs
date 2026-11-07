@@ -17,7 +17,7 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 const certificateErrors = new Set(['DEPTH_ZERO_SELF_SIGNED_CERT', 'SELF_SIGNED_CERT_IN_CHAIN', 'CERT_HAS_EXPIRED',
     'CERT_NOT_YET_VALID', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY', 'ERR_TLS_CERT_ALTNAME_INVALID']);
 let stopped = false, active, lastUrl = '';
-fs.writeFileSync(pidFile, String(process.pid), {mode: 0o600});
+if (!config.managedByLauncher) fs.writeFileSync(pidFile, String(process.pid), {mode: 0o600});
 fs.unlinkSync(__filename);
 
 // Only send credentials on the self-signed fallback after verifying the exact pinned public key.
@@ -198,7 +198,7 @@ async function connect() {
 
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { stopped = true; active?.destroy(); });
 process.on('SIGHUP', () => {});
-process.once('exit', () => { try { fs.unlinkSync(pidFile); } catch {} });
+process.once('exit', () => { if (!config.managedByLauncher) { try { fs.unlinkSync(pidFile); } catch {} } });
 (async () => {
     try {
         while (!stopped) {

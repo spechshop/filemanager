@@ -225,8 +225,18 @@ Select **Cloudflare** for a temporary provider URL or **Direto** for a fixed
 port on the host running File Manager. Existing tunnels continue using Cloudflare.
 
 In **Direto** mode, choose an unused port from `1024` to `65535` (for example
-`18080`). The remote machine needs **Node.js 22 or later**, Bash, curl and nohup;
-no npm packages, Cloudflare account or cloudflared binary are needed. The agent
+`18080`). Paste the command on the remote machine; **no sudo, npm or manual
+Node.js installation is needed**. A compatible Node.js already in PATH is reused.
+Otherwise the launcher automatically downloads a pinned Node.js runtime into the
+tunnel's private temporary directory and verifies its SHA256 before execution.
+It downloads through File Manager's verified cache first, with a fallback to the
+runtime's original HTTPS host. Linux and macOS binaries are selected by platform;
+Linux musl and older x64 glibc have compatible variants. Bash, curl and ordinary
+system tools (tar/gzip and a SHA256 utility) bootstrap this setup. No system
+packages, shell profiles or global Node.js installation are modified. The private
+runtime and credentials are removed when the tunnel stops; its log is retained.
+Downloads run in the background with authenticated heartbeats, so closing the
+terminal or a long download does not expire the setup. The agent
 opens an outbound WebSocket directly to the File Manager address. File Manager
 listens on the selected port and forwards TCP streams to the remote service.
 For example, `http://panel.example:8080` with port `18080` exposes an HTTP service

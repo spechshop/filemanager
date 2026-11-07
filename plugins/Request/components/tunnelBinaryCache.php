@@ -2,21 +2,36 @@
 declare(strict_types=1);
 namespace plugins\Request;
 
-/** Serves only pinned, checksum-verified official releases from a private cache. */
+/** Serves only pinned, checksum-verified releases from a private cache. */
 final class tunnelBinaryCache
 {
     private const MAX_BYTES = 104857600;
     private const HOSTS = ['github.com', 'release-assets.githubusercontent.com', 'objects.githubusercontent.com', 'github-releases.githubusercontent.com'];
 
+    public static function nodeCatalog(): array
+    {
+        $catalog = json_decode((string) file_get_contents(dirname(__DIR__, 3) . '/scripts/tunnel-node.json'), true, 16, JSON_THROW_ON_ERROR);
+        if (!preg_match('/^[0-9]+\.[0-9]+\.[0-9]+$/D', $catalog['version'] ?? '') || !is_array($catalog['assets'] ?? null)) throw new \RuntimeException('Invalid Node manifest');
+        foreach ($catalog['assets'] as $platform => $asset) {
+            if (!preg_match('/^(Linux|Darwin):(x86_64|amd64|arm64|aarch64|armv7l|ppc64le|s390x)(:(musl|compat))?$/D', $platform)
+                || !is_string($asset['name'] ?? null) || !preg_match('/^node-v' . preg_quote($catalog['version'], '/') . '-(linux-(x64|arm64|armv7l|ppc64le|s390x)(-musl|-glibc-217)?|darwin-(x64|arm64))\.tar\.gz$/D', $asset['name'])
+                || !is_string($asset['sha256'] ?? null) || !preg_match('/^[a-f0-9]{64}$/D', $asset['sha256'])
+                || !in_array($asset['host'] ?? '', ['nodejs.org', 'unofficial-builds.nodejs.org'], true)) throw new \RuntimeException('Invalid Node asset');
+        }
+        return $catalog;
+    }
+
     public static function file(string $name): string
     {
-        $catalog = json_decode((string) file_get_contents(dirname(__DIR__, 3) . '/scripts/tunnel-cloudflared.json'), true, 16, JSON_THROW_ON_ERROR);
+        $node = str_starts_with($name, 'node-');
+        $catalog = $node ? self::nodeCatalog() : json_decode((string) file_get_contents(dirname(__DIR__, 3) . '/scripts/tunnel-cloudflared.json'), true, 16, JSON_THROW_ON_ERROR);
         if (!preg_match('/^[0-9.]+$/D', $catalog['version'] ?? '')) throw new \RuntimeException('Invalid release manifest');
         $digest = null;
+        $host = '';
         foreach ($catalog['assets'] ?? [] as $asset) {
-            if (($asset['name'] ?? null) === $name) { $digest = $asset['sha256'] ?? null; break; }
+            if (($asset['name'] ?? null) === $name) { $digest = $asset['sha256'] ?? null; $host = $asset['host'] ?? ''; break; }
         }
-        if (!preg_match('/^cloudflared-(linux|darwin)-(amd64|arm64|arm|386)(\.tgz)?$/D', $name)
+        if ((!$node && !preg_match('/^cloudflared-(linux|darwin)-(amd64|arm64|arm|386)(\.tgz)?$/D', $name))
             || !is_string($digest) || !preg_match('/^[a-f0-9]{64}$/D', $digest)) throw new \InvalidArgumentException('Binário não permitido.');
         $directory = securityPolicy::dataPath('tunnel-binaries', dirname(__DIR__, 3) . '/.runtime/tunnel-binaries');
         if (!is_dir($directory) && !mkdir($directory, 0700, true) && !is_dir($directory)) throw new \RuntimeException('Binary cache unavailable');
@@ -30,10 +45,13 @@ final class tunnelBinaryCache
             // Another request may be downloading. Return 503 so curl can retry without blocking heartbeats.
             if (!flock($lock, LOCK_EX | LOCK_NB)) throw new \RuntimeException('Binary download already in progress');
             if (is_file($path) && filesize($path) <= self::MAX_BYTES && hash_equals($digest, (string) hash_file('sha256', $path))) return $path;
-            $temporary = tempnam($directory, '.cloudflared-');
+            $temporary = tempnam($directory, $node ? '.node-' : '.cloudflared-');
             if ($temporary === false) throw new \RuntimeException('Cannot reserve binary download');
             chmod($temporary, 0600);
-            self::download('https://github.com/cloudflare/cloudflared/releases/download/' . $catalog['version'] . '/' . $name, $temporary);
+            $url = $node
+                ? 'https://' . $host . ($host === 'nodejs.org' ? '/dist/v' : '/download/release/v') . $catalog['version'] . '/' . $name
+                : 'https://github.com/cloudflare/cloudflared/releases/download/' . $catalog['version'] . '/' . $name;
+            self::download($url, $temporary, $node ? ['nodejs.org', 'unofficial-builds.nodejs.org'] : self::HOSTS);
             if (!hash_equals($digest, (string) hash_file('sha256', $temporary))) throw new \RuntimeException('Official binary SHA256 mismatch');
             if (!rename($temporary, $path)) throw new \RuntimeException('Cannot publish binary cache entry');
             $temporary = null;
@@ -45,12 +63,12 @@ final class tunnelBinaryCache
         }
     }
 
-    private static function download(string $url, string $destination): void
+    private static function download(string $url, string $destination, array $hosts): void
     {
         $deadline = microtime(true) + 120;
         for ($redirect = 0; $redirect <= 5; $redirect++) {
             $parts = parse_url($url);
-            if ($parts === false || ($parts['scheme'] ?? '') !== 'https' || !in_array($parts['host'] ?? '', self::HOSTS, true)
+            if ($parts === false || ($parts['scheme'] ?? '') !== 'https' || !in_array($parts['host'] ?? '', $hosts, true)
                 || isset($parts['user']) || isset($parts['pass']) || isset($parts['fragment']) || ($parts['port'] ?? 443) !== 443) {
                 throw new \RuntimeException('Unexpected binary download host');
             }

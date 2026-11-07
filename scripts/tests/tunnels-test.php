@@ -23,6 +23,7 @@ namespace plugins\Request {
     // Intercept only release metadata and HTTPS downloads; storage and hashing use real files.
     function file_get_contents($filename, ...$arguments) {
         if (str_ends_with($filename, '/scripts/tunnel-cloudflared.json') && isset($GLOBALS['tunnelTestManifest'])) return json_encode($GLOBALS['tunnelTestManifest']);
+        if (str_ends_with($filename, '/scripts/tunnel-node.json') && isset($GLOBALS['tunnelTestNodeManifest'])) return json_encode($GLOBALS['tunnelTestNodeManifest']);
         return \file_get_contents($filename, ...$arguments);
     }
     function fopen($filename, ...$arguments) {
@@ -214,12 +215,31 @@ namespace {
         $directConfig = tunnelManager::agent($directSecret);
         check($directConfig['mode'] === 'direct', 'Direct mode not passed to agent');
         $directScript = tunnelManager::script($directConfig);
-        check(str_contains($directScript, 'Node.js 22') && !str_contains($directScript, 'cloudflared'), 'Direct installer depends on Cloudflare');
+        check(str_contains($directScript, 'Baixando Node.js privado') && !str_contains($directScript, 'Atualize o Node.js') && !str_contains($directScript, 'cloudflared'), 'Direct installer does not provision its runtime');
         file_put_contents($directory . '/bootstrap.sh', $directScript);
         $compile = proc_open(['bash', '-n', $directory . '/bootstrap.sh'], [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
         foreach ($pipes as $pipe) fclose($pipe);
         check(proc_close($compile) === 0, 'Generated direct launcher is invalid');
         $directEntry = tunnelManager::authorizeDirect($directSecret, $directConfig['session']);
+        $nodeName = 'node-v22.0.0-linux-x64.tar.gz';
+        $nodeArchive = "fixture Node archive\n";
+        $GLOBALS['tunnelTestNodeManifest'] = ['version' => '22.0.0', 'assets' => ['Linux:x86_64' => ['name' => $nodeName, 'sha256' => hash('sha256', $nodeArchive), 'host' => 'nodejs.org']]];
+        $GLOBALS['tunnelTestRequests'] = []; $GLOBALS['tunnelTestReplies'] = [['status' => 200, 'body' => $nodeArchive]];
+        $nodeDownload = binaryRequest($directSecret, $directConfig['session'], $nodeName);
+        check($nodeDownload->code === 200 && $nodeDownload->body === $nodeArchive, 'Node runtime not served to authorized agent');
+        check($GLOBALS['tunnelTestRequests'] === ['https://nodejs.org/dist/v22.0.0/' . $nodeName], 'Node runtime download used unexpected host');
+        check(binaryRequest($directSecret, $directConfig['session'], $nodeName)->body === $nodeArchive && count($GLOBALS['tunnelTestRequests']) === 1, 'Node archive cache not reused');
+        check(binaryRequest($directSecret, str_repeat('c', 48), $nodeName)->code === 403, 'Wrong session downloaded Node');
+        check(binaryRequest($directSecret, $directConfig['session'], 'node-v22.0.0-linux-arm64.tar.gz')->code === 422, 'Unlisted Node archive accepted');
+        unlink($directory . '/tunnel-binaries/22.0.0-' . $nodeName);
+        $GLOBALS['tunnelTestReplies'] = [['status' => 200, 'body' => 'tampered runtime']];
+        check(binaryRequest($directSecret, $directConfig['session'], $nodeName)->code === 503, 'Tampered Node runtime served');
+        check(!glob($directory . '/tunnel-binaries/.node-*'), 'Failed Node verification left temporary files');
+        $GLOBALS['tunnelTestReplies'] = [['status' => 302, 'location' => 'https://evil.example/' . $nodeName]];
+        check(binaryRequest($directSecret, $directConfig['session'], $nodeName)->code === 503 && !$GLOBALS['tunnelTestReplies'], 'Foreign Node redirect followed');
+        $GLOBALS['tunnelTestNodeManifest']['assets']['Linux:x86_64']['host'] = 'evil.example';
+        check(binaryRequest($directSecret, $directConfig['session'], $nodeName)->code === 503, 'Foreign Node manifest host accepted');
+        unset($GLOBALS['tunnelTestNodeManifest']);
         check(tunnelManager::directUrl($directEntry) === 'http://panel.example:18080', 'Direct address is not on the panel host');
         check(tunnelManager::directUrl(array_replace($directEntry, ['origin' => 'https://[::1]:8080', 'target' => 'https://localhost:8443'])) === 'https://[::1]:18080', 'IPv6 direct address invalid');
         $directReport = ['session' => $directConfig['session'], 'status' => 'online', 'url' => 'http://panel.example:18080'];

@@ -47,8 +47,18 @@ final class tunnelManager
             $source = file_get_contents($root . '/scripts/tunnel-direct-agent.cjs');
             $launcher = file_get_contents($root . '/scripts/tunnel-direct-agent.sh');
             if ($source === false || $launcher === false) throw new \RuntimeException('Direct tunnel installer unavailable');
-            $payload = base64_encode(str_replace('// FILEMANAGER_CONFIG', 'const config = ' . json_encode($config, JSON_THROW_ON_ERROR) . ';', $source));
-            return str_replace('FILEMANAGER_AGENT_BASE64', $payload, $launcher);
+            $payload = base64_encode(str_replace('// FILEMANAGER_CONFIG', 'const config = ' . json_encode($config + ['managedByLauncher' => true], JSON_THROW_ON_ERROR) . ';', $source));
+            $header = '';
+            foreach (['endpoint' => 'FM_ENDPOINT', 'secret' => 'FM_SECRET', 'session' => 'FM_SESSION', 'panelPin' => 'FM_PANEL_PIN'] as $field => $variable) {
+                $header .= $variable . '=' . escapeshellarg($config[$field] ?? '') . "\n";
+            }
+            $catalog = tunnelBinaryCache::nodeCatalog();
+            $cases = '';
+            foreach ($catalog['assets'] as $platform => $asset) {
+                $url = 'https://' . $asset['host'] . ($asset['host'] === 'nodejs.org' ? '/dist/v' : '/download/release/v') . $catalog['version'] . '/' . $asset['name'];
+                $cases .= '            ' . $platform . ') FM_ASSET=' . escapeshellarg($asset['name']) . '; FM_SHA256=' . escapeshellarg($asset['sha256']) . '; FM_NODE_URL=' . escapeshellarg($url) . ";;\n";
+            }
+            return strtr($launcher, ['FILEMANAGER_AGENT_BASE64' => $payload, '# FILEMANAGER_CONFIG' => $header, '# FILEMANAGER_NODE_PLATFORMS' => $cases]);
         }
         $source = file_get_contents($root . '/scripts/tunnel-agent.sh');
         $manifest = json_decode((string) file_get_contents($root . '/scripts/tunnel-cloudflared.json'), true, 16, JSON_THROW_ON_ERROR);

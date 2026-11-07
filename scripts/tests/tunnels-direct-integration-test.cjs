@@ -35,7 +35,7 @@ function request(url, options = {}, body) {
         req.once('error', reject); req.end(body);
     });
 }
-for (const secure of [false, true]) test(`direct tunnel with ${secure ? 'pinned self-signed HTTPS' : 'HTTP'} panel: real TCP, WebSocket, SSE, reconnection and revocation`, {timeout: 45000}, async () => {
+for (const secure of [false, true]) test(`direct tunnel with ${secure ? 'pinned self-signed HTTPS and old Node' : 'HTTP and no Node'}: automatic runtime, TCP, WebSocket, SSE, reconnection and revocation`, {timeout: 60000}, async () => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fm-direct-integration-'));
     const panelPort = await port(), publicPort = await port();
     const base = `${secure ? 'https' : 'http'}://127.0.0.1:${panelPort}`;
@@ -47,8 +47,31 @@ for (const secure of [false, true]) test(`direct tunnel with ${secure ? 'pinned 
         config.serverSettings = {ssl_cert_file: path.join(directory, 'cert.pem'), ssl_key_file: path.join(directory, 'key.pem')};
     }
     fs.writeFileSync(path.join(directory, 'config.json'), JSON.stringify(config));
+    const bin = path.join(directory, 'bin'); fs.mkdirSync(bin);
+    for (const name of ['bash', 'curl', 'grep', 'mktemp', 'rm', 'uname', 'chmod', 'sleep', 'cat', 'tar', 'gzip', 'sha256sum']) {
+        fs.symlinkSync(execFileSync('which', [name], {encoding: 'utf8'}).trim(), path.join(bin, name));
+    }
+    const oldNode = '#!/bin/bash\nif [ "$1" = --version ]; then printf "v18.0.0\\n"; exit 0; fi\nexit 1\n';
+    if (secure) fs.writeFileSync(path.join(bin, 'node'), oldNode, {mode: 0o700});
+    const nodeName = 'node-v22.0.0-linux-x64.tar.gz';
+    const nodePackage = path.join(directory, 'node-v22.0.0-linux-x64'); fs.mkdirSync(nodePackage); fs.mkdirSync(path.join(nodePackage, 'bin'));
+    // Inert fixture runtime delegates to the test runner, outside the remote PATH.
+    fs.writeFileSync(path.join(nodePackage, 'bin/node'), `#!/bin/bash\nexec '${process.execPath.replaceAll("'", "'\\''")}' "$@"\n`, {mode: 0o700});
+    const cache = path.join(directory, 'tunnel-binaries'); fs.mkdirSync(cache, {mode: 0o700});
+    const archive = path.join(cache, '22.0.0-' + nodeName);
+    execFileSync('tar', ['-czf', archive, '-C', directory, path.basename(nodePackage)]);
+    const platform = execFileSync('uname', ['-s'], {encoding: 'utf8'}).trim() + ':' + execFileSync('uname', ['-m'], {encoding: 'utf8'}).trim();
+    fs.writeFileSync(path.join(directory, 'node-manifest.json'), JSON.stringify({version: '22.0.0', assets: {
+        [platform]: {name: nodeName, sha256: crypto.createHash('sha256').update(fs.readFileSync(archive)).digest('hex'), host: 'nodejs.org'}
+    }}));
+    fs.writeFileSync(path.join(directory, 'release.php'), `<?php
+namespace plugins\\Request;
+function file_get_contents($file, ...$args) {
+    return \\file_get_contents(str_ends_with($file, '/scripts/tunnel-node.json') ? __DIR__ . '/node-manifest.json' : $file, ...$args);
+}
+`);
     let output = '', agentOutput = '', logPath;
-    const server = spawn(process.env.SECURITY_PHP_BINARY || 'php', [path.join(ROOT, 'scripts/security/fixtures/swoole-server.php')], {
+    const server = spawn(process.env.SECURITY_PHP_BINARY || 'php', ['-d', 'auto_prepend_file=' + path.join(directory, 'release.php'), path.join(ROOT, 'scripts/security/fixtures/swoole-server.php')], {
         cwd: directory, env: {...process.env, SECURITY_HTTP_PORT: String(panelPort), SECURITY_WORKERS: '2', FILEMANAGER_UPLOAD_PORT: '0',
             FILEMANAGER_ORIGIN: base, FILEMANAGER_DATA_DIR: directory, FILEMANAGER_TOKENS_FILE: path.join(directory, 'tokens.json'),
             FILEMANAGER_CONFIG_FILE: path.join(directory, 'config.json'),
@@ -80,7 +103,7 @@ for (const secure of [false, true]) test(`direct tunnel with ${secure ? 'pinned 
     };
     const state = async () => (await api()).tunnels[0];
     const launch = async command => {
-        const child = spawn('/bin/bash', ['-o', 'pipefail', '-c', command], {env: {...process.env, TMPDIR: directory}, stdio: ['ignore', 'pipe', 'pipe']});
+        const child = spawn('/bin/bash', ['-o', 'pipefail', '-c', command], {env: {...process.env, PATH: bin, TMPDIR: directory}, stdio: ['ignore', 'pipe', 'pipe']});
         child.stdout.on('data', chunk => {agentOutput += chunk;}); child.stderr.on('data', chunk => {agentOutput += chunk;});
         const [code] = await once(child, 'close'); assert.equal(code, 0, agentOutput);
         logPath = agentOutput.match(/^Log: (.+)$/m)?.[1]; assert.ok(logPath, agentOutput);
@@ -109,7 +132,10 @@ for (const secure of [false, true]) test(`direct tunnel with ${secure ? 'pinned 
         const online = await until(async () => { const entry = await state(); return entry.status === 'online' && entry; });
         const publicUrl = `${secure ? 'https' : 'http'}://127.0.0.1:${publicPort}`;
         assert.equal(online.mode, 'direct'); assert.equal(online.url, publicUrl);
-        assert.deepEqual(fs.readdirSync(path.dirname(logPath)).sort(), ['agent.log', 'agent.pid']);
+        assert.deepEqual(fs.readdirSync(path.dirname(logPath)).filter(name => !name.startsWith('work.')).sort(), ['agent.log', 'agent.pid']);
+        assert.match(fs.readFileSync(logPath, 'utf8'), /Baixando Node.js privado/);
+        if (secure) assert.equal(fs.readFileSync(path.join(bin, 'node'), 'utf8'), oldNode, 'System Node must remain unchanged');
+        else assert.equal(fs.existsSync(path.join(bin, 'node')), false, 'Do not install Node into PATH');
         assert.match(fs.readFileSync(logPath, 'utf8'), /Link do túnel direto/);
         assert.doesNotMatch(fs.readFileSync(logPath, 'utf8'), /cloudflare|TLS.*mudou/);
         const registry = JSON.parse(fs.readFileSync(path.join(directory, 'tunnels/registry.json')));
@@ -156,6 +182,7 @@ for (const secure of [false, true]) test(`direct tunnel with ${secure ? 'pinned 
         assert.equal((await request(publicUrl + '/after-reload')).body.toString(), 'REMOTE_SERVICE_CONTENT');
         await api({action: 'stop', id: created.id});
         await until(() => !fs.existsSync(path.join(path.dirname(logPath), 'agent.pid')));
+        assert.deepEqual(fs.readdirSync(path.dirname(logPath)), ['agent.log'], 'Private runtime and credentials must be removed after shutdown');
         assert.equal((await state()).url, '');
         assert.match(fs.readFileSync(logPath, 'utf8'), /encerrado pelo painel/);
         await assert.rejects(request(publicUrl), /ECONNREFUSED/);
