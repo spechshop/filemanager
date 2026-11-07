@@ -10,6 +10,13 @@
 # Não usamos "set -e": queremos sobreviver a falhas e seguir com fallbacks.
 set +e
 
+# An existing checkout can upgrade supervision without packages, downloads,
+# token generation or application migrations, even when invoked from elsewhere.
+if [ "${1:-}" = --supervision-only ]; then
+    INSTALLER_SOURCE="$(readlink -f -- "${BASH_SOURCE[0]}")" || exit 1
+    cd -- "$(dirname -- "$INSTALLER_SOURCE")" || exit 1
+fi
+
 # Toda a instalação deve poder rodar sem interação no terminal.
 export DEBIAN_FRONTEND=noninteractive
 export COMPOSER_NO_INTERACTION=1
@@ -120,6 +127,33 @@ case ":$PATH:" in
     *":$LOCAL_BIN:"*) ;;
     *) export PATH="$LOCAL_BIN:$PATH" ;;
 esac
+
+if [ "${1:-}" = --supervision-only ]; then
+    CURRENT_DIR="$(pwd -P)"
+    CONTROL_SCRIPT="$CURRENT_DIR/filemanagerctl"
+    [ -f "$CURRENT_DIR/server.php" ] && [ -f "$CONTROL_SCRIPT" ] || {
+        err "Execute --supervision-only em um checkout existente do FileManager."; exit 1;
+    }
+    if [ -x "$CURRENT_DIR/pcg" ]; then
+        PHP_BIN="$CURRENT_DIR/pcg"
+    elif [ -s "$CURRENT_DIR/.runtime/supervision/php" ] \
+        && [ -x "$(cat "$CURRENT_DIR/.runtime/supervision/php")" ]; then
+        PHP_BIN="$(cat "$CURRENT_DIR/.runtime/supervision/php")"
+    else
+        PHP_BIN="$(command -v pcg || command -v php)"
+    fi
+    [ -x "$PHP_BIN" ] || { err "Runtime PHP não encontrado."; exit 1; }
+    chmod +x "$CONTROL_SCRIPT" || exit 1
+    # Keep the existing service account when root upgrades a managed checkout.
+    if [ "$IS_ROOT" -eq 1 ] && [ -z "${FILEMANAGER_SERVICE_USER:-}" ] \
+        && [ -d "$CURRENT_DIR/.runtime/supervision" ]; then
+        EXISTING_OWNER="$(stat -c %u "$CURRENT_DIR/.runtime/supervision")"
+        FILEMANAGER_USER="$(id -un "$EXISTING_OWNER")" || exit 1
+    fi
+    # shellcheck source=scripts/install-supervision.sh
+    source "$CURRENT_DIR/scripts/install-supervision.sh"
+    exit $?
+fi
 
 # ---------------------------------------------------------------------
 # 3) Detecção do gerenciador de pacotes
@@ -439,7 +473,7 @@ if [ -f "$PCG_RUNTIME" ]; then
     fi
 fi
 
-CURRENT_DIR="$(pwd)"
+CURRENT_DIR="$(pwd -P)"
 # Definir qual runtime usar no restante do script. O arquivo do projeto tem
 # prioridade para garantir que Composer e servidor usem a mesma build Swoole.
 if [ -x "$CURRENT_DIR/$PCG_RUNTIME" ]; then
@@ -644,10 +678,10 @@ configure_drop_caches && FREE_RAM_OK=1
 # 12) Inicialização automática no boot (com cascata de fallbacks)
 # ---------------------------------------------------------------------
 log "Configurando inicialização automática..."
-CURRENT_DIR="$(pwd)"
+CURRENT_DIR="$(pwd -P)"
 RUNTIME_ADDRESS_FILE="$CURRENT_DIR/.runtime/server-address"
 SERVER_ALREADY_RUNNING=0
-if pgrep -f "$CURRENT_DIR/server.php" >/dev/null 2>&1; then
+if "$CURRENT_DIR/filemanagerctl" status >/dev/null 2>&1; then
     SERVER_ALREADY_RUNNING=1
 else
     # Impede que o instalador reutilize o endereço deixado por uma execução
@@ -675,107 +709,14 @@ else
     warn "Controlador filemanagerctl não encontrado no repositório."
 fi
 
-# Runtime PHP isolado a ser executado pelo serviço.
-RUN_PHP="$PHP_BIN"
-
-AUTOSTART_OK=0
-
-# --- Fallback A: systemd de sistema (requer root) ---
-if [ "$AUTOSTART_OK" -eq 0 ] && command -v systemctl >/dev/null 2>&1 && { [ "$IS_ROOT" -eq 1 ] || [ -n "$SUDO" ]; }; then
-    SERVICE_FILE="/etc/systemd/system/filemanager.service"
-    SERVICE_CONTENT="[Unit]
-Description=FileManager Server
-After=network.target
-
-[Service]
-Type=simple
-WorkingDirectory=$CURRENT_DIR
-ExecStart=$RUN_PHP $CURRENT_DIR/server.php
-Restart=on-failure
-KillMode=control-group
-TimeoutStopSec=15
-User=$FILEMANAGER_USER
-
-[Install]
-WantedBy=multi-user.target
-"
-    if printf '%s' "$SERVICE_CONTENT" | run_priv tee "$SERVICE_FILE" >/dev/null 2>&1; then
-        run_priv systemctl daemon-reload 2>/dev/null
-        run_priv systemctl enable filemanager.service 2>/dev/null
-        if run_priv systemctl restart filemanager.service 2>/dev/null; then
-            ok "Serviço systemd (sistema) configurado e iniciado."
-            AUTOSTART_OK=1
-        else
-            warn "Não foi possível iniciar o serviço systemd de sistema."
-        fi
-    else
-        warn "Não foi possível escrever o service file de sistema."
-    fi
-fi
-
-# --- Fallback B: systemd de usuário (--user) ---
-if [ "$AUTOSTART_OK" -eq 0 ] && command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
-    USER_UNIT_DIR="$HOME/.config/systemd/user"
-    mkdir -p "$USER_UNIT_DIR" 2>/dev/null
-    cat > "$USER_UNIT_DIR/filemanager.service" 2>/dev/null <<EOF
-[Unit]
-Description=FileManager Server
-After=network.target
-
-[Service]
-Type=simple
-WorkingDirectory=$CURRENT_DIR
-ExecStart=$RUN_PHP $CURRENT_DIR/server.php
-Restart=on-failure
-KillMode=control-group
-TimeoutStopSec=15
-
-[Install]
-WantedBy=default.target
-EOF
-    if [ -f "$USER_UNIT_DIR/filemanager.service" ]; then
-        systemctl --user daemon-reload 2>/dev/null
-        systemctl --user enable filemanager.service 2>/dev/null
-        if systemctl --user restart filemanager.service 2>/dev/null; then
-            command -v loginctl >/dev/null 2>&1 && run_priv loginctl enable-linger "$(id -un)" 2>/dev/null
-            ok "Serviço systemd (usuário) configurado e iniciado."
-            AUTOSTART_OK=1
-        else
-            warn "Não foi possível iniciar o serviço systemd de usuário."
-        fi
-    fi
-fi
-
-# --- Fallback C: cron @reboot ---
-if [ "$AUTOSTART_OK" -eq 0 ] && command -v crontab >/dev/null 2>&1; then
-    CRON_LINE="@reboot cd $CURRENT_DIR && $RUN_PHP $CURRENT_DIR/server.php >> $CURRENT_DIR/filemanager.log 2>&1"
-    EXISTING_CRON="$(crontab -l 2>/dev/null)"
-    if ! printf '%s\n' "$EXISTING_CRON" | grep -qF "$CURRENT_DIR/server.php"; then
-        { printf '%s\n' "$EXISTING_CRON"; printf '%s\n' "$CRON_LINE"; } | crontab - 2>/dev/null \
-            && { ok "Autostart via cron @reboot configurado."; AUTOSTART_OK=1; }
-    elif printf '%s\n' "$EXISTING_CRON" | grep -qF "$CRON_LINE"; then
-        ok "Autostart via cron já existente."
-        AUTOSTART_OK=1
-    else
-        UPDATED_CRON="$(printf '%s\n' "$EXISTING_CRON" | grep -vF "$CURRENT_DIR/server.php")"
-        { printf '%s\n' "$UPDATED_CRON"; printf '%s\n' "$CRON_LINE"; } | crontab - 2>/dev/null \
-            && { ok "Autostart via cron atualizado para usar pcg."; AUTOSTART_OK=1; }
-    fi
-fi
-
-# --- Fallback D: iniciar agora em background (nohup / screen) ---
-if [ "$AUTOSTART_OK" -eq 0 ]; then
-    warn "Nenhum mecanismo de autostart persistente disponível. Iniciando em background nesta sessão."
-fi
-# Garante que o servidor esteja rodando agora, independentemente do autostart.
-if ! pgrep -f "$CURRENT_DIR/server.php" >/dev/null 2>&1; then
-    if command -v screen >/dev/null 2>&1; then
-        screen -dmS filemanager bash -c "cd '$CURRENT_DIR' && '$RUN_PHP' '$CURRENT_DIR/server.php' >> '$CURRENT_DIR/filemanager.log' 2>&1" \
-            && ok "Servidor iniciado em sessão screen 'filemanager'."
-    else
-        nohup "$RUN_PHP" "$CURRENT_DIR/server.php" >> "$CURRENT_DIR/filemanager.log" 2>&1 &
-        ok "Servidor iniciado em background (nohup)."
-    fi
+# O mesmo controlador migra cron antigo, serializa mudanças e inicia a
+# supervisão. Instalações existentes podem atualizar somente estes scripts.
+ensure_cmd flock util-linux
+ensure_cmd setsid util-linux
+# shellcheck source=scripts/install-supervision.sh
+if ! source "$CURRENT_DIR/scripts/install-supervision.sh"; then
+    err "Falha ao configurar supervisão; consulte as mensagens acima antes de iniciar outra instância."
+    exit 1
 fi
 
 # ---------------------------------------------------------------------

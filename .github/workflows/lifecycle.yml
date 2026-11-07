@@ -1,0 +1,38 @@
+name: Lifecycle
+on:
+  pull_request:
+    paths:
+      - filemanagerctl
+      - installer.sh
+      - scripts/install-supervision.sh
+      - 'scripts/tests/**'
+      - .github/workflows/lifecycle.yml
+  push:
+    paths:
+      - filemanagerctl
+      - installer.sh
+      - scripts/install-supervision.sh
+      - 'scripts/tests/**'
+      - .github/workflows/lifecycle.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  lifecycle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@d52fc211a0436f8839a587b3b5b8efddab4744ea # v2
+        with:
+          php-version: '8.4'
+          extensions: pcntl
+          coverage: none
+      - run: shellcheck --severity=warning filemanagerctl installer.sh scripts/install-supervision.sh
+      - run: python3 scripts/tests/supervision-test.py
+      - run: python3 scripts/tests/filemanagerctl-test.py
+      - run: python3 scripts/tests/installer-bootstrap-test.py
+      - run: python3 scripts/tests/installer-token-test.py
+      - run: bash scripts/tests/installer-home-test.sh

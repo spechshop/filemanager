@@ -137,9 +137,11 @@ Node.js >= 22 is required by the current bridges.
 The installer keeps its PHP/Swoole runtime isolated under the `pcg` command;
 it does not replace the system `php` binary.
 
-The installer adds a `filemanagerctl` command to control the supervised
-process. Unlike `killall php`, it stops the process manager before terminating
-the PHP process, so the server is not immediately started again.
+The installer adds `filemanagerctl` and chooses system systemd, user systemd
+with linger, or a cron-backed watchdog. PHP crashes recover after about two
+seconds while supervision is active. `stop` holds the server down for the
+current boot; `disable` also prevents startup after future reboots. Independent
+installations use separate state and exclusive locks.
 
 It also verifies the Node.js version. If the system runtime is older than 22,
 it downloads a checksum-verified Node.js 24 LTS runtime into `.runtime/`, installs
@@ -160,7 +162,18 @@ filemanagerctl enable
 If the command could not be added to `PATH`, run `./filemanagerctl` from the
 installation directory. Run `./filemanagerctl update` once when the command in
 `/usr/local/bin` is an older copy; it is replaced by a link to the controller in
-this installation. A system-level service may request the sudo password.
+this installation. System services require root or an authorized noninteractive
+sudo rule. To update supervision in an existing checkout without installing
+packages or changing application data, run:
+
+```bash
+bash ./installer.sh --supervision-only
+```
+
+Existing administrative stops and disabled autostart are preserved during this
+update. See [supervision, state, limitations and reboot validation](docs/lifecycle.md)
+for the architecture and isolated lifecycle tests. The latest local results are
+recorded in [lifecycle validation](docs/lifecycle-validation.md).
 
 ### 2. Install PHP Dependencies
 ```bash
