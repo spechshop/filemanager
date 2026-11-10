@@ -1,0 +1,12 @@
+test_full_repair_resumes_after_stop (__main__.SupervisionTests.test_full_repair_resumes_after_stop) ... ok
+test_full_repair_preserves_explicit_disable (__main__.SupervisionTests.test_full_repair_preserves_explicit_disable) ... ok
+test_installer_without_sudo_migrates_cron_and_is_idempotent (__main__.SupervisionTests.test_installer_without_sudo_migrates_cron_and_is_idempotent) ... unrelated
+ok
+test_supervision_only_upgrade_preserves_application_data (__main__.SupervisionTests.test_supervision_only_upgrade_preserves_application_data) ... ok
+test_installer_falls_back_when_cron_rejects_the_account (__main__.SupervisionTests.test_installer_falls_back_when_cron_rejects_the_account) ... ok
+test_generated_system_and_user_units_pass_systemd_verification (__main__.SystemdTests.test_generated_system_and_user_units_pass_systemd_verification) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 42.141s
+
+OK

@@ -660,7 +660,9 @@ fi
 ensure_cmd flock util-linux
 ensure_cmd setsid util-linux
 # shellcheck source=scripts/install-supervision.sh
-if ! source "$CURRENT_DIR/scripts/install-supervision.sh"; then
+# A full repair resumes a server stopped for maintenance. A supervision-only
+# upgrade keeps its existing lifecycle policy, as does an explicit disable.
+if ! source "$CURRENT_DIR/scripts/install-supervision.sh" --start-after-repair; then
     err "Falha ao configurar supervisão; consulte as mensagens acima antes de iniciar outra instância."
     exit 1
 fi

@@ -81,6 +81,9 @@ configure_supervision() {
     local system_service="" user_unit_dir previous_autostart previous_stop
     previous_autostart="$(cat "$state_dir/autostart" 2>/dev/null)"
     previous_stop="$(cat "$state_dir/stopped-boot" 2>/dev/null)"
+    if [ "${1:-}" = --start-after-repair ] && [ "$previous_autostart" != disabled ]; then
+        previous_stop=""
+    fi
     instance_id="$(printf '%s' "$CURRENT_DIR" | sha256sum | cut -c1-16)"
     service="filemanager-$instance_id.service"
 
@@ -176,4 +179,4 @@ configure_supervision() {
     supervision_as_owner __install-background "$previous_autostart" "$previous_stop"
 }
 
-configure_supervision
+configure_supervision "${1:-}"

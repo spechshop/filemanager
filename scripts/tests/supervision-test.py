@@ -130,7 +130,7 @@ esac
                 command = line[len(prefix):].replace('\\%', '%')
                 subprocess.run(['/bin/sh', '-c', command], env=self.env, cwd='/', check=True, timeout=10)
 
-    def install(self):
+    def install(self, full=False):
         script = r'''set +e
 log() { printf '%s\n' "$*"; }
 ok() { printf '%s\n' "$*"; }
@@ -143,8 +143,17 @@ CURRENT_DIR="$FM_FIXTURE"
 CONTROL_SCRIPT="$CURRENT_DIR/filemanagerctl"
 PHP_BIN="$CURRENT_DIR/pcg"
 run_priv() { "$@"; }
-source "$FM_REPO/scripts/install-supervision.sh"
 '''
+        if full:
+            shutil.copy2(ROOT / 'scripts/install-supervision.sh', self.root / 'scripts/install-supervision.sh')
+            installer = (ROOT / 'installer.sh').read_text()
+            begin = installer.index('ensure_cmd flock util-linux')
+            end = installer.index('# 13) Exibir link de acesso', begin)
+            # Execute the actual final stage of the full installer, after the
+            # dependency stages, without touching host packages or credentials.
+            script += '\nensure_cmd() { :; }\n' + installer[begin:end]
+        else:
+            script += '\nsource "$FM_REPO/scripts/install-supervision.sh"\n'
         result = subprocess.run(['bash', '-c', script], env={**self.env, 'FM_REPO': str(ROOT)},
                                 cwd=self.root, capture_output=True, text=True, timeout=30)
         if result.returncode:
@@ -405,6 +414,36 @@ exec /usr/bin/env "$@"
         self.assertNotEqual((f.state / 'autostart').read_text().strip(), 'disabled')
         f.env.pop('FM_CRON_DENIED')
 
+    def test_full_repair_resumes_after_stop(self):
+        f = self.f
+        for denied in ('0', '1'):
+            with self.subTest(cron_denied=denied):
+                f.env['FM_CRON_DENIED'] = denied
+                f.install(full=True)
+                old_pid = f.pid()
+                f.ctl('stop')
+                self.assertFalse(alive(old_pid))
+                self.assertTrue((f.state / 'stopped-boot').exists())
+                count = len(f.starts())
+                f.install(full=True)
+                self.assertTrue(alive(f.pid()))
+                self.assertNotEqual(old_pid, f.pid())
+                self.assertEqual(len(f.starts()), count + 1)
+                self.assertFalse((f.state / 'stopped-boot').exists())
+                self.assertEqual(sum(alive(record[0]) for record in f.starts()), 1)
+        f.env.pop('FM_CRON_DENIED')
+
+    def test_full_repair_preserves_explicit_disable(self):
+        f = self.f
+        f.install(full=True)
+        f.ctl('disable')
+        count = len(f.starts())
+        f.install(full=True)
+        f.run_cron()
+        self.assertEqual(len(f.starts()), count)
+        self.assertFalse(alive(f.pid()))
+        self.assertEqual((f.state / 'autostart').read_text().strip(), 'disabled')
+
     def test_stop_and_disable_during_crash_backoff_cancel_recovery(self):
         f = self.f
         for command in ('stop', 'disable'):
@@ -637,7 +676,7 @@ class SystemdTests(unittest.TestCase):
         if not shutil.which('systemd-analyze'):
             self.skipTest('systemd-analyze unavailable')
         f = self.f
-        source = (ROOT / 'scripts/install-supervision.sh').read_text().rsplit('\nconfigure_supervision\n', 1)[0]
+        source = (ROOT / 'scripts/install-supervision.sh').read_text().rsplit('\nconfigure_supervision ', 1)[0]
         for kind in ('system', 'user'):
             unit = f.root / ('filemanager-' + kind + '.service')
             script = source + '\n' + '\n'.join([
