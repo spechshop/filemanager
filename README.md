@@ -279,8 +279,15 @@ panel must also forward WebSocket upgrades for `/fileManagerTunnelDirect`;
 the service port must reach File Manager directly.
 
 The direct address stays the same when reconnecting, without a provider expiry.
-The agent retries transport failures automatically, including File Manager worker
-restarts. Raw TCP forwarding preserves paths, binary uploads, HTTP streaming,
+The agent retries temporary transport/server failures indefinitely, with delays
+from 2 to 30 seconds. A server restart with the same address and persisted tunnel
+registry does not require a new command. Revocation, session replacement and a
+changed pinned TLS key still stop it. If Node crashes, the launcher allows three
+restarts per execution, waiting 2, 4 and 8 seconds, then reports an error and
+stops. Logs include exit status/signal and available cgroup OOM-counter evidence;
+status 137 alone is not proof of an OOM. This applies to agents launched from the
+updated File Manager, not already-running copies.
+Raw TCP forwarding preserves paths, binary uploads, HTTP streaming,
 WebSocket and SSE. HTTPS is passed through using the **remote service's**
 certificate, which must be valid for the public hostname; the local self-signed
 checkbox applies to Cloudflare mode. The service is accessible to anyone who can

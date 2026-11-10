@@ -1,0 +1,56 @@
+Túnel direto: recuperação do processo e reconexão persistente (2026-11-10)
+
+Comportamento implementado
+- Quedas do processo Node: até três reinícios por execução do lançador, com
+  esperas de 2, 4 e 8 segundos. Quarta queda encerra e reporta error ao painel.
+  O orçamento não é reiniciado após uma conexão bem-sucedida.
+- Saída normal, SIGINT/SIGTERM e parada/revogação pelo painel não reiniciam.
+  Falha de execução 126/127 termina com diagnóstico, sem repetir um runtime
+  inacessível/inexistente.
+- O agente JS apaga o próprio arquivo após carregar a configuração. O lançador
+  agora recria esse arquivo em cada tentativa, mantendo a mesma sessão. O
+  conteúdo é transmitido por stdin ao decodificador, sem credenciais no argv.
+- Falha temporária de rede/servidor: reconexão sem limite de tentativas, de 2
+  até 30 segundos entre tentativas. Não consome o orçamento de processos.
+  HTTP 404 é transitório; rejeições de autenticação/sessão/configuração e troca
+  da chave TLS fixada continuam encerrando o agente.
+- A espera inicial pelo painel também não tem mais o prazo fatal de 25s.
+  Sinais administrativos interrompem a espera e limpam runtime/credenciais.
+- O endereço configurado e o registro de túneis devem continuar disponíveis.
+  Um domínio pode resolver novamente após mudança de DNS. Um IP literal antigo
+  não permite descobrir automaticamente um novo IP.
+
+Diagnóstico
+Cada saída registra status e sinal correspondente. Quando legíveis, contadores
+oom_kill de cgroup v2 (memory.events) ou v1 (memory.oom_control) são comparados
+antes e depois do processo. Um aumento prova um evento no grupo, não atribui
+automaticamente o evento ao PID do Node. Sem aumento/evidência disponível, o
+log informa que a origem de SIGKILL não foi identificada. Mensagens do próprio
+Node permanecem no log; nenhum dado de autenticação é incluído no relatório.
+
+Validação
+scripts/tests/tunnel-direct-bootstrap-test.cjs:
+SIGKILL real, reconstrução de payload que se apaga, intervalo entre processos,
+limite de três reinícios, erro final reportado, parada normal, parada pelo
+painel durante backoff, ausência de vazamento de segredo, espera inicial >25s,
+runtime existente, download alternativo, integridade, glibc e TLS/credenciais.
+Os casos de OOM usam contadores controlados; não foi provocado OOM real.
+Resultado: docs/tunnel-restart-bootstrap-tests.txt.
+Foram 12 testes aprovados nessa execução. Um teste adicional de rejeição da
+chave TLS, sem atribuí-la incorretamente a uma parada pelo painel, passou em
+docs/tunnel-restart-tls-tests.txt (resposta curl 90 controlada).
+
+scripts/tests/tunnels-direct-integration-test.cjs:
+Dois cenários reais com PCG/Swoole e Node: HTTP e HTTPS com chave fixada. Ambos
+executam tráfego HTTP, binário, WebSocket e SSE, reload, SIGKILL do Node seguido
+de recuperação, revogação, substituição de sessão e remoção do túnel.
+No cenário HTTP, o servidor inteiro permanece parado por 45s (lease: 40s).
+Após voltar, a mesma sessão/porta encaminha requisições novamente, sem executar
+outro bootstrap ou gerar novo comando. Testes usam dados descartáveis e loopback.
+Resultado: docs/tunnel-restart-integration-tests.txt.
+Os dois cenários passaram, totalizando 15 testes aprovados nos três registros.
+
+As cópias de agentes já geradas não são modificadas remotamente. É necessário
+iniciar o agente com o lançador atualizado uma vez; as próximas quedas de
+servidor são recuperadas automaticamente enquanto a autorização continuar válida.
+Tudo permanece local; nenhum commit, branch, PR ou push foi criado.

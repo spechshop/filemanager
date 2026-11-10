@@ -13,7 +13,7 @@ $tls = getenv('TUNNEL_FIXTURE_CERT') !== false && getenv('TUNNEL_FIXTURE_CERT') 
 $server = new Swoole\WebSocket\Server('127.0.0.1', (int) getenv('SECURITY_HTTP_PORT'), SWOOLE_PROCESS, SWOOLE_SOCK_TCP | ($tls ? SWOOLE_SSL : 0));
 if ($tls) $server->set(['ssl_cert_file' => getenv('TUNNEL_FIXTURE_CERT'), 'ssl_key_file' => getenv('TUNNEL_FIXTURE_KEY')]);
 $temporaryUploads = \plugins\Request\securityPolicy::uploadDirectory();
-mkdir($temporaryUploads, 0700, true);
+if (!is_dir($temporaryUploads)) mkdir($temporaryUploads, 0700, true);
 $server->set(['upload_tmp_dir' => $temporaryUploads, 'worker_num' => (int) (getenv('SECURITY_WORKERS') ?: 1), 'log_file' => '/dev/null', 'package_max_length' => 8388608, 'upload_max_filesize' => 2147483648]);
 $uploadPort = (int) getenv('FILEMANAGER_UPLOAD_PORT');
 if ($uploadPort > 0) {

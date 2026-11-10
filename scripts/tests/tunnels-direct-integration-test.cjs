@@ -35,7 +35,7 @@ function request(url, options = {}, body) {
         req.once('error', reject); req.end(body);
     });
 }
-for (const secure of [false, true]) test(`direct tunnel with ${secure ? 'pinned self-signed HTTPS and old Node' : 'HTTP and no Node'}: automatic runtime, TCP, WebSocket, SSE, reconnection and revocation`, {timeout: 60000}, async () => {
+for (const secure of [false, true]) test(`direct tunnel with ${secure ? 'pinned self-signed HTTPS and old Node' : 'HTTP and no Node'}: automatic runtime, TCP, WebSocket, SSE, reconnection and revocation`, {timeout: 150000}, async () => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fm-direct-integration-'));
     const panelPort = await port(), publicPort = await port();
     const base = `${secure ? 'https' : 'http'}://127.0.0.1:${panelPort}`;
@@ -71,14 +71,18 @@ function file_get_contents($file, ...$args) {
 }
 `);
     let output = '', agentOutput = '', logPath;
-    const server = spawn(process.env.SECURITY_PHP_BINARY || 'php', ['-d', 'auto_prepend_file=' + path.join(directory, 'release.php'), path.join(ROOT, 'scripts/security/fixtures/swoole-server.php')], {
+    const startPanel = () => {
+    const panel = spawn(process.env.SECURITY_PHP_BINARY || 'php', ['-d', 'auto_prepend_file=' + path.join(directory, 'release.php'), path.join(ROOT, 'scripts/security/fixtures/swoole-server.php')], {
         cwd: directory, env: {...process.env, SECURITY_HTTP_PORT: String(panelPort), SECURITY_WORKERS: '2', FILEMANAGER_UPLOAD_PORT: '0',
             FILEMANAGER_ORIGIN: base, FILEMANAGER_DATA_DIR: directory, FILEMANAGER_TOKENS_FILE: path.join(directory, 'tokens.json'),
             FILEMANAGER_CONFIG_FILE: path.join(directory, 'config.json'),
             TUNNEL_FIXTURE_CERT: secure ? path.join(directory, 'cert.pem') : '', TUNNEL_FIXTURE_KEY: secure ? path.join(directory, 'key.pem') : ''},
         stdio: ['ignore', 'pipe', 'pipe']
     });
-    server.stdout.on('data', chunk => {output += chunk;}); server.stderr.on('data', chunk => {output += chunk;});
+    panel.stdout.on('data', chunk => {output += chunk;}); panel.stderr.on('data', chunk => {output += chunk;});
+    return panel;
+    };
+    let server = startPanel();
     const handler = (req, res) => {
         if (req.url === '/events') {
             res.writeHead(200, {'Content-Type': 'text/event-stream'}); res.write('data: first\n\n');
@@ -180,6 +184,30 @@ function file_get_contents($file, ...$args) {
         await until(() => fs.readFileSync(logPath, 'utf8').includes('Reconectando'));
         await until(async () => { const entry = await state(); return entry.status === 'online' && entry.url === publicUrl; });
         assert.equal((await request(publicUrl + '/after-reload')).body.toString(), 'REMOTE_SERVICE_CONTENT');
+        const launcherPid = Number(fs.readFileSync(path.join(path.dirname(logPath), 'agent.pid'), 'utf8'));
+        const nodePid = () => fs.readFileSync(`/proc/${launcherPid}/task/${launcherPid}/children`, 'utf8').trim().split(/\s+/)
+            .map(Number).find(pid => { try { return fs.readFileSync(`/proc/${pid}/cmdline`, 'utf8').includes('/agent.cjs'); } catch { return false; } });
+        const killed = await until(nodePid);
+        process.kill(killed, 'SIGKILL');
+        await until(() => /tentativa 1\/3/.test(fs.readFileSync(logPath, 'utf8')));
+        await until(() => {const next = nodePid(); return next && next !== killed;});
+        await until(async () => {try { return (await request(publicUrl + '/after-kill')).body.toString() === 'REMOTE_SERVICE_CONTENT'; } catch {return false;} });
+        if (!secure) {
+            const session = JSON.parse(fs.readFileSync(path.join(directory, 'tunnels/registry.json')))[created.id].session;
+            server.kill('SIGTERM'); await once(server, 'exit');
+            // Outlast the 40s server heartbeat lease. Keep the same registry,
+            // credential and agent; no bootstrap command is generated again.
+            await delay(45000);
+            assert.equal(nodePid() > 0, true);
+            assert.match(fs.readFileSync(logPath, 'utf8'), /mantendo a mesma sessão/);
+            const readyOffset = output.length;
+            server = startPanel();
+            await until(() => output.slice(readyOffset).includes('SECURITY_FIXTURE_READY'));
+            await until(async () => {try { return (await request(publicUrl + '/after-server-restart')).body.toString() === 'REMOTE_SERVICE_CONTENT'; } catch {return false;} }, 40000);
+            assert.equal(JSON.parse(fs.readFileSync(path.join(directory, 'tunnels/registry.json')))[created.id].session, session);
+            assert.equal((await state()).url, publicUrl);
+            assert.match(fs.readFileSync(logPath, 'utf8'), /restabelecida/);
+        }
         await api({action: 'stop', id: created.id});
         await until(() => !fs.existsSync(path.join(path.dirname(logPath), 'agent.pid')));
         assert.deepEqual(fs.readdirSync(path.dirname(logPath)), ['agent.log'], 'Private runtime and credentials must be removed after shutdown');

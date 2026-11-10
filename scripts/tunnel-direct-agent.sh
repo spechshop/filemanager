@@ -8,8 +8,9 @@ fi
 fm_tunnel_main() {
     # FILEMANAGER_CONFIG
     umask 077
-    local FM_LAUNCH_DIR=$1 FM_WORK FM_NODE FM_CHILD='' FM_INSTALL='' FM_NEXT_REPORT=0 FM_LAST_ACK=$SECONDS
-    local FM_FINAL_STATUS=offline code
+    local FM_LAUNCH_DIR=$1 FM_WORK FM_NODE FM_CHILD='' FM_INSTALL='' FM_NEXT_REPORT=0
+    local FM_FINAL_STATUS=offline FM_FINAL_MESSAGE='' FM_PANEL_READY=0 FM_REPORT_DELAY=2 code
+    local FM_PAYLOAD='FILEMANAGER_AGENT_BASE64'
     rm -f -- "$FM_LAUNCH_DIR/agent.sh"
     FM_WORK=$(mktemp -d "$FM_LAUNCH_DIR/work.XXXXXXXX") || return 1
     printf '%s\n' "$$" > "$FM_LAUNCH_DIR/agent.pid"
@@ -26,10 +27,14 @@ fm_tunnel_main() {
         if [ "$code" -eq 60 ] && [ -n "$FM_PANEL_PIN" ]; then
             result=$(curl "${arguments[@]}" --insecure --pinnedpubkey "$FM_PANEL_PIN" "$FM_ENDPOINT" 2> "$FM_WORK/request-error"); code=$?
         fi
+        if [ "$code" -eq 90 ]; then
+            printf '%s\n' 'A chave TLS do File Manager mudou; conexão interrompida para preservar a autenticação.' >&2
+            return 4
+        fi
         [ "$code" -eq 0 ] || return 2
         case "$result" in
             200) grep -Eq '"success"[[:space:]]*:[[:space:]]*true' "$FM_WORK/response" && return 0;;
-            400|401|403|404|409|422) return 3;;
+            400|401|403|409|422) return 3;;
         esac
         return 2
     }
@@ -38,13 +43,27 @@ fm_tunnel_main() {
         [ "$SECONDS" -ge "$FM_NEXT_REPORT" ] || return 0
         fm_report starting
         code=$?
-        if [ "$code" -eq 0 ]; then FM_LAST_ACK=$SECONDS
+        if [ "$code" -eq 0 ]; then FM_PANEL_READY=1; FM_REPORT_DELAY=2
         elif [ "$code" -eq 3 ]; then
             printf '%s\n' 'Túnel encerrado pelo painel.' >&2; return 1
-        elif [ $((SECONDS - FM_LAST_ACK)) -ge 25 ]; then
-            printf '%s\n' 'Conexão com o painel perdida durante a preparação do túnel.' >&2; return 1
+        elif [ "$code" -eq 4 ]; then
+            return 1
+        else
+            FM_PANEL_READY=0
+            printf 'Painel indisponível; nova tentativa em %ss com a mesma sessão.\n' "$FM_REPORT_DELAY" >&2
         fi
-        FM_NEXT_REPORT=$((SECONDS + 2))
+        FM_NEXT_REPORT=$((SECONDS + FM_REPORT_DELAY))
+        if [ "$FM_PANEL_READY" -eq 0 ]; then
+            FM_REPORT_DELAY=$((FM_REPORT_DELAY * 2)); [ "$FM_REPORT_DELAY" -le 30 ] || FM_REPORT_DELAY=30
+        fi
+    }
+    fm_wait_for_panel() {
+        FM_PANEL_READY=0; FM_NEXT_REPORT=0
+        while :; do
+            fm_keepalive || return 1
+            [ "$FM_PANEL_READY" -eq 0 ] || return 0
+            sleep 1
+        done
     }
     fm_cleanup() {
         local code=$? pid attempt
@@ -60,7 +79,7 @@ fm_tunnel_main() {
             wait "$pid" 2>/dev/null || true
         done
         if [ "$FM_FINAL_STATUS" = error ]; then
-            fm_report error 'Não foi possível preparar o túnel direto. Consulte o log informado ao iniciar o comando.' || true
+            fm_report error "${FM_FINAL_MESSAGE:-Não foi possível preparar o túnel direto. Consulte o log informado ao iniciar o comando.}" || true
         else
             fm_report offline || true
         fi
@@ -69,8 +88,8 @@ fm_tunnel_main() {
         exit "$code"
     }
     trap fm_cleanup EXIT
-    trap 'exit 130' INT
-    trap 'exit 143' TERM
+    trap 'FM_FINAL_STATUS=offline; exit 130' INT
+    trap 'FM_FINAL_STATUS=offline; exit 143' TERM
     trap '' HUP
 
     fm_node_compatible() {
@@ -144,9 +163,50 @@ fm_tunnel_main() {
         fi
     }
 
+    # Best-effort evidence only: cgroup counters describe the group, not a
+    # specific PID. Never infer OOM just from status 137 or historic counters.
+    fm_memory_file() {
+        local hierarchy controllers relative base candidate
+        [ -r /proc/self/cgroup ] || return 1
+        while IFS=: read -r hierarchy controllers relative; do
+            if [ "$hierarchy" = 0 ]; then base=/sys/fs/cgroup
+            elif [[ ",$controllers," = *,memory,* ]]; then base=/sys/fs/cgroup/memory
+            else continue; fi
+            for candidate in "$base$relative" "$base"; do
+                if [ -r "$candidate/memory.events" ]; then printf '%s\n' "$candidate/memory.events"; return; fi
+                if [ -r "$candidate/memory.oom_control" ]; then printf '%s\n' "$candidate/memory.oom_control"; return; fi
+            done
+        done < /proc/self/cgroup
+        return 1
+    }
+    fm_oom_count() {
+        local key value
+        [ -n "$1" ] && [ -r "$1" ] || return 1
+        while read -r key value; do
+            if [ "$key" = oom_kill ] && [[ "$value" =~ ^[0-9]+$ ]]; then printf '%s\n' "$value"; return; fi
+        done < "$1"
+        return 1
+    }
+    fm_exit_diagnostic() {
+        local status=$1 before=$2 after=$3 signal
+        printf 'Processo Node encerrou com status %s' "$status" >&2
+        if [ "$status" -gt 128 ] && [ "$status" -le 192 ]; then
+            signal=$(kill -l "$((status - 128))" 2>/dev/null) || signal=desconhecido
+            printf ' (sinal %s/%s)' "$((status - 128))" "$signal" >&2
+        fi
+        printf '.\n' >&2
+        if [[ "$before" =~ ^[0-9]+$ && "$after" =~ ^[0-9]+$ ]] && [ "$after" -gt "$before" ]; then
+            printf 'Evidência: oom_kill do cgroup aumentou de %s para %s durante esta execução; houve encerramento por memória no grupo, sem identificação individual do PID.\n' "$before" "$after" >&2
+        elif [ "$status" -eq 137 ]; then
+            printf '%s\n' 'SIGKILL recebido; origem não identificada. Não há evidência acessível de OOM nesta execução.' >&2
+        elif [ "$status" -ne 0 ]; then
+            printf '%s\n' 'A saída do Node imediatamente acima pode detalhar a falha.' >&2
+        fi
+    }
+
     printf '%s\n' 'Validando a conexão com o File Manager...'
     FM_FINAL_STATUS=error
-    fm_keepalive || exit 1
+    fm_wait_for_panel || { FM_FINAL_STATUS=offline; exit 1; }
     if command -v node >/dev/null 2>&1 && fm_node_compatible "$(command -v node)"; then
         FM_NODE=$(command -v node)
         printf '%s\n' 'Runtime compatível encontrado. Preparando o agente...'
@@ -158,15 +218,39 @@ fm_tunnel_main() {
         wait "$FM_INSTALL"; code=$?; FM_INSTALL=''
         [ "$code" -eq 0 ] || exit 1
     fi
-    "$FM_NODE" -e 'require("node:fs").writeFileSync(process.argv[1], Buffer.from(process.argv[2], "base64"), {mode: 0o600})' \
-        "$FM_WORK/agent.cjs" 'FILEMANAGER_AGENT_BASE64' || exit 1
-    fm_keepalive || exit 1
     FM_FINAL_STATUS=offline
-    printf '%s\n' 'Conectando o túnel direto ao host do File Manager...'
-    "$FM_NODE" "$FM_WORK/agent.cjs" &
-    FM_CHILD=$!
-    wait "$FM_CHILD"; code=$?; FM_CHILD=''
-    exit "$code"
+    local restarts=0 restart_delay tick memory_file before after
+    while :; do
+        fm_wait_for_panel || exit 1
+        memory_file=$(fm_memory_file) || memory_file=''
+        before=$(fm_oom_count "$memory_file") || before=''
+        # The agent deletes its source after reading credentials. Recreate it
+        # for each attempt, without fetching a new command or claiming a session.
+        printf '%s' "$FM_PAYLOAD" | "$FM_NODE" -e 'const fs=require("node:fs"); fs.writeFileSync(process.argv[1], Buffer.from(fs.readFileSync(0,"utf8"), "base64"), {mode: 0o600})' \
+            "$FM_WORK/agent.cjs"
+        code=$?
+        if [ "$code" -eq 0 ]; then
+            printf '%s\n' 'Conectando o túnel direto ao host do File Manager...'
+            "$FM_NODE" "$FM_WORK/agent.cjs" &
+            FM_CHILD=$!
+            wait "$FM_CHILD"; code=$?; FM_CHILD=''
+        fi
+        after=$(fm_oom_count "$memory_file") || after=''
+        fm_exit_diagnostic "$code" "$before" "$after"
+        case "$code" in 0|130|143) exit "$code" ;; esac
+        if [ "$restarts" -ge 3 ] || [ "$code" -eq 126 ] || [ "$code" -eq 127 ]; then
+            FM_FINAL_STATUS=error
+            FM_FINAL_MESSAGE="Node indisponível após $restarts reinícios; último status $code. Reinício automático encerrado."
+            printf '%s\n' "$FM_FINAL_MESSAGE" >&2
+            exit "$code"
+        fi
+        restarts=$((restarts + 1)); restart_delay=$((1 << restarts))
+        printf 'Reiniciando Node em %ss (tentativa %s/3).\n' "$restart_delay" "$restarts" >&2
+        for ((tick=0; tick<restart_delay; tick++)); do
+            fm_keepalive || exit 1
+            sleep 1
+        done
+    done
 }
 fm_tunnel_start() {
     umask 077

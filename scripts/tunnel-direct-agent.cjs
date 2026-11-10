@@ -13,10 +13,12 @@ const pidFile = path.join(directory, 'agent.pid');
 const endpoint = new URL(config.endpoint);
 const target = new URL(config.target);
 const headers = {Authorization: `Bearer ${config.secret}`, 'X-Tunnel-Session': config.session};
-const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+let retryTimer, finishRetry;
+const delay = ms => new Promise(resolve => { finishRetry = resolve; retryTimer = setTimeout(() => { finishRetry = undefined; resolve(); }, ms); });
+const pendingRequests = new Set();
 const certificateErrors = new Set(['DEPTH_ZERO_SELF_SIGNED_CERT', 'SELF_SIGNED_CERT_IN_CHAIN', 'CERT_HAS_EXPIRED',
     'CERT_NOT_YET_VALID', 'UNABLE_TO_VERIFY_LEAF_SIGNATURE', 'UNABLE_TO_GET_ISSUER_CERT_LOCALLY', 'ERR_TLS_CERT_ALTNAME_INVALID']);
-let stopped = false, active, lastUrl = '';
+let stopped = false, active, lastUrl = '', reconnectDelay = 2000;
 if (!config.managedByLauncher) fs.writeFileSync(pidFile, String(process.pid), {mode: 0o600});
 fs.unlinkSync(__filename);
 
@@ -46,6 +48,10 @@ function request(url, options, upgrade = false, pinned = false) {
     return new Promise((resolve, reject) => {
         const client = url.protocol === 'https:' ? https : http;
         const req = client.request(url, {...options, ...(pinned ? {agent: pinnedAgent} : {agent: false})});
+        pendingRequests.add(req);
+        const deadline = setTimeout(() => req.destroy(new Error('Tempo de conexão com o File Manager excedido.')), 10000);
+        const complete = () => { clearTimeout(deadline); pendingRequests.delete(req); };
+        req.once('close', complete);
         req.setTimeout(10000, () => req.destroy(new Error('Tempo de conexão com o File Manager excedido.')));
         req.once('error', reject);
         req.once('response', response => {
@@ -56,11 +62,12 @@ function request(url, options, upgrade = false, pinned = false) {
             response.once('end', () => {
                 if (response.statusCode !== 200 || upgrade) {
                     reject(Object.assign(new Error(`File Manager respondeu HTTP ${response.statusCode}.`),
-                        {fatal: [400, 401, 403, 404, 409, 422].includes(response.statusCode)}));
+                        {fatal: [400, 401, 403, 409, 422].includes(response.statusCode)}));
                 } else resolve(body);
             });
         });
         req.once('upgrade', (response, socket, head) => {
+            complete();
             socket.setTimeout(0);
             const expected = crypto.createHash('sha1').update(options.headers['Sec-WebSocket-Key'] + '258EAFA5-E914-47DA-95CA-C5AB0DC85B11').digest('base64');
             if (response.statusCode !== 101 || response.headers['sec-websocket-accept'] !== expected
@@ -91,7 +98,7 @@ async function connect() {
     active = socket;
     await new Promise((resolve, reject) => {
         const peers = new Map();
-        let buffer = Buffer.alloc(0), lastAck = Date.now(), finished = false, congested = false;
+        let buffer = Buffer.alloc(0), lastAck = Date.now(), finished = false, congested = false, acknowledged = false;
         function finish(error) {
             if (finished) return;
             finished = true;
@@ -133,8 +140,11 @@ async function connect() {
             const type = data[0], id = data.readUInt32BE(1);
             if (type === 6 && id === 0) {
                 lastAck = Date.now();
+                reconnectDelay = 2000;
                 const publicUrl = data.subarray(5).toString('utf8');
                 if (lastUrl !== publicUrl) { lastUrl = publicUrl; console.log(`Link do túnel direto: ${publicUrl}`); }
+                else if (!acknowledged) console.log('Conexão com o File Manager restabelecida; mesmo endereço do túnel.');
+                acknowledged = true;
                 return;
             }
             if (![1, 2, 3, 4, 7].includes(type) || id === 0 || (type !== 2 && data.length !== 5)) throw new Error('Stream de túnel inválido.');
@@ -196,7 +206,11 @@ async function connect() {
     });
 }
 
-for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { stopped = true; active?.destroy(); });
+for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => {
+    stopped = true; active?.destroy();
+    for (const req of pendingRequests) req.destroy();
+    clearTimeout(retryTimer); finishRetry?.();
+});
 process.on('SIGHUP', () => {});
 process.once('exit', () => { if (!config.managedByLauncher) { try { fs.unlinkSync(pidFile); } catch {} } });
 (async () => {
@@ -207,7 +221,11 @@ process.once('exit', () => { if (!config.managedByLauncher) { try { fs.unlinkSyn
                 console.error(error.message);
                 if (error.fatal) break;
             }
-            if (!stopped) { console.log('Reconectando ao host do File Manager...'); await delay(2000); }
+            if (!stopped) {
+                console.log(`Reconectando ao host do File Manager em ${reconnectDelay / 1000}s; mantendo a mesma sessão...`);
+                await delay(reconnectDelay);
+                reconnectDelay = Math.min(30000, reconnectDelay * 2);
+            }
         }
     } finally { pinnedAgent.destroy(); }
 })().catch(error => { console.error(error.message); process.exitCode = 1; });

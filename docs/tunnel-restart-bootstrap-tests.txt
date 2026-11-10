@@ -1,0 +1,20 @@
+✔ SIGKILL restarts the self-deleting payload, OOM evidence=false (3300.660987ms)
+✔ SIGKILL restarts the self-deleting payload, OOM evidence=true (3281.51587ms)
+✔ repeated SIGKILL stops after three restarts and reports error (14505.11076ms)
+✔ panel stop during restart backoff cancels recovery (2230.0235ms)
+✔ a graceful Node stop is not restarted (339.84808ms)
+✔ preparation survives a panel outage longer than the old 25s deadline (31517.216434ms)
+✔ direct bootstrap: installed (3250.256079ms)
+✔ direct bootstrap: panelFails (3253.006425ms)
+✔ direct bootstrap: incompatible (3247.072229ms)
+✔ direct bootstrap: tampered (2260.850494ms)
+✔ direct bootstrap: blocked (5267.12069ms)
+✔ direct bootstrap: hashTool (3181.738557ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 75693.42217

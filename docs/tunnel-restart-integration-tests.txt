@@ -1,0 +1,10 @@
+✔ direct tunnel with HTTP and no Node: automatic runtime, TCP, WebSocket, SSE, reconnection and revocation (82840.059447ms)
+✔ direct tunnel with pinned self-signed HTTPS and old Node: automatic runtime, TCP, WebSocket, SSE, reconnection and revocation (23599.038659ms)
+ℹ tests 2
+ℹ suites 0
+ℹ pass 2
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 108495.029914
