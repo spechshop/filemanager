@@ -17,7 +17,7 @@ export PATH
 # Não usamos "set -e": queremos sobreviver a falhas e seguir com fallbacks.
 set +e
 
-# An existing checkout can upgrade supervision without packages, downloads,
+# An existing checkout can upgrade supervision without system packages,
 # token generation or application migrations, even when invoked from elsewhere.
 if [ "${1:-}" = --supervision-only ]; then
     INSTALLER_SOURCE="$(readlink -f -- "${BASH_SOURCE[0]}")" || exit 1
@@ -141,8 +141,8 @@ if [ "${1:-}" = --supervision-only ]; then
     [ -f "$CURRENT_DIR/server.php" ] && [ -f "$CONTROL_SCRIPT" ] || {
         err "Execute --supervision-only em um checkout existente do FileManager."; exit 1;
     }
-    source "$CURRENT_DIR/scripts/runtime-exec.sh" || exit 1
-    PHP_BIN="$(fm_php "$CURRENT_DIR")" || exit 1
+    source "$CURRENT_DIR/scripts/install-php-runtime.sh" || exit 1
+    PHP_BIN="$(fm_install_php "$CURRENT_DIR")" || exit 1
     # O controlador é interpretado por Bash; não exige bit executável ou chmod.
     # Keep the existing service account when root upgrades a managed checkout.
     if [ "$IS_ROOT" -eq 1 ] && [ -z "${FILEMANAGER_SERVICE_USER:-}" ] \
@@ -413,33 +413,9 @@ fi
 # ---------------------------------------------------------------------
 # 9) Runtime PHP/Swoole isolado (pcg), sem substituir o PHP do sistema
 # ---------------------------------------------------------------------
-PHP_URL="https://github.com/spechshop/pcg729/releases/download/PCG729/php"
-PCG_RUNTIME="pcg"
-
-# Migra o nome usado por versões antigas sem alterar o binário php disponível
-# no ambiente do usuário.
-if [ ! -f "$PCG_RUNTIME" ] && [ -f "php" ] && [ ! -L "php" ] \
-    && ./php --ri swoole >/dev/null 2>&1; then
-    if mv -- "php" "$PCG_RUNTIME" 2>/dev/null; then
-        ok "Runtime PHP local migrado de ./php para ./pcg."
-    else
-        warn "Não foi possível migrar o runtime legado ./php para ./pcg."
-    fi
-fi
-
-if [ ! -f "$PCG_RUNTIME" ]; then
-    log "Baixando runtime PHP/Swoole (pcg)..."
-    if download "$PHP_URL" "$PCG_RUNTIME" "${FILEMANAGER_PHP_SHA256:-9832bcfd4d731d69a30981e2e1cc5490a908e4f99abf4cc83ae0e5df4470ee78}"; then
-        ok "Runtime pcg baixado."
-    else
-        warn "Falha ao baixar o runtime pcg."
-    fi
-fi
-[ -f "$PCG_RUNTIME" ] && chmod +x "$PCG_RUNTIME" 2>/dev/null
-
 CURRENT_DIR="$(pwd -P)"
-source "$CURRENT_DIR/scripts/runtime-exec.sh" || exit 1
-PHP_BIN="$(fm_php "$CURRENT_DIR")" || exit 1
+source "$CURRENT_DIR/scripts/install-php-runtime.sh" || exit 1
+PHP_BIN="$(fm_install_php "$CURRENT_DIR")" || exit 1
 
 # BEGIN installer token generation
 generate_installer_token() {

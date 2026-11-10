@@ -1,0 +1,62 @@
+Validação local em 2026-11-09
+
+Causas corrigidas:
+- fm_php combinava status do PHP e comparação de toda a saída; warnings em
+  stdout convertiam sucesso em rejeição com status enganoso. Agora a resposta
+  ocupa uma linha própria, warnings são encaminhados a stderr, e um status
+  não zero do PHP sempre reprova o teste, mesmo contendo a resposta esperada.
+- A origem persistente não era reparada quando pcg existia mas estava inválido.
+  Ambos os modos usam install-php-runtime.sh: descoberta, recuperação por cópia,
+  download HTTPS com SHA-256 obrigatório e publicação após validar requisitos.
+  Um runtime independente válido pode reparar uma origem persistente inválida;
+  cópias gerenciadas continuam sujeitas ao SHA-256 da origem.
+- validate_node_runtime_layout usava test -x em noexec; isso rejeitava um pacote
+  completo antes de fm_prepare_binary poder realocar e executar seu ELF.
+
+Proveniência:
+PHP oficial: https://github.com/spechshop/pcg729/releases/download/PCG729/php
+SHA-256: 9832bcfd4d731d69a30981e2e1cc5490a908e4f99abf4cc83ae0e5df4470ee78
+Download HTTPS realizado e hash confirmado, igual ao padrão do instalador.
+PHP 8.5.4 ZTS, extensões swoole/zip/sockets/pcntl/posix presentes.
+Node: https://nodejs.org/dist/latest-v24.x/node-v24.22.2-linux-x64.tar.xz
+Integridade conferida com SHASUMS256.txt da mesma distribuição HTTPS.
+Node v24.22.2 e npm 11.19.1 executaram após realocação.
+
+Reprodução principal:
+bash scripts/tests/restricted/run-repair.sh
+Fixtures locais preservados em .runtime/installer-repair-fixtures, incluindo
+os dois scripts anteriores às alterações, PHP e arquivo oficial Node.
+O runner aceita outro diretório de fixtures como primeiro argumento.
+O contêiner usa UID 1000, sem sudo/capabilities, filesystem raiz somente leitura,
+/home e /tmp noexec e /dev/shm exec. PATH=/nonexistent nos testes do instalador.
+Warnings reais de inicialização são provocados por extension=swoole no php.ini:
+o runtime já inclui Swoole estaticamente e não suporta carregamento dinâmico.
+As cinco extensões são verificadas independentemente e continuam presentes.
+
+Escopo: --supervision-only foi executado pelo entrypoint completo. Do modo
+normal foi executado o bloco PHP extraído literalmente de installer.sh,
+sem instalações de pacotes, emissão de tokens ou migrações da aplicação.
+O download de recuperação usa fixture file:// com SHA-256 para testes
+repetíveis; o artefato dessa fixture foi obtido pelo HTTPS oficial acima.
+Não foi executada uma instalação completa da aplicação no host.
+
+Evidências:
+installer-repair-evidence.txt: reprodução anterior, correção com PHP 8.5.4,
+  warnings, status 42, resposta ausente, origem corrompida, exclusão do runtime,
+  recuperação/download, rejeição de hash incorreto, Node 24 e npm. Exit 0.
+installer-resolution-evidence.txt: suíte anterior em Alpine, PHP 8.5.10,
+  capacidade limitada, ferramentas bloqueadas, SHA fallback, permissões,
+  cópia gerenciada adulterada, quatro recuperações concorrentes e reboot. Exit 0.
+installer-native-repair-evidence.txt: testes de extração e toolchain Node.
+installer-supervision-final-evidence.txt: testes de ciclo de vida/supervisão.
+A tentativa inicial dessa última suíte rejeitou corretamente o PHP do host
+por permissões inseguras; foi repetida com o PHP oficial em diretório privado.
+
+Resultado final da supervisão: 19 casos passaram na execução completa; o teste
+systemd restante leu server.pid antes da publicação assíncrona pelo PHP.
+O fixture passou a aguardar o PID, e esse caso passou na repetição isolada
+(installer-supervision-retest-evidence.txt). O log original foi preservado.
+Parada/desativação permaneceram efetivas por 120.17 segundos; recuperação de
+SIGKILL medida em 2.401 segundos.
+Bootstrap: 6/6 testes; tokens e HOME/XDG também passaram. bash -n e
+ git diff --check passaram. Sem commits, branches, PRs ou push.

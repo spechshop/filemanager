@@ -1,0 +1,6 @@
+test_user_linger_selects_systemd_and_removes_cron (__main__.SystemdTests.test_user_linger_selects_systemd_and_removes_cron) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 8.773s
+
+OK

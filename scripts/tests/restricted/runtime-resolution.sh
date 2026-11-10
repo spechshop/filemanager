@@ -7,7 +7,7 @@ chmod 700 pcg
 mkdir scripts
 cp /repo/installer.sh /repo/filemanagerctl .
 chmod 600 filemanagerctl
-cp /repo/scripts/runtime-exec.sh /repo/scripts/install-supervision.sh scripts/
+cp /repo/scripts/{runtime-exec,install-supervision,install-php-runtime,secure-download}.sh scripts/
 cat >server.php <<'PHP'
 <?php
 file_put_contents(__DIR__ . '/.runtime/actual-runtime', PHP_BINARY);
@@ -100,9 +100,12 @@ mv /dev/shm/pcg "$cache/pcg"
 [ "$(/bin/bash scripts/runtime-exec.sh php "$PWD")" = "$cache/pcg" ]
 mv "$cache/pcg" /dev/shm/pcg; rmdir "$cache"
 # Existing mismatched ELF must be rejected BEFORE the PHP feature probe.
-printf x | dd of=/dev/shm/pcg bs=1 seek=9 conv=notrunc status=none
+cache=$(mktemp -d "/dev/shm/filemanager-$EUID-$key.XXXXXXXX")
+mv /dev/shm/pcg "$cache/pcg"
+printf x | dd of="$cache/pcg" bs=1 seek=9 conv=notrunc status=none
 if FILEMANAGER_EXEC_DIR=/dev/shm /bin/bash scripts/runtime-exec.sh php "$PWD" >mismatch.out 2>mismatch.err; then exit 1; fi
 grep -q 'SHA-256 diferente' mismatch.err
+rm "$cache/pcg"; rmdir "$cache"
 cp pcg /dev/shm/pcg
 # Unsafe permissions and a shell script named pcg must not be executed.
 chmod 777 /dev/shm/pcg

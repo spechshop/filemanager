@@ -56,6 +56,8 @@ class Fixture:
         (self.root / 'filemanagerctl').chmod(0o755)
         (self.root / 'scripts').mkdir(exist_ok=True)
         shutil.copy2(ROOT / 'scripts/runtime-exec.sh', self.root / 'scripts/runtime-exec.sh')
+        for helper in ('install-php-runtime.sh', 'secure-download.sh'):
+            shutil.copy2(ROOT / 'scripts' / helper, self.root / 'scripts' / helper)
         (self.root / 'pcg').symlink_to(PHP)
         (self.root / 'server.php').write_text('''<?php
 file_put_contents(__DIR__ . '/starts', json_encode([getmypid(), microtime(true)]) . "\\n", FILE_APPEND | LOCK_EX);
@@ -510,6 +512,10 @@ class SystemdTests(unittest.TestCase):
         f.env.update(FM_LINGER='yes', FM_UNIT_KIND='user')
         f.install()
         self.assertEqual((f.state / 'backend').read_text().strip(), 'user')
+        # The systemctl fixture starts PHP asynchronously; wait for PHP to
+        # publish its PID before asserting liveness.
+        until(lambda: (f.root / 'server.pid').exists()
+              and (f.root / 'server.pid').read_text().strip())
         self.assertTrue(alive(f.pid()))
         self.assertFalse(f.watchdog())
         self.assertNotIn('# filemanager:', (f.root / 'crontab').read_text())

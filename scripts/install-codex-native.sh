@@ -35,8 +35,10 @@ validate_node_runtime_layout() {
     local runtime="$1"
 
     [ -f "$runtime/bin/node" ] || return 1
+    # Layout is about readable files. noexec makes test -x false even when
+    # mode bits are correct; fm_prepare_binary checks actual execution later.
+    [ -r "$runtime/bin/node" ] || return 1
     chmod +x "$runtime/bin/node" 2>/dev/null || return 1
-    [ -x "$runtime/bin/node" ] || return 1
     [ -f "$runtime/lib/node_modules/npm/bin/npm-cli.js" ] || return 1
 }
 

@@ -225,6 +225,29 @@ fm_php_candidates() {
     type -a -p pcg php 2>/dev/null || :
 }
 
+# Keep the process status independent from the probe protocol. PHP/Swoole may
+# emit startup warnings on either stream, even with a successful feature check.
+fm_php_probe() {
+    local binary="$1" code="$2" output rc line valid=0
+    if output=$("$binary" -r "$code"); then rc=0; else rc=$?; fi
+    while IFS= read -r line; do
+        if [ "$line" = FM_PHP_RUNTIME_VALID ]; then valid=1
+        elif [ -n "$line" ]; then printf '%s\n' "$line" >&2; fi
+    done <<< "$output"
+    if [ "$rc" -ne 0 ]; then
+        printf 'PHP rejeitado: %s (status real do processo %s).\n' "$binary" "$rc" >&2
+        return "$rc"
+    fi
+    if [ "$valid" -ne 1 ]; then
+        printf 'PHP rejeitado: %s (status real do processo 0; resposta do teste ausente).\n' "$binary" >&2
+        return 1
+    fi
+}
+
+fm_php_code() {
+    printf '%s\n' 'if (PHP_VERSION_ID < 80300) {fwrite(STDERR,"PHP >= 8.3 necessário\n");exit(1);} foreach (["swoole","zip","sockets","pcntl","posix"] as $e) {if (!extension_loaded($e)) {fwrite(STDERR,"Extensão ausente: $e\n");exit(1);}} if (PHP_OS_FAMILY !== "Linux") exit(1); echo "\nFM_PHP_RUNTIME_VALID\n";'
+}
+
 fm_php() {
     local root="$1" candidate resolved reference='' digest='' actual magic code rc
     local -a originals=()
@@ -232,9 +255,9 @@ fm_php() {
     root=$(cd -- "$root" && pwd -P) || return 1
     if [ -f "$root/pcg" ]; then
         reference=$(readlink -f -- "$root/pcg" 2>/dev/null) || reference="$root/pcg"
-        digest=$(fm_sha256 "$reference") || return 1
+        digest=$(fm_sha256 "$reference") || digest=''
     fi
-    code='if (PHP_VERSION_ID < 80300) {fwrite(STDERR,"PHP >= 8.3 necessário\n");exit(1);} foreach (["swoole","zip","sockets","pcntl","posix"] as $e) {if (!extension_loaded($e)) {fwrite(STDERR,"Extensão ausente: $e\n");exit(1);}} if (PHP_OS_FAMILY !== "Linux") exit(1); echo "FM_PHP_RUNTIME_VALID";'
+    code=$(fm_php_code)
     # Phase 1: exhaust existing runtimes BEFORE measuring free space or copying.
     while IFS= read -r candidate; do
         [ -n "$candidate" ] && [ -f "$candidate" ] || continue
@@ -245,14 +268,17 @@ fm_php() {
         if ! fm_private_file "$resolved"; then printf 'Runtime com proprietário/permissões inseguros: %s\n' "$candidate" >&2; continue; fi
         magic=''; IFS= read -r -N4 magic < "$resolved" || :
         if [ "$magic" != $'\177ELF' ]; then printf 'Runtime não é ELF: %s\n' "$candidate" >&2; continue; fi
-        # System PHP may legitimately be a different build. Discovered pcg/cache
-        # copies must match the persistent installation's original when present.
-        if [ -n "$digest" ] && [ "$resolved" != "$reference" ] \
-            && [[ "$resolved" != /usr/* && "$resolved" != /bin/* && "$resolved" != /sbin/* ]]; then
+        # Independent, privately owned runtimes can be different valid builds.
+        # A broken persistent file must not veto an otherwise valid runtime.
+        # Copies created by fm_prepare_binary still require matching SHA-256.
+        if [ -n "$digest" ] && [[ "$resolved" = */filemanager-*/pcg ]]; then
             actual=$(fm_sha256 "$resolved") || continue
-            if [ "$actual" != "$digest" ]; then printf 'Runtime rejeitado por SHA-256 diferente da origem: %s\n' "$candidate" >&2; continue; fi
+            if [ "$actual" != "$digest" ]; then
+                printf 'Cache rejeitado por SHA-256 diferente da origem: %s\n' "$candidate" >&2
+                continue
+            fi
         fi
-        if actual=$("$resolved" -r "$code" 2>/dev/null) && [ "$actual" = FM_PHP_RUNTIME_VALID ]; then
+        if fm_php_probe "$resolved" "$code"; then
             if [ -z "$reference" ] && [[ "$resolved" = /dev/shm/* || "$resolved" = /tmp/* || "$resolved" = /run/* ]]; then
                 printf 'Aviso: runtime temporário validado sem pcg persistente em %s; recuperação após reboot exige preservar uma origem.\n' "$root" >&2
             fi
@@ -260,16 +286,13 @@ fm_php() {
         else rc=$?; fi
         if [ "$rc" = 126 ] || fm_noexec "$resolved" || [ ! -x "$resolved" ]; then
             originals+=("$resolved")
-        else
-            printf 'PHP rejeitado: %s (status %s; host %s).\n' "$candidate" "$rc" "$(uname -m)" >&2
-            "$resolved" -r "$code" >/dev/null # Emit missing-extension/version diagnostics, never script output.
         fi
     done < <(fm_php_candidates "$root")
     # Phase 2: recover from persistent sources; preparation itself is locked and
     # also rechecks caches so simultaneous starts cannot allocate duplicate ELFs.
     for candidate in "${originals[@]}"; do
         if resolved=$(fm_prepare_binary "$candidate" "$root" -r "$code") \
-            && actual=$("$resolved" -r "$code" 2>/dev/null) && [ "$actual" = FM_PHP_RUNTIME_VALID ]; then
+            && fm_php_probe "$resolved" "$code"; then
             printf '%s\n' "$resolved"; return 0
         fi
     done

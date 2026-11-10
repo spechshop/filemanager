@@ -1,0 +1,104 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 342B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/alpine:3.20
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [1/3] FROM docker.io/library/alpine:3.20@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc
+#4 resolve docker.io/library/alpine:3.20@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc 0.0s done
+#4 DONE 0.0s
+
+#5 [2/3] RUN apk add --no-cache bash coreutils util-linux procps nodejs npm curl openssl ca-certificates python3 iptables     && adduser -D -u 1000 restricted     && rm -f /usr/bin/crontab
+#5 CACHED
+
+#6 exporting to image
+#6 exporting layers done
+#6 exporting manifest sha256:ca922cf8da3189f1413616d6de8b1c0f07fffe299992f7fb0be8534ef03dfc87 done
+#6 exporting config sha256:93f4859d6defc4f72ebed85090c55d678371272fd1e7d1920373622d37c4f14d done
+#6 exporting attestation manifest sha256:8c25b3605d6130c0524e4f10fd4935ba7be335c6c105bfcace6ec53fdce858f1 done
+#6 exporting manifest list sha256:dffb7c8bfb2b95f23505956be34795ee8c70ca56179078d3b3e5ffea8b65729a done
+#6 naming to docker.io/library/filemanager-restricted-test:latest done
+#6 unpacking to docker.io/library/filemanager-restricted-test:latest done
+#6 DONE 0.1s
+PHP 8.5.10 (cli) (built: Nov  9 2026 00:41:24) (ZTS)
+Copyright (c) The PHP Group
+Zend Engine v4.5.10, Copyright (c) Zend Technologies
+    with Zend OPcache v8.5.10, Copyright (c), by Zend Technologies
+ELF size=137825672, shm free=30306304: insufficient for a second copy
+[1;33m[installer][aviso][0m Comando sudo não encontrado. Seguindo em modo usuário (sem root).
+/home/restricted/app/scripts/runtime-exec.sh: line 232: /home/restricted/app/pcg: Permission denied
+PHP rejeitado: /home/restricted/app/pcg (status real do processo 126).
+[1;34m[filemanager][0m Parando o FileManager...
+[1;32m[filemanager][ok][0m FileManager desligado.
+[1;34m[filemanager][0m Parando o FileManager...
+[1;32m[filemanager][ok][0m FileManager desligado.
+[1;33m[installer][aviso][0m Sem autostart persistente: iniciando watchdog em background neste boot.
+[1;32m[filemanager][ok][0m FileManager iniciado.
+scripts/runtime-exec.sh: line 232: /home/restricted/app/pcg: Permission denied
+PHP rejeitado: /home/restricted/app/pcg (status real do processo 126).
+scripts/runtime-exec.sh: line 232: /home/restricted/app/pcg: Permission denied
+PHP rejeitado: /home/restricted/app/pcg (status real do processo 126).
+scripts/runtime-exec.sh: line 232: /home/restricted/app/pcg: Permission denied
+PHP rejeitado: /home/restricted/app/pcg (status real do processo 126).
+scripts/runtime-exec.sh: line 232: /home/restricted/app/pcg: Permission denied
+PHP rejeitado: /home/restricted/app/pcg (status real do processo 126).
+[1;32m[filemanager][ok][0m FileManager iniciado.
+[1;34m[filemanager][0m Supervisor: background (PID: 374)
+[1;34m[filemanager][0m Supervisão automática: ativa
+[1;34m[filemanager][0m Autostart: desativado
+[1;34m[filemanager][0m Parada administrativa: não
+[1;34m[filemanager][0m Logs: /home/restricted/app/filemanager.log; /home/restricted/app/.runtime/supervision/events.log; journalctl [--user] -u filemanager-8624338edf2ce083.service (systemd)
+[1;32m[filemanager][ok][0m FileManager está rodando (PID(s): 456 ).
+[1;34m[filemanager][0m Parando o FileManager...
+[1;32m[filemanager][ok][0m FileManager desligado.
+PASS after: supervision-only, incomplete PATH, blocked utilities, reuse without allocation
+PASS diagnosis: silent df failure distinguished from noexec/space, statvfs available
+scripts/runtime-exec.sh: line 232: /home/restricted/app/pcg: Permission denied
+PHP rejeitado: /home/restricted/app/pcg (status real do processo 126).
+PASS probe: SHA-256 fallback and rejection of non-PHP ELF returning zero
+scripts/runtime-exec.sh: line 232: /home/restricted/app/pcg: Permission denied
+PHP rejeitado: /home/restricted/app/pcg (status real do processo 126).
+PASS unknown capacity: reuse succeeds; allocation fails with accurate diagnosis
+scripts/runtime-exec.sh: line 232: /home/restricted/app/pcg: Permission denied
+PHP rejeitado: /home/restricted/app/pcg (status real do processo 126).
+PASS integrity: corrupt hash, unsafe permissions, non-ELF rejected
+PHP 8.5.10 (cli) (built: Nov  9 2026 00:41:24) (ZTS)
+Copyright (c) The PHP Group
+Zend Engine v4.5.10, Copyright (c) Zend Technologies
+    with Zend OPcache v8.5.10, Copyright (c), by Zend Technologies
+PASS allocation: four concurrent starts, one verified ELF, statvfs fallback
+[1;33m[installer][aviso][0m Comando sudo não encontrado. Seguindo em modo usuário (sem root).
+/home/restricted/app/scripts/runtime-exec.sh: line 232: /home/restricted/app/pcg: Permission denied
+PHP rejeitado: /home/restricted/app/pcg (status real do processo 126).
+Execução bloqueada por noexec: /home/restricted/app/pcg
+Filesystem noexec: /tmp (confirmando execução)
+Execução ELF negada em /tmp (noexec, permissões ou política do host).
+Execução ELF confirmada em /dev/shm.
+Não foi possível medir espaço com df em /dev/shm/filemanager-1000-4030976329.c0raKK2t; tentando stat/statvfs.
+[1;34m[filemanager][0m Parando o FileManager...
+[1;32m[filemanager][ok][0m FileManager desligado.
+[1;34m[filemanager][0m Parando o FileManager...
+[1;32m[filemanager][ok][0m FileManager desligado.
+[1;34m[filemanager][0m Parando o FileManager...
+[1;32m[filemanager][ok][0m FileManager desligado.
+[1;32m[filemanager][ok][0m Inicialização automática desativada.
+[1;32m[filemanager][ok][0m FileManager iniciado.
+[1;34m[filemanager][0m Supervisor: watchdog (PID: 2186)
+[1;34m[filemanager][0m Supervisão automática: ativa
+[1;34m[filemanager][0m Autostart: desativado
+[1;34m[filemanager][0m Parada administrativa: não
+[1;34m[filemanager][0m Logs: /home/restricted/app/filemanager.log; /home/restricted/app/.runtime/supervision/events.log; journalctl [--user] -u filemanager-8624338edf2ce083.service (systemd)
+[1;32m[filemanager][ok][0m FileManager está rodando (PID(s): 2275 ).
+[1;34m[filemanager][0m Parando o FileManager...
+[1;32m[filemanager][ok][0m FileManager desligado.
+[1;32m[filemanager][ok][0m Inicialização automática desativada.
+PASS reboot recovery: persistent source rebuilt; supervision uses recovered PHP
+
+EXIT STATUS: 0

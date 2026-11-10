@@ -1,0 +1,11 @@
+test_existing_unrelated_directory_is_preserved (__main__.InstallerBootstrapTests.test_existing_unrelated_directory_is_preserved) ... ok
+test_failed_clone_without_archive_digest_stops_installation (__main__.InstallerBootstrapTests.test_failed_clone_without_archive_digest_stops_installation) ... ok
+test_pipe_into_empty_directory_obtains_checkout (__main__.InstallerBootstrapTests.test_pipe_into_empty_directory_obtains_checkout) ... ok
+test_pipe_reuses_child_checkout (__main__.InstallerBootstrapTests.test_pipe_reuses_child_checkout) ... ok
+test_pipe_reuses_current_checkout (__main__.InstallerBootstrapTests.test_pipe_reuses_current_checkout) ... ok
+test_standalone_file_obtains_checkout_without_sibling_scripts (__main__.InstallerBootstrapTests.test_standalone_file_obtains_checkout_without_sibling_scripts) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.031s
+
+OK
