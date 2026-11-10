@@ -88,7 +88,12 @@
                 const fileName = span ? span.textContent : 'unknown';
 
                 // 🔥 clona o ícone original (sem remover da tabela)
-                const icon = img ? img.cloneNode(true) : null;
+                const icon = img?.dataset.fmPreview ? document.createElement('img') : img ? img.cloneNode(true) : null;
+                if (img?.dataset.fmPreview) {
+                    icon.src = 'img/image.png';
+                    icon.alt = img.alt;
+                    icon.dataset.fmPreview = img.dataset.fmPreview;
+                }
 
                 const item = document.createElement('div');
                 item.setAttribute('data-row-index', Array.from(rows).indexOf(row));
@@ -183,6 +188,7 @@
 
                 container.appendChild(item);
             });
+            if (window.FMAuth) loadFilePreviews(container);
 
             console.log('Grid com ícones originais ativado 😎');
 

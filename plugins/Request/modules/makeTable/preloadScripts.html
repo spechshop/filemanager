@@ -342,9 +342,7 @@
         });
 
         // Verifica o modo de visualização salvo e aplica
-        if (window.FMAuth) tbody.querySelectorAll('[data-fm-preview]').forEach(image => {
-            FMAuth.mediaUrl(image.dataset.fmPreview).then(url => { if (image.isConnected) image.src = url; }).catch(() => {});
-        });
+        if (window.FMAuth) loadFilePreviews(tbody);
         const savedViewMode = localStorage.getItem('viewMode');
         const container = document.getElementById('viewGridFiles');
         const table = document.getElementById('tableListFiles');
@@ -671,9 +669,77 @@
 
 
     let mediaViewerRequest = 0;
+    // Share slots between the file list, grid and gallery. A slot covers the
+    // entire image transfer, not just the short authorization request.
+    const mediaPreviewQueue = [];
+    let activeMediaPreviews = 0;
+    const filePreviewSessions = new WeakMap();
+    let mediaDiscovery = null;
     const imageZoom = {scale: 1, x: 0, y: 0, drag: null};
 
+    function queueMediaPreview(file, operation, valid, ready, signal) {
+        mediaPreviewQueue.push({file, operation, valid, ready, signal});
+        pumpMediaPreviews();
+    }
+
+    function pumpMediaPreviews() {
+        while (activeMediaPreviews < 3 && mediaPreviewQueue.length) {
+            const task = mediaPreviewQueue.shift();
+            if (task.signal.aborted || !task.valid()) continue;
+            ++activeMediaPreviews;
+            (async () => {
+                const url = await FMAuth.mediaUrl(task.file, task.operation);
+                if (task.signal.aborted || !task.valid()) return;
+                await new Promise(resolve => {
+                    const image = document.createElement('img');
+                    image.alt = '';
+                    image.decoding = 'async';
+                    const finish = loaded => {
+                        clearTimeout(timeout);
+                        task.signal.removeEventListener('abort', cancel);
+                        image.onload = image.onerror = null;
+                        if (loaded && !task.signal.aborted && task.valid()) task.ready(image);
+                        else image.removeAttribute('src');
+                        resolve();
+                    };
+                    const cancel = () => finish(false);
+                    const timeout = setTimeout(cancel, 60000);
+                    task.signal.addEventListener('abort', cancel, {once: true});
+                    image.onload = () => finish(true);
+                    image.onerror = cancel;
+                    image.src = url;
+                });
+            })().catch(() => {}).finally(() => {
+                --activeMediaPreviews;
+                pumpMediaPreviews();
+            });
+        }
+    }
+
+    function loadFilePreviews(container) {
+        const previous = filePreviewSessions.get(container);
+        previous?.controller.abort();
+        previous?.observer?.disconnect();
+        const controller = new AbortController();
+        const enqueue = placeholder => queueMediaPreview(placeholder.dataset.fmPreview, 'imageBase64',
+            () => placeholder.isConnected, image => {
+                for (const attribute of placeholder.attributes) {
+                    if (attribute.name !== 'src') image.setAttribute(attribute.name, attribute.value);
+                }
+                placeholder.replaceWith(image);
+            }, controller.signal);
+        const observer = typeof IntersectionObserver === 'function' ? new IntersectionObserver(entries => {
+            for (const entry of entries) if (entry.isIntersecting) {
+                observer.unobserve(entry.target);
+                enqueue(entry.target);
+            }
+        }, {rootMargin: '200px'}) : null;
+        filePreviewSessions.set(container, {controller, observer});
+        container.querySelectorAll('[data-fm-preview]').forEach(image => observer ? observer.observe(image) : enqueue(image));
+    }
+
     function resetBoxMedias() {
+        document.querySelectorAll('#modalMedia img').forEach(image => image.removeAttribute('src'));
         document.querySelectorAll('#modalMedia video, #modalMedia audio').forEach(media => {
             media.pause();
             media.removeAttribute('src');
@@ -694,7 +760,7 @@
         imageZoom.x = Math.max(-maxX, Math.min(maxX, imageZoom.x));
         imageZoom.y = Math.max(-maxY, Math.min(maxY, imageZoom.y));
         image.style.transform = `translate(${imageZoom.x}px, ${imageZoom.y}px) scale(${imageZoom.scale})`;
-        image.style.cursor = imageZoom.scale === 1 ? 'zoom-in' : imageZoom.drag ? 'grabbing' : 'grab';
+        image.style.cursor = imageZoom.drag ? 'grabbing' : 'grab';
         document.getElementById('imageZoomLevel').textContent = `${Math.round(imageZoom.scale * 100)}%`;
         document.getElementById('imageZoomOut').disabled = imageZoom.scale <= 1;
         document.getElementById('imageZoomIn').disabled = imageZoom.scale >= 8;
@@ -722,22 +788,47 @@
         };
         image.ondblclick = () => imageZoom.scale > 1 ? resetImageZoom() : changeImageZoom(1);
         image.onpointerdown = event => {
-            if (imageZoom.scale <= 1 || event.button !== 0) return;
+            if (event.isPrimary === false) { imageZoom.drag = null; applyImageZoom(); return; }
+            if (event.button !== 0) return;
             event.preventDefault();
-            imageZoom.drag = {id: event.pointerId, x: event.clientX, y: event.clientY};
+            imageZoom.drag = {id: event.pointerId, x: event.clientX, y: event.clientY,
+                startX: event.clientX, startY: event.clientY, swipe: imageZoom.scale === 1};
             image.setPointerCapture(event.pointerId);
             applyImageZoom();
         };
         image.onpointermove = event => {
             const drag = imageZoom.drag;
             if (!drag || drag.id !== event.pointerId) return;
+            if (drag.swipe) {
+                drag.x = event.clientX;
+                drag.y = event.clientY;
+                const dx = drag.x - drag.startX;
+                const dy = drag.y - drag.startY;
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    const canMove = dx < 0 ? !document.getElementById('rightArrow').disabled : !document.getElementById('leftArrow').disabled;
+                    image.style.transform = `translateX(${dx * (canMove ? 1 : 0.2)}px)`;
+                }
+                return;
+            }
             imageZoom.x += event.clientX - drag.x;
             imageZoom.y += event.clientY - drag.y;
             drag.x = event.clientX;
             drag.y = event.clientY;
             applyImageZoom();
         };
-        image.onpointerup = image.onpointercancel = image.onlostpointercapture = () => {
+        image.onpointerup = event => {
+            const drag = imageZoom.drag;
+            if (!drag || (event && drag.id !== event.pointerId)) return;
+            const dx = (event?.clientX ?? drag.x) - drag.startX;
+            const dy = (event?.clientY ?? drag.y) - drag.startY;
+            imageZoom.drag = null;
+            applyImageZoom();
+            const threshold = Math.max(40, Math.min(100, image.clientWidth * 0.15));
+            if (drag.swipe && Math.abs(dx) >= threshold && Math.abs(dx) > Math.abs(dy) * 1.5) {
+                if (dx < 0) navNext(); else navPrev();
+            }
+        };
+        image.onpointercancel = image.onlostpointercapture = () => {
             imageZoom.drag = null;
             applyImageZoom();
         };
@@ -796,42 +887,24 @@
         if (!mediaGallerySession) return;
         mediaGallerySession.cancelled = true;
         mediaGallerySession.observer?.disconnect();
-        mediaGallerySession.queue.length = 0;
+        mediaGallerySession.controller.abort();
         mediaGallerySession = null;
     }
 
-    function renderMediaThumbnails(mediaFileList) {
-        disposeMediaGallery();
+    function renderMediaThumbnails(mediaFileList, append = false) {
+        if (!append) disposeMediaGallery();
         const thumbNav = document.getElementById('thumbNav');
-        thumbNav.replaceChildren();
-        const session = {cancelled: false, queue: [], active: 0, observer: null, buttons: []};
+        if (!append) thumbNav.replaceChildren();
+        const session = mediaGallerySession || {cancelled: false, controller: new AbortController(), observer: null, buttons: []};
         mediaGallerySession = session;
-        const pump = () => {
-            while (!session.cancelled && session.active < 4 && session.queue.length) {
-                const {file, preview, kind} = session.queue.shift();
-                ++session.active;
-                FMAuth.mediaUrl(file, kind === 'video' ? 'getPreview' : 'imageBase64').then(url => {
-                    if (session.cancelled || !preview.isConnected) return;
-                    const image = document.createElement('img');
-                    image.alt = '';
-                    image.decoding = 'async';
-                    image.onload = () => {
-                        if (!session.cancelled && preview.isConnected) preview.replaceChildren(image);
-                    };
-                    image.src = url;
-                }).catch(() => {}).finally(() => {
-                    --session.active;
-                    pump();
-                });
-            }
-        };
         const enqueue = button => {
             if (session.cancelled || button.dataset.queued || button.dataset.kind === 'audio') return;
             button.dataset.queued = 'true';
-            session.queue.push({file: button.dataset.path, kind: button.dataset.kind, preview: button.querySelector('.media-thumbnail-preview')});
-            pump();
+            const preview = button.querySelector('.media-thumbnail-preview');
+            queueMediaPreview(button.dataset.path, button.dataset.kind === 'video' ? 'getPreview' : 'imageBase64',
+                () => !session.cancelled && preview.isConnected, image => preview.replaceChildren(image), session.controller.signal);
         };
-        if (typeof IntersectionObserver === 'function') {
+        if (!session.observer && typeof IntersectionObserver === 'function') {
             session.observer = new IntersectionObserver(entries => {
                 entries.forEach(entry => {
                     if (!entry.isIntersecting) return;
@@ -841,14 +914,18 @@
             }, {root: thumbNav, rootMargin: '200px'});
         }
         const fragment = document.createDocumentFragment();
+        const newButtons = [];
+        const existing = new Set(session.buttons.map(button => button.dataset.path));
         mediaFileList.forEach(file => {
+            if (existing.has(file)) return;
+            existing.add(file);
             const kind = getMediaKind(file);
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'media-thumbnail';
             button.dataset.path = file;
             button.dataset.kind = kind;
-            button.title = getFilename(file);
+            button.title = file;
             button.setAttribute('aria-label', `Abrir ${getFilename(file)}`);
             button.setAttribute('aria-current', 'false');
             const preview = document.createElement('span');
@@ -864,11 +941,45 @@
             button.onclick = () => showImage(file);
             fragment.appendChild(button);
             session.buttons.push(button);
+            newButtons.push(button);
         });
         thumbNav.appendChild(fragment);
-        session.buttons.forEach(button => session.observer ? session.observer.observe(button) : enqueue(button));
-        document.getElementById('mediaGallerySearch').value = '';
-        filterMediaGallery('all');
+        newButtons.forEach(button => session.observer ? session.observer.observe(button) : enqueue(button));
+        if (!append) document.getElementById('mediaGallerySearch').value = '';
+        filterMediaGallery(append ? undefined : 'all');
+    }
+
+    async function discoverMediaGallery(path) {
+        mediaDiscovery?.abort();
+        const controller = new AbortController();
+        mediaDiscovery = controller;
+        const status = document.getElementById('mediaGalleryStatus');
+        status.textContent = 'Buscando nas subpastas…';
+        const folder = document.getElementById('pathInvisible')?.textContent.trim() || path.slice(0, path.lastIndexOf('/')) || '/';
+        try {
+            const query = new URLSearchParams({path: folder, media: 'recursive'});
+            const response = await fetch('/syncPath?' + query, {
+                headers: {Authorization: 'Bearer ' + document.getElementById('fp').textContent.trim()},
+                signal: controller.signal,
+            });
+            if (!response.ok) throw new Error('Unable to discover media');
+            const data = await response.json();
+            if (controller.signal.aborted || mediaDiscovery !== controller) return;
+            if (!data.success || !Array.isArray(data.information) || !data.information.every(file => typeof file === 'string')) throw new Error('Invalid media list');
+            const selected = window.__fileList[window.__currentIndex];
+            window.__fileList = [...new Set([...window.__fileList, ...data.information])];
+            window.__currentIndex = window.__fileList.indexOf(selected);
+            renderMediaThumbnails(window.__fileList, true);
+            updateMediaGallerySelection(selected);
+            toggleArrowButtons();
+            document.getElementById('mediaFilePosition').textContent = `${window.__currentIndex + 1} de ${window.__fileList.length}`;
+            status.textContent = data.truncated
+                ? 'Busca parcial. Abra uma subpasta para ver mais arquivos.'
+                : 'Inclui arquivos das subpastas.';
+        } catch (error) {
+            if (controller.signal.aborted || mediaDiscovery !== controller) return;
+            status.textContent = 'Não foi possível buscar nas subpastas. Reabra a galeria para tentar novamente.';
+        }
     }
 
     function filterMediaGallery(kind) {
@@ -878,7 +989,7 @@
         let count = 0;
         for (const button of mediaGallerySession?.buttons || []) {
             button.hidden = !((gallery.dataset.filter === 'all' || button.dataset.kind === gallery.dataset.filter)
-                && getFilename(button.dataset.path).toLocaleLowerCase().includes(query));
+                && button.dataset.path.toLocaleLowerCase().includes(query));
             if (!button.hidden) ++count;
         }
         gallery.querySelectorAll('[data-media-filter]').forEach(button => {
@@ -954,7 +1065,10 @@
         let url;
         try {
             const mediaUrl = FMAuth.mediaUrl(path);
-            if (!wasOpen) renderMediaThumbnails(mediaFileList);
+            if (!wasOpen) {
+                renderMediaThumbnails(mediaFileList);
+                discoverMediaGallery(path);
+            }
             updateMediaGallerySelection(path);
             url = await mediaUrl;
         } catch (error) {
@@ -1033,6 +1147,8 @@ Seu navegador não oferece suporte ao player de áudio.
         viewer.style.display = 'none';
         if (document.fullscreenElement === viewer) document.exitFullscreen().catch(() => {});
         resetBoxMedias();
+        mediaDiscovery?.abort();
+        mediaDiscovery = null;
         disposeMediaGallery();
         document.getElementById('thumbNav').replaceChildren();
         window.removeEventListener('keydown', handleImageViewerKey, true);
@@ -1062,14 +1178,15 @@ Seu navegador não oferece suporte ao player de áudio.
             </div>
         </header>
         <div class="media-viewer-workspace">
-            <aside id="mediaGallery" data-filter="all" aria-label="Mídias da pasta">
+            <aside id="mediaGallery" data-filter="all" aria-label="Mídias da pasta e subpastas">
                 <div class="media-gallery-heading">
-                    <h2>Arquivos da pasta</h2>
+                    <h2>Pasta e subpastas</h2>
                     <span id="mediaGalleryCount" aria-live="polite"></span>
                 </div>
+                <p id="mediaGalleryStatus" role="status"></p>
                 <label class="media-gallery-search">
                     <span aria-hidden="true">⌕</span>
-                    <input id="mediaGallerySearch" type="search" placeholder="Buscar nesta galeria" aria-label="Buscar arquivos na galeria" oninput="filterMediaGallery()">
+                    <input id="mediaGallerySearch" type="search" placeholder="Buscar por nome ou pasta" aria-label="Buscar arquivos na galeria e subpastas" oninput="filterMediaGallery()">
                 </label>
                 <div class="media-gallery-filters" role="group" aria-label="Filtrar por tipo">
                     <button type="button" data-media-filter="all" onclick="filterMediaGallery('all')" aria-pressed="true">Todos</button>
@@ -1099,7 +1216,7 @@ Seu navegador não oferece suporte ao player de áudio.
                 <div class="media-preview-footer">
                     <span id="mediaFilePosition"></span>
                     <span id="mediaFileDetails"></span>
-                    <span class="media-shortcut-hint">← → navegar <span>·</span> Esc sair</span>
+                    <span class="media-shortcut-hint">Arraste para os lados <span>·</span> ← → navegar <span>·</span> Esc sair</span>
                 </div>
             </main>
         </div>
@@ -1284,6 +1401,7 @@ Seu navegador não oferece suporte ao player de áudio.
     .media-gallery-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
     .media-gallery-heading h2 { margin: 0; color: inherit; font-size: 14px; font-weight: 600; }
     #mediaGalleryCount { color: var(--gallery-muted); font-size: 11px; white-space: nowrap; }
+    #mediaGalleryStatus { margin: 0; color: var(--gallery-muted); font-size: 11px; }
     .media-gallery-search { display: flex; align-items: center; gap: 8px; margin: 0; padding: 0 10px; border: 1px solid var(--gallery-line); border-radius: 7px; background: #151b23; color: var(--gallery-muted); }
     .media-gallery-search > span { font-size: 24px; }
     #mediaGallerySearch { width: 100%; min-width: 0; height: 38px; border: 0; background: transparent; color: #edf1f7; font: inherit; font-size: 12px; }

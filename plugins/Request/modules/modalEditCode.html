@@ -158,6 +158,8 @@
     #fArch {
         border-right: 1px solid #2B2D30;
     }
+
+    #editorSaveButton { flex: 0 0 auto; min-height: 36px; margin-left: auto; white-space: nowrap; }
 </style>
 <div class="modal modal-xl fade" id="edit-code" tabindex="-1" role="dialog">
     <div class="modal-dialog modal-fullscreen" role="document">
@@ -206,6 +208,9 @@
                         <li onclick="deleteFile()">Mover para a lixeira</li>
                     </ul>
                 </div>
+                <button type="button" id="editorSaveButton" class="btn btn-primary btn-sm" title="Salvar arquivo (Ctrl+S)" disabled>
+                    <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Salvar
+                </button>
                 <button
                         type="button"
                         class="btn-close text-white"
@@ -2960,6 +2965,9 @@
 
 
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, saveFile);
+        const saveButton = document.getElementById('editorSaveButton');
+        saveButton.addEventListener('click', saveFile);
+        saveButton.disabled = false;
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Alt | monaco.KeyCode.KeyL, formatCode);
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Space, recoverSuggestion);
         editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.BracketRight, () => cycleSuggestion(1));

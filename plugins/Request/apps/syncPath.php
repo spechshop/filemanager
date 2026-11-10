@@ -20,6 +20,11 @@ class syncPath
         }
 
         $owner = securityPolicy::requestToken($request);
+        if (($request->get['media'] ?? '') === 'recursive') {
+            $response->header('Content-Type', 'application/json');
+            return $response->end(json_encode(['success' => true, 'currentPath' => $pathf]
+                + self::mediaFiles($pathf, $owner), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        }
         $dataEached = [];
         foreach (safeFiles::listing($pathf, $owner, false, true) as $entry) {
             $file = $entry['path'];
@@ -56,5 +61,42 @@ class syncPath
             // corrige o erro de codificação
         }
         return $response->end($responsejson);
+    }
+
+    /** Discover media below this folder, without following links to parents or siblings. */
+    public static function mediaFiles(string $path, string $owner): array
+    {
+        $root = securityPolicy::path($path, $owner);
+        $prefix = rtrim($root, '/') . '/';
+        $pending = [$root]; $seen = []; $files = []; $examined = 0;
+        $deadline = microtime(true) + 15;
+        while ($pending !== []) {
+            if (microtime(true) >= $deadline) return ['information' => array_keys($files), 'truncated' => true];
+            $directory = array_pop($pending);
+            try {
+                $real = securityPolicy::path($directory, $owner);
+                if (($real !== $root && !str_starts_with($real, $prefix)) || isset($seen[$real])) continue;
+                $seen[$real] = true;
+                $entries = safeFiles::listing($real, $owner);
+            } catch (\DomainException $error) {
+                if ($directory === $root || !securityPolicy::validToken($owner)) throw $error;
+                continue;
+            }
+            foreach ($entries as $entry) {
+                if (++$examined > 50000 || count($files) >= 10000 || microtime(true) >= $deadline) {
+                    return ['information' => array_keys($files), 'truncated' => true];
+                }
+                if ($entry['directory']) { $pending[] = $entry['path']; continue; }
+                $extension = strtolower(pathinfo($entry['path'], PATHINFO_EXTENSION));
+                if (!in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg', 'mp4', 'webm', 'ogg', 'mp3', 'wav'], true)) continue;
+                try { $file = securityPolicy::path($entry['path'], $owner); }
+                catch (\DomainException $error) {
+                    if (!securityPolicy::validToken($owner)) throw $error;
+                    continue;
+                }
+                if (str_starts_with($file, $prefix)) $files[$file] = true;
+            }
+        }
+        return ['information' => array_keys($files), 'truncated' => false];
     }
 }

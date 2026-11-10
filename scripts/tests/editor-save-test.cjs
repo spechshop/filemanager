@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const {test} = require('node:test');
+const {JSDOM} = require('jsdom');
 
 const source = fs.readFileSync(path.join(__dirname, '../../plugins/Request/modules/modalEditCode.html'), 'utf8');
 const save = source.slice(source.indexOf('        async function saveFile() {'), source.indexOf('        async function updateImports('));
@@ -64,4 +65,25 @@ test('does not write another file while the selected model is still loading', as
     await f.context.saveFile();
     assert.equal(f.requests.length, 0);
     assert.equal(f.toasts[0][3], 'error');
+});
+
+test('the visible save button saves the active file without a keyboard shortcut', async () => {
+    const markup = source.match(/<button[^>]*id="editorSaveButton"[\s\S]*?<\/button>/)[0];
+    const dom = new JSDOM(markup);
+    try {
+        const f = fixture('/files/mobile.txt');
+        f.context.document = dom.window.document;
+        const start = source.indexOf("        const saveButton = document.getElementById('editorSaveButton');");
+        const end = source.indexOf('        saveButton.disabled = false;', start) + '        saveButton.disabled = false;'.length;
+        vm.runInContext(source.slice(start, end), f.context);
+        const button = dom.window.document.getElementById('editorSaveButton');
+        assert.match(button.textContent, /Salvar/);
+        assert.equal(button.disabled, false);
+        button.click();
+        assert.equal(f.requests.length, 1);
+        assert.equal(f.requests[0].data.name, 'mobile.txt');
+        assert.equal(f.requests[0].data.content, 'updated content');
+        await f.requests[0].success({success: true});
+        assert.equal(f.context.cleanModelVersions[f.filePath], 2);
+    } finally { dom.window.close(); }
 });
