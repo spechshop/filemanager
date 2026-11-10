@@ -21,6 +21,20 @@ class syncPath
 
         $owner = securityPolicy::requestToken($request);
         if (($request->get['media'] ?? '') === 'recursive') {
+            if (($request->get['stream'] ?? '') === '1') {
+                $response->header('Content-Type', 'application/x-ndjson; charset=utf-8');
+                $response->header('Cache-Control', 'no-store');
+                $response->header('X-Accel-Buffering', 'no');
+                try {
+                    foreach (self::mediaBatches($pathf, $owner) as $batch) {
+                        if ($response->write(json_encode(['success' => true] + $batch,
+                            JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE) . "\n") === false) return true;
+                    }
+                } catch (\Throwable $error) {
+                    $response->write(json_encode(['success' => false, 'done' => true, 'message' => 'A busca foi interrompida.']) . "\n");
+                }
+                return $response->end();
+            }
             $response->header('Content-Type', 'application/json');
             return $response->end(json_encode(['success' => true, 'currentPath' => $pathf]
                 + self::mediaFiles($pathf, $owner), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
@@ -66,12 +80,27 @@ class syncPath
     /** Discover media below this folder, without following links to parents or siblings. */
     public static function mediaFiles(string $path, string $owner): array
     {
+        $files = []; $truncated = false;
+        foreach (self::mediaBatches($path, $owner) as $batch) {
+            array_push($files, ...$batch['information']);
+            $truncated = $batch['truncated'] ?? false;
+        }
+        return ['information' => $files, 'truncated' => $truncated];
+    }
+
+    /** Send small batches while scanning, so the first folder is usable immediately. */
+    public static function mediaBatches(string $path, string $owner): \Generator
+    {
         $root = securityPolicy::path($path, $owner);
         $prefix = rtrim($root, '/') . '/';
-        $pending = [$root]; $seen = []; $files = []; $examined = 0;
-        $deadline = microtime(true) + 15;
+        $pending = [$root]; $seen = []; $files = []; $examined = 0; $batch = []; $skipped = 0;
+        $deadline = microtime(true) + securityPolicy::limit('GALLERY_SCAN_SECONDS', 60);
+        yield ['information' => [], 'scannedFolders' => 0, 'pendingFolders' => 1, 'done' => false];
         while ($pending !== []) {
-            if (microtime(true) >= $deadline) return ['information' => array_keys($files), 'truncated' => true];
+            if (microtime(true) >= $deadline) {
+                yield ['information' => $batch, 'done' => true, 'truncated' => true, 'skippedFolders' => $skipped];
+                return;
+            }
             $directory = array_pop($pending);
             try {
                 $real = securityPolicy::path($directory, $owner);
@@ -80,11 +109,13 @@ class syncPath
                 $entries = safeFiles::listing($real, $owner);
             } catch (\DomainException $error) {
                 if ($directory === $root || !securityPolicy::validToken($owner)) throw $error;
+                ++$skipped;
                 continue;
             }
             foreach ($entries as $entry) {
                 if (++$examined > 50000 || count($files) >= 10000 || microtime(true) >= $deadline) {
-                    return ['information' => array_keys($files), 'truncated' => true];
+                    yield ['information' => $batch, 'done' => true, 'truncated' => true, 'skippedFolders' => $skipped];
+                    return;
                 }
                 if ($entry['directory']) { $pending[] = $entry['path']; continue; }
                 $extension = strtolower(pathinfo($entry['path'], PATHINFO_EXTENSION));
@@ -94,9 +125,18 @@ class syncPath
                     if (!securityPolicy::validToken($owner)) throw $error;
                     continue;
                 }
-                if (str_starts_with($file, $prefix)) $files[$file] = true;
+                if (str_starts_with($file, $prefix) && !isset($files[$file])) {
+                    $files[$file] = true;
+                    $batch[] = $file;
+                }
+                if (count($batch) >= 200) {
+                    yield ['information' => $batch, 'scannedFolders' => count($seen), 'pendingFolders' => count($pending), 'done' => false];
+                    $batch = [];
+                }
             }
+            yield ['information' => $batch, 'scannedFolders' => count($seen), 'pendingFolders' => count($pending), 'done' => false];
+            $batch = [];
         }
-        return ['information' => array_keys($files), 'truncated' => false];
+        yield ['information' => $batch, 'done' => true, 'truncated' => false, 'skippedFolders' => $skipped];
     }
 }

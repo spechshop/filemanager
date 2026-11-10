@@ -6,6 +6,7 @@
     let renderedPath = null;
 
     function loading(path) {
+        root.FMFileActions?.closeMenu();
         const panel = document.getElementById('fileListPanel');
         if (!panel) return;
         panel.dataset.state = 'loading';

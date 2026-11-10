@@ -205,6 +205,7 @@ test('the gallery includes the entire folder and combines filename search with m
     try {
         w.fileList = [...Array.from({length: 30}, (_, index) => `/photo-${index}.jpg`), '/holiday.mp4', '/holiday.mp3'];
         await w.showImage('/photo-12.jpg');
+        await tick();
         const cards = [...w.document.querySelectorAll('.media-thumbnail')];
         assert.equal(cards.length, 32);
         assert.equal(w.document.getElementById('mediaGalleryCount').textContent, '32 arquivos');
@@ -222,6 +223,65 @@ test('the gallery includes the entire folder and combines filename search with m
         assert.equal(w.document.querySelectorAll('.media-thumbnail')[0], cards[0]);
         assert.equal(search.value, 'PHOTO');
         assert.equal(w.document.querySelector('.media-thumbnail[aria-current="true"]').dataset.path, '/photo-13.jpg');
+    } finally { dom.window.close(); }
+});
+
+test('general gallery opens an empty parent and adds grouped folders as streamed results arrive', async () => {
+    const dom = browser(), w = dom.window;
+    let stream;
+    w.TextDecoder = TextDecoder;
+    w.fileList = [];
+    w.fetch = async () => ({ok: true, headers: new Headers({'Content-Type': 'application/x-ndjson'}), body: new ReadableStream({start(controller) { stream = controller; }})});
+    const send = record => stream.enqueue(new TextEncoder().encode(JSON.stringify({success: true, ...record}) + '\n'));
+    try {
+        await w.openMediaGallery('/album');
+        await tick();
+        assert.equal(w.document.getElementById('customImageViewer').classList.contains('gallery-expanded'), true);
+        assert.equal(w.document.getElementById('mediaGalleryProgress').hidden, false);
+        assert.equal(w.document.getElementById('mediaGalleryEmpty').hidden, true);
+        assert.equal(w.document.getElementById('mediaGalleryToggle').disabled, true);
+        assert.equal(w.__fileList.length, 0, 'no fabricated file is added for the parent directory');
+        send({information: ['/album/viagem/foto.jpg'], scannedFolders: 2, pendingFolders: 1, done: false});
+        await tick();
+        assert.equal(w.document.querySelectorAll('.media-thumbnail').length, 1, 'first batch is visible before the stream completes');
+        assert.match(w.document.getElementById('mediaGalleryStatus').textContent, /2 pastas verificadas/);
+        assert.equal(w.document.querySelector('.media-folder-group h3 span').textContent, 'viagem');
+        // Split a multibyte filename and JSON line across network chunks.
+        const bytes = new TextEncoder().encode(JSON.stringify({success: true, information: ['/album/férias/ação.png'], done: false}) + '\n');
+        const split = bytes.indexOf(195) + 1;
+        stream.enqueue(bytes.slice(0, split)); stream.enqueue(bytes.slice(split));
+        send({information: [], done: true, truncated: false}); stream.close();
+        await tick();
+        assert.equal(w.document.querySelectorAll('.media-folder-group').length, 2);
+        assert.equal(w.document.getElementById('mediaGalleryProgress').hidden, true);
+        const filter = w.document.getElementById('mediaFolderFilter');
+        filter.value = '/album/férias'; filter.dispatchEvent(new w.Event('change'));
+        assert.deepEqual([...w.document.querySelectorAll('.media-thumbnail:not([hidden])')].map(button => button.dataset.path), ['/album/férias/ação.png']);
+        assert.equal(w.document.querySelector('.media-folder-group').hidden, true);
+        w.document.getElementById('mediaGroupFolders').click();
+        assert.equal(w.document.getElementById('thumbNav').classList.contains('media-ungrouped'), true);
+        w.document.querySelector('.media-thumbnail:not([hidden])').click();
+        await tick();
+        assert.equal(w.document.getElementById('viewerImage').alt, 'ação.png');
+        assert.equal(w.document.getElementById('mediaGalleryToggle').disabled, false);
+    } finally { dom.window.close(); }
+});
+
+test('interrupted streaming searches keep discovered files and expose retry', async () => {
+    const dom = browser(), w = dom.window;
+    w.TextDecoder = TextDecoder;
+    w.fetch = async () => ({ok: true, headers: new Headers({'Content-Type': 'application/x-ndjson'}), body: new ReadableStream({start(controller) {
+        controller.enqueue(new TextEncoder().encode(JSON.stringify({success: true, information: ['/nested/new.jpg'], done: false}) + '\n'));
+        controller.close();
+    }})});
+    try {
+        await w.showImage('/one.jpg'); await tick();
+        assert.equal(w.__fileList.includes('/nested/new.jpg'), true);
+        assert.match(w.document.getElementById('mediaGalleryStatus').textContent, /Não foi possível concluir/);
+        assert.equal(w.document.getElementById('mediaGalleryRetry').hidden, false);
+        assert.equal(w.document.getElementById('mediaGalleryProgress').hidden, true);
+        w.stopMediaDiscovery();
+        assert.match(w.document.getElementById('mediaGalleryStatus').textContent, /interrompida/);
     } finally { dom.window.close(); }
 });
 

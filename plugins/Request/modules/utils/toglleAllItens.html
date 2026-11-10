@@ -96,6 +96,7 @@
                 }
 
                 const item = document.createElement('div');
+                item.tabIndex = 0;
                 item.setAttribute('data-row-index', Array.from(rows).indexOf(row));
                 item.setAttribute('data-fullpath', fullPath);
                 item.style.background = '#1e1e2f';

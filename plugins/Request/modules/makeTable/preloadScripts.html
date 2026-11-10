@@ -285,6 +285,7 @@
 
             const tdName = document.createElement('td');
             tdName.setAttribute('fullpath', item.path);
+            tdName.tabIndex = 0;
             tdName.style = 'max-width: 100px; height: 10px !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;';
             const nameHtml = `<span class="text-white" style="width: 20px;overflow: hidden;white-space: nowrap;text-overflow: ellipsis;flex-grow: 1;">${FMUI.html(item.name)}</span>`;
 
@@ -296,7 +297,9 @@
 
                 tdName.innerHTML = `<div onclick="showImage(${FMUI.argument(item.path)})">${iconFile} &nbsp;&nbsp; ${nameHtml}</div>`;
             } else {
-                tdName.innerHTML = `<div onclick="showEditor(${FMUI.argument(ext)}, ${FMUI.argument(item.path)})">${iconFile} &nbsp;&nbsp; ${nameHtml}</div>`;
+                tdName.innerHTML = ['md', 'markdown', 'html', 'htm'].includes(ext.toLowerCase())
+                    ? `<div onclick="FMFileActions.preview(${FMUI.argument(item.path)})">${iconFile} &nbsp;&nbsp; ${nameHtml}</div>`
+                    : `<div onclick="showEditor(${FMUI.argument(ext)}, ${FMUI.argument(item.path)})">${iconFile} &nbsp;&nbsp; ${nameHtml}</div>`;
             }
             tr.appendChild(tdName);
 
@@ -675,6 +678,7 @@
     let activeMediaPreviews = 0;
     const filePreviewSessions = new WeakMap();
     let mediaDiscovery = null;
+    let mediaGalleryRoot = '/';
     const imageZoom = {scale: 1, x: 0, y: 0, drag: null};
 
     function queueMediaPreview(file, operation, valid, ready, signal) {
@@ -895,8 +899,11 @@
         if (!append) disposeMediaGallery();
         const thumbNav = document.getElementById('thumbNav');
         if (!append) thumbNav.replaceChildren();
-        const session = mediaGallerySession || {cancelled: false, controller: new AbortController(), observer: null, buttons: []};
+        const session = mediaGallerySession || {cancelled: false, controller: new AbortController(), observer: null, buttons: [], paths: new Set(), groups: new Map()};
         mediaGallerySession = session;
+        if (!append) {
+            document.getElementById('mediaFolderFilter').replaceChildren(new Option('Todas as pastas', ''));
+        }
         const enqueue = button => {
             if (session.cancelled || button.dataset.queued || button.dataset.kind === 'audio') return;
             button.dataset.queued = 'true';
@@ -913,18 +920,37 @@
                 });
             }, {root: thumbNav, rootMargin: '200px'});
         }
-        const fragment = document.createDocumentFragment();
         const newButtons = [];
-        const existing = new Set(session.buttons.map(button => button.dataset.path));
         mediaFileList.forEach(file => {
-            if (existing.has(file)) return;
-            existing.add(file);
+            if (session.paths.has(file)) return;
+            session.paths.add(file);
+            const folder = file.slice(0, file.lastIndexOf('/')) || '/';
+            let group = session.groups.get(folder);
+            if (!group) {
+                const section = document.createElement('section');
+                section.className = 'media-folder-group';
+                const heading = document.createElement('h3');
+                const name = document.createElement('span');
+                const prefix = mediaGalleryRoot.replace(/\/$/, '') + '/';
+                name.textContent = folder === mediaGalleryRoot ? 'Pasta atual' : folder.startsWith(prefix) ? folder.slice(prefix.length) : folder;
+                name.title = folder;
+                const count = document.createElement('span');
+                heading.append(name, count);
+                const grid = document.createElement('div');
+                grid.className = 'media-folder-grid';
+                section.append(heading, grid);
+                thumbNav.append(section);
+                group = {section, grid, count, buttons: []};
+                session.groups.set(folder, group);
+                document.getElementById('mediaFolderFilter').add(new Option(name.textContent, folder));
+            }
             const kind = getMediaKind(file);
             const button = document.createElement('button');
             button.type = 'button';
             button.className = 'media-thumbnail';
             button.dataset.path = file;
             button.dataset.kind = kind;
+            button.dataset.folder = folder;
             button.title = file;
             button.setAttribute('aria-label', `Abrir ${getFilename(file)}`);
             button.setAttribute('aria-current', 'false');
@@ -939,11 +965,11 @@
             type.textContent = file.split('.').pop().toUpperCase();
             button.append(preview, name, type);
             button.onclick = () => showImage(file);
-            fragment.appendChild(button);
+            group.grid.appendChild(button);
+            group.buttons.push(button);
             session.buttons.push(button);
             newButtons.push(button);
         });
-        thumbNav.appendChild(fragment);
         newButtons.forEach(button => session.observer ? session.observer.observe(button) : enqueue(button));
         if (!append) document.getElementById('mediaGallerySearch').value = '';
         filterMediaGallery(append ? undefined : 'all');
@@ -955,48 +981,113 @@
         mediaDiscovery = controller;
         const status = document.getElementById('mediaGalleryStatus');
         status.textContent = 'Buscando nas subpastas…';
-        const folder = document.getElementById('pathInvisible')?.textContent.trim() || path.slice(0, path.lastIndexOf('/')) || '/';
+        document.getElementById('mediaGalleryProgress').hidden = false;
+        document.getElementById('mediaGalleryStop').hidden = false;
+        document.getElementById('mediaGalleryRetry').hidden = true;
+        document.getElementById('mediaGalleryEmpty').hidden = true;
+        const folder = mediaGalleryRoot;
+        let completed = false;
+        let pendingFiles = [];
+        const flush = () => {
+            if (pendingFiles.length && !controller.signal.aborted && mediaDiscovery === controller) renderMediaThumbnails(pendingFiles, true);
+            pendingFiles = [];
+        };
+        const known = new Set(window.__fileList);
+        const applyBatch = data => {
+            if (controller.signal.aborted || mediaDiscovery !== controller) return;
+            if (!data.success || !Array.isArray(data.information) || !data.information.every(file => typeof file === 'string')) throw new Error('Invalid media list');
+            const added = data.information.filter(file => {
+                if (known.has(file)) return false;
+                known.add(file); return true;
+            });
+            window.__fileList.push(...added);
+            pendingFiles.push(...added);
+            toggleArrowButtons();
+            document.getElementById('mediaFilePosition').textContent = `${window.__currentIndex + 1} de ${window.__fileList.length}`;
+            completed = data.done === true;
+            status.textContent = completed
+                ? (data.truncated ? 'Busca parcial. Abra uma subpasta para ver mais arquivos.'
+                    : `Inclui arquivos das subpastas. ${known.size} arquivos encontrados.`)
+                    + (data.skippedFolders ? ` ${data.skippedFolders} pastas indisponíveis.` : '')
+                : `Buscando… ${data.scannedFolders || 0} pastas verificadas · ${known.size} arquivos · ${data.pendingFolders || 0} pastas pendentes`;
+            if (completed) document.getElementById('mediaGalleryRetry').hidden = !data.truncated && !data.skippedFolders;
+        };
         try {
-            const query = new URLSearchParams({path: folder, media: 'recursive'});
+            const query = new URLSearchParams({path: folder, media: 'recursive', stream: '1'});
             const response = await fetch('/syncPath?' + query, {
                 headers: {Authorization: 'Bearer ' + document.getElementById('fp').textContent.trim()},
                 signal: controller.signal,
             });
             if (!response.ok) throw new Error('Unable to discover media');
-            const data = await response.json();
-            if (controller.signal.aborted || mediaDiscovery !== controller) return;
-            if (!data.success || !Array.isArray(data.information) || !data.information.every(file => typeof file === 'string')) throw new Error('Invalid media list');
-            const selected = window.__fileList[window.__currentIndex];
-            window.__fileList = [...new Set([...window.__fileList, ...data.information])];
-            window.__currentIndex = window.__fileList.indexOf(selected);
-            renderMediaThumbnails(window.__fileList, true);
-            updateMediaGallerySelection(selected);
-            toggleArrowButtons();
-            document.getElementById('mediaFilePosition').textContent = `${window.__currentIndex + 1} de ${window.__fileList.length}`;
-            status.textContent = data.truncated
-                ? 'Busca parcial. Abra uma subpasta para ver mais arquivos.'
-                : 'Inclui arquivos das subpastas.';
+            if (response.headers?.get('Content-Type')?.includes('application/x-ndjson')) {
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                try {
+                    while (!controller.signal.aborted) {
+                        const {value, done} = await reader.read();
+                        buffer += decoder.decode(value, {stream: !done});
+                        let newline;
+                        while ((newline = buffer.indexOf('\n')) >= 0) {
+                            const line = buffer.slice(0, newline); buffer = buffer.slice(newline + 1);
+                            if (line.trim()) applyBatch(JSON.parse(line));
+                        }
+                        if (done && buffer.trim()) applyBatch(JSON.parse(buffer));
+                        flush();
+                        if (done) break;
+                    }
+                } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
+            } else {
+                applyBatch({...await response.json(), done: true});
+                flush();
+            }
+            if (!completed && !controller.signal.aborted) throw new Error('Incomplete media stream');
         } catch (error) {
             if (controller.signal.aborted || mediaDiscovery !== controller) return;
-            status.textContent = 'Não foi possível buscar nas subpastas. Reabra a galeria para tentar novamente.';
+            status.textContent = 'Não foi possível concluir a busca. Os arquivos encontrados foram mantidos.';
+            document.getElementById('mediaGalleryRetry').hidden = false;
+        } finally {
+            if (mediaDiscovery === controller) {
+                flush();
+                document.getElementById('mediaGalleryProgress').hidden = true;
+                document.getElementById('mediaGalleryStop').hidden = true;
+                filterMediaGallery();
+            }
         }
+    }
+
+    function stopMediaDiscovery() {
+        mediaDiscovery?.abort();
+        document.getElementById('mediaGalleryStatus').textContent = 'Busca interrompida. Os arquivos encontrados foram mantidos.';
+        document.getElementById('mediaGalleryProgress').hidden = true;
+        document.getElementById('mediaGalleryStop').hidden = true;
+        document.getElementById('mediaGalleryRetry').hidden = false;
+        filterMediaGallery();
     }
 
     function filterMediaGallery(kind) {
         const gallery = document.getElementById('mediaGallery');
         if (kind) gallery.dataset.filter = kind;
         const query = document.getElementById('mediaGallerySearch').value.trim().toLocaleLowerCase();
+        const folder = document.getElementById('mediaFolderFilter').value;
         let count = 0;
         for (const button of mediaGallerySession?.buttons || []) {
             button.hidden = !((gallery.dataset.filter === 'all' || button.dataset.kind === gallery.dataset.filter)
+                && (!folder || button.dataset.folder === folder)
                 && button.dataset.path.toLocaleLowerCase().includes(query));
             if (!button.hidden) ++count;
         }
         gallery.querySelectorAll('[data-media-filter]').forEach(button => {
             button.setAttribute('aria-pressed', String(button.dataset.mediaFilter === gallery.dataset.filter));
         });
+        for (const group of mediaGallerySession?.groups.values() || []) {
+            const visible = group.buttons.filter(button => !button.hidden).length;
+            group.section.hidden = visible === 0;
+            group.count.textContent = `${visible}`;
+        }
+        document.getElementById('thumbNav').classList.toggle('media-ungrouped', !document.getElementById('mediaGroupFolders').checked);
         document.getElementById('mediaGalleryCount').textContent = `${count} ${count === 1 ? 'arquivo' : 'arquivos'}`;
-        document.getElementById('mediaGalleryEmpty').hidden = count !== 0;
+        document.getElementById('mediaGalleryEmpty').hidden = count !== 0 || !document.getElementById('mediaGalleryProgress').hidden;
     }
 
     function setMediaGalleryMode(expanded) {
@@ -1030,30 +1121,38 @@
         }
     }
 
-    async function showImage(path) {
+    function openMediaGallery(folder = document.getElementById('pathInvisible')?.textContent || '/') {
+        if (document.getElementById('customImageViewer').style.display !== 'none') closeImageViewer();
+        return showImage('', {folder, expanded: true});
+    }
+
+    async function showImage(path, options = {}) {
         const request = ++mediaViewerRequest;
         const viewer = document.getElementById('customImageViewer');
         const modalMedia = document.getElementById('modalMedia');
         const wasOpen = viewer.style.display !== 'none';
         if (!wasOpen) {
+            mediaGalleryRoot = options.folder || document.getElementById('pathInvisible')?.textContent || path.slice(0, path.lastIndexOf('/')) || '/';
+            mediaGalleryRoot = mediaGalleryRoot.replace(/\/$/, '') || '/';
             mediaViewerFocus = document.activeElement;
             mediaViewerBodyOverflow = document.body.style.overflow;
             document.body.style.overflow = 'hidden';
         }
         const wasGallery = viewer.classList.contains('gallery-expanded');
-        setMediaGalleryMode(false);
+        setMediaGalleryMode(options.expanded === true);
         resetBoxMedias();
-        $('#nameFileModalMedia').text(path);
+        $('#nameFileModalMedia').text(path || 'Selecione uma mídia');
         const ext = path.split('.').pop().toLowerCase();
         const mediaFileList = wasOpen && Array.isArray(window.__fileList)
-            ? window.__fileList : Array.isArray(window.fileList) ? window.fileList.slice() : [];
-        if (!mediaFileList.includes(path)) mediaFileList.push(path);
+            ? window.__fileList : options.folder && options.folder !== document.getElementById('pathInvisible')?.textContent ? [] : Array.isArray(window.fileList) ? window.fileList.slice() : [];
+        if (path && !mediaFileList.includes(path)) mediaFileList.push(path);
         const currentIndex = mediaFileList.indexOf(path);
         window.__fileList = mediaFileList;
         window.__currentIndex = currentIndex;
         toggleArrowButtons();
         viewer.style.display = 'block';
-        document.getElementById('mediaFolderPath').textContent = path.slice(0, path.lastIndexOf('/')) || '/';
+        document.getElementById('mediaFolderPath').textContent = mediaGalleryRoot;
+        document.getElementById('mediaGalleryToggle').disabled = !path;
         document.getElementById('mediaFilePosition').textContent = `${currentIndex + 1} de ${mediaFileList.length}`;
         document.getElementById('mediaFileDetails').textContent = ext.toUpperCase();
         document.getElementById('mediaFullscreenButton').hidden = !document.fullscreenEnabled;
@@ -1061,6 +1160,14 @@
         modalMedia.innerHTML = '<p role="status">Carregando mídia…</p>';
         modalMedia.addEventListener('wheel', handleImageViewerWheel, {passive: false});
         window.addEventListener('keydown', handleImageViewerKey, true);
+
+        if (!path) {
+            modalMedia.innerHTML = '<p>Selecione uma mídia na galeria.</p>';
+            renderMediaThumbnails(mediaFileList);
+            discoverMediaGallery();
+            document.getElementById('mediaGallerySearch').focus({preventScroll: true});
+            return;
+        }
 
         let url;
         try {
@@ -1184,6 +1291,11 @@ Seu navegador não oferece suporte ao player de áudio.
                     <span id="mediaGalleryCount" aria-live="polite"></span>
                 </div>
                 <p id="mediaGalleryStatus" role="status"></p>
+                <div class="media-scan-controls">
+                    <progress id="mediaGalleryProgress" aria-label="Buscando fotos nas subpastas" hidden></progress>
+                    <button id="mediaGalleryStop" type="button" onclick="stopMediaDiscovery()" hidden>Parar busca</button>
+                    <button id="mediaGalleryRetry" type="button" onclick="discoverMediaGallery()" hidden>Tentar novamente</button>
+                </div>
                 <label class="media-gallery-search">
                     <span aria-hidden="true">⌕</span>
                     <input id="mediaGallerySearch" type="search" placeholder="Buscar por nome ou pasta" aria-label="Buscar arquivos na galeria e subpastas" oninput="filterMediaGallery()">
@@ -1193,6 +1305,10 @@ Seu navegador não oferece suporte ao player de áudio.
                     <button type="button" data-media-filter="image" onclick="filterMediaGallery('image')" aria-pressed="false">Imagens</button>
                     <button type="button" data-media-filter="video" onclick="filterMediaGallery('video')" aria-pressed="false">Vídeos</button>
                     <button type="button" data-media-filter="audio" onclick="filterMediaGallery('audio')" aria-pressed="false">Áudios</button>
+                </div>
+                <div class="media-folder-controls">
+                    <label><input id="mediaGroupFolders" type="checkbox" checked onchange="filterMediaGallery()"> Agrupar por pastas</label>
+                    <select id="mediaFolderFilter" aria-label="Filtrar por pasta" onchange="filterMediaGallery()"><option value="">Todas as pastas</option></select>
                 </div>
                 <div id="thumbNav" aria-label="Todos os arquivos de mídia"></div>
                 <p id="mediaGalleryEmpty" hidden>Nenhum arquivo encontrado.</p>
@@ -1402,6 +1518,18 @@ Seu navegador não oferece suporte ao player de áudio.
     .media-gallery-heading h2 { margin: 0; color: inherit; font-size: 14px; font-weight: 600; }
     #mediaGalleryCount { color: var(--gallery-muted); font-size: 11px; white-space: nowrap; }
     #mediaGalleryStatus { margin: 0; color: var(--gallery-muted); font-size: 11px; }
+    .media-scan-controls { display: flex; align-items: center; gap: 8px; }
+    .media-scan-controls progress { flex: 1; min-width: 20px; height: 5px; accent-color: var(--gallery-accent); }
+    #customImageViewer .media-scan-controls button { font-size: 11px; padding: 5px 8px; }
+    .media-folder-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; font-size: 12px; }
+    .media-folder-controls label { display: flex; align-items: center; gap: 6px; margin: 0; }
+    #mediaFolderFilter { min-width: 0; max-width: 100%; padding: 6px 8px; background: #151b23; border: 1px solid var(--gallery-line); border-radius: 6px; color: #edf1f7; }
+    .media-folder-group { grid-column: 1 / -1; min-width: 0; }
+    .media-folder-group h3 { display: flex; gap: 12px; justify-content: space-between; font-size: 13px; margin: 5px 0 12px; color: #c9dcff; }
+    .media-folder-group h3 span:first-child { overflow-wrap: anywhere; }
+    .media-folder-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 10px; }
+    #thumbNav.media-ungrouped .media-folder-group:not([hidden]), #thumbNav.media-ungrouped .media-folder-grid { display: contents; }
+    #thumbNav.media-ungrouped .media-folder-group h3 { display: none; }
     .media-gallery-search { display: flex; align-items: center; gap: 8px; margin: 0; padding: 0 10px; border: 1px solid var(--gallery-line); border-radius: 7px; background: #151b23; color: var(--gallery-muted); }
     .media-gallery-search > span { font-size: 24px; }
     #mediaGallerySearch { width: 100%; min-width: 0; height: 38px; border: 0; background: transparent; color: #edf1f7; font: inherit; font-size: 12px; }
@@ -1468,6 +1596,7 @@ Seu navegador não oferece suporte ao player de áudio.
     #customImageViewer.gallery-expanded #mediaGallery { width: 100%; border-right: 0; padding: 24px; }
     #customImageViewer.gallery-expanded #mediaPreview { display: none; }
     #customImageViewer.gallery-expanded #thumbNav { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px; }
+    #customImageViewer.gallery-expanded .media-folder-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px; }
     #customImageViewer.gallery-expanded .media-gallery-search { max-width: 440px; }
     #customImageViewer.gallery-expanded .media-gallery-filters { max-width: 360px; }
     #customImageViewer.gallery-expanded .media-thumbnail-name { font-size: 13px; }
@@ -1488,6 +1617,8 @@ Seu navegador não oferece suporte ao player de áudio.
         #mediaGallery { display: none; }
         #customImageViewer.gallery-expanded #mediaGallery { display: flex; padding: 16px 12px; }
         #customImageViewer.gallery-expanded #thumbNav { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
+        #customImageViewer.gallery-expanded .media-folder-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
+        #mediaGallery { gap: 10px; }
         .media-preview-stage { padding: 12px 42px; }
         #customImageViewer .media-viewer-arrow { width: 28px; height: 42px; font-size: 16px; }
         #leftArrow { left: 6px; }

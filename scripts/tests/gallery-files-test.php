@@ -72,6 +72,19 @@ namespace {
         sort($expected); sort($data['information']);
         checkGallery($data['information'] === $expected, 'all 100 photos are found across nested folders, without siblings, duplicates or text files');
         checkGallery($data['truncated'] === false, 'a 100-photo gallery is complete');
+        $streamed = invokeGallery('syncPath', ['path' => $tmp . '/files/album', 'media' => 'recursive', 'stream' => '1']);
+        $batches = array_map(static fn($line) => json_decode($line, true), explode("\n", trim($streamed->body)));
+        checkGallery($streamed->code === 200 && count($batches) > 3 && $batches[0]['done'] === false && end($batches)['done'] === true,
+            'streaming reports initial progress, folder results and explicit completion');
+        $streamedFiles = [];
+        foreach ($batches as $batch) array_push($streamedFiles, ...$batch['information']);
+        sort($streamedFiles);
+        checkGallery($streamedFiles === $expected, 'streamed and JSON gallery listings agree without duplicates');
+        $generator = \plugins\Request\syncPath::mediaBatches($tmp . '/files/album', 'gallery-owner');
+        $generator->rewind(); $generator->next();
+        checkGallery(count($generator->current()['information']) === 50 && $generator->current()['done'] === false,
+            'root photos are yielded before any descendant listing completes');
+        unset($generator);
         checkGallery(invokeGallery('syncPath', ['path' => $tmp . '/outside', 'media' => 'recursive'])->code === 403, 'an unauthorized starting directory remains forbidden');
 
         // The old thumbnail queue issued unlimited transfers after tickets resolved.

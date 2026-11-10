@@ -27,6 +27,7 @@
           property="og:description">
     @import(includes/head)
     <link rel="stylesheet" href="css/mobile.css">
+    <link rel="stylesheet" href="css/file-actions.css">
 </head>
 
 <body>
@@ -345,6 +346,9 @@
             </button>
 
             <div class="btn-group">
+                <button id="openGeneralGallery" type="button" class="btn btn-outline-info" onclick="openMediaGallery()" title="Galeria da pasta atual e subpastas">
+                    <i class="fa-regular fa-images" aria-hidden="true"></i> Galeria geral
+                </button>
                 <button class="btn btn-outline-secondary" onclick="setStyleIconsBox()">
                     <i class="fa-duotone fa-box"></i>
                 </button>
@@ -561,6 +565,7 @@ max-height: calc(-2px + 57vh);"></div>
 @import(utils/toglleAllItens)
 @import(utils/deleteFileList)
 @import(downloadFile/function)
+<script src="js/file-actions.js"></script>
 <script src="js/jquery.toast.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.0/dist/sweetalert2.all.min.js" crossorigin="anonymous" referrerpolicy="no-referrer" integrity="sha384-5VBAkNWNEnA0Y+L5aWNg6fHumW6MdNSl4unYF6X6pHsXjltAvKa6VxLur8ZAQlzu"></script>
 <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.0/dist/sweetalert2.min.css" rel="stylesheet">
