@@ -1,0 +1,165 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.repair
+#1 transferring dockerfile: 314B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/debian:bookworm-slim
+#2 DONE 1.3s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [1/3] FROM docker.io/library/debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc
+#4 resolve docker.io/library/debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc 0.0s done
+#4 DONE 0.0s
+
+#5 [2/3] RUN apt-get update && apt-get install -y --no-install-recommends bash coreutils util-linux procps python3 ca-certificates xz-utils curl libatomic1     && useradd -u 1000 -m restricted && rm -rf /var/lib/apt/lists/*
+#5 CACHED
+
+#6 exporting to image
+#6 exporting layers done
+#6 exporting manifest sha256:13f1cc3d8956ec9a64179625373ca693bc463b5d8cd9be888ad884a8e44b2543 done
+#6 exporting config sha256:2cec00300e4476a3e640a0f3d4ed9bfa294d0e6ae34c5193a0ff9edffb649a85 done
+#6 exporting attestation manifest sha256:892191b3c64464872a351cf9e169ac00a2574829a728d2490462206a5800d0fa done
+#6 exporting manifest list sha256:73c61b179d35940a1a83bd519d24ce492e65b639f86225fdf32969c084affe57 done
+#6 naming to docker.io/library/filemanager-repair-test:latest done
+#6 unpacking to docker.io/library/filemanager-repair-test:latest done
+#6 DONE 0.0s
+PHP 8.5.4 (cli) (built: Aug  2 2026 03:02:25) (ZTS)
+Copyright (c) The PHP Group
+Zend Engine v4.5.4, Copyright (c) Zend Technologies
+    with Zend OPcache v8.5.4, Copyright (c), by Zend Technologies
+/repo/scripts/tests/restricted/installer-repair.sh: line 18: ./pcg: Permission denied
+/repo/scripts/tests/restricted/installer-repair.sh: line 20: /tmp/true: Permission denied
+/home  rw,nosuid,nodev,noexec,relatime,size=1048576k,inode64
+/tmp   rw,nosuid,nodev,noexec,relatime,size=262144k,inode64
+/dev/shm rw,nosuid,nodev,relatime,size=1048576k,inode64
+[1;33m[installer][aviso][0m Comando sudo não encontrado. Seguindo em modo usuário (sem root).
+Modo estrito detectado: procurando armazenamento gravável e execução ELF.
+=== /var/tmp ===
+/      ro,relatime,lowerdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/750/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/729/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/685/fs,upperdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/fs,workdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/work,nouserxattr
+SEM PERMISSAO DE ESCRITA
+=== /dev/shm ===
+/dev/shm rw,nosuid,nodev,relatime,size=1048576k,inode64
+GRAVAVEL
+=== /opt ===
+/      ro,relatime,lowerdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/750/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/729/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/685/fs,upperdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/fs,workdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/work,nouserxattr
+SEM PERMISSAO DE ESCRITA
+=== /usr/local/bin ===
+/      ro,relatime,lowerdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/750/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/729/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/685/fs,upperdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/fs,workdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/work,nouserxattr
+SEM PERMISSAO DE ESCRITA
+Modo estrito: PHP validado em /dev/shm/pcg. Saída do teste:
+int(1)
+[1;34m[filemanager][0m Parando o FileManager...
+[1;32m[filemanager][ok][0m FileManager desligado.
+[1;34m[filemanager][0m Parando o FileManager...
+[1;32m[filemanager][ok][0m FileManager desligado.
+[1;33m[installer][aviso][0m Sem autostart persistente: usando supervisão em background neste boot.
+[1;32m[filemanager][ok][0m FileManager iniciado.
+[1;34m[filemanager][0m Parando o FileManager...
+[1;32m[filemanager][ok][0m FileManager desligado.
+[1;32m[filemanager][ok][0m Inicialização automática desativada.
+WARNING: regression output
+PASS PCG-only: probe tolerates warning text without loading extensions
+PHP rejeitado: /dev/shm/pcg (status real do processo 42).
+PHP rejeitado: /bin/true (status real do processo 0; resposta do teste ausente).
+PASS probe: warnings tolerated; nonzero exit and absent response rejected
+Modo estrito detectado: procurando armazenamento gravável e execução ELF.
+=== /var/tmp ===
+/      ro,relatime,lowerdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/750/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/729/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/685/fs,upperdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/fs,workdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/work,nouserxattr
+SEM PERMISSAO DE ESCRITA
+=== /dev/shm ===
+/dev/shm rw,nosuid,nodev,relatime,size=1048576k,inode64
+GRAVAVEL
+=== /opt ===
+/      ro,relatime,lowerdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/750/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/729/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/685/fs,upperdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/fs,workdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/work,nouserxattr
+SEM PERMISSAO DE ESCRITA
+=== /usr/local/bin ===
+/      ro,relatime,lowerdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/750/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/729/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/685/fs,upperdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/fs,workdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/work,nouserxattr
+SEM PERMISSAO DE ESCRITA
+Modo estrito: PHP validado em /dev/shm/pcg. Saída do teste:
+int(1)
+Modo estrito detectado: procurando armazenamento gravável e execução ELF.
+=== /var/tmp ===
+/      ro,relatime,lowerdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/750/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/729/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/685/fs,upperdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/fs,workdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/work,nouserxattr
+SEM PERMISSAO DE ESCRITA
+=== /dev/shm ===
+/dev/shm rw,nosuid,nodev,relatime,size=1048576k,inode64
+GRAVAVEL
+=== /opt ===
+/      ro,relatime,lowerdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/750/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/729/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/685/fs,upperdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/fs,workdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/work,nouserxattr
+SEM PERMISSAO DE ESCRITA
+=== /usr/local/bin ===
+/      ro,relatime,lowerdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/750/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/729/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/685/fs,upperdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/fs,workdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/work,nouserxattr
+SEM PERMISSAO DE ESCRITA
+Runtime não é ELF: /home/restricted/app/pcg
+Origem persistente PHP recuperada em /home/restricted/app/pcg.
+Modo estrito: PHP validado em /dev/shm/pcg. Saída do teste:
+int(1)
+PASS full mode PHP stage: valid temporary runtime repairs corrupt persistent original
+[1;33m[installer][aviso][0m Comando sudo não encontrado. Seguindo em modo usuário (sem root).
+Modo estrito detectado: procurando armazenamento gravável e execução ELF.
+=== /var/tmp ===
+/      ro,relatime,lowerdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/750/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/729/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/685/fs,upperdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/fs,workdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/work,nouserxattr
+SEM PERMISSAO DE ESCRITA
+=== /dev/shm ===
+/dev/shm rw,nosuid,nodev,relatime,size=1048576k,inode64
+GRAVAVEL
+=== /opt ===
+/      ro,relatime,lowerdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/750/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/729/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/685/fs,upperdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/fs,workdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/work,nouserxattr
+SEM PERMISSAO DE ESCRITA
+=== /usr/local/bin ===
+/      ro,relatime,lowerdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/750/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/729/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/685/fs,upperdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/fs,workdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/work,nouserxattr
+SEM PERMISSAO DE ESCRITA
+Execução bloqueada por noexec: /home/restricted/app/pcg
+Execução ELF confirmada em /dev/shm.
+Modo estrito: PHP validado em /dev/shm/filemanager-1000-4030976329.1KhG38dZ/pcg. Saída do teste:
+int(1)
+[1;34m[filemanager][0m Parando o FileManager...
+[1;32m[filemanager][ok][0m FileManager desligado.
+[1;34m[filemanager][0m Parando o FileManager...
+[1;32m[filemanager][ok][0m FileManager desligado.
+[1;34m[filemanager][0m Parando o FileManager...
+[1;32m[filemanager][ok][0m FileManager desligado.
+[1;32m[filemanager][ok][0m Inicialização automática desativada.
+[1;34m[filemanager][0m Parando o FileManager...
+[1;32m[filemanager][ok][0m FileManager desligado.
+[1;32m[filemanager][ok][0m Inicialização automática desativada.
+Modo estrito detectado: procurando armazenamento gravável e execução ELF.
+=== /var/tmp ===
+/      ro,relatime,lowerdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/750/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/729/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/685/fs,upperdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/fs,workdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/work,nouserxattr
+SEM PERMISSAO DE ESCRITA
+=== /dev/shm ===
+/dev/shm rw,nosuid,nodev,relatime,size=1048576k,inode64
+GRAVAVEL
+=== /opt ===
+/      ro,relatime,lowerdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/750/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/729/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/685/fs,upperdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/fs,workdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/work,nouserxattr
+SEM PERMISSAO DE ESCRITA
+=== /usr/local/bin ===
+/      ro,relatime,lowerdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/750/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/729/fs:/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/685/fs,upperdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/fs,workdir=/var/snap/docker/common/var-lib-docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/751/work,nouserxattr
+SEM PERMISSAO DE ESCRITA
+Execução bloqueada por noexec: /home/restricted/app/pcg
+Execução ELF confirmada em /dev/shm.
+Modo estrito: PHP validado em /dev/shm/filemanager-1000-4030976329.1QVteki4/pcg. Saída do teste:
+int(1)
+PASS deletion: both installer modes recover temporary PHP from noexec persistent source
+Sem medição de espaço: /dev/shm será a primeira tentativa.
+Espaço não mensurável em /dev/shm; tentando escrita real após confirmar execução ELF.
+Baixando PCG diretamente em /dev/shm/filemanager-1000-4030976329.YoVXiuzw (SHA-256 obrigatório).
+Modo estrito detectado: procurando armazenamento gravável e execução ELF.
+int(1)
+PASS verified download and feature validation
+Baixando PCG diretamente em /dev/shm/filemanager-1000-4030976329.MiiFWkgZ (SHA-256 obrigatório).
+Modo estrito detectado: procurando armazenamento gravável e execução ELF.
+int(1)
+PASS download: absent and invalid persistent source repaired
+Não foi possível recuperar PHP: nenhum local permitiu download íntegro e execução válida.
+PASS integrity: incorrect download hash fails without replacing persistent file
+PASS PCG-only discovery: system PHP and stale saved PHP path excluded
+Execução bloqueada por noexec: /home/restricted/app/node/bin/node
+Execução ELF confirmada em /dev/shm.
+Espaço não mensurável em /dev/shm; tentando escrita real após confirmar execução ELF.
+11.19.1
+PASS Node.js 24: baseline layout rejected on noexec; fixed layout, relocated ELF and npm execute

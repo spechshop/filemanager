@@ -1,0 +1,12 @@
+uid=1000(restricted) gid=1000(restricted) groups=1000(restricted)
+/home  rw,nosuid,nodev,noexec,relatime,size=1048576k,inode64
+/tmp   rw,nosuid,nodev,noexec,relatime,size=262144k,inode64
+/dev/shm rw,nosuid,nodev,relatime,size=1048576k,inode64
+PASS baseline: selected valid temporary PHP, but first rejected noexec home sources
+bash: cannot set terminal process group (1): Inappropriate ioctl for device
+bash: no job control in this shell
+Execução ELF confirmada em /dev/shm.
+PASS terminal: configured executable reused, without rejected home probes
+PASS diagnostics: warnings and real process exit codes remain visible
+PASS validation: status-zero ELF without PHP marker remains rejected
+PASS recovery: removed temporary PCG rebuilt with matching SHA-256 and reused

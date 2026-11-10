@@ -1,0 +1,39 @@
+PCG no terminal: preferência por cópias executáveis (2026-11-10)
+
+O arquivo /dev/shm/.../bin/pcg é um lançador Bash do perfil do terminal.
+Ele encaminha argumentos a terminal-command.sh, que resolve um PCG ELF válido.
+O problema reproduzido era a ordem de busca: tentava primeiro pcg no projeto
+e em ~/.local/bin, ambos em /home noexec, mesmo com /dev/shm/pcg disponível.
+Esses probes retornavam 126 antes de encontrar e executar o runtime válido.
+
+Correção em runtime-exec.sh:
+- Priorizar o executável selecionado pela supervisão, registros de cache e
+  cópias temporárias antes dos arquivos persistentes.
+- Reservar fontes com noexec conhecido ou sem bit executável para recuperação.
+  A recuperação ainda testa a origem, confere SHA-256 e valida o PHP copiado.
+- Manter verificações de proprietário/permissões, ELF, integridade, versão,
+  extensões, marcador do teste e status real. Warnings reais seguem visíveis.
+
+Versão: pcg -v mostra a versão do executável selecionado, neste relato 8.5.4.
+O comando do terminal não consulta releases nem atualiza binários. A consulta
+à release oficial atual permanece em fm_install_php(), chamada pelo instalador.
+Somente o log fornecido não permite determinar por que aquela instalação ainda
+seleciona 8.5.4 (origem instalada anterior ou fallback após falha de atualização).
+
+Evidência em pcg-terminal-reuse-tests.txt:
+Container UID 1000, /home e /tmp noexec, /dev/shm exec. O código anterior
+reproduziu as rejeições 126 antes de escolher o PHP válido. O perfil real do
+terminal corrigido executou pcg -v e PHP_BINARY sem rejeitar arquivos em /home.
+Warnings sintéticos foram preservados; status 42 do probe e status 23 do comando
+foram mantidos; ELF que retorna zero sem marcador foi rejeitado. Após apagar
+/dev/shm/pcg, a origem persistente foi copiada, validada e reutilizada.
+
+Evidência em pcg-terminal-installer-regression-tests.txt:
+Suíte restrita existente passou novamente: instalação PHP completa (etapa
+isolada), --supervision-only, recuperação de temporários apagados, reparo de
+origens ausentes/inválidas, download com integridade, rejeição de SHA incorreto
+e execução de Node/npm no cenário noexec. Downloads de teste usam fixtures
+locais verificadas; nenhuma atualização remota de produção foi realizada.
+
+Nenhum warning real foi ocultado. Nenhum arquivo da instalação remota foi
+alterado. Todas as alterações são locais, sem commit ou push.

@@ -246,7 +246,8 @@ fm_prepare_binary() (
 fm_php_candidates() {
     local root="$1" configured='' base candidate key
     [ ! -r "$root/.runtime/supervision/php" ] || IFS= read -r configured < "$root/.runtime/supervision/php" || :
-    printf '%s\n' "$root/pcg" "${HOME:-$root}/.local/bin/pcg"
+    # Reuse the installer's selected executable and verified temporary copies
+    # before touching persistent originals on a possibly noexec home mount.
     [[ "$configured" = */pcg ]] && printf '%s\n' "$configured"
     key=$(printf %s "$root" | cksum | cut -d' ' -f1)
     for candidate in "$root/.runtime/exec-"*.path; do
@@ -260,6 +261,7 @@ fm_php_candidates() {
             [ ! -f "$candidate" ] || printf '%s\n' "$candidate"
         done
     done < <(fm_candidate_dirs "$root")
+    printf '%s\n' "$root/pcg" "${HOME:-$root}/.local/bin/pcg"
     type -a -p pcg 2>/dev/null || :
 }
 
@@ -322,6 +324,12 @@ fm_php() {
                 continue
             fi
         fi
+        # A known noexec source is for recovery, not an execution candidate.
+        # fm_prepare_binary still probes it if recovery becomes necessary.
+        if fm_noexec "$resolved" || [ ! -x "$resolved" ]; then
+            originals+=("$resolved")
+            continue
+        fi
         if fm_php_probe "$resolved" "$code"; then
             if [ -z "$reference" ] && [[ "$resolved" = /dev/shm/* || "$resolved" = /tmp/* || "$resolved" = /run/* ]]; then
                 printf 'Aviso: runtime temporário validado sem pcg persistente em %s; recuperação após reboot exige preservar uma origem.\n' "$root" >&2
@@ -333,6 +341,10 @@ fm_php() {
         fi
     done < <(fm_php_candidates "$root")
     for candidate in "${independent[@]}"; do
+        if fm_noexec "$candidate" || [ ! -x "$candidate" ]; then
+            originals+=("$candidate")
+            continue
+        fi
         if fm_php_probe "$candidate" "$code"; then
             printf '%s\n' "$candidate"; return 0
         else rc=$?; fi
