@@ -1,5 +1,5 @@
 # Bash rcfile for FileManager terminals. Read with Bash, including on noexec.
-# Keep the account's interactive preferences, then apply the managed runtime.
+# Keep the account's commands and preferences, adding fallbacks when needed.
 if [[ $- = *i* ]] && [ -r "$HOME/.bashrc" ]; then
     source "$HOME/.bashrc"
 fi
@@ -19,12 +19,26 @@ export npm_config_prefix="$FILEMANAGER_ROOT/.runtime/npm-global"
 export npm_config_cache="$FILEMANAGER_ROOT/.runtime/npm-cache"
 
 filemanager_refresh_commands() {
-    local bin
-    if bin=$(/bin/bash "$FILEMANAGER_ROOT/scripts/terminal-command.sh" --prepare); then
+    local command_path shell_path
+    if command_path=$(/bin/bash "$FILEMANAGER_ROOT/scripts/terminal-command.sh" --prepare); then
         # Always rebuild from the original PATH: no stale /dev/shm entries.
-        PATH="$bin:$FILEMANAGER_TERMINAL_BASE_PATH"
+        PATH="$command_path"
         export PATH
-        export npm_config_script_shell="$bin/fm-npm-shell"
+        shell_path="${PATH%%:*}/fm-npm-shell"
+        if [ -x "$shell_path" ]; then
+            if [ -z "${FILEMANAGER_NPM_SCRIPT_SHELL:-}" ]; then
+                FILEMANAGER_ORIGINAL_NPM_SCRIPT_SHELL="${npm_config_script_shell-}"
+            fi
+            export npm_config_script_shell="$shell_path"
+            FILEMANAGER_NPM_SCRIPT_SHELL="$shell_path"
+        elif [ "${npm_config_script_shell:-}" = "${FILEMANAGER_NPM_SCRIPT_SHELL:-}" ]; then
+            if [ -n "${FILEMANAGER_ORIGINAL_NPM_SCRIPT_SHELL:-}" ]; then
+                export npm_config_script_shell="$FILEMANAGER_ORIGINAL_NPM_SCRIPT_SHELL"
+            else
+                unset npm_config_script_shell
+            fi
+            unset FILEMANAGER_NPM_SCRIPT_SHELL FILEMANAGER_ORIGINAL_NPM_SCRIPT_SHELL
+        fi
         hash -r
     else
         printf 'Não foi possível preparar os comandos do terminal FileManager.\n' >&2

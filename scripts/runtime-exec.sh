@@ -245,9 +245,12 @@ fm_prepare_binary() (
 
 fm_php_candidates() {
     local root="$1" configured='' base candidate key
+    # Prefer the persistent runtime whenever it can execute in place. Known
+    # noexec sources are deferred by fm_php without attempting execution.
+    printf '%s\n' "$root/pcg" "${HOME:-$root}/.local/bin/pcg"
+    type -a -p pcg 2>/dev/null || :
     [ ! -r "$root/.runtime/supervision/php" ] || IFS= read -r configured < "$root/.runtime/supervision/php" || :
-    # Reuse the installer's selected executable and verified temporary copies
-    # before touching persistent originals on a possibly noexec home mount.
+    # Reuse verified temporary copies before allocating another fallback.
     [[ "$configured" = */pcg ]] && printf '%s\n' "$configured"
     key=$(printf %s "$root" | cksum | cut -d' ' -f1)
     for candidate in "$root/.runtime/exec-"*.path; do
@@ -261,8 +264,6 @@ fm_php_candidates() {
             [ ! -f "$candidate" ] || printf '%s\n' "$candidate"
         done
     done < <(fm_candidate_dirs "$root")
-    printf '%s\n' "$root/pcg" "${HOME:-$root}/.local/bin/pcg"
-    type -a -p pcg 2>/dev/null || :
 }
 
 # Keep the process status independent from the probe protocol. PHP/Swoole may

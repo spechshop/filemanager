@@ -51,3 +51,18 @@ filemanager_refresh_commands
 if command -v fm-profile-probe; then echo "Uninstalled command still exposed"; exit 1; fi
 printf "PASS: runtime recovery, npm/npx, global/local CLI, npm scripts, custom profile and failure status\n"
 '
+# A noexec project does not justify replacing commands from an exec mount.
+mkdir -p /dev/shm/fm-terminal-tests/original "$project/node_modules/.bin"
+printf '#!/bin/sh\nprintf "native PHP\\n"\n' > /dev/shm/fm-terminal-tests/original/php
+printf '#!/bin/sh\nprintf "native CLI\\n"\n' > /dev/shm/fm-terminal-tests/original/fm-native-cli
+cp /dev/shm/fm-terminal-tests/original/fm-native-cli "$project/node_modules/.bin/fm-native-cli"
+chmod 700 /dev/shm/fm-terminal-tests/original/* "$project/node_modules/.bin/fm-native-cli"
+PATH=/dev/shm/fm-terminal-tests/original:/usr/bin:/bin /bin/bash --rcfile "$project/scripts/terminal-profile.sh" -ic '
+set -eu
+[ "$(command -v php)" = /dev/shm/fm-terminal-tests/original/php ]
+[ "$(command -v fm-native-cli)" = /dev/shm/fm-terminal-tests/original/fm-native-cli ]
+[ "$(php)" = "native PHP" ]
+[ "$(fm-native-cli)" = "native CLI" ]
+node --version
+printf "PASS mixed mounts: executable account commands survive noexec project fallbacks\n"
+'

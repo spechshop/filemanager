@@ -189,9 +189,13 @@ npm install
 
 Both terminal backends load `scripts/terminal-profile.sh` automatically. In a
 new FileManager terminal, use `node`, `npm`, `npx`, `php`, `pcg` and `composer`
-by name. The launchers use the managed runtimes even on a `noexec` home mount;
-npm remains beside its libraries instead of being copied alone to `/dev/shm`.
-Missing temporary launchers and Node copies are recovered automatically.
+by name. Executable commands already on the account's `PATH` retain their
+original paths and runtimes. Managed command directories are appended as
+fallbacks. Missing aliases and launchers for blocked commands stay in the
+installation when it allows execution; temporary storage such as `/dev/shm`
+is used only when execution there is blocked, regardless of root/sudo access.
+On a `noexec` mount, npm remains beside its libraries, and missing temporary
+launchers and runtime copies are recovered automatically.
 
 `npm install -g` uses this installation's `.runtime/npm-global` prefix. Its
 JavaScript/shell commands and project `node_modules/.bin` commands become
