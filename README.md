@@ -185,6 +185,25 @@ composer install
 npm install
 ```
 
+### Managed terminal profile
+
+Both terminal backends load `scripts/terminal-profile.sh` automatically. In a
+new FileManager terminal, use `node`, `npm`, `npx`, `php`, `pcg` and `composer`
+by name. The launchers use the managed runtimes even on a `noexec` home mount;
+npm remains beside its libraries instead of being copied alone to `/dev/shm`.
+Missing temporary launchers and Node copies are recovered automatically.
+
+`npm install -g` uses this installation's `.runtime/npm-global` prefix. Its
+JavaScript/shell commands and project `node_modules/.bin` commands become
+available by name; npm scripts and npx use the same runtime handling. Native
+addons and executables still need compatible libraries and executable storage.
+
+For custom aliases and environment variables, create `.filemanager-profile`
+in the project root. It is ignored by Git and preserved on reinstall. The
+account's `.bashrc` is loaded first; no account profile is rewritten. These
+settings apply to FileManager terminals, not unrelated SSH sessions. After
+updating, restart FileManager and open a new terminal to load the profile.
+
 ### 4. SSL Certificates (Auto-generated)
 SSL certificates for localhost are **automatically generated** on first run. No manual configuration needed for local development.
 

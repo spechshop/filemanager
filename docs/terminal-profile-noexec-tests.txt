@@ -1,0 +1,70 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile.repair
+#1 transferring dockerfile: 314B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/debian:bookworm-slim
+#2 DONE 0.6s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [1/3] FROM docker.io/library/debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc
+#4 resolve docker.io/library/debian:bookworm-slim@sha256:734a72b3d6142a71993b4bc580ca01d8ca687f77a2c422d96a961d3376b179bc done
+#4 DONE 0.0s
+
+#5 [2/3] RUN apt-get update && apt-get install -y --no-install-recommends bash coreutils util-linux procps python3 ca-certificates xz-utils curl libatomic1     && useradd -u 1000 -m restricted && rm -rf /var/lib/apt/lists/*
+#5 CACHED
+
+#6 exporting to image
+#6 exporting layers done
+#6 exporting manifest sha256:13f1cc3d8956ec9a64179625373ca693bc463b5d8cd9be888ad884a8e44b2543 done
+#6 exporting config sha256:2cec00300e4476a3e640a0f3d4ed9bfa294d0e6ae34c5193a0ff9edffb649a85 done
+#6 exporting attestation manifest sha256:f85d9ec141e5fe09cad998a138cd76820e9e05255c38b27e0f32e18dd5f50258 done
+#6 exporting manifest list sha256:27ec5a3385e8f15b83a8f5b55f4617e2ab38e4c42cf759ecf0b29b7af0d1daab 0.0s done
+#6 naming to docker.io/library/filemanager-repair-test:latest done
+#6 unpacking to docker.io/library/filemanager-repair-test:latest done
+#6 DONE 0.1s
+Mounts and user:
+uid=1000(restricted) gid=1000(restricted) groups=1000(restricted)
+/home  rw,nosuid,nodev,noexec,relatime,size=1048576k,inode64
+/tmp   rw,nosuid,nodev,noexec,relatime,size=262144k,inode64
+/dev/shm rw,nosuid,nodev,relatime,size=524288k,inode64
+/repo/scripts/tests/restricted/terminal-profile.sh: line 18: /home/restricted/project with spaces/.runtime/node/bin/node: Permission denied
+bash: cannot set terminal process group (1): Inappropriate ioctl for device
+bash: no job control in this shell
+Execução ELF confirmada em /dev/shm/fm-terminal-tests.
+Execução bloqueada por noexec: /home/restricted/project with spaces/.runtime/node/bin/node
+Execução ELF confirmada em /dev/shm/fm-terminal-tests.
+v24.22.1
+11.19.1
+11.19.1
+child PATH works
+
+added 1 package in 174ms
+CLI:argument with spaces
+
+added 1 package in 114ms
+Execução ELF confirmada em /dev/shm/fm-terminal-tests.
+CLI:local
+Execução ELF confirmada em /dev/shm/fm-terminal-tests.
+CLI:npx
+Execução bloqueada por noexec: /home/restricted/project with spaces/.runtime/node/bin/node
+Execução ELF confirmada em /dev/shm/fm-terminal-tests.
+v24.22.1
+PASS: removed temporary node recovered automatically
+Execução ELF confirmada em /dev/shm/fm-terminal-tests.
+11.19.1
+CLI:recovered
+npm error Missing script: "missing-script"
+npm error
+npm error To see a list of scripts, run:
+npm error   npm run
+npm error A complete log of this run can be found in: /home/restricted/project with spaces/.runtime/npm-cache/_logs/2026-11-10T03_40_53_408Z-debug-0.log
+
+removed 1 package in 113ms
+
+removed 1 package in 119ms
+PASS: runtime recovery, npm/npx, global/local CLI, npm scripts, custom profile and failure status

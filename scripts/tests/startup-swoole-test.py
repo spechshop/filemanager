@@ -76,6 +76,8 @@ class StartupTest(unittest.TestCase):
             shutil.copy2(ROOT / name, self.root / name)
         (self.root / 'scripts/security').mkdir(parents=True)
         shutil.copy2(ROOT / 'scripts/runtime-exec.sh', self.root / 'scripts/runtime-exec.sh')
+        for helper in ('terminal-profile.sh', 'terminal-command.sh'):
+            shutil.copy2(ROOT / 'scripts' / helper, self.root / 'scripts' / helper)
         shutil.copy2(ROOT / 'scripts/security/bridge-auth.cjs', self.root / 'scripts/security/bridge-auth.cjs')
         shutil.copy2(ROOT / 'scripts/security/fs-broker.py', self.root / 'scripts/security/fs-broker.py')
         (self.root / '.env').write_text('')

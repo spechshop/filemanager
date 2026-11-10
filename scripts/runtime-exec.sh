@@ -354,11 +354,14 @@ fm_php() {
 
 fm_node() {
     local root="$1" candidate prepared
-    for candidate in "$root/.runtime/node/bin/node" "$(command -v node)"; do
+    local -A seen=()
+    while IFS= read -r candidate; do
         [ -n "$candidate" ] && [ -f "$candidate" ] || continue
+        [ -z "${seen[$candidate]:-}" ] || continue
+        seen[$candidate]=1
         prepared=$(fm_prepare_binary "$candidate" "$root" -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 22 ? 0 : 1)') || continue
         printf '%s\n' "$prepared"; return 0
-    done
+    done < <(printf '%s\n' "$root/.runtime/node/bin/node" "${FILEMANAGER_NODE_BINARY:-}"; type -a -p node 2>/dev/null || :)
     return 1
 }
 

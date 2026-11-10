@@ -168,3 +168,6 @@ lerna-debug.log*
 
 # Python security helper bytecode
 /scripts/security/__pycache__/
+
+# Per-installation terminal customizations
+/.filemanager-profile

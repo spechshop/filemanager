@@ -43,6 +43,7 @@ function terminalEnvironment() {
     const preferredBins = [
         path.join(__dirname, '.runtime', 'node', 'bin'),
         path.join(__dirname, '.runtime', 'codex', 'bin'),
+        ...(os.platform() === 'win32' ? [] : ['/usr/local/bin', '/usr/bin', '/bin', '/usr/local/sbin', '/usr/sbin', '/sbin']),
     ];
     const entries = [...preferredBins, ...inheritedPath.split(path.delimiter)]
         .filter((entry, index, all) => entry && all.indexOf(entry) === index);
@@ -157,7 +158,8 @@ function createNewTerminal(userToken) {
     const release = bridgeAuth.acquire('TERMINALS', userToken, 16, 128);
     if (!release) throw new Error('Terminal quota exceeded');
     let ptyProcess;
-    try { ptyProcess = pty.spawn(shell, [], {
+    const shellArgs = os.platform() === 'win32' ? [] : ['--rcfile', path.join(__dirname, 'scripts/terminal-profile.sh'), '-i'];
+    try { ptyProcess = pty.spawn(shell, shellArgs, {
         name: 'xterm-color',
         cols: 220,
         rows: 30,

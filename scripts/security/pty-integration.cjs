@@ -35,7 +35,7 @@ for (const backend of backends) test(`real ${backend} PTY: unauthorized requests
     const moduleDirectory = process.env.SECURITY_NODE_MODULES || path.join(ROOT, 'node_modules');
     const php = process.env.SECURITY_PHP_BINARY || 'php';
     if (backend === 'php') assert.equal(execFileSync(php, ['-r', 'echo extension_loaded("swoole") ? "yes" : "no";']).toString(), 'yes', 'Swoole required; this is not a passing skipped test');
-    for (const file of ['pty.js', 'pty.php', 'scripts/security/bridge-auth.cjs', 'plugins/Request/components/appController.php', 'plugins/Request/components/securityPolicy.php']) {
+    for (const file of ['pty.js', 'pty.php', 'scripts/terminal-profile.sh', 'scripts/terminal-command.sh', 'scripts/runtime-exec.sh', 'scripts/security/bridge-auth.cjs', 'plugins/Request/components/appController.php', 'plugins/Request/components/securityPolicy.php']) {
         const target = path.join(tmp, file); fs.mkdirSync(path.dirname(target), {recursive: true}); fs.copyFileSync(path.join(ROOT, file), target);
     }
     fs.mkdirSync(path.join(tmp, 'files')); fs.symlinkSync(moduleDirectory, path.join(tmp, 'node_modules'), 'dir');
@@ -56,6 +56,9 @@ for (const backend of backends) test(`real ${backend} PTY: unauthorized requests
             assert.equal(fs.existsSync(path.join(tmp, 'files/UNAUTHORIZED')), false, 'no command side effect');
         }
         ws = await connect(`${address}/${owner}-one`, headers);
+        ws.send("type filemanager_refresh_commands > profile-ready; npm --version > npm-version\n");
+        await until(() => fs.existsSync(path.join(tmp, 'files/npm-version')) && /^\d+\.\d+\.\d+/.test(fs.readFileSync(path.join(tmp, 'files/npm-version'), 'utf8')), 'managed npm in real terminal');
+        assert.match(fs.readFileSync(path.join(tmp, 'files/profile-ready'), 'utf8'), /filemanager_refresh_commands/);
         const excess = await connect(`${address}/${owner}-excess`, headers);
         if (excess.readyState !== WebSocket.CLOSED) await Promise.race([once(excess, 'close'), delay(2500).then(() => { throw new Error('terminal quota was not enforced'); })]);
         assert.equal(excess.readyState, WebSocket.CLOSED);

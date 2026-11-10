@@ -147,7 +147,7 @@ function createNewTerminal(Server $server, string $token, int $fd): bool
     // util-linux setsid takes fd 0 as the controlling terminal before exec.
     $setsid = is_executable('/usr/bin/setsid') ? '/usr/bin/setsid' : '/bin/setsid';
     if (!is_executable($setsid)) throw new RuntimeException('PTY requer setsid (util-linux) para controle de jobs.');
-    $proc  = proc_open([$setsid, '--ctty', $shell, '-i'], $descriptorspec, $pipes, $filesDir, $env);
+    $proc  = proc_open([$setsid, '--ctty', $shell, '--rcfile', __DIR__ . '/scripts/terminal-profile.sh', '-i'], $descriptorspec, $pipes, $filesDir, $env);
     if (!is_resource($proc)) {
         return false;
     }

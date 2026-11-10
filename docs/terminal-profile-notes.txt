@@ -1,0 +1,42 @@
+Perfil próprio do terminal FileManager (2026-11-09)
+
+Causa: executar .runtime/node/bin/npm em /home noexec falha no execve.
+Copiar apenas npm para /dev/shm também falha: seu require('../lib/cli.js')
+deixa de apontar para a estrutura original do pacote.
+
+Implementação:
+- PTYs Node e PHP/Swoole abrem Bash com o mesmo --rcfile.
+- O perfil lê .bashrc e as customizações opcionais .filemanager-profile.
+  Não modifica o perfil da conta. As customizações são ignoradas pelo Git.
+- Lançadores privados são escritos em um filesystem com execução confirmada;
+  os scripts JS continuam junto de seus módulos e são lidos pelo Node válido.
+- Comandos node/npm/npx/php/pcg/composer são disponibilizados pelo PATH,
+  inclusive para subprocessos. php/pcg usam o resolvedor PCG existente.
+- O prefixo global npm fica em .runtime/npm-global. Comandos JS/shell globais
+  e locais são atualizados após npm e antes de cada prompt. O npm script-shell
+  prepara também comandos .bin de projetos e do cache npx sem mudar os pacotes.
+- O resolvedor Node esgota os candidatos do PATH em vez de parar no primeiro
+  Node antigo; o runtime persistente e o configurado têm prioridade.
+- Erros do npm preservam o status original. Não se remove a restrição noexec
+  nem se promete compatibilidade automática para qualquer executável nativo.
+
+Testes:
+terminal-profile-noexec-tests.txt registra execução real em Docker, UID 1000,
+sem sudo/capabilities, /home e /tmp noexec, /dev/shm exec, Node 24.22.1,
+com PATH inicial apontando apenas para um diretório inexistente.
+Comprova rejeição inicial do Node em /home; node/npm/npx pelo nome; PATH em
+subprocesso sh; instalação offline de pacote de teste global/local; argumento
+com espaços; npm run; npx; recuperação após apagar o Node temporário; recuperação
+após apagar os lançadores; customizações do perfil; remoção de comandos após
+npm uninstall e erro real de npm não oculto.
+O pacote de teste é local e não executa scripts de instalação.
+
+terminal-profile-pty-tests.txt registra o uso de npm pelo nome nos PTYs reais
+Node e PHP/Swoole, junto das verificações de autenticação, quota, reconexão e
+revogação de acesso. Nenhuma sessão nem credencial real é usada.
+terminal-profile-startup-tests.txt: os 8 testes reais de inicialização e ciclo
+de vida Swoole também passaram.
+
+Uso após transferir os arquivos corrigidos: executar o instalador completo,
+como já solicitado, e abrir um novo terminal no painel. Não é preciso copiar
+npm para /dev/shm nem executar comandos de ativação em cada terminal.
