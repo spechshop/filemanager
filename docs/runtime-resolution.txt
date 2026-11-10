@@ -1,0 +1,154 @@
+DETECÇÃO DE RUNTIMES — RELATÓRIO DA CORREÇÃO
+2026-11-09, branch newterm. Alterações somente locais, sem commit/push/PR.
+
+RESULTADO
+O caso específico solicitado passou: /dev/shm/pcg executa, o pcg persistente
+em /home está em noexec, não há espaço para uma segunda cópia, e mesmo assim
+bash installer.sh --supervision-only resolve /dev/shm/pcg e inicia a supervisão.
+O processo PHP filho informa PHP_BINARY=/dev/shm/pcg. df não é chamado para
+reutilizar esse runtime. O controlador também foi testado sem bit executável.
+A implementação anterior, no mesmo contêiner, reproduziu:
+  Execução bloqueada por noexec: /home/restricted/app/pcg
+  Filesystem noexec: /tmp
+  Sem diretório gravável e executável com espaço suficiente.
+A versão corrigida passou usando a cópia existente, sem duplicá-la.
+
+CAUSAS CONFIRMADAS NO CÓDIGO
+1. fm_php não pesquisava /dev/shm/pcg. Tentava preparar uma nova cópia antes de
+   terminar a busca por runtimes existentes. Um tmpfs sem espaço para duplicar
+   133 MB era tratado como ambiente sem runtime, apesar da cópia funcional.
+2. fm_exec_dir exigia df válido e descartava silenciosamente qualquer diretório
+   com saída vazia/erro. Isso confundia medição indisponível com falta de espaço.
+3. O instalador executava readlink/id/etc antes de estabelecer PATH básico.
+   O resolvedor também dependia do PATH herdado para ferramentas de diagnóstico.
+4. Ainda havia duas chamadas run_priv "$CONTROL_SCRIPT" na supervisão, sujeitas
+   a EACCES em noexec. Ambas agora passam por supervision_as_owner e por Bash.
+5. A gravação do cache usava BASHPID dentro e fora de uma subshell; os valores
+   diferiam e podiam impedir o registro da cópia. Agora o nome temporário é fixado
+   antes de escrever. flock serializa preparação e revalida o cache após esperar.
+
+O silêncio específico de 'df -h /dev/shm /tmp' no servidor remoto não pode ser
+atribuído com certeza a uma causa sem acesso àquela sessão. Pode ser PATH,
+utilitário bloqueado, erro ou saída vazia. O teste força df a retornar 126 sem
+stdout e reproduz a conclusão incorreta anterior. O novo diagnóstico preserva
+saída/erro/status e usa mecanismos independentes para medir espaço.
+
+COMPORTAMENTO IMPLEMENTADO
+- PATH básico idempotente no instalador, controlador e helper, preservando
+  ferramentas personalizadas e acrescentando diretórios padrão ausentes.
+- Busca em duas fases: primeiro TODOS os candidatos existentes; só depois cópia.
+- Candidatos: pcg persistente, runtime registrado na supervisão, ~/.local/bin/pcg,
+  registros .runtime/exec-*.path, caches do mesmo UID/instalação e pcg nos diretórios
+  candidatos; também todos os pcg/php encontrados no PATH reconstruído.
+- Diretórios: TMPDIR, /dev/shm, XDG_RUNTIME_DIR, /run/user/<UID>, /var/tmp,
+  .runtime/exec e ~/.cache/filemanager/exec. FILEMANAGER_EXEC_DIR direciona novos
+  destinos de cópia; origens e runtimes já registrados continuam investigados.
+- Leitura de flags via findmnt, com fallback a /proc/self/mountinfo se falhar.
+  A flag só orienta o diagnóstico: há execução real de ELF copiado em diretório
+  privado, inclusive antes de afirmar que um local tem execução negada.
+- Espaço via df -Pk, stat -f, Python os.statvfs ou PHP disk_free_space de um PHP
+  disponível e seguro (não precisa de Swoole para medir espaço). Python é opcional.
+  Falha de todas as medições produz 'Espaço desconhecido', sem afirmar noexec ou
+  disco cheio. Novas cópias exigem capacidade comprovada; reutilização não exige.
+- Tamanho via stat ou wc. SHA-256 via sha256sum, shasum ou OpenSSL, sem desativar
+  integridade se o primeiro utilitário estiver ausente/bloqueado.
+- PHP: assinatura ELF antes de executar, propriedade do UID atual/root, arquivo
+  sem escrita por grupo/outros, ancestrais sem possibilidade de substituição por
+  outros usuários (diretórios compartilhados sticky são admitidos), SHA-256 contra
+  a origem persistente para cópias descobertas e prova real de execução PHP.
+  O kernel verifica compatibilidade ELF/ABI; o código PHP testa versão >=8.3,
+  Linux e Swoole/zip/sockets/pcntl/posix. Exige uma resposta específica do código,
+  não apenas exit 0: um ELF como /bin/true não é aceito como PHP.
+- PHP do sistema pode ser outra build válida, sob suas próprias permissões;
+  cópias temporárias/cache têm de corresponder ao original quando este existe.
+- Cópia privada 0700, SHA-256 conferido antes de executar e registro atômico 0600.
+  Quatro resoluções simultâneas produzem uma única cópia por hash/instalação.
+- O original persistente não é apagado nem substituído. Perda da cópia temporária
+  dispara nova descoberta/reconstrução. Se só houver PHP temporário sem pcg
+  persistente, a reutilização informa a impossibilidade de garantir recuperação.
+- installer.sh, filemanagerctl e watchdog usam fm_php; unidades systemd já chamam
+  o helper persistente. Subprocessos PHP usam PHP_BINARY do processo selecionado.
+- supervision_as_owner interpreta o controlador com /bin/bash. Migração/ativação
+  preservam a capacidade anterior de operar unidades de sistema quando o operador
+  já executou o instalador com privilégios disponíveis; usuário comum não os exige.
+  --supervision-only deixou de exigir chmod do controlador.
+- Agentes de túnel serializam também as novas dependências do helper, preservando
+  funcionamento de scripts enviados ao cliente. Não houve mudança em TLS/tokens.
+
+TESTES E EVIDÊNCIAS
+Ensaio real: Docker, UID 1000, sem sudo, capacidades removidas, rootfs read-only,
+/home e /tmp tmpfs noexec; /dev/shm tmpfs exec de 160 MiB; /run/user/1000 exec de
+1 MiB. O runtime estático disponível é PHP 8.5.10 ZTS/Swoole 6.3.0RC1, com
+137.825.672 bytes (aproximadamente 133 MB). Após colocar /dev/shm/pcg, restaram
+30.306.304 bytes: insuficientes para duplicá-lo. As falhas de execução em /home
+/tmp foram reais, não simuladas com chmod ou mocks.
+
+Passaram:
+- Comparação antes/depois no mesmo ambiente; o caso relatado está reproduzido.
+- installer.sh --supervision-only com PATH contendo somente os wrappers do teste,
+  df/stat/findmnt falhando; seleção e execução de /dev/shm/pcg, sem consultar df.
+- Repetição de resolução/start sem cópias adicionais; status e parada do serviço.
+- Descoberta de cache sem registro .path; rejeição de hash diferente, modo inseguro,
+  script chamado pcg e ELF que retorna zero mas não interpreta código PHP.
+- SHA-256 com sha256sum bloqueado; capacidade desconhecida sem Python/df/stat,
+  mantendo reutilização funcional e recusando alocação com diagnóstico correto.
+- Quatro preparações simultâneas com df/stat/findmnt bloqueados: uma cópia apenas,
+  íntegra e executável, medida com statvfs.
+- Limpeza das cópias temporárias mantendo origem/estado persistentes; nova chamada
+  ao instalador reconstrói runtime, e controlador inicia/para/desativa com ele.
+- filemanagerctl sem bit executável: todas as chamadas internas via Bash.
+- supervision-test.py: 20/20, incluindo stop/disable por 120 segundos com ticks,
+  crash recuperado em cerca de 2,4 s, concorrência, cron e verificação systemd.
+  Após o ajuste de privilégios internos, 5 casos de systemd/migração foram repetidos
+  e passaram. Os gerenciadores de serviço são fixtures nessa suíte.
+- filemanagerctl-test.py: 5/5 no Linux comum; bootstrap do instalador: 6/6;
+  installer-home-test.sh passou; agentes Cloudflare/direto: 10/10;
+  tunnels-test.php passou com PHP 8.4 sem a extensão Swoole (o teste usa stubs).
+- Bash syntax e git diff --check passaram.
+
+Ajustes de testes necessários: a fixture passou a aguardar o filho escrever sua
+identidade, porque PID existente não significa código PHP já executado; a checagem
+concorrente de diagnóstico considera todos os logs, pois qualquer worker pode
+ser o alocador. A substituição JS do helper usa função para preservar literalmente
+$'...' de Bash. O teste PHP deixou de tratar a simples palavra 'python' como prova
+de dependência obrigatória: ela pertence ao fallback opcional de statvfs. Os
+ensaios Bash continuam com python/python3 bloqueados.
+
+Limites da evidência: não houve reboot do host/provedor; a limpeza da cópia
+volátil foi simulada removendo somente os arquivos criados pelo teste. Não foi
+utilizado o binário exato 8.5.4 do provedor. O servidor no ensaio focal é uma
+fixture PHP real de longa duração para observar o runtime do processo; isso não
+substitui os testes completos da aplicação do relatório anterior. Limitações
+anteriores de Node/Codex/LSP e rede Cloudflare não são declaradas resolvidas aqui.
+
+OPERAÇÃO / REPRODUÇÃO
+  bash installer.sh --supervision-only
+  bash filemanagerctl status
+  bash scripts/runtime-exec.sh php "$PWD"
+  bash scripts/runtime-exec.sh diagnose "$PWD"
+  bash scripts/tests/restricted/run.sh --runtime-resolution
+Para comparar uma versão anterior explicitamente:
+  FILEMANAGER_RUNTIME_BASELINE=/caminho/runtime-exec-anterior.sh bash scripts/tests/restricted/run.sh --runtime-resolution
+O baseline é opcional e não depende de HEAD, evitando um teste que quebraria após
+um commit futuro do usuário. O runner não faz operações Git de escrita.
+
+Mantenha ./pcg persistente e legível pelo usuário do serviço. Não compartilhe uma
+cópia gravável com outros usuários. Sem origem persistente não há reconstrução
+garantida; sem qualquer mecanismo de medição disponível só a reutilização pode
+prosseguir. Se nenhum destino puder executar ELF ou comportar a cópia, o helper
+informa as restrições observadas e não tenta alterar montagens/obter privilégios.
+
+ARQUIVOS MODIFICADOS/NOVOS
+filemanagerctl
+installer.sh
+scripts/install-supervision.sh
+scripts/runtime-exec.sh
+scripts/tests/restricted/run.sh
+scripts/tests/tunnel-agent-test.cjs
+scripts/tests/tunnel-direct-bootstrap-test.cjs
+scripts/tests/tunnels-test.php
+scripts/tunnel-agent.sh
+scripts/tunnel-direct-agent.sh
+scripts/tests/restricted/runtime-resolution.sh
+docs/runtime-resolution.txt
+docs/runtime-resolution-evidence.txt

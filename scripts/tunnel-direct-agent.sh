@@ -178,7 +178,8 @@ fm_tunnel_start() {
     }
     if ! {
         printf '#!/usr/bin/env bash\n'
-        declare -f fm_noexec fm_exec_dir fm_prepare_binary fm_tunnel_main
+        fm_export_exec_helpers
+        declare -f fm_tunnel_main
         printf 'fm_tunnel_main "$1"\n'
     } > "$launch_dir/agent.sh"; then rm -rf -- "$launch_dir"; return 1; fi
     (trap '' HUP; exec bash "$launch_dir/agent.sh" "$launch_dir") </dev/null >"$launch_dir/agent.log" 2>&1 &

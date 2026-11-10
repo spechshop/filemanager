@@ -1,0 +1,92 @@
+Runtime discovery integration; exit status: 0
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 342B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/alpine:3.20
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [1/3] FROM docker.io/library/alpine:3.20@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc
+#4 resolve docker.io/library/alpine:3.20@sha256:d9e853e87e55526f6b2917df91a2115c36dd7c696a35be12163d44e6e2a4b6bc 0.0s done
+#4 DONE 0.0s
+
+#5 [2/3] RUN apk add --no-cache bash coreutils util-linux procps nodejs npm curl openssl ca-certificates python3 iptables     && adduser -D -u 1000 restricted     && rm -f /usr/bin/crontab
+#5 CACHED
+
+#6 exporting to image
+#6 exporting layers done
+#6 exporting manifest sha256:ca922cf8da3189f1413616d6de8b1c0f07fffe299992f7fb0be8534ef03dfc87 done
+#6 exporting config sha256:93f4859d6defc4f72ebed85090c55d678371272fd1e7d1920373622d37c4f14d done
+#6 exporting attestation manifest sha256:dbb41aa629a6c3584acb9726dbd5134af282e21b6b6006c32297a8798df6ac04
+#6 exporting attestation manifest sha256:dbb41aa629a6c3584acb9726dbd5134af282e21b6b6006c32297a8798df6ac04 0.0s done
+#6 exporting manifest list sha256:b280d388550a123696068caf4dfd373e0bd9fa31a6ac9bdde3c9afc90c7a2895 0.0s done
+#6 naming to docker.io/library/filemanager-restricted-test:latest done
+#6 unpacking to docker.io/library/filemanager-restricted-test:latest done
+#6 DONE 0.1s
+PHP 8.5.10 (cli) (built: Nov  9 2026 00:41:24) (ZTS)
+Copyright (c) The PHP Group
+Zend Engine v4.5.10, Copyright (c) Zend Technologies
+    with Zend OPcache v8.5.10, Copyright (c), by Zend Technologies
+ELF size=137825672, shm free=30306304: insufficient for a second copy
+Execução bloqueada por noexec: /home/restricted/app/pcg
+Filesystem noexec: /tmp
+Sem diretório gravável e executável com espaço suficiente. Solicite um local autorizado ao provedor (FILEMANAGER_EXEC_DIR).
+PHP >= 8.3 com Swoole, zip, sockets, pcntl e posix não disponível. Execute o instalador; confira arquitetura e extensões.
+PASS before: existing /dev/shm/pcg was missed
+[installer][aviso] Comando sudo não encontrado. Seguindo em modo usuário (sem root).
+[filemanager] Parando o FileManager...
+[filemanager][ok] FileManager desligado.
+[filemanager] Parando o FileManager...
+[filemanager][ok] FileManager desligado.
+[installer][aviso] Sem autostart persistente: iniciando watchdog em background neste boot.
+[filemanager][ok] FileManager iniciado.
+[filemanager][ok] FileManager iniciado.
+[filemanager] Supervisor: background (PID: 390)
+[filemanager] Supervisão automática: ativa
+[filemanager] Autostart: desativado
+[filemanager] Parada administrativa: não
+[filemanager] Logs: /home/restricted/app/filemanager.log; /home/restricted/app/.runtime/supervision/events.log; journalctl [--user] -u filemanager-8624338edf2ce083.service (systemd)
+[filemanager][ok] FileManager está rodando (PID(s): 478 ).
+[filemanager] Parando o FileManager...
+[filemanager][ok] FileManager desligado.
+PASS after: supervision-only, incomplete PATH, blocked utilities, reuse without allocation
+PASS diagnosis: silent df failure distinguished from noexec/space, statvfs available
+PASS probe: SHA-256 fallback and rejection of non-PHP ELF returning zero
+PASS unknown capacity: reuse succeeds; allocation fails with accurate diagnosis
+PASS integrity: corrupt hash, unsafe permissions, non-ELF rejected
+PHP 8.5.10 (cli) (built: Nov  9 2026 00:41:24) (ZTS)
+Copyright (c) The PHP Group
+Zend Engine v4.5.10, Copyright (c) Zend Technologies
+    with Zend OPcache v8.5.10, Copyright (c), by Zend Technologies
+PASS allocation: four concurrent starts, one verified ELF, statvfs fallback
+[installer][aviso] Comando sudo não encontrado. Seguindo em modo usuário (sem root).
+Execução bloqueada por noexec: /home/restricted/app/pcg
+Filesystem noexec: /tmp (confirmando execução)
+Execução ELF negada em /tmp (noexec, permissões ou política do host).
+Execução ELF confirmada em /dev/shm.
+Não foi possível medir espaço com df em /dev/shm/filemanager-1000-4030976329.bXdZgs8a; tentando stat/statvfs.
+[filemanager] Parando o FileManager...
+[filemanager][ok] FileManager desligado.
+[filemanager] Parando o FileManager...
+[filemanager][ok] FileManager desligado.
+[filemanager] Parando o FileManager...
+[filemanager][ok] FileManager desligado.
+[filemanager][ok] Inicialização automática desativada.
+[filemanager][ok] FileManager iniciado.
+[filemanager] Supervisor: watchdog (PID: 2226)
+[filemanager] Supervisão automática: ativa
+[filemanager] Autostart: desativado
+[filemanager] Parada administrativa: não
+[filemanager] Logs: /home/restricted/app/filemanager.log; /home/restricted/app/.runtime/supervision/events.log; journalctl [--user] -u filemanager-8624338edf2ce083.service (systemd)
+[filemanager][ok] FileManager está rodando (PID(s): 2316 ).
+[filemanager] Parando o FileManager...
+[filemanager][ok] FileManager desligado.
+[filemanager][ok] Inicialização automática desativada.
+PASS reboot recovery: persistent source rebuilt; supervision uses recovered PHP
+

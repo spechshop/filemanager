@@ -69,7 +69,7 @@ fi
         "FM_TARGET='http://127.0.0.1:8080'", "FM_PANEL_PIN=''", 'FM_NO_TLS_VERIFY=false'].join('\n');
     const platform = execFileSync('uname', ['-s'], {encoding: 'utf8'}).trim() + ':' + execFileSync('uname', ['-m'], {encoding: 'utf8'}).trim();
     const cases = `${platform}) FM_ASSET='cloudflared-linux-amd64'; FM_SHA256='${crypto.createHash('sha256').update(executable).digest('hex')}';;`;
-    const source = fs.readFileSync(path.join(ROOT, 'scripts/tunnel-agent.sh'), 'utf8').replace('# FILEMANAGER_EXEC_HELPER', fs.readFileSync(path.join(ROOT, 'scripts/runtime-exec.sh'), 'utf8').split('if [ "${BASH_SOURCE[0]}" = "$0" ]; then')[0]).replace('# FILEMANAGER_CONFIG', header)
+    const source = fs.readFileSync(path.join(ROOT, 'scripts/tunnel-agent.sh'), 'utf8').replace('# FILEMANAGER_EXEC_HELPER', () => fs.readFileSync(path.join(ROOT, 'scripts/runtime-exec.sh'), 'utf8').split('if [ "${BASH_SOURCE[0]}" = "$0" ]; then')[0]).replace('# FILEMANAGER_CONFIG', header)
         .replace('# FILEMANAGER_PLATFORMS', cases).replaceAll('FILEMANAGER_CLOUDFLARED_VERSION', 'fixture');
     const script = path.join(directory, 'agent.sh'); fs.writeFileSync(script, source);
     const child = spawn('/bin/bash', [script], {env: {...process.env, PATH: bin, TMPDIR: directory, TUNNEL_FIXTURE_DIR: directory}, detached: true, stdio: ['ignore', 'pipe', 'pipe']});

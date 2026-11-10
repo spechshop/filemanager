@@ -127,7 +127,9 @@ namespace {
         $bootstrap = agentRequest($secret);
         check($bootstrap->code === 200 && str_contains($bootstrap->body, 'fm_tunnel_main'), 'Agent bootstrap failed');
         check(str_contains($bootstrap->body, "FM_TARGET='https://[::1]:8443'") && str_contains($bootstrap->body, "FM_ENDPOINT='https://panel.example/fileManagerTunnelAgent'"), 'Remote origin and panel address mixed');
-        check(!str_contains($bootstrap->body, 'python') && !str_contains($bootstrap->body, 'jq '), 'Remote script requires another runtime');
+        // Python is now an optional statvfs fallback, not a launch dependency.
+        // The Bash agent integration suite runs with python/python3 blocked.
+        check(!str_contains($bootstrap->body, 'jq '), 'Remote script requires jq');
         file_put_contents($directory . '/bootstrap.sh', $bootstrap->body);
         $pipes = [];
         $compile = proc_open(['bash', '-n', $directory . '/bootstrap.sh'], [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);

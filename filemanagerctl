@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 
+# Web terminals and cron may inherit an incomplete PATH.
+for fm_system_bin in /usr/local/bin /usr/bin /bin /usr/local/sbin /usr/sbin /sbin; do
+    case ":${PATH:-}:" in *":$fm_system_bin:"*) ;; *) PATH="${PATH:+$PATH:}$fm_system_bin" ;; esac
+done
+unset fm_system_bin
+export PATH
+
 # Controla a instância do FileManager instalada neste diretório. O script
 # também funciona quando chamado por meio de um link simbólico no PATH.
 

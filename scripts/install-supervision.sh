@@ -3,6 +3,17 @@
 # Keep all lifecycle operations in filemanagerctl, including migrations.
 
 supervision_as_owner() {
+    # Migration/system enable previously ran via run_priv. Preserve that ability
+    # when an administrator repairs a system unit; the controller itself delegates
+    # user-owned watchdog state back to its owner. Always interpret via Bash.
+    case "${1:-}" in
+        __migrate-stop|__install-enable)
+            if [ "$IS_ROOT" -eq 1 ] || [ -n "$SUDO" ]; then
+                run_priv /bin/bash "$CONTROL_SCRIPT" "$@"
+                return $?
+            fi
+            ;;
+    esac
     if [ "$(id -un)" = "$FILEMANAGER_USER" ]; then
         /bin/bash "$CONTROL_SCRIPT" "$@"
     elif [ "$IS_ROOT" -eq 1 ]; then
@@ -103,7 +114,7 @@ configure_supervision() {
     fi
     chmod 700 "$state_dir" 2>/dev/null
     # stop records this boot's administrative intent before removing old cron.
-    run_priv "$CONTROL_SCRIPT" __migrate-stop || return 1
+    supervision_as_owner __migrate-stop || return 1
     supervision_as_owner __configure "$PHP_BIN" "$service" background || return 1
     # Remove only this installation's old cron launchers for the service account.
     supervision_as_owner __migrate-stop || return 1
@@ -113,7 +124,7 @@ configure_supervision() {
         if supervision_write_unit system "/etc/systemd/system/$service" \
             && run_priv systemctl daemon-reload \
             && supervision_as_owner __configure "$PHP_BIN" "$service" system \
-            && run_priv "$CONTROL_SCRIPT" __install-enable "$previous_autostart" "$previous_stop"; then
+            && supervision_as_owner __install-enable "$previous_autostart" "$previous_stop"; then
             return 0
         fi
         run_priv systemctl disable --now "$service" || {

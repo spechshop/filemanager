@@ -69,7 +69,7 @@ process.on('SIGTERM', () => process.exit(0)); setInterval(() => {}, 1000);
 `;
     const header = ["FM_ENDPOINT='https://panel.fixture/fileManagerTunnelAgent'", `FM_SECRET='${'a'.repeat(64)}'`, `FM_SESSION='${'b'.repeat(48)}'`, "FM_PANEL_PIN=''"].join('\n');
     const source = fs.readFileSync(path.join(ROOT, 'scripts/tunnel-direct-agent.sh'), 'utf8')
-        .replace('# FILEMANAGER_EXEC_HELPER', fs.readFileSync(path.join(ROOT, 'scripts/runtime-exec.sh'), 'utf8').split('if [ "${BASH_SOURCE[0]}" = "$0" ]; then')[0]).replace('# FILEMANAGER_CONFIG', header).replace('# FILEMANAGER_NODE_PLATFORMS', cases)
+        .replace('# FILEMANAGER_EXEC_HELPER', () => fs.readFileSync(path.join(ROOT, 'scripts/runtime-exec.sh'), 'utf8').split('if [ "${BASH_SOURCE[0]}" = "$0" ]; then')[0]).replace('# FILEMANAGER_CONFIG', header).replace('# FILEMANAGER_NODE_PLATFORMS', cases)
         .replace('FILEMANAGER_AGENT_BASE64', Buffer.from(payload).toString('base64'));
     const script = path.join(directory, 'bootstrap.sh'); fs.writeFileSync(script, source);
     const child = spawn('/bin/bash', [script], {env: {...process.env, PATH: bin, TMPDIR: directory, TUNNEL_FIXTURE_DIR: directory}, stdio: ['ignore', 'pipe', 'pipe']});

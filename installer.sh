@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+
+# Web terminals and cron may inherit an incomplete PATH.
+for fm_system_bin in /usr/local/bin /usr/bin /bin /usr/local/sbin /usr/sbin /sbin; do
+    case ":${PATH:-}:" in *":$fm_system_bin:"*) ;; *) PATH="${PATH:+$PATH:}$fm_system_bin" ;; esac
+done
+unset fm_system_bin
+export PATH
 # =====================================================================
 # installer.sh - Instalação resiliente do FileManager
 # Objetivo: concluir a instalação 100% mesmo quando comandos que exigem
@@ -136,7 +143,7 @@ if [ "${1:-}" = --supervision-only ]; then
     }
     source "$CURRENT_DIR/scripts/runtime-exec.sh" || exit 1
     PHP_BIN="$(fm_php "$CURRENT_DIR")" || exit 1
-    chmod +x "$CONTROL_SCRIPT" || exit 1
+    # O controlador é interpretado por Bash; não exige bit executável ou chmod.
     # Keep the existing service account when root upgrades a managed checkout.
     if [ "$IS_ROOT" -eq 1 ] && [ -z "${FILEMANAGER_SERVICE_USER:-}" ] \
         && [ -d "$CURRENT_DIR/.runtime/supervision" ]; then
