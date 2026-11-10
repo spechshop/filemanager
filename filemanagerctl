@@ -724,7 +724,7 @@ usage() {
 
 case "${1:-}" in
     update|--update|update-system|--update-system) update_system_controller; exit $? ;;
-    start|stop|restart|status|disable|enable|__watchdog|__tick|__log|__restart|__configure|__install-enable|__migrate-stop) ;;
+    start|stop|restart|status|disable|enable|__watchdog|__tick|__log|__restart|__configure|__install-enable|__install-background|__migrate-stop) ;;
     *) usage; exit 2 ;;
 esac
 # Root controls a user-owned watchdog through that account's crontab. This
@@ -768,6 +768,16 @@ case "$1" in
             if [ "$3" != "$BOOT_ID" ]; then start_server; fi
         else
             exit 1
+        fi
+        ;;
+    __install-background)
+        # Migration temporarily disables autostart. Do not mistake that internal
+        # state for an operator's disable on the next installation.
+        state_write autostart "${2:-unavailable}" || exit 1
+        if [ "$2" = disabled ] || [ "$3" = "$BOOT_ID" ]; then
+            warn "Parada/desativação administrativa preservada; servidor não iniciado. Para iniciar: bash $SCRIPT_PATH start"
+        else
+            start_server
         fi
         ;;
     __configure)

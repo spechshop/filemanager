@@ -1,0 +1,8 @@
+test_installer_falls_back_when_cron_rejects_the_account (__main__.SupervisionTests.test_installer_falls_back_when_cron_rejects_the_account) ... ok
+test_supervision_only_upgrade_preserves_application_data (__main__.SupervisionTests.test_supervision_only_upgrade_preserves_application_data) ... ok
+test_stop_and_disable_during_crash_backoff_cancel_recovery (__main__.SupervisionTests.test_stop_and_disable_during_crash_backoff_cancel_recovery) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 19.071s
+
+OK

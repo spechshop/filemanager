@@ -1,0 +1,1 @@
+PASS installer token: creation, preservation, corruption, write failure, policy permissions, private storage, and summary

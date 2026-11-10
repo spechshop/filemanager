@@ -419,7 +419,8 @@ PHP_BIN="$(fm_install_php "$CURRENT_DIR")" || exit 1
 
 # BEGIN installer token generation
 generate_installer_token() {
-    FILEMANAGER_INSTALLER_ROOT="$CURRENT_DIR" "$PHP_BIN" -r '
+    local output line token='' count=0
+    if output=$(FILEMANAGER_INSTALLER_ROOT="$CURRENT_DIR" "$PHP_BIN" -r '
 declare(strict_types=1);
 ini_set("display_errors", "stderr");
 
@@ -454,11 +455,20 @@ $expire = time() + 365 * 24 * 60 * 60;
 
 if (!is_string($secret) || !chmod($tokenFile, 0600)) throw new RuntimeException("Token store permissions unavailable");
 if (!chmod($tokenFile . ".lock", 0600)) throw new RuntimeException("Token lock permissions unavailable");
-echo $secret;
+echo "\n", $secret, "\n";
 } catch (Throwable $error) {
     exit(1);
 }
-'
+'); then
+        while IFS= read -r line; do
+            if [[ "$line" =~ ^[a-f0-9]{64}$ ]]; then token="$line"; count=$((count + 1))
+            elif [ -n "$line" ]; then printf '%s\n' "$line" >&2; fi
+        done <<< "$output"
+        [ "$count" = 1 ] || return 1
+        printf '%s' "$token"
+    else
+        return 1
+    fi
 }
 # END installer token generation
 
@@ -513,7 +523,7 @@ case "$TOKEN_STORE_PATH" in
     /*) ;;
     *) TOKEN_STORE_PATH="$CURRENT_DIR/$TOKEN_STORE_PATH" ;;
 esac
-if INSTALLER_TOKEN="$(generate_installer_token 2>/dev/null)" && [ -n "$INSTALLER_TOKEN" ]; then
+if INSTALLER_TOKEN="$(generate_installer_token)" && [ -n "$INSTALLER_TOKEN" ]; then
     if [ "$IS_ROOT" -eq 1 ] && [ "$FILEMANAGER_USER" != "root" ]; then
         TOKEN_STORE_DIR="$(dirname -- "$TOKEN_STORE_PATH")"
         if ! run_priv chown "$FILEMANAGER_USER" "$TOKEN_STORE_DIR" "$TOKEN_STORE_PATH" "$TOKEN_STORE_PATH.lock" 2>/dev/null; then

@@ -56,7 +56,7 @@ class Fixture:
         (self.root / 'filemanagerctl').chmod(0o755)
         (self.root / 'scripts').mkdir(exist_ok=True)
         shutil.copy2(ROOT / 'scripts/runtime-exec.sh', self.root / 'scripts/runtime-exec.sh')
-        for helper in ('install-php-runtime.sh', 'secure-download.sh'):
+        for helper in ('install-php-runtime.sh', 'secure-download.sh', 'pcg-release.py'):
             shutil.copy2(ROOT / 'scripts' / helper, self.root / 'scripts' / helper)
         (self.root / 'pcg').symlink_to(PHP)
         (self.root / 'server.php').write_text('''<?php
@@ -298,6 +298,9 @@ class SupervisionTests(unittest.TestCase):
         # Even a root test runner must never reach real /etc/systemd writes.
         if os.getuid() == 0:
             f.script('id', 'if [ "$*" = -u ]; then echo 60000; else exec /usr/bin/id "$@"; fi\n')
+        # This lifecycle test must not query remote releases.
+        f.env['FILEMANAGER_PHP_URL'] = 'file://' + str(Path(PHP).resolve())
+        f.env['FILEMANAGER_PHP_SHA256'] = __import__('hashlib').sha256(Path(PHP).read_bytes()).hexdigest()
         # Avoid account HOME resolution reaching the test runner's real home.
         f.script('getent', 'printf "%s:x:%s:%s::%s:/bin/bash\\n" "$(id -un)" "$(id -u)" "$(id -g)" "$FM_FIXTURE/home"\n')
         for name in ('apt-get', 'curl', 'wget', 'composer', 'npm'):
@@ -344,6 +347,10 @@ class SupervisionTests(unittest.TestCase):
         self.assertEqual((f.state / 'backend').read_text().strip(), 'background')
         self.assertTrue(alive(f.pid()))
         self.assertIn('Autostart: desativado', f.ctl('status').stdout)
+        # A second installation must not preserve the internal migration stop.
+        f.install()
+        self.assertTrue(alive(f.pid()))
+        self.assertNotEqual((f.state / 'autostart').read_text().strip(), 'disabled')
         f.env.pop('FM_CRON_DENIED')
 
     def test_stop_and_disable_during_crash_backoff_cancel_recovery(self):

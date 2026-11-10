@@ -13,7 +13,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 INSTALLER = PROJECT_ROOT / "installer.sh"
-PHP_BIN = shutil.which("php")
+PHP_BIN = os.environ.get("SECURITY_PHP_BINARY") or shutil.which("pcg")
 
 
 def require(condition, message):
@@ -95,6 +95,13 @@ def main():
         repeated_records = json.loads(token_file.read_text(encoding="utf-8"))
         require(second_token != token and token in repeated_records and second_token in repeated_records, "Repeated installation did not preserve both tokens")
         require(repeated_records[token] == record, "Repeated installation modified the existing token")
+
+        warned_function = function.replace('declare(strict_types=1);',
+            'declare(strict_types=1); fwrite(STDOUT, "Warning: regression output\\n");')
+        warned = run_generation(warned_function, root, token_file)
+        require(warned.returncode == 0 and re.fullmatch(r"[a-f0-9]{64}", warned.stdout),
+                "PHP startup warnings contaminated the administrative token")
+        require("Warning" in warned.stderr, "Startup warnings were hidden")
 
         corrupt_file = root / "database" / "corrupt.lotus"
         corrupt_file.write_text("{invalid", encoding="utf-8")

@@ -171,11 +171,9 @@ configure_supervision() {
     fi
 
     # D: detached watchdog for this boot when neither persistent backend works.
-    warn "Sem autostart persistente: iniciando watchdog em background neste boot."
+    warn "Sem autostart persistente: usando supervisão em background neste boot."
     supervision_as_owner __configure "$PHP_BIN" "$service" background || return 1
-    if [ "$previous_autostart" != disabled ] && [ "$previous_stop" != "$(cat /proc/sys/kernel/random/boot_id)" ]; then
-        supervision_as_owner start
-    fi
+    supervision_as_owner __install-background "$previous_autostart" "$previous_stop"
 }
 
 configure_supervision

@@ -1,0 +1,60 @@
+Atualização local: modo estrito e PCG oficial (2026-11-09)
+
+O aviso "Unable to load dynamic library swoole" nos logs anteriores era
+provocado pelo fixture de teste via extension=swoole. Essa injeção foi removida.
+Nenhum teste atual carrega Swoole dinamicamente. O PCG fornece suas extensões.
+O teste de tolerância a avisos usa uma linha de saída controlada, sem php.ini.
+
+O instalador consulta /repos/spechshop/pcg729/releases/latest via HTTPS,
+seleciona um único asset Linux ZTS para a arquitetura do host e valida o SHA-256
+publicado na API antes de executá-lo. O nome versionado do asset é obtido dos
+metadados; não depende do antigo endereço PCG729/php nem de um hash fixo antigo.
+O parser usa Python 3 disponível no host (incluindo python3.8), nunca PHP do
+sistema para fazer bootstrap. Se a consulta/atualização falhar, um PCG existente
+validado é preservado com aviso explícito. Sem PCG e sem download verificável,
+a instalação falha. URL personalizada exige SHA-256 explicitamente fornecido.
+
+A descoberta só considera pcg e cópias gerenciadas com esse nome: removidos
+PHP do PATH, caminhos php antigos salvos na supervisão e migração cega de ./php.
+A sonda de espaço também não invoca mais PHP do sistema.
+
+Modo estrito: diagnóstico de /var/tmp, /dev/shm, /run/user/UID, /opt e
+/usr/local/bin, mostrando findmnt e permissão de escrita. Candidatos são
+ordenados por espaço disponível e testados com ELF real. O PCG é baixado
+diretamente no diretório executável selecionado, em subdiretório privado.
+O instalador mostra o caminho, warnings reais e a saída de var_dump(1).
+Preserva uma cópia persistente para recuperar a temporária após remoção/reboot.
+
+Supervisão: a migração não deixa mais "disabled" como intenção administrativa
+após fallback background bem-sucedido. Reinstalar com cron inacessível continua
+iniciando o servidor. Desativações administrativas anteriores são preservadas
+com mensagem explícita e comando start; seu histórico não permite distinguir
+uma desativação manual de estados gravados por instaladores antigos.
+O teste de inicialização do controlador deve passar antes de anunciar início.
+
+Token: warnings não entram mais no valor do token; somente uma linha com
+64 caracteres hexadecimais é aceita, e status PHP não zero continua falhando.
+
+Comandos/evidências:
+FM_TEST_LATEST_PCG=1 bash scripts/tests/restricted/run-repair.sh
+  docs/installer-pcg-latest-evidence.txt
+python3 scripts/tests/pcg-release-test.py
+  6 testes: seleção, digest, arquitetura, origem, ambiguidade e draft.
+SECURITY_PHP_BINARY=<PCG oficial> python3 scripts/tests/installer-token-test.py
+  Inclui saída com warning, token válido, corrupção e falha de escrita.
+SupervisionTests.test_installer_falls_back_when_cron_rejects_the_account
+  Agora executa a instalação duas vezes com cron inacessível.
+  docs/installer-pcg-supervision-evidence.txt
+
+Limite: o processo npm do log remoto recebeu SIGKILL; a causa (memória/política
+externa) não é identificável apenas por "Killed". Executar Node em /dev/shm
+resolve noexec, não impede o provedor de encerrar processos.
+Alterações somente locais; sem commits, branches, PRs ou push.
+
+Resultado da execução final: exit 0. PCG v1.1.7 (PHP 8.5.10 ZTS)
+obtido diretamente do GitHub e executado em /dev/shm. Passaram também a
+atualização de PCG antigo válido reutilizando cache da versão atual e a
+preservação da versão validada quando os metadados ficam indisponíveis.
+A descoberta prioriza cópias com hash igual à origem persistente antes de
+PCGs independentes, evitando que uma cópia temporária antiga cause downgrade.
+Nenhum aviso de carregamento dinâmico no log final.

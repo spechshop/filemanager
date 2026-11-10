@@ -5,7 +5,7 @@ root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../../.." && pwd -P)
 # Node 24 node.tar.xz and its SHASUMS256.txt (verified by the test).
 fixtures=${1:-$root/.runtime/installer-repair-fixtures}
 docker build -t filemanager-repair-test -f "$root/scripts/tests/restricted/Dockerfile.repair" "$root/scripts/tests/restricted"
-docker run --rm --read-only --cap-drop ALL \
+docker run --rm --read-only --cap-drop ALL -e FM_TEST_LATEST_PCG="${FM_TEST_LATEST_PCG:-0}" \
     --tmpfs /home:rw,noexec,nosuid,nodev,size=1g,mode=1777 \
     --tmpfs /tmp:rw,noexec,nosuid,nodev,size=256m,mode=1777 \
     --tmpfs /dev/shm:rw,exec,nosuid,nodev,size=1g,mode=1777 \

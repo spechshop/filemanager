@@ -36,6 +36,40 @@ fm_candidate_dirs() {
     done
 }
 
+# Installation diagnostics are kept on stderr so command substitutions return
+# only the selected executable path.
+fm_strict_diagnose() {
+    local dir
+    printf 'Modo estrito detectado: procurando armazenamento gravável e execução ELF.\n' >&2
+    for dir in /var/tmp /dev/shm "/run/user/$(id -u)" /opt /usr/local/bin; do
+        [ -d "$dir" ] || continue
+        printf '=== %s ===\n' "$dir" >&2
+        findmnt -T "$dir" -no TARGET,OPTIONS >&2 2>/dev/null || :
+        if [ -w "$dir" ]; then printf 'GRAVAVEL\n' >&2
+        else printf 'SEM PERMISSAO DE ESCRITA\n' >&2; fi
+    done
+}
+
+fm_strict_candidates() {
+    local root="$1" dir available
+    local -A seen=()
+    # Rank writable locations by measured capacity. fm_exec_dir still tests a
+    # real ELF: writable does not mean executable, regardless of mount hints.
+    while IFS= read -r dir; do
+        [ -n "$dir" ] && [ -z "${seen[$dir]:-}" ] || continue
+        seen[$dir]=1
+        [ -d "$dir" ] && [ -w "$dir" ] || continue
+        available=$(fm_available_bytes "$dir") || continue
+        printf '%s\t%s\n' "$available" "$dir"
+    done < <(
+        if [ -n "${FILEMANAGER_EXEC_DIR:-}" ]; then printf '%s\n' "$FILEMANAGER_EXEC_DIR"
+        else
+            printf '%s\n' /var/tmp /dev/shm "/run/user/$(id -u)" /opt /usr/local/bin
+            fm_candidate_dirs "$root"
+        fi
+    ) | sort -rn -k1,1 | cut -f2-
+}
+
 fm_sha256() {
     local digest
     if digest=$(sha256sum -- "$1" 2>/dev/null); then digest=${digest%% *}
@@ -91,14 +125,6 @@ fm_available_bytes() {
     fi
     if result=$(python3 -c 'import os,sys; s=os.statvfs(sys.argv[1]); print(s.f_bavail*s.f_frsize)' "$base" 2>/dev/null) \
         && [[ "$result" =~ ^[0-9]+$ ]]; then printf '%s\n' "$result"; return; fi
-    # A system PHP may lack Swoole yet still provide filesystem diagnostics.
-    while IFS= read -r php; do
-        fm_private_file "$php" || continue
-        magic=''; IFS= read -r -N4 magic < "$php" || :
-        [ "$magic" = $'\177ELF' ] || continue
-        if result=$("$php" -r '$n=disk_free_space($argv[1]); if ($n === false) exit(1); printf("%.0f", $n);' "$base" 2>/dev/null) \
-            && [[ "$result" =~ ^[0-9]+$ ]]; then printf '%s\n' "$result"; return; fi
-    done < <(type -a -p php 2>/dev/null || :)
     printf 'Espaço desconhecido em %s: df, stat e statvfs indisponíveis. Não é prova de noexec ou de falta de espaço.\n' "$base" >&2
     return 1
 }
@@ -209,12 +235,13 @@ fm_prepare_binary() (
 fm_php_candidates() {
     local root="$1" configured='' base candidate key
     [ ! -r "$root/.runtime/supervision/php" ] || IFS= read -r configured < "$root/.runtime/supervision/php" || :
-    printf '%s\n' "$root/pcg" "$configured" "${HOME:-$root}/.local/bin/pcg"
+    printf '%s\n' "$root/pcg" "${HOME:-$root}/.local/bin/pcg"
+    [[ "$configured" = */pcg ]] && printf '%s\n' "$configured"
     key=$(printf %s "$root" | cksum | cut -d' ' -f1)
     for candidate in "$root/.runtime/exec-"*.path; do
         [ -f "$candidate" ] && [ ! -L "$candidate" ] || continue
         IFS= read -r configured < "$candidate" || configured=''
-        [ -z "$configured" ] || printf '%s\n' "$configured"
+        [[ "$configured" = */pcg ]] && printf '%s\n' "$configured"
     done
     while IFS= read -r base; do
         printf '%s\n' "$base/pcg"
@@ -222,7 +249,7 @@ fm_php_candidates() {
             [ ! -f "$candidate" ] || printf '%s\n' "$candidate"
         done
     done < <(fm_candidate_dirs "$root")
-    type -a -p pcg php 2>/dev/null || :
+    type -a -p pcg 2>/dev/null || :
 }
 
 # Keep the process status independent from the probe protocol. PHP/Swoole may
@@ -250,7 +277,7 @@ fm_php_code() {
 
 fm_php() {
     local root="$1" candidate resolved reference='' digest='' actual magic code rc
-    local -a originals=()
+    local -a originals=() independent=()
     local -A seen=()
     root=$(cd -- "$root" && pwd -P) || return 1
     if [ -f "$root/pcg" ]; then
@@ -271,10 +298,16 @@ fm_php() {
         # Independent, privately owned runtimes can be different valid builds.
         # A broken persistent file must not veto an otherwise valid runtime.
         # Copies created by fm_prepare_binary still require matching SHA-256.
-        if [ -n "$digest" ] && [[ "$resolved" = */filemanager-*/pcg ]]; then
+        if [ -n "$digest" ] && [ "$resolved" != "$reference" ]; then
             actual=$(fm_sha256 "$resolved") || continue
             if [ "$actual" != "$digest" ]; then
-                printf 'Cache rejeitado por SHA-256 diferente da origem: %s\n' "$candidate" >&2
+                if [[ "$resolved" = */filemanager-*/pcg ]]; then
+                    printf 'Cache rejeitado por SHA-256 diferente da origem: %s\n' "$candidate" >&2
+                else
+                    # Prefer matching existing copies before independent builds;
+                    # retain other PCGs as recovery options for a broken origin.
+                    independent+=("$resolved")
+                fi
                 continue
             fi
         fi
@@ -288,6 +321,14 @@ fm_php() {
             originals+=("$resolved")
         fi
     done < <(fm_php_candidates "$root")
+    for candidate in "${independent[@]}"; do
+        if fm_php_probe "$candidate" "$code"; then
+            printf '%s\n' "$candidate"; return 0
+        else rc=$?; fi
+        if [ "$rc" = 126 ] || fm_noexec "$candidate" || [ ! -x "$candidate" ]; then
+            originals+=("$candidate")
+        fi
+    done
     # Phase 2: recover from persistent sources; preparation itself is locked and
     # also rechecks caches so simultaneous starts cannot allocate duplicate ELFs.
     for candidate in "${originals[@]}"; do

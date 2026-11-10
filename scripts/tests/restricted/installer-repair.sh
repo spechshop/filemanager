@@ -4,14 +4,15 @@ mkdir -p /home/restricted/app/scripts
 cd /home/restricted/app
 cp /repo/installer.sh /repo/filemanagerctl .
 cp /repo/scripts/{runtime-exec,install-php-runtime,secure-download,install-supervision}.sh scripts/
+cp /repo/scripts/pcg-release.py scripts/
 cp /runtime/php pcg
 chmod 700 pcg
 cp pcg /dev/shm/pcg
 printf '<?php file_put_contents(__DIR__."/started", PHP_BINARY); while(true) usleep(100000);' > server.php
-# The binary already embeds Swoole; asking the loader to load it again emits
-# genuine PHP startup warnings while all required extensions remain available.
-printf 'extension=swoole\ndisplay_errors=1\nlog_errors=1\n' > /home/restricted/php.ini
-export PHPRC=/home/restricted/php.ini
+# Only the static PCG binary; no extension loading or injected php.ini.
+unset PHPRC PHP_INI_SCAN_DIR
+export FILEMANAGER_PHP_URL=file:///runtime/php
+export FILEMANAGER_PHP_SHA256=$(sha256sum /runtime/php | cut -d' ' -f1)
 /dev/shm/pcg -v
 /dev/shm/pcg -r 'foreach (["swoole","zip","sockets","pcntl","posix"] as $e) if (!extension_loaded($e)) exit(3); exit(PHP_VERSION_ID >= 80300 ? 0 : 2);'
 ! ./pcg -v
@@ -22,15 +23,15 @@ cp /bin/true /tmp/true
 findmnt -n -o TARGET,OPTIONS -T /home/restricted/app
 findmnt -n -o TARGET,OPTIONS -T /tmp
 findmnt -n -o TARGET,OPTIONS -T /dev/shm
-if bash /runtime/runtime-exec.sh php "$PWD" >before.out 2>before.err; then echo 'baseline unexpectedly succeeded'; exit 1; fi
-grep 'status 1' before.err
-printf 'PASS baseline: valid PHP rejected with warnings and misleading status 1\n'
 export PATH=/nonexistent
 /bin/bash installer.sh --supervision-only
 [ "$(/bin/cat .runtime/supervision/php)" = /dev/shm/pcg ]
 /bin/bash filemanagerctl disable
 export PATH=/usr/bin:/bin
 source scripts/install-php-runtime.sh
+fm_php_probe /dev/shm/pcg 'echo "WARNING: regression output\nFM_PHP_RUNTIME_VALID\n";' 2>warning.err
+grep 'WARNING: regression output' warning.err
+printf 'PASS PCG-only: probe tolerates warning text without loading extensions\n'
 # Real exit codes and marker are independently required.
 if fm_php_probe /dev/shm/pcg 'echo "FM_PHP_RUNTIME_VALID\n"; exit(42);' 2>exit.err; then exit 1; fi
 grep 'status real do processo 42' exit.err
@@ -64,19 +65,51 @@ fm_php_candidates() { printf '%s\n' "$1/pcg"; }
 export FILEMANAGER_PHP_URL=file:///runtime/php
 export FILEMANAGER_PHP_SHA256=$(fm_sha256 /runtime/php)
 printf 'invalid' > pcg
-runtime=$(fm_install_php "$PWD")
+runtime=$(fm_install_php "$PWD" 2>download.err)
+grep 'Baixando PCG diretamente em /dev/shm/' download.err
+grep 'Modo estrito detectado' download.err
+grep 'int(1)' download.err
 cmp pcg /runtime/php
 "$runtime" -r 'echo "PASS verified download and feature validation\n";'
 rm pcg
-runtime=$(fm_install_php "$PWD")
+runtime=$(fm_install_php "$PWD" 2>download.err)
+grep 'Baixando PCG diretamente em /dev/shm/' download.err
+grep 'Modo estrito detectado' download.err
+grep 'int(1)' download.err
 cmp pcg /runtime/php
 printf 'PASS download: absent and invalid persistent source repaired\n'
 printf 'invalid preserved' > pcg
 export FILEMANAGER_PHP_SHA256=$(printf '%064d' 0)
 if fm_install_php "$PWD" >bad.out 2>bad.err; then exit 1; fi
-grep 'integridade inválidos' bad.err
+grep 'nenhum local permitiu download íntegro' bad.err
 [ "$(cat pcg)" = 'invalid preserved' ]
 printf 'PASS integrity: incorrect download hash fails without replacing persistent file\n'
+# An old saved system-PHP setting must never re-enter PCG discovery.
+printf '/usr/bin/php\n' > .runtime/supervision/php
+source scripts/runtime-exec.sh
+if fm_php_candidates "$PWD" | grep -E '/(php|php[0-9.]+)$'; then exit 1; fi
+printf 'PASS PCG-only discovery: system PHP and stale saved PHP path excluded\n'
+if [ "${FM_TEST_LATEST_PCG:-0}" = 1 ]; then
+    unset FILEMANAGER_PHP_URL FILEMANAGER_PHP_SHA256
+    runtime=$(fm_install_php "$PWD")
+    IFS=$'\t' read -r url digest size tag <<< "$(fm_pcg_release)"
+    [ "$(fm_sha256 "$runtime")" = "$digest" ]
+    [ "$(fm_sha256 pcg)" = "$digest" ]
+    "$runtime" -v
+    "$runtime" -r 'foreach (["swoole","zip","sockets","pcntl","posix"] as $e) if (!extension_loaded($e)) exit(1);'
+    printf 'PASS latest PCG: %s, official HTTPS, published SHA-256, static extensions\n' "$tag"
+    cp /runtime/php pcg
+    cp /runtime/php /dev/shm/pcg
+    updated=$(fm_install_php "$PWD" 2>update.err)
+    [ "$(fm_sha256 "$updated")" = "$digest" ]
+    [ "$(fm_sha256 pcg)" = "$digest" ]
+    grep 'Reutilizando cópia íntegra da release atual' update.err
+    printf 'PASS upgrade: older valid PCG upgraded using verified current cache\n'
+    # Failure to fetch a newer version must not discard an executable PCG.
+    (fm_pcg_release() { return 1; }
+     [ "$(fm_install_php "$PWD")" = "$updated" ])
+    printf 'PASS offline: validated PCG retained when release metadata is unavailable\n'
+fi
 # Actual official Node.js 24 archive, authenticated against its release sums.
 expected=$(awk '$2 ~ /linux-x64.tar.xz$/ {print $1}' /runtime/SHASUMS256.txt)
 [ "$(fm_sha256 /runtime/node.tar.xz)" = "$expected" ]
