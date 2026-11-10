@@ -1,0 +1,20 @@
+old-env; status=0
+[1;32m[filemanager][ok][0m FileManager iniciado.
+
+blocked-nohup; status=1
+[1;31m[filemanager][erro][0m O FileManager não iniciou. Diagnóstico desta tentativa:
+Etapa: Iniciando o supervisor
+Lançador do watchdog encerrou com status 126.
+Watchdog: não está executando
+Saída da inicialização:
+nohup: execution denied by hosting policy
+A aplicação não produziu saída em filemanager.log.
+
+php-fatal; status=1
+[1;31m[filemanager][erro][0m O FileManager não iniciou. Diagnóstico desta tentativa:
+Etapa: Executando /tmp/fm-supervision-php-repair/php /tmp/fm-supervision-d_jfktjn/instance's 100% files/server.php
+Falha: PHP terminou (PID 3013044, status 42); recuperação em 2s.
+Watchdog: 3012954
+O lançador não produziu saída de diagnóstico.
+Saída recente da aplicação:
+Fatal error: missing application dependency\n

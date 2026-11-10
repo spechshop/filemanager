@@ -65,7 +65,9 @@ fm_php_candidates() { printf '%s\n' "$1/pcg"; }
 export FILEMANAGER_PHP_URL=file:///runtime/php
 export FILEMANAGER_PHP_SHA256=$(fm_sha256 /runtime/php)
 printf 'invalid' > pcg
-runtime=$(fm_install_php "$PWD" 2>download.err)
+runtime=$(fm_available_bytes() { return 1; }; fm_install_php "$PWD" 2>download.err)
+grep 'Sem medição de espaço: /dev/shm será a primeira tentativa' download.err
+grep 'Espaço não mensurável em /dev/shm' download.err
 grep 'Baixando PCG diretamente em /dev/shm/' download.err
 grep 'Modo estrito detectado' download.err
 grep 'int(1)' download.err
@@ -118,7 +120,7 @@ extract_node_runtime_archive /runtime/node.tar.xz tar.xz "$PWD/node"
 if (source /runtime/install-codex-native.sh; validate_node_runtime_layout "$PWD/node"); then exit 1; fi
 [ -f node/bin/node ] && [ -f node/lib/node_modules/npm/bin/npm-cli.js ]
 validate_node_runtime_layout "$PWD/node"
-node=$(fm_prepare_binary "$PWD/node/bin/node" "$PWD" --version)
+node=$(fm_available_bytes() { return 1; }; fm_prepare_binary "$PWD/node/bin/node" "$PWD" --version)
 [[ "$("$node" --version)" = v24.* ]]
 "$node" "$PWD/node/lib/node_modules/npm/bin/npm-cli.js" --version
 printf 'PASS Node.js 24: baseline layout rejected on noexec; fixed layout, relocated ELF and npm execute\n'

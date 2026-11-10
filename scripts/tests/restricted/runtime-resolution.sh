@@ -90,11 +90,22 @@ printf '#!/bin/bash\nexit 126\n' > /run/user/1000/tools/python3
 chmod 700 /run/user/1000/tools/python3
 [ "$(/bin/bash scripts/runtime-exec.sh php "$PWD")" = /dev/shm/pcg ]
 source scripts/runtime-exec.sh
-if FILEMANAGER_EXEC_DIR=/dev/shm fm_exec_dir "$PWD" 0 >unknown.out 2>unknown.err; then exit 1; fi
+[ "$(fm_strict_candidates "$PWD" 2>ranking.err | head -n1)" = /dev/shm ]
+unknown=$(fm_exec_dir "$PWD" 0 2>unknown.err)
+[[ "$unknown" = /dev/shm/* ]]
+rmdir "$unknown"
 grep -q 'Espaço desconhecido' unknown.err
 grep -q 'Execução ELF confirmada' unknown.err
+# Only ~30 MB is free in this tmpfs; unknown capacity is not assumed infinite.
+cp pcg another-pcg
+if FILEMANAGER_EXEC_DIR=/dev/shm fm_prepare_binary "$PWD/another-pcg" "$PWD" -v >full.out 2>full.err; then exit 1; fi
+[ ! -s full.out ]
+[ -z "$(find /dev/shm -name another-pcg -print)" ]
+grep -q 'No space left on device' full.err
+rm another-pcg
+printf 'PASS real ENOSPC: failed copy rejected and partial ELF removed\n'
 rm /run/user/1000/tools/python3
-printf 'PASS unknown capacity: reuse succeeds; allocation fails with accurate diagnosis\n'
+printf 'PASS unknown capacity: reuse succeeds; allocation defaults to executable shm\n'
 # Runtime discovered in a managed directory even without its pointer record.
 export PATH="/run/user/1000/tools:/usr/bin:/bin"
 key=$(printf %s "$PWD" | cksum | cut -d' ' -f1)

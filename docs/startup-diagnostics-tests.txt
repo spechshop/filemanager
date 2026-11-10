@@ -1,0 +1,15 @@
+test_start_with_old_env_and_stop_signal (__main__.SupervisionTests.test_start_with_old_env_and_stop_signal) ... ok
+test_start_reports_launcher_failure_inline (__main__.SupervisionTests.test_start_reports_launcher_failure_inline) ... ok
+test_start_reports_pcg_failure_inline (__main__.SupervisionTests.test_start_reports_pcg_failure_inline) ... ok
+test_start_reports_php_fatal_inline (__main__.SupervisionTests.test_start_reports_php_fatal_inline) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 5.023s
+
+OK
+test_start_reports_silent_launcher_sigkill (__main__.SupervisionTests.test_start_reports_silent_launcher_sigkill) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 0.529s
+
+OK

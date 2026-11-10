@@ -30,7 +30,7 @@ fm_candidate_dirs() {
         printf '%s\n' "$FILEMANAGER_EXEC_DIR"
         return
     fi
-    for base in "${TMPDIR:-/tmp}" /dev/shm "${XDG_RUNTIME_DIR:-/run/user/$uid}" "/run/user/$uid" /var/tmp \
+    for base in /dev/shm "${TMPDIR:-/tmp}" "${XDG_RUNTIME_DIR:-/run/user/$uid}" "/run/user/$uid" /var/tmp \
         "$root/.runtime/exec" "${HOME:-$root}/.cache/filemanager/exec"; do
         printf '%s\n' "$base"
     done
@@ -53,21 +53,29 @@ fm_strict_diagnose() {
 fm_strict_candidates() {
     local root="$1" dir available
     local -A seen=()
-    # Rank writable locations by measured capacity. fm_exec_dir still tests a
-    # real ELF: writable does not mean executable, regardless of mount hints.
+    # Prefer /dev/shm when its capacity is unknown; otherwise rank by space.
+    # fm_exec_dir still tests a real ELF: writable does not mean executable.
     while IFS= read -r dir; do
         [ -n "$dir" ] && [ -z "${seen[$dir]:-}" ] || continue
         seen[$dir]=1
         [ -d "$dir" ] && [ -w "$dir" ] || continue
-        available=$(fm_available_bytes "$dir") || continue
-        printf '%s\t%s\n' "$available" "$dir"
+        if available=$(fm_available_bytes "$dir"); then
+            printf '1\t%s\t%s\n' "$available" "$dir"
+        elif [ "$dir" = /dev/shm ]; then
+            printf 'Sem medição de espaço: /dev/shm será a primeira tentativa.\n' >&2
+            printf '2\t0\t%s\n' "$dir"
+        else
+            # Keep unmeasurable locations as fallbacks, after /dev/shm and
+            # measured candidates. Actual writes still have to succeed.
+            printf '0\t0\t%s\n' "$dir"
+        fi
     done < <(
         if [ -n "${FILEMANAGER_EXEC_DIR:-}" ]; then printf '%s\n' "$FILEMANAGER_EXEC_DIR"
         else
             printf '%s\n' /var/tmp /dev/shm "/run/user/$(id -u)" /opt /usr/local/bin
             fm_candidate_dirs "$root"
         fi
-    ) | sort -rn -k1,1 | cut -f2-
+    ) | sort -k1,1nr -k2,2nr | cut -f3-
 }
 
 fm_sha256() {
@@ -156,14 +164,17 @@ fm_exec_dir() {
         fi
         rm -f -- "$dir/true"
         printf 'Execução ELF confirmada em %s.\n' "$base" >&2
-        if ! available=$(fm_available_bytes "$dir"); then rmdir "$dir"; continue; fi
+        if ! available=$(fm_available_bytes "$dir"); then
+            printf 'Espaço não mensurável em %s; tentando escrita real após confirmar execução ELF.\n' "$base" >&2
+            printf '%s\n' "$dir"; return 0
+        fi
         if [ "$available" -lt "$((required + 1048576))" ]; then
             printf 'Espaço insuficiente em %s: disponíveis=%s, necessários=%s bytes.\n' "$base" "$available" "$((required + 1048576))" >&2
             rmdir "$dir"; continue
         fi
         printf '%s\n' "$dir"; return 0
     done < <(fm_candidate_dirs "$installation")
-    printf '%s\n' 'Nenhum dos diretórios investigados permite preparar uma nova cópia executável com espaço comprovado. Confira os diagnósticos; runtimes existentes são pesquisados antes desta etapa.' >&2
+    printf '%s\n' 'Nenhum dos diretórios investigados permite preparar uma nova cópia executável. Confira os diagnósticos; runtimes existentes são pesquisados antes desta etapa.' >&2
     return 1
 }
 

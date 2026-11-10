@@ -25,6 +25,7 @@ SERVICE="filemanager.service"
 BOOT_ID="$(cat /proc/sys/kernel/random/boot_id)"
 LOG_FILE="$APP_DIR/filemanager.log"
 EVENT_LOG="$STATE_DIR/events.log"
+START_LOG="$STATE_DIR/startup.log"
 SYSTEM_CONTROLLER="/usr/local/bin/filemanagerctl"
 SELF_PID="${BASHPID:-$$}"
 # Control/supervisor helpers must not inherit the PHP ownership tag.
@@ -460,7 +461,15 @@ stop_server() {
 
 launch_watchdog() {
     # Detach from the terminal and do not inherit lifecycle locks.
-    nohup setsid env --default-signal=TERM,INT "$BASH" "$SCRIPT_PATH" __watchdog </dev/null >/dev/null 2>&1 9>&- &
+    # Caught signals in the controller become default in the exec child. Do
+    # not require GNU env --default-signal (absent on older hosting systems).
+    local -a reset_signals=()
+    if env --default-signal=TERM,INT /bin/true >/dev/null 2>&1; then
+        reset_signals=(env --default-signal=TERM,INT)
+    fi
+    rotate_log "$START_LOG"
+    nohup setsid "${reset_signals[@]}" "$BASH" "$SCRIPT_PATH" __watchdog </dev/null >>"$START_LOG" 2>&1 9>&- &
+    LAUNCH_PID=$!
 }
 
 stop_waiter() {
@@ -479,8 +488,10 @@ watchdog() {
     # Never block on lifecycle.lock while an administrator waits for our exit.
     # Retrying is only needed during a concurrent administrative operation.
     trap 'stop_waiter; exit 0' TERM INT HUP
-    record_pid watchdog.pid "$SELF_PID" || return 1
+    record_pid watchdog.pid "$SELF_PID" || { err "Não foi possível registrar o PID do watchdog."; return 1; }
     while :; do
+        rotate_log "$START_LOG"
+        exec >>"$START_LOG" 2>&1
         if ! flock -n 9; then sleep 1; continue; fi
         if ! watchdog_allowed; then stop_waiter; unlock_lifecycle; return 0; fi
         stop_waiter
@@ -489,7 +500,12 @@ watchdog() {
         adopted=1
         if [ -z "$main_pid" ]; then
             stop_managed_processes || { unlock_lifecycle; return 1; }
-            php_bin="$(php_binary)" || { event "Runtime PHP indisponível."; unlock_lifecycle; return 1; }
+            state_write startup-stage 'Validando ou recuperando o PCG' || return 1
+            php_bin="$(php_binary)" || {
+                state_write startup-failure 'Nenhum PCG executável validado; a aplicação PHP não chegou a iniciar.'
+                event "Runtime PHP indisponível."; unlock_lifecycle; return 1;
+            }
+            state_write startup-stage "Executando $php_bin $SERVER" || return 1
             cd "$APP_DIR" || return 1
             FILEMANAGER_MANAGED_INSTANCE="$INSTANCE_ID" setsid "$php_bin" "$SERVER" 8>&- 9>&- > >("$BASH" "$SCRIPT_PATH" __log 8>&- 9>&-) 2>&1 &
             main_pid=$!
@@ -515,6 +531,7 @@ watchdog() {
             while record_alive main.pid >/dev/null; do sleep 1; done
             result=unknown
         fi
+        state_write startup-failure "PHP terminou (PID $main_pid, status $result); recuperação em 2s."
         event "PHP terminou inesperadamente (PID $main_pid, status $result); recuperação em 2s."
         sleep 2 8>&- 9>&- &
         recovery_timer=$!
@@ -594,8 +611,49 @@ configure_autostart() {
     state_write autostart enabled
 }
 
+show_start_failure() {
+    local phase failure watchdog_pid launch_status
+    phase=$(cat "$STATE_DIR/startup-stage" 2>/dev/null)
+    failure=$(cat "$STATE_DIR/startup-failure" 2>/dev/null)
+    watchdog_pid=$(record_alive watchdog.pid)
+    err "O FileManager não iniciou. Diagnóstico desta tentativa:"
+    [ -z "$phase" ] || printf 'Etapa: %s\n' "$phase" >&2
+    [ -z "$failure" ] || printf 'Falha: %s\n' "$failure" >&2
+    if [ -n "${LAUNCH_PID:-}" ] && ! process_identity "$LAUNCH_PID" >/dev/null; then
+        if wait "$LAUNCH_PID"; then launch_status=0; else launch_status=$?; fi
+        printf 'Lançador do watchdog encerrou com status %s.\n' "$launch_status" >&2
+    fi
+    printf 'Watchdog: %s\n' "${watchdog_pid:-não está executando}" >&2
+    if [ -s "$START_LOG" ]; then
+        printf 'Saída da inicialização:\n' >&2
+        tail -c 8192 "$START_LOG" >&2
+    else
+        printf 'O lançador não produziu saída de diagnóstico.\n' >&2
+    fi
+    if [ -s "$LOG_FILE" ]; then
+        printf 'Saída recente da aplicação:\n' >&2
+        tail -c 8192 "$LOG_FILE" >&2
+    else
+        printf 'A aplicação não produziu saída em filemanager.log.\n' >&2
+    fi
+    if selected_system_unit || selected_user_unit; then
+        printf 'Diagnóstico do serviço %s:\n' "$SERVICE" >&2
+        if selected_system_unit; then
+            systemctl show "$SERVICE" -p ActiveState -p SubState -p Result -p ExecMainStatus >&2
+            journalctl -u "$SERVICE" -n 20 --no-pager >&2
+        else
+            systemctl --user show "$SERVICE" -p ActiveState -p SubState -p Result -p ExecMainStatus >&2
+            journalctl --user -u "$SERVICE" -n 20 --no-pager >&2
+        fi
+    fi
+}
+
 start_server() {
-    local attempt backend
+    local attempt backend main_pid previous_pid='' stable=0
+    LAUNCH_PID=''
+    (umask 077; : > "$START_LOG") || { err "Não foi possível gravar o diagnóstico em $START_LOG."; return 1; }
+    rm -f -- "$STATE_DIR/startup-failure"
+    state_write startup-stage 'Iniciando o supervisor' || return 1
     rm -f -- "$STATE_DIR/stopped-boot" "$STATE_DIR/restart-request"
     state_write run-boot "$BOOT_ID" || return 1
     backend="$(cat "$STATE_DIR/backend" 2>/dev/null)"
@@ -627,12 +685,18 @@ start_server() {
     fi
     # The watchdog needs the same lifecycle lock before creating/adopting PHP.
     unlock_lifecycle
-    for attempt in {1..50}; do
-        if is_running main; then lock_lifecycle; ok "FileManager iniciado."; return 0; fi
+    for attempt in {1..150}; do
+        main_pid=$(server_pids main | head -n1)
+        if [ -n "$main_pid" ] && [ "$main_pid" = "$previous_pid" ]; then stable=$((stable + 1)); else stable=0; fi
+        previous_pid="$main_pid"
+        if [ "$stable" -ge 2 ]; then lock_lifecycle; ok "FileManager iniciado."; return 0; fi
+        [ ! -s "$STATE_DIR/startup-failure" ] || break
+        if [ -n "$LAUNCH_PID" ] && ! process_identity "$LAUNCH_PID" >/dev/null \
+            && ! record_alive watchdog.pid >/dev/null; then break; fi
         sleep 0.1
     done
     lock_lifecycle
-    err "O FileManager não iniciou. Consulte $LOG_FILE ou o journalctl."
+    show_start_failure
     return 1
 }
 
@@ -747,7 +811,7 @@ case "$1" in
 esac
 lock_lifecycle || exit 1
 # The controller may be launched from a PTY owned by this server.
-trap '' HUP TERM
+trap ':' HUP TERM
 case "$1" in
     start) start_server ;;
     stop) stop_server ;;

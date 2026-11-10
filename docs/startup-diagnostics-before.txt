@@ -1,0 +1,4 @@
+BEFORE: env without --default-signal support
+start status=1
+[1;31m[filemanager][erro][0m O FileManager não iniciou. Consulte /tmp/fm-supervision-q1ohtmwm/instance's 100% files/filemanager.log ou o journalctl.
+filemanager.log bytes=0

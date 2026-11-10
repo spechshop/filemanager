@@ -1,0 +1,15 @@
+test_crash_restarts_in_about_two_seconds_and_cleans_children (__main__.SupervisionTests.test_crash_restarts_in_about_two_seconds_and_cleans_children) ... 
+RECOVERY PHP SIGKILL: 2.467s
+ok
+test_simultaneous_start_and_restart_have_one_managed_instance (__main__.SupervisionTests.test_simultaneous_start_and_restart_have_one_managed_instance) ... ok
+test_installer_falls_back_when_cron_rejects_the_account (__main__.SupervisionTests.test_installer_falls_back_when_cron_rejects_the_account) ... ok
+test_stop_and_disable_during_crash_backoff_cancel_recovery (__main__.SupervisionTests.test_stop_and_disable_during_crash_backoff_cancel_recovery) ... ok
+test_logs_are_bounded (__main__.SupervisionTests.test_logs_are_bounded) ... ok
+test_root_watchdog_commands_use_the_installation_account (__main__.SupervisionTests.test_root_watchdog_commands_use_the_installation_account) ... ok
+test_generated_system_and_user_units_pass_systemd_verification (__main__.SystemdTests.test_generated_system_and_user_units_pass_systemd_verification) ... ok
+test_system_administrative_commands_and_disable_order (__main__.SystemdTests.test_system_administrative_commands_and_disable_order) ... ok
+
+----------------------------------------------------------------------
+Ran 8 tests in 39.725s
+
+OK
