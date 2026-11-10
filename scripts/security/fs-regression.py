@@ -50,7 +50,12 @@ class FilesystemTests(unittest.TestCase):
         self.assertEqual(os.read(files.open(str(self.outside / 'keep')), 100), b'sentinel')
         files.write(str(self.outside / 'new'), io.BytesIO(b'authorized'))
         self.assertEqual((self.outside / 'new').read_bytes(), b'authorized')
-        self.assertTrue(files.entries('/'))
+        if os.access('/', os.R_OK | os.X_OK):
+            self.assertTrue(files.entries('/'))
+        else:
+            # App administrators do not bypass host permissions (e.g. / 711).
+            with self.assertRaises(PermissionError):
+                files.entries('/')
 
     def test_multiple_independent_roots_and_compatible_links(self):
         files = self.files()

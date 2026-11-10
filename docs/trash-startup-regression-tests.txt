@@ -1,0 +1,14 @@
+test_autorestart_disabled (__main__.StartupTest.test_autorestart_disabled) ... ok
+test_dual_stack_http_and_tls (__main__.StartupTest.test_dual_stack_http_and_tls) ... ok
+test_explicit_ipv6_bind (__main__.StartupTest.test_explicit_ipv6_bind) ... ok
+test_explicit_restart_and_stop_during_backoff (__main__.StartupTest.test_explicit_restart_and_stop_during_backoff) ... ok
+test_kernel54_lists_after_authentication (__main__.StartupTest.test_kernel54_lists_after_authentication) ... ok
+test_missing_ws_does_not_create_respawn_loop (__main__.StartupTest.test_missing_ws_does_not_create_respawn_loop) ... ok
+test_php_backend_and_sigint (__main__.StartupTest.test_php_backend_and_sigint) ... ok
+test_restart_respawn_and_sigterm (__main__.StartupTest.test_restart_respawn_and_sigterm) ... ok
+test_trash_http_under_search_only_ancestor (__main__.StartupTest.test_trash_http_under_search_only_ancestor) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 23.795s
+
+OK

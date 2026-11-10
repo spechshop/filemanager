@@ -1,0 +1,8 @@
+test_baseline_trash (__main__.Baseline.test_baseline_trash) ... ok
+test_trash_http_under_search_only_ancestor (startup.StartupTest.test_trash_http_under_search_only_ancestor) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 3.022s
+
+OK
+Baseline confirmed: trash list HTTP 403 Forbidden, before storage creation.

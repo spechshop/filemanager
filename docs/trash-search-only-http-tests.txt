@@ -1,0 +1,6 @@
+test_trash_http_under_search_only_ancestor (__main__.StartupTest.test_trash_http_under_search_only_ancestor) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 1.777s
+
+OK

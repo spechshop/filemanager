@@ -1,0 +1,35 @@
+test_enosys_selects_descriptor_fallback (__main__.DispatchTests.test_enosys_selects_descriptor_fallback) ... ok
+test_permission_errors_do_not_trigger_fallback (__main__.DispatchTests.test_permission_errors_do_not_trigger_fallback) ... ok
+test_unsupported_and_escape_paths_are_rejected (__main__.DispatchTests.test_unsupported_and_escape_paths_are_rejected) ... ok
+test_admin_absolute_external_paths_and_root (fs-regression.py.FilesystemTests.test_admin_absolute_external_paths_and_root) ... ok
+test_copy_supports_legitimate_source_and_destination_links (fs-regression.py.FilesystemTests.test_copy_supports_legitimate_source_and_destination_links) ... ok
+test_cross_volume_move (fs-regression.py.FilesystemTests.test_cross_volume_move) ... ok
+test_execute_only_parent_preserves_os_file_access (fs-regression.py.FilesystemTests.test_execute_only_parent_preserves_os_file_access) ... ok
+test_final_symlink_swap_at_actual_open_cannot_escape (fs-regression.py.FilesystemTests.test_final_symlink_swap_at_actual_open_cannot_escape) ... ok
+test_multiple_independent_roots_and_compatible_links (fs-regression.py.FilesystemTests.test_multiple_independent_roots_and_compatible_links) ... ok
+test_open_file_remains_original_object_after_rename (fs-regression.py.FilesystemTests.test_open_file_remains_original_object_after_rename) ... ok
+test_parent_swap_between_resolution_and_kernel_lookup (fs-regression.py.FilesystemTests.test_parent_swap_between_resolution_and_kernel_lookup) ... ok
+test_real_concurrent_parent_replacements_never_write_external_sentinel (fs-regression.py.FilesystemTests.test_real_concurrent_parent_replacements_never_write_external_sentinel) ... ok
+test_revocation_between_stream_chunks_stops_writes (fs-regression.py.FilesystemTests.test_revocation_between_stream_chunks_stops_writes) ... ok
+test_scope_escape_and_changed_scope_are_denied (fs-regression.py.FilesystemTests.test_scope_escape_and_changed_scope_are_denied) ... ok
+test_upload_batch_contents_overwrite_empty_and_bounded_descriptors (fs-regression.py.FilesystemTests.test_upload_batch_contents_overwrite_empty_and_bounded_descriptors) ... ok
+test_upload_directory_creation_is_confined_and_reuses_existing_folders (fs-regression.py.FilesystemTests.test_upload_directory_creation_is_confined_and_reuses_existing_folders) ... ok
+test_upload_fallback_after_partial_kernel_copy (fs-regression.py.FilesystemTests.test_upload_fallback_after_partial_kernel_copy) ... ok
+test_upload_provenance_is_private_and_never_follows_substituted_links (fs-regression.py.FilesystemTests.test_upload_provenance_is_private_and_never_follows_substituted_links) ... ok
+test_upload_rejects_outside_and_substituted_source (fs-regression.py.FilesystemTests.test_upload_rejects_outside_and_substituted_source) ... ok
+test_upload_revocation_between_kernel_chunks_and_batch_files (fs-regression.py.FilesystemTests.test_upload_revocation_between_kernel_chunks_and_batch_files) ... ok
+test_upload_zero_copy_result_falls_back_without_losing_data (fs-regression.py.FilesystemTests.test_upload_zero_copy_result_falls_back_without_losing_data) ... ok
+test_cross_volume_roundtrip_preserves_bytes_and_symlinks (trash-regression.py.TrashTests.test_cross_volume_roundtrip_preserves_bytes_and_symlinks) ... ok
+test_files_and_folders_survive_restarts_and_restore_with_metadata (trash-regression.py.TrashTests.test_files_and_folders_survive_restarts_and_restore_with_metadata) ... ok
+test_links_are_moved_and_purged_without_touching_the_target (trash-regression.py.TrashTests.test_links_are_moved_and_purged_without_touching_the_target) ... ok
+test_missing_parent_is_recreated_and_escape_parent_is_denied (trash-regression.py.TrashTests.test_missing_parent_is_recreated_and_escape_parent_is_denied) ... ok
+test_owner_isolation_invalid_ids_and_revocation (trash-regression.py.TrashTests.test_owner_isolation_invalid_ids_and_revocation) ... ok
+test_private_storage_symlinks_roots_and_ancestors_are_not_trashable (trash-regression.py.TrashTests.test_private_storage_symlinks_roots_and_ancestors_are_not_trashable) ... ok
+test_restore_conflict_preserves_both_files_and_handles_broken_links (trash-regression.py.TrashTests.test_restore_conflict_preserves_both_files_and_handles_broken_links) ... ok
+test_simultaneous_restore_is_exclusive (trash-regression.py.TrashTests.test_simultaneous_restore_is_exclusive) ... ok
+test_trash_under_search_only_ancestors (trash-regression.py.TrashTests.test_trash_under_search_only_ancestors) ... ok
+
+----------------------------------------------------------------------
+Ran 30 tests in 0.259s
+
+OK

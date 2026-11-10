@@ -62,6 +62,30 @@ class TrashTests(unittest.TestCase):
         self.assertEqual(int(target.stat().st_mtime), 1700000000)
         self.assertEqual(self.operation('list'), [])
 
+    def test_trash_under_search_only_ancestors(self):
+        if os.geteuid() == 0:
+            self.skipTest('permission regression requires an unprivileged user')
+        file = self.root / 'search-only.txt'
+        file.write_text('recoverable')
+        # Shared hosting allows traversal to a known home, not enumeration of
+        # other tenants. The application's own storage remains writable.
+        storage = self.base / 'application'
+        storage.mkdir(mode=0o700)
+        self.trash = storage / 'private-trash'
+        self.base.chmod(0o111)
+        try:
+            self.assertEqual(self.operation('list'), [])
+            record = self.operation('put', str(file))
+            self.assertFalse(file.exists())
+            self.assertEqual(len(self.operation('list')), 1)
+            self.operation('restore', record['id'])
+            self.assertEqual(file.read_text(), 'recoverable')
+            record = self.operation('put', str(file))
+            self.operation('purge', record['id'])
+            self.assertEqual(self.operation('list'), [])
+        finally:
+            self.base.chmod(0o700)
+
     def test_restore_conflict_preserves_both_files_and_handles_broken_links(self):
         path = self.root / 'notes.txt'
         path.write_text('old content')

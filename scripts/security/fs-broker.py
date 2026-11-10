@@ -464,7 +464,10 @@ class Trash:
         self.files = files
         self.fds = []
         path = files.normalize(files.request['trashDirectory'])
-        slash = os.open('/', os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC)
+        # Ancestors only need search permission. Shared hosts commonly forbid
+        # listing /home or tenant parents while allowing access to known paths.
+        # Keep descriptor-relative traversal and reject symlinks at every step.
+        slash = os.open('/', os.O_PATH | os.O_DIRECTORY | os.O_CLOEXEC)
         self.fds.append(slash)
         parent = slash
         parts = path.strip('/').split('/')
@@ -473,7 +476,7 @@ class Trash:
                 os.mkdir(part, 0o700, dir_fd=parent)
             except FileExistsError:
                 pass
-            parent = openat2(parent, part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+            parent = openat2(parent, part, os.O_PATH | os.O_DIRECTORY | os.O_NOFOLLOW,
                              resolve=BENEATH | NO_MAGICLINKS | NO_SYMLINKS)
             self.fds.append(parent)
         self.storage_path = path

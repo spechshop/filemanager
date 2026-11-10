@@ -1,0 +1,14 @@
+test_cross_volume_roundtrip_preserves_bytes_and_symlinks (__main__.TrashTests.test_cross_volume_roundtrip_preserves_bytes_and_symlinks) ... ok
+test_files_and_folders_survive_restarts_and_restore_with_metadata (__main__.TrashTests.test_files_and_folders_survive_restarts_and_restore_with_metadata) ... ok
+test_links_are_moved_and_purged_without_touching_the_target (__main__.TrashTests.test_links_are_moved_and_purged_without_touching_the_target) ... ok
+test_missing_parent_is_recreated_and_escape_parent_is_denied (__main__.TrashTests.test_missing_parent_is_recreated_and_escape_parent_is_denied) ... ok
+test_owner_isolation_invalid_ids_and_revocation (__main__.TrashTests.test_owner_isolation_invalid_ids_and_revocation) ... ok
+test_private_storage_symlinks_roots_and_ancestors_are_not_trashable (__main__.TrashTests.test_private_storage_symlinks_roots_and_ancestors_are_not_trashable) ... ok
+test_restore_conflict_preserves_both_files_and_handles_broken_links (__main__.TrashTests.test_restore_conflict_preserves_both_files_and_handles_broken_links) ... ok
+test_simultaneous_restore_is_exclusive (__main__.TrashTests.test_simultaneous_restore_is_exclusive) ... ok
+test_trash_under_search_only_ancestors (__main__.TrashTests.test_trash_under_search_only_ancestors) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.107s
+
+OK

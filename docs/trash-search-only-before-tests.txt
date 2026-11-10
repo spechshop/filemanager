@@ -1,0 +1,22 @@
+test_trash_under_search_only_ancestors (__main__.TrashTests.test_trash_under_search_only_ancestors) ... ERROR
+
+======================================================================
+ERROR: test_trash_under_search_only_ancestors (__main__.TrashTests.test_trash_under_search_only_ancestors)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/lotus/projetos/filemanager/scripts/security/trash-regression.py", line 77, in test_trash_under_search_only_ancestors
+    self.assertEqual(self.operation('list'), [])
+                     ^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/lotus/projetos/filemanager/scripts/security/trash-regression.py", line 41, in operation
+    trash.__init__(files)
+  File "/home/lotus/projetos/filemanager/scripts/security/fs-broker.py", line 476, in __init__
+    parent = openat2(parent, part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/lotus/projetos/filemanager/scripts/security/fs-broker.py", line 74, in openat2
+    raise OSError(code, 'secure filesystem resolution failed')
+PermissionError: [Errno 13] secure filesystem resolution failed
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+FAILED (errors=1)

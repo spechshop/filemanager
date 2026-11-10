@@ -62,7 +62,8 @@ def free_port():
 class StartupTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='fm-startup-')
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name) / 'application'
+        self.root.mkdir()
         self.child = None
         self.owned = set()
         self.log = (self.root / 'startup.log').open('w+')
@@ -226,6 +227,53 @@ os.execv('/usr/bin/python3',['python3']+sys.argv[1:])
         self.assertIn('Dependências Node indisponíveis (ws)', self.output())
         self.assertNotIn('abnormal exit', self.output())
         self.stop()
+
+    def test_trash_http_under_search_only_ancestor(self):
+        if os.geteuid() == 0:
+            self.skipTest('permission regression requires an unprivileged user')
+        self.config['fileManager']['services'] = dict.fromkeys(['pty', 'lsp', 'gpt', 'codex'], False)
+        (self.root / 'tokens.json').write_text(json.dumps({'fixture': {
+            'expire': 9999999999, 'allowedRoots': [str(self.root / 'files')]}}))
+        item = self.root / 'files/recover.txt'
+        item.write_text('recoverable content')
+        parent = Path(self.temp.name)
+        parent.chmod(0o111)
+
+        def trash(action, **data):
+            request = urllib.request.Request(f'https://127.0.0.1:{self.ports[0]}/trash',
+                data=json.dumps({'action': action, **data}).encode(),
+                headers={'Authorization': 'Bearer fixture', 'Content-Type': 'application/json'})
+            with self.http.open(request, timeout=5) as response:
+                self.assertEqual(response.status, 200)
+                result = json.loads(response.read())
+                self.assertTrue(result['success'], result)
+                return result
+        try:
+            self.start()
+            self.assertEqual(trash('list')['entries'], [])
+            self.assertEqual((self.root / '.runtime/trash').stat().st_mode & 0o777, 0o700)
+            trash('move', files=[str(item)])
+            self.assertFalse(item.exists())
+            identifier = trash('list')['entries'][0]['id']
+            trash('restore', ids=[identifier])
+            self.assertEqual(item.read_text(), 'recoverable content')
+            trash('move', files=[str(item)])
+            identifier = trash('list')['entries'][0]['id']
+            trash('purge', ids=[identifier])
+            self.assertEqual(trash('list')['entries'], [])
+            item.write_text('empty the trash')
+            trash('move', files=[str(item)])
+            trash('empty')
+            self.assertEqual(trash('list')['entries'], [])
+            outside = self.root / 'outside-sentinel'
+            outside.write_text('keep')
+            with self.assertRaises(urllib.error.HTTPError) as denied:
+                trash('move', files=[str(outside)])
+            self.assertEqual(denied.exception.code, 403)
+            self.assertEqual(outside.read_text(), 'keep')
+            self.stop()
+        finally:
+            parent.chmod(0o700)
 
     def test_restart_respawn_and_sigterm(self):
         middleware = self.start()

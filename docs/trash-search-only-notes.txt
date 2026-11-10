@@ -1,0 +1,38 @@
+Correção da lixeira em hospedagem com ancestrais sem leitura (2026-11-09)
+
+Evidência fornecida pelo host: / e /home pertencem a root e têm modo 711;
+.runtime pertence ao usuário e é gravável; .runtime/trash ainda não existe.
+
+Causa: Trash.__init__ abria / e cada diretório intermediário com O_RDONLY.
+O usuário pode atravessar / e /home para acessar caminhos conhecidos, mas não
+pode enumerá-los. A abertura falhava com EACCES antes de criar a lixeira.
+O helper retornava ok:false, convertido pela camada HTTP em 403 Forbidden.
+
+Correção: usar O_PATH nos descritores de travessia, preservando O_DIRECTORY,
+O_NOFOLLOW e a resolução relativa ao descritor. As verificações de proprietário,
+modo privado, isolamento por token, escopo e proteção contra links permanecem.
+Os diretórios que realmente precisam ser enumerados/sincronizados continuam
+abertos para leitura. Nenhuma permissão do host é alterada pela aplicação.
+A pasta de armazenamento continua sendo criada automaticamente com modo 700.
+
+Testes executados em dados descartáveis:
+- trash-search-only-before-tests.txt: teste novo falha antes da correção com
+  PermissionError/EACCES na inicialização da lixeira.
+- trash-search-only-http-before-after.txt: código anterior reproduz exatamente
+  HTTP 403 Forbidden e ausência de trash; código corrigido passa no mesmo caso.
+- trash-search-only-http-tests.txt: servidor real com PCG/Swoole; listar, mover,
+  restaurar, excluir definitivamente e esvaziar passam. Um arquivo fora do
+  escopo continua recebendo HTTP 403 e permanece intacto.
+- trash-host-permissions-tests.txt: container isolado, UID 1000, / e /home 711;
+  9 testes de lixeira e 30 testes com a alternativa para openat2 indisponível
+  passam. Inclui links, proprietários distintos, revogação, restauração
+  concorrente e movimentação entre filesystems. A configuração de permissões
+  é aplicada somente ao container; os testes rodam sem privilégios.
+- trash-startup-regression-tests.txt: 9 testes reais de inicialização Swoole.
+
+O teste geral de administrador agora verifica também a negação da enumeração
+de / quando o sistema operacional não a permite. Ser administrador do painel
+não concede permissões adicionais no sistema operacional.
+
+Arquivos corrigidos apenas localmente. Nenhuma operação foi feita sobre os
+arquivos ou a lixeira do servidor do usuário; nenhum commit ou push foi criado.
