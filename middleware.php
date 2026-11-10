@@ -117,6 +117,22 @@ if (!function_exists('fileManagerNodeBinary')) {
     }
 }
 
+// Validate prerequisites before registering a respawning Swoole user process.
+// A missing package is an installation error, not a transient process crash.
+function fileManagerNodeDependencies(string $node, array $modules): bool
+{
+    $command = 'cd ' . escapeshellarg(__DIR__) . ' && ' . escapeshellarg($node)
+        . ' -e ' . escapeshellarg('for (const name of process.argv.slice(1)) require(name);');
+    foreach ($modules as $module) $command .= ' ' . escapeshellarg($module);
+    $output = [];
+    exec($command . ' 2>&1', $output, $status);
+    if ($status === 0) return true;
+    echo "Dependências Node indisponíveis (" . implode(', ', $modules)
+        . "). Serviço não iniciado; execute bash scripts/install-codex.sh para reparar.\n"
+        . implode("\n", array_slice($output, 0, 8)) . "\n";
+    return false;
+}
+
 if (!function_exists('fileManagerPtyNodeBinary')) {
     /**
      * O node-pty é nativo e pode ter sido compilado para o Node do sistema,
@@ -137,7 +153,7 @@ if (!function_exists('fileManagerPtyNodeBinary')) {
         foreach ($candidates as $nodeBin) {
             $check = trim((string) shell_exec(
                 'cd ' . escapeshellarg(__DIR__) . ' && ' . escapeshellarg($nodeBin)
-                . ' -e "require(\'node-pty\')" >/dev/null 2>&1 && echo ok'
+                . ' -e "require(\'node-pty\'); require(\'ws\')" >/dev/null 2>&1 && echo ok'
             ));
             if ($check === 'ok') {
                 return $nodeBin;
@@ -224,6 +240,7 @@ if (!function_exists('startLspServer')) {
             echo "Intelephense não instalado (npm install intelephense); LSP desativado.\n";
             return;
         }
+        if (!fileManagerNodeDependencies($node, ['ws'])) return;
         echo "Iniciando LSP PHP (Intelephense) via node...\n";
         fileManagerAuxiliaryProcess([$node, __DIR__ . '/lsp.js']);
     }
@@ -267,6 +284,7 @@ if (!function_exists('startGptServer')) {
             echo "Node.js ou gpt.js indisponível; GPT Bridge não será iniciado.\n";
             return;
         }
+        if (!fileManagerNodeDependencies($node, ['ws'])) return;
         echo "Iniciando GPT Bridge via node...\n";
         fileManagerAuxiliaryProcess([$node, __DIR__ . '/gpt.js']);
     }
@@ -281,6 +299,7 @@ if (!function_exists('startCodexAgentServer')) {
             echo "Node.js ou codex-agent.js indisponível; Codex Agent não será iniciado.\n";
             return;
         }
+        if (!fileManagerNodeDependencies($node, ['ws'])) return;
         // codex-agent.js carrega CODEX_ACCESS_TOKEN e CODEX_BIN diretamente do .env.
         echo "Iniciando Codex Agent via app-server...\n";
         fileManagerAuxiliaryProcess([$node, $script]);

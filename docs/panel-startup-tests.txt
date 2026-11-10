@@ -1,0 +1,20 @@
+✔ HTTP, XHR, WebSocket and media transports keep durable credentials out of URLs (61.576719ms)
+✔ concurrent startup consumers validate once before requesting tickets (17.705747ms)
+✔ 401 and 403 stop authorization retries and never issue startup tickets (14.361844ms)
+✔ revoked access after validation stops ticket retries and reports an auth error (7.19078ms)
+✔ transient authorization failures can be retried (6.15712ms)
+✔ folder loading hides old table files immediately and preserves the chosen view (61.776521ms)
+✔ folder loading hides old grid files immediately and preserves the chosen view (28.233783ms)
+✔ rapid folder changes cancel old requests and ignore late results and errors (17.369674ms)
+✔ network failures stop the spinner and allow retrying the current folder (17.032002ms)
+✔ server-corrected paths do not reload the listing and special path characters stay encoded (18.690264ms)
+✔ a failed listing does not revoke valid access; retry renders directories (72.47693ms)
+✔ invalid credentials still block startup before any listing (6.716312ms)
+ℹ tests 12
+ℹ suites 0
+ℹ pass 12
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 758.943291

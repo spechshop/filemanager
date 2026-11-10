@@ -140,7 +140,7 @@ run_npm_install_logged() {
         local -a pipeline_status
         cd "$PROJECT_ROOT" || exit 1
         set +e
-        run_npm ci --no-audit --no-fund 2>&1 | tee "$log_file"
+        run_npm ci --omit=dev --no-audit --no-fund 2>&1 | tee "$log_file"
         pipeline_status=("${PIPESTATUS[@]}")
         [ "${pipeline_status[0]}" -ne 0 ] && exit "${pipeline_status[0]}"
         exit "${pipeline_status[1]}"
@@ -382,7 +382,7 @@ run_npm_install_with_local_toolchain() {
         export CXX="$TOOLCHAIN_CXX"
         export MAKE="$TOOLCHAIN_MAKE"
         export PATH="$TOOLCHAIN_BIN:${PATH:-}"
-        run_npm ci --no-audit --no-fund
+        run_npm ci --omit=dev --no-audit --no-fund
     )
 }
 
@@ -403,9 +403,20 @@ install_filemanager_node_dependencies() {
     json_state running "Instalando as dependências do File Manager..." null
     log "Instalando dependências com toolchain do sistema..."
 
-    if ! run_npm_install_logged "$SYSTEM_NPM_INSTALL_LOG"; then
-        if ! npm_log_has_native_toolchain_failure "$SYSTEM_NPM_INSTALL_LOG"; then
-            LAST_MESSAGE="npm install falhou por um erro não relacionado ao toolchain nativo. Consulte $SYSTEM_NPM_INSTALL_LOG."
+    local npm_status active_npm_log="$SYSTEM_NPM_INSTALL_LOG"
+    if run_npm_install_logged "$SYSTEM_NPM_INSTALL_LOG"; then npm_status=0; else npm_status=$?; fi
+    if [ "$npm_status" -eq 137 ]; then
+        warn "npm recebeu SIGKILL (status 137). Repetindo uma vez com menor uso de memória e concorrência."
+        active_npm_log="$SYSTEM_NPM_INSTALL_LOG.retry"
+        if (export NODE_OPTIONS="${NODE_OPTIONS:-} --max-old-space-size=256"
+            export npm_config_maxsockets=1 npm_config_jobs=1
+            run_npm_install_logged "$active_npm_log"); then npm_status=0; else npm_status=$?; fi
+    fi
+    if [ "$npm_status" -ne 0 ]; then
+        if ! npm_log_has_native_toolchain_failure "$active_npm_log"; then
+            LAST_MESSAGE="npm ci falhou (status $npm_status); as dependências Node permanecem incompletas."
+            warn "$LAST_MESSAGE"
+            tail -n 12 "$active_npm_log" >&2
             return 1
         fi
         warn "Build nativo falhou com o toolchain do sistema."
@@ -420,5 +431,8 @@ install_filemanager_node_dependencies() {
         fi
     fi
 
+    (cd "$PROJECT_ROOT" && "$NODE_BIN" -e "require('ws')") || {
+        LAST_MESSAGE="As dependências Node estão incompletas: ws não carrega."; return 1;
+    }
     validate_node_pty
 }

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Local, unprivileged descriptor IO. stdin: one JSON line then optional bytes.
 stdout: one JSON line then optional bytes. Never accepts code or shell commands.
-Linux openat2 deliberately has no pathname-based fallback.
+Uses openat2, or a descriptor-only no-symlink walk on kernels without it.
 """
 import ctypes
 import fcntl
@@ -24,15 +24,54 @@ class How(ctypes.Structure):
     _fields_ = [('flags', ctypes.c_ulonglong), ('mode', ctypes.c_ulonglong), ('resolve', ctypes.c_ulonglong)]
 
 
+_openat2_available = True
+
+
+def openat_compat(fd, name, flags, mode=0, resolve=BENEATH | NO_MAGICLINKS):
+    """Conservative Linux <5.6 fallback: every component is opened relative to
+    an owned directory descriptor, with O_NOFOLLOW. Never reopen a checked path.
+    Files.locate already canonicalizes legitimate links inside authorized roots;
+    links introduced during resolution are rejected instead of followed.
+    """
+    name = os.fsdecode(name)
+    if not resolve & BENEATH or resolve & ~(BENEATH | NO_MAGICLINKS | NO_SYMLINKS):
+        raise OSError(errno.EINVAL, 'unsupported resolution flags')
+    if not name or name.startswith('/') or '..' in name.split('/') or '\x00' in name:
+        raise OSError(errno.EXDEV, 'path outside descriptor root')
+    parts = [part for part in name.split('/') if part not in ('', '.')]
+    if name.endswith('/'):
+        flags |= os.O_DIRECTORY
+    parent = os.dup(fd)
+    try:
+        for part in parts[:-1]:
+            child = os.open(part, os.O_PATH | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC, dir_fd=parent)
+            os.close(parent)
+            parent = child
+        result = os.open(parts[-1] if parts else '.', flags | os.O_NOFOLLOW | os.O_CLOEXEC, mode, dir_fd=parent)
+        if stat.S_ISLNK(os.fstat(result).st_mode):
+            os.close(result)
+            raise OSError(errno.ELOOP, 'symlink changed during secure resolution')
+        return result
+    finally:
+        os.close(parent)
+
+
 def openat2(fd, name, flags, mode=0, resolve=BENEATH | NO_MAGICLINKS):
+    global _openat2_available
     # SYS_openat2 is 437 on the supported x86_64/aarch64 Linux deployments.
     if os.uname().machine not in ('x86_64', 'aarch64'):
         raise PermissionError('unsupported secure filesystem architecture')
+    if not _openat2_available:
+        return openat_compat(fd, name, flags, mode, resolve)
     libc = ctypes.CDLL(None, use_errno=True)
     how = How(flags | os.O_CLOEXEC, mode, resolve)
     result = libc.syscall(437, fd, os.fsencode(name), ctypes.byref(how), ctypes.sizeof(how))
     if result < 0:
-        raise OSError(ctypes.get_errno(), 'secure filesystem resolution failed')
+        code = ctypes.get_errno()
+        if code == errno.ENOSYS:
+            _openat2_available = False
+            return openat_compat(fd, name, flags, mode, resolve)
+        raise OSError(code, 'secure filesystem resolution failed')
     return result
 
 

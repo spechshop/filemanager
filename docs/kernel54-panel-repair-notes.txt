@@ -1,0 +1,66 @@
+Correção local: listagem em Linux 5.4 e recuperação do ws (2026-11-09)
+
+Causa confirmada pelo host
+Linux 5.4.0-192-generic, Python 3.8.10, syscall openat2 retornando errno 38
+(ENOSYS). O terminal PTY usa comandos do sistema; a listagem do painel usa
+scripts/security/fs-broker.py, que anteriormente exigia essa syscall.
+Além disso, o catch da inicialização do painel tratava falhas de refAll()
+como falhas de FMAuth.ready(), ocultando uma sessão já autenticada.
+
+Correções
+- fs-broker usa a alternativa somente para ENOSYS. Cada componente é aberto
+  relativamente a um descritor de diretório, com O_NOFOLLOW. Não há fallback
+  para abrir livremente caminhos absolutos. Escopos, autorização e proteção
+  contra links trocados durante a operação continuam ativos.
+- Erros de listagem aparecem na área de pastas, com botão para repetir.
+  Credenciais inválidas continuam bloqueadas; nenhuma autorização foi removida.
+- npm instala dependências de produção. Status 137 causa uma única repetição
+  com menor heap e concorrência; o diagnóstico usa o log da tentativa final.
+  SIGKILL não prova OOM: a origem do sinal no host remoto não foi determinada.
+- Se npm falhar, o instalador tenta recuperar ws diretamente do registry
+  oficial, usando a versão e SHA-512 do package-lock.json. A instalação completa
+  continua retornando falha. A recuperação não substitui node-pty/intelephense.
+- Middleware verifica ws antes de registrar os serviços Node com reinício
+  automático. Ausência é diagnosticada uma vez por serviço; não há tempestade
+  de respawns. PTY conserva a alternativa PHP/Swoole existente.
+
+Evidências executadas
+Ambiente local: Linux 7.0.0-42-generic, Python 3.12.3, Node v24.22.1,
+PCG PHP 8.5.10 ZTS. Não é uma VM Linux 5.4 nem execução no host do usuário.
+No teste HTTP, seccomp faz a syscall 437 retornar ENOSYS nos subprocessos
+Python reais. O servidor e o middleware são reais, em cópias temporárias,
+com tokens sintéticos, portas locais e configuração isolada.
+
+kernel54-before-after-tests.txt:
+  Mesmo cenário antes/depois: baseline autentica e falha na listagem HTTP 403;
+  corrigido retorna 200 em checkToken, treeDetails e syncPath, com proof.txt.
+kernel54-filesystem-tests.txt:
+  29 testes: despacho ENOSYS, rejeição de EACCES sem fallback, IO, uploads,
+  escopos, links, corridas de links e lixeira usando a alternativa.
+filesystem-native-tests.txt:
+  18 testes da implementação nativa.
+panel-startup-tests.txt:
+  12 testes de inicialização, listagem e transporte de autenticação.
+websocket-repair-tests.txt:
+  4 testes: publicação íntegra, checksum errado, HTTP 503 e origem inválida.
+websocket-official-download-test.txt:
+  Download HTTPS real do ws 8.22.0, SHA-512 validado e require(ws) funcionando
+  após substituição de uma instalação incompleta isolada.
+node-dependency-repair-tests.txt:
+  Retry de status 137, compilador alternativo, TLS, rede, estrutura do Node e
+  carregamento de node-pty. Casos de falha usam respostas controladas.
+startup-services-repair-tests.txt:
+  8 testes reais de ciclo de vida Swoole, incluindo ausência de ws e ENOSYS.
+
+Aplicação no host depois de transferir as alterações locais
+No diretório do projeto:
+  NODE_BIN="$(bash scripts/runtime-exec.sh node "$PWD")" &&
+  "$NODE_BIN" scripts/repair-websocket-package.cjs "$PWD" &&
+  bash filemanagerctl restart
+Depois recarregar o painel ignorando o cache do navegador.
+O comando acima repara apenas ws; a instalação completa de Node continua
+disponível em bash scripts/install-codex.sh.
+
+Nenhum commit, branch, PR ou push foi criado nesta correção. Nenhuma alteração
+foi aplicada remotamente. A alteração preexistente em supervision-test.py foi
+preservada.

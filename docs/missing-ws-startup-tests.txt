@@ -1,0 +1,6 @@
+test_missing_ws_does_not_create_respawn_loop (__main__.StartupTest.test_missing_ws_does_not_create_respawn_loop) ... ok
+
+----------------------------------------------------------------------
+Ran 1 test in 2.470s
+
+OK

@@ -70,6 +70,28 @@ case_modern_system_toolchain() {
     [ -e "$validated" ] || return 1
 }
 
+case_sigkill_retries_with_reduced_resources() {
+    source "$HELPER"
+    quiet_callbacks
+    local fixture calls
+    fixture=$(new_fixture)
+    PROJECT_ROOT="$fixture/project"; RUNTIME_DIR="$PROJECT_ROOT/.runtime"; NODE_BIN=/bin/true
+    mkdir -p "$RUNTIME_DIR"
+    configure_native_toolchain_paths
+    calls="$fixture/calls"
+    detect_node_gyp_python() { :; }
+    validate_node_pty() { return 0; }
+    run_npm() {
+        printf '%s\n' "$*" >> "$calls"
+        if [ "$(wc -l < "$calls")" = 1 ]; then return 137; fi
+        [[ "$NODE_OPTIONS" = *--max-old-space-size=256* ]] || return 1
+        [ "$npm_config_maxsockets" = 1 ] && [ "$npm_config_jobs" = 1 ] || return 1
+        [[ "$*" = *--omit=dev* ]]
+    }
+    install_filemanager_node_dependencies || return 1
+    [ "$(wc -l < "$calls")" = 2 ]
+}
+
 case_python_priority() {
     source "$HELPER"
     quiet_callbacks
@@ -238,7 +260,7 @@ case_network_failure_does_not_fallback() {
     fi
     assert_eq "$(wc -l < "$calls")" 1 || return 1
     [ ! -e "$fallback" ] || return 1
-    [[ "$LAST_MESSAGE" == *"não relacionado ao toolchain"* ]]
+    [[ "$LAST_MESSAGE" == *"status 1"* ]]
 }
 
 case_classifier_signatures() {
@@ -389,6 +411,7 @@ case_node_pty_validation() {
     [[ "$LAST_MESSAGE" == *"node-pty não pode ser carregado"* ]]
 }
 
+run_case "SIGKILL repete npm com recursos limitados" case_sigkill_retries_with_reduced_resources
 run_case "A: npm normal nao prepara micromamba" case_modern_system_toolchain
 run_case "B: Python 3.12 tem prioridade sobre python3 antigo" case_python_priority
 run_case "runtime Node para glibc antiga" case_legacy_node_selection

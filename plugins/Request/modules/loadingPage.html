@@ -59,7 +59,9 @@
         const response = await fetch(`/treeDetails?dir=${encodeURIComponent(path)}&tokenBrowser=${$('#fp').text()}`);
         const root = response.headers.get('X-FileManager-Root');
         if (root) window.FileManagerWorkspaceRoot = root.replace(/\/+$/, '') + '/';
-        return await response.json();
+        if (!response.ok) throw new Error(`Não foi possível listar a pasta (HTTP ${response.status}).`);
+        try { return await response.json(); }
+        catch (_) { throw new Error('O servidor retornou uma resposta inválida para a listagem.'); }
     }
 
     async function buildTreeHtml(tree, path) {
@@ -112,10 +114,22 @@
     }
 
     async function refAll() {
-        await (async function () {
+        const container = document.getElementById('filesArchitecture');
+        if (!container) return;
+        try {
             const initialTree = await fetchFileTree();
-            document.getElementById('filesArchitecture').innerHTML = await buildTreeHtml(initialTree, '/');
-        })();
+            container.innerHTML = await buildTreeHtml(initialTree, '/');
+        } catch (error) {
+            const message = document.createElement('p');
+            message.setAttribute('role', 'alert');
+            message.textContent = error.message || 'Não foi possível carregar as pastas.';
+            const retry = document.createElement('button');
+            retry.type = 'button';
+            retry.className = 'btn btn-secondary';
+            retry.textContent = 'Tentar carregar pastas novamente';
+            retry.addEventListener('click', refAll);
+            container.replaceChildren(message, retry);
+        }
     }
 
     let isContextMenuShown = false;

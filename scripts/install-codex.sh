@@ -288,6 +288,14 @@ run_npm() {
 
 log "Instalando dependências com Node.js $($NODE_BIN --version)..."
 if ! install_filemanager_node_dependencies; then
+    fail "$LAST_MESSAGE"
+    # Keep WebSocket bridges usable even if the host kills npm's dependency
+    # resolver. The lockfile-pinned recovery never marks full installation OK.
+    if "$NODE_BIN" "$SCRIPT_DIR/repair-websocket-package.cjs" "$PROJECT_ROOT"; then
+        warn "ws recuperado; a instalação completa das dependências ainda precisa ser concluída."
+    else
+        fail "Não foi possível recuperar ws; serviços Node dependentes permanecerão indisponíveis."
+    fi
     exit 1
 fi
 

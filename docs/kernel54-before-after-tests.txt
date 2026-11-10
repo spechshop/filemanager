@@ -1,0 +1,8 @@
+test_baseline_kernel54 (__main__.Baseline.test_baseline_kernel54) ... ok
+test_kernel54_lists_after_authentication (startup.StartupTest.test_kernel54_lists_after_authentication) ... ok
+
+----------------------------------------------------------------------
+Ran 2 tests in 2.708s
+
+OK
+Baseline: authentication succeeded; treeDetails failed HTTP 403 with syscall 437 returning ENOSYS.

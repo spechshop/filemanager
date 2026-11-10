@@ -176,6 +176,58 @@ class SupervisionTests(unittest.TestCase):
         self.f = Fixture()
         self.addCleanup(self.f.close)
 
+    def test_start_with_old_env_and_stop_signal(self):
+        f = self.f
+        f.script('env', """case "$1" in --default-signal=*) echo 'env: unrecognized option --default-signal' >&2; exit 125 ;; esac
+exec /usr/bin/env "$@"
+""")
+        f.ctl('start')
+        self.assertTrue(alive(f.pid()))
+        watchdog = f.watchdog()
+        os.kill(watchdog, signal.SIGTERM)
+        until(lambda: not alive(watchdog))
+
+    def test_start_reports_launcher_failure_inline(self):
+        f = self.f
+        f.script('nohup', "echo 'nohup: execution denied by hosting policy' >&2; exit 126\n")
+        result = f.ctl('start', check=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('nohup: execution denied by hosting policy', result.stderr)
+        self.assertIn('status 126', result.stderr)
+        self.assertIn('aplicação não produziu saída', result.stderr)
+        self.assertNotIn('Consulte', result.stderr)
+        self.assertFalse(f.starts())
+
+    def test_start_reports_silent_launcher_sigkill(self):
+        f = self.f
+        f.script('nohup', 'kill -KILL $$\n')
+        result = f.ctl('start', check=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('status 137', result.stderr)
+        self.assertIn('Watchdog: não está executando', result.stderr)
+        self.assertNotIn('Consulte', result.stderr)
+        self.assertFalse(f.starts())
+
+    def test_start_reports_pcg_failure_inline(self):
+        f = self.f
+        (f.root / 'scripts/runtime-exec.sh').write_text(
+            "fm_php() { echo 'PCG fixture: execution denied' >&2; return 126; }\n")
+        result = f.ctl('start', check=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('PCG fixture: execution denied', result.stderr)
+        self.assertIn('aplicação PHP não chegou a iniciar', result.stderr)
+        self.assertNotIn('Consulte', result.stderr)
+        self.assertFalse(f.starts())
+
+    def test_start_reports_php_fatal_inline(self):
+        f = self.f
+        (f.root / 'server.php').write_text("<?php fwrite(STDERR, 'Fatal error: missing application dependency\\n'); exit(42);")
+        result = f.ctl('start', check=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Fatal error: missing application dependency', result.stderr)
+        self.assertIn('status 42', result.stderr)
+        self.assertNotIn('FileManager iniciado.', result.stdout)
+
     def test_crash_restarts_in_about_two_seconds_and_cleans_children(self):
         f = self.f
         (f.root / 'worker.php').write_text("<?php file_put_contents(__DIR__ . '/worker.pid', (string)getmypid()); while(true) usleep(100000);")

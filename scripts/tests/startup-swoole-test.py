@@ -77,6 +77,7 @@ class StartupTest(unittest.TestCase):
         (self.root / 'scripts/security').mkdir(parents=True)
         shutil.copy2(ROOT / 'scripts/runtime-exec.sh', self.root / 'scripts/runtime-exec.sh')
         shutil.copy2(ROOT / 'scripts/security/bridge-auth.cjs', self.root / 'scripts/security/bridge-auth.cjs')
+        shutil.copy2(ROOT / 'scripts/security/fs-broker.py', self.root / 'scripts/security/fs-broker.py')
         (self.root / '.env').write_text('')
         (self.root / 'files').mkdir()
         (self.root / 'tokens.json').write_text(json.dumps({'fixture': {'expire': 9999999999}}))
@@ -176,6 +177,53 @@ ws.on('close', () => process.exit(0));
         self.assertNotIn('Fatal error', self.output())
         self.assertNotIn('API must be called', self.output())
         self.assertNotIn('WARNING', self.output())
+
+    def test_kernel54_lists_after_authentication(self):
+        self.config['fileManager']['services'] = dict.fromkeys(['pty', 'lsp', 'gpt', 'codex'], False)
+        wrapper = self.root / 'python-kernel54'
+        wrapper.write_text("""#!/usr/bin/python3
+import ctypes, os, sys
+class Filter(ctypes.Structure):
+    _fields_=[('code',ctypes.c_ushort),('jt',ctypes.c_ubyte),('jf',ctypes.c_ubyte),('k',ctypes.c_uint)]
+class Program(ctypes.Structure):
+    _fields_=[('len',ctypes.c_ushort),('filter',ctypes.POINTER(Filter))]
+filters=(Filter*4)(Filter(0x20,0,0,0), Filter(0x15,0,1,437), Filter(0x06,0,0,0x50000|38), Filter(0x06,0,0,0x7fff0000))
+program=Program(4,filters)
+libc=ctypes.CDLL(None,use_errno=True)
+assert libc.prctl(38,1,0,0,0)==0
+assert libc.prctl(22,2,ctypes.byref(program),0,0)==0
+os.execv('/usr/bin/python3',['python3']+sys.argv[1:])
+""")
+        wrapper.chmod(0o700)
+        self.env['FILEMANAGER_PYTHON'] = str(wrapper)
+        (self.root / 'tokens.json').write_text(json.dumps({'fixture': {
+            'expire': 9999999999, 'allowedRoots': [str(self.root / 'files')], 'terminal': True}}))
+        (self.root / 'files/proof.txt').write_text('kernel54')
+        self.start()
+        for endpoint in ('/checkToken', '/treeDetails?dir=/', '/syncPath'):
+            request = urllib.request.Request(f'https://127.0.0.1:{self.ports[0]}' + endpoint,
+                data=b'{}' if endpoint == '/checkToken' else None,
+                headers={'Authorization':'Bearer fixture', 'Content-Type':'application/json'})
+            with self.http.open(request, timeout=5) as response:
+                self.assertEqual(response.status, 200)
+                data=json.loads(response.read())
+                if endpoint == '/checkToken': self.assertTrue(data['success'])
+                else: self.assertIn('proof.txt', json.dumps(data))
+        self.stop()
+
+    def test_missing_ws_does_not_create_respawn_loop(self):
+        modules = self.root / 'node_modules'
+        if modules.is_symlink(): modules.unlink()
+        (modules / 'intelephense').mkdir(parents=True)
+        shutil.copy2(ROOT / 'codex-agent.js', self.root / 'codex-agent.js')
+        self.config['fileManager']['services'] = {'pty': False, 'lsp': True, 'gpt': False, 'codex': True}
+        self.start()
+        time.sleep(1)
+        self.assertIsNone(self.service_pid('lsp.js'))
+        self.assertIsNone(self.service_pid('codex-agent.js'))
+        self.assertIn('Dependências Node indisponíveis (ws)', self.output())
+        self.assertNotIn('abnormal exit', self.output())
+        self.stop()
 
     def test_restart_respawn_and_sigterm(self):
         middleware = self.start()

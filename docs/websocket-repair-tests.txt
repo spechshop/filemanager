@@ -1,0 +1,12 @@
+✔ verified ws replaces an incomplete installation and loads (61.451525ms)
+✔ checksum mismatch preserves the existing installation (71.788032ms)
+✔ download failure is reported without replacing existing files (49.419857ms)
+✔ untrusted package source is rejected before download (31.774528ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 256.405269

@@ -1,0 +1,2 @@
+ws 8.22.0 recuperado com SHA-512 do package-lock.json.
+PASS: official registry download; SHA-512 verified; incomplete package replaced; require(ws) succeeds.
