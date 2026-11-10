@@ -18,7 +18,7 @@ import time
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-PHP = os.environ.get('SECURITY_PHP_BINARY') or shutil.which('php8.4') or shutil.which('php')
+PHP = os.environ.get('SECURITY_PHP_BINARY') or shutil.which('php')
 BOOT = Path('/proc/sys/kernel/random/boot_id').read_text().strip()
 
 
@@ -54,6 +54,8 @@ class Fixture:
             'BOOT_ID="$(cat "$APP_DIR/boot-id")"')
         (self.root / 'filemanagerctl').write_text(controller)
         (self.root / 'filemanagerctl').chmod(0o755)
+        (self.root / 'scripts').mkdir(exist_ok=True)
+        shutil.copy2(ROOT / 'scripts/runtime-exec.sh', self.root / 'scripts/runtime-exec.sh')
         (self.root / 'pcg').symlink_to(PHP)
         (self.root / 'server.php').write_text('''<?php
 file_put_contents(__DIR__ . '/starts', json_encode([getmypid(), microtime(true)]) . "\\n", FILE_APPEND | LOCK_EX);
@@ -289,7 +291,7 @@ class SupervisionTests(unittest.TestCase):
     def test_supervision_only_upgrade_preserves_application_data(self):
         f = self.f
         shutil.copy2(ROOT / 'installer.sh', f.root / 'installer.sh')
-        (f.root / 'scripts').mkdir()
+        (f.root / 'scripts').mkdir(exist_ok=True)
         shutil.copy2(ROOT / 'scripts/install-supervision.sh', f.root / 'scripts/install-supervision.sh')
         # Even a root test runner must never reach real /etc/systemd writes.
         if os.getuid() == 0:

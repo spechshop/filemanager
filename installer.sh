@@ -134,15 +134,8 @@ if [ "${1:-}" = --supervision-only ]; then
     [ -f "$CURRENT_DIR/server.php" ] && [ -f "$CONTROL_SCRIPT" ] || {
         err "Execute --supervision-only em um checkout existente do FileManager."; exit 1;
     }
-    if [ -x "$CURRENT_DIR/pcg" ]; then
-        PHP_BIN="$CURRENT_DIR/pcg"
-    elif [ -s "$CURRENT_DIR/.runtime/supervision/php" ] \
-        && [ -x "$(cat "$CURRENT_DIR/.runtime/supervision/php")" ]; then
-        PHP_BIN="$(cat "$CURRENT_DIR/.runtime/supervision/php")"
-    else
-        PHP_BIN="$(command -v pcg || command -v php)"
-    fi
-    [ -x "$PHP_BIN" ] || { err "Runtime PHP não encontrado."; exit 1; }
+    source "$CURRENT_DIR/scripts/runtime-exec.sh" || exit 1
+    PHP_BIN="$(fm_php "$CURRENT_DIR")" || exit 1
     chmod +x "$CONTROL_SCRIPT" || exit 1
     # Keep the existing service account when root upgrades a managed checkout.
     if [ "$IS_ROOT" -eq 1 ] && [ -z "${FILEMANAGER_SERVICE_USER:-}" ] \
@@ -437,56 +430,9 @@ if [ ! -f "$PCG_RUNTIME" ]; then
 fi
 [ -f "$PCG_RUNTIME" ] && chmod +x "$PCG_RUNTIME" 2>/dev/null
 
-# Corrige instalações antigas que copiaram este mesmo runtime sobre o nome
-# `php`. Só renomeamos arquivos regulares com conteúdo idêntico ao ./pcg;
-# qualquer PHP desconhecido ou link simbólico é preservado.
-if [ -f "$PCG_RUNTIME" ] && command -v cmp >/dev/null 2>&1; then
-    if [ -f /usr/local/bin/php ] && [ ! -L /usr/local/bin/php ] \
-        && cmp -s "$PCG_RUNTIME" /usr/local/bin/php; then
-        if run_priv mv -- /usr/local/bin/php /usr/local/bin/pcg 2>/dev/null; then
-            ok "Runtime legado renomeado de /usr/local/bin/php para /usr/local/bin/pcg."
-        else
-            warn "Não foi possível renomear o runtime legado em /usr/local/bin/php."
-        fi
-    fi
-    if [ -f "$LOCAL_BIN/php" ] && [ ! -L "$LOCAL_BIN/php" ] \
-        && cmp -s "$PCG_RUNTIME" "$LOCAL_BIN/php"; then
-        if mv -- "$LOCAL_BIN/php" "$LOCAL_BIN/pcg" 2>/dev/null; then
-            ok "Runtime legado renomeado de $LOCAL_BIN/php para $LOCAL_BIN/pcg."
-        else
-            warn "Não foi possível renomear o runtime legado em $LOCAL_BIN/php."
-        fi
-    fi
-fi
-
-# Disponibiliza o runtime com seu próprio nome. O comando `php` existente no
-# sistema nunca é copiado, substituído nem sombreado pelo instalador.
-if [ -f "$PCG_RUNTIME" ]; then
-    if run_priv cp "$PCG_RUNTIME" /usr/local/bin/pcg 2>/dev/null; then
-        run_priv chmod +x /usr/local/bin/pcg 2>/dev/null
-        ok "Runtime pcg instalado em /usr/local/bin/pcg."
-    elif cp "$PCG_RUNTIME" "$LOCAL_BIN/pcg" 2>/dev/null; then
-        chmod +x "$LOCAL_BIN/pcg" 2>/dev/null
-        ok "Runtime pcg instalado em $LOCAL_BIN/pcg."
-    else
-        warn "Não foi possível adicionar pcg ao PATH; usando o runtime local ./pcg."
-    fi
-fi
-
 CURRENT_DIR="$(pwd -P)"
-# Definir qual runtime usar no restante do script. O arquivo do projeto tem
-# prioridade para garantir que Composer e servidor usem a mesma build Swoole.
-if [ -x "$CURRENT_DIR/$PCG_RUNTIME" ]; then
-    PHP_BIN="$CURRENT_DIR/$PCG_RUNTIME"
-elif command -v pcg >/dev/null 2>&1; then
-    PHP_BIN="$(command -v pcg)"
-elif command -v php >/dev/null 2>&1; then
-    PHP_BIN="$(command -v php)"
-    warn "Runtime pcg indisponível; usando o PHP existente no sistema."
-else
-    PHP_BIN="php"
-    warn "Nenhum runtime PHP disponível; tentando o comando 'php'."
-fi
+source "$CURRENT_DIR/scripts/runtime-exec.sh" || exit 1
+PHP_BIN="$(fm_php "$CURRENT_DIR")" || exit 1
 
 # BEGIN installer token generation
 generate_installer_token() {
@@ -550,7 +496,10 @@ COMPOSER_BIN="$CURRENT_DIR/composer"
 COMPOSER_DOWNLOAD="$CURRENT_DIR/.composer-download.$$"
 COMPOSER_READY=0
 log "Baixando o Composer local..."
-if download "https://getcomposer.org/download/2.10.3/composer.phar" "$COMPOSER_DOWNLOAD" \
+if [ "$(sha256sum "$COMPOSER_BIN" 2>/dev/null | cut -d' ' -f1)" = "7a2d379d5b8ffdaa028580ef26494c36d2feef4b178d3dd1473a4dbc5e17c8d6" ] \
+    && "$PHP_BIN" "$COMPOSER_BIN" --version >/dev/null 2>&1; then
+    COMPOSER_READY=1
+elif download "https://getcomposer.org/download/2.10.3/composer.phar" "$COMPOSER_DOWNLOAD" \
     "7a2d379d5b8ffdaa028580ef26494c36d2feef4b178d3dd1473a4dbc5e17c8d6" \
     && "$PHP_BIN" "$COMPOSER_DOWNLOAD" --version >/dev/null 2>&1 \
     && chmod +x "$COMPOSER_DOWNLOAD" 2>/dev/null \
@@ -559,15 +508,19 @@ if download "https://getcomposer.org/download/2.10.3/composer.phar" "$COMPOSER_D
     ok "Composer local preparado em ./composer."
 else
     rm -f -- "$COMPOSER_DOWNLOAD"
-    warn "Não foi possível preparar o Composer local; o Composer do sistema não será usado."
+    err "Não foi possível preparar o Composer local (download, integridade ou execução PHAR)."
+    exit 1
 fi
 
 if [ "$COMPOSER_READY" -eq 1 ]; then
     log "Instalando dependências PHP (Composer)..."
     if ! "$PHP_BIN" "$COMPOSER_BIN" install --no-interaction --no-plugins --no-scripts; then
-        warn "composer install falhou; corrija os requisitos da plataforma antes de continuar."
+        err "composer install falhou; confira acima extensões, conectividade e permissões. Instalação interrompida."
+        exit 1
     else
-        ok "Dependências PHP instaladas."
+        "$PHP_BIN" "$COMPOSER_BIN" check-platform-reqs || exit 1
+        "$PHP_BIN" -r 'require $argv[1];' "$CURRENT_DIR/vendor/autoload.php" || exit 1
+        ok "Dependências PHP instaladas e autoload validado."
     fi
 fi
 
@@ -681,7 +634,7 @@ log "Configurando inicialização automática..."
 CURRENT_DIR="$(pwd -P)"
 RUNTIME_ADDRESS_FILE="$CURRENT_DIR/.runtime/server-address"
 SERVER_ALREADY_RUNNING=0
-if "$CURRENT_DIR/filemanagerctl" status >/dev/null 2>&1; then
+if bash "$CURRENT_DIR/filemanagerctl" status >/dev/null 2>&1; then
     SERVER_ALREADY_RUNNING=1
 else
     # Impede que o instalador reutilize o endereço deixado por uma execução
@@ -693,14 +646,14 @@ fi
 # de "killall php", ele para primeiro o systemd/screen responsável por recriar
 # o processo. O script local é sempre mantido como forma de acesso garantida.
 CONTROL_SCRIPT="$CURRENT_DIR/filemanagerctl"
-CONTROL_COMMAND="$CONTROL_SCRIPT"
+CONTROL_COMMAND="bash $CONTROL_SCRIPT"
 if [ -f "$CONTROL_SCRIPT" ]; then
     chmod +x "$CONTROL_SCRIPT" 2>/dev/null
     if run_priv ln -sfn "$CONTROL_SCRIPT" /usr/local/bin/filemanagerctl 2>/dev/null; then
-        CONTROL_COMMAND="filemanagerctl"
+        CONTROL_COMMAND="bash $CONTROL_SCRIPT"
         ok "Comando de controle instalado: filemanagerctl"
     elif ln -sfn "$CONTROL_SCRIPT" "$LOCAL_BIN/filemanagerctl" 2>/dev/null; then
-        CONTROL_COMMAND="filemanagerctl"
+        CONTROL_COMMAND="bash $CONTROL_SCRIPT"
         ok "Comando de controle instalado em $LOCAL_BIN/filemanagerctl"
     else
         warn "Não foi possível adicionar filemanagerctl ao PATH; use $CONTROL_SCRIPT."

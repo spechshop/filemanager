@@ -1,0 +1,170 @@
+RELATÓRIO LOCAL — HOSPEDAGENS RESTRITAS
+Data: 2026-11-09 (America/Porto_Velho)
+Estado: implementação parcial; não homologada para todos os critérios da tarefa.
+Nenhum commit, branch, push, merge ou PR foi criado. O git status inicial estava limpo.
+
+CAUSAS CONFIRMADAS E ALTERAÇÕES
+- O teste de bits de execução não comprova execução. Reproduzido EACCES real com
+  ELF em /home e /tmp noexec. scripts/runtime-exec.sh consulta findmnt (ou
+  /proc/self/mountinfo), testa o programa, escolhe diretório gravável executável,
+  verifica espaço, usa mktemp privado 0700 por UID/instalação e compara SHA256.
+  FILEMANAGER_EXEC_DIR permite restringir a escolha a um local autorizado.
+  TMPDIR tem prioridade entre os candidatos automáticos, seguido de /dev/shm.
+- O PHP persistente permanece no projeto. Cópias temporárias são caches,
+  verificadas novamente contra a origem e recriadas se ausentes/corrompidas.
+  Seleção exige PHP >=8.3, Swoole, zip, sockets, pcntl e posix, com execução real.
+  Não renomeia/substitui o PHP do sistema. Removida a migração que podia renomeá-lo.
+- Instalador e controlador usam a política compartilhada. O server.php também a
+  usa ao receber um PHP sem Swoole. Seus filhos continuam usando PHP_BINARY.
+- Composer continua via PHP, com versão/digest fixados e composer.lock intacto.
+  Reutiliza PHAR com digest esperado. Falhas críticas agora interrompem instalação.
+  check-platform-reqs e carregamento de vendor/autoload.php são obrigatórios.
+- Chamadas de controle no instalador, supervisão, cron e reinício delegado usam
+  Bash. Unidades systemd chamam o resolvedor persistente, não /dev/shm diretamente.
+  O lifecycle existente já mantinha lock, identidade por boot/starttime, isolamento
+  por instalação e intenção de parada; essas proteções foram preservadas.
+- PHP PTY: proc_open usa setsid --ctty e shell -i. PATH inclui diretórios básicos.
+  Destruição procura os grupos de jobs pelo SID e fecha todos os masters recebidos.
+- Swoole recebe task_tmpdir privado em .runtime/swoole-tasks; upload_tmp_dir permanece
+  separado. noexec não impede uso de diretórios para dados. Os avisos específicos
+  do runtime 8.5.4 do provedor não foram reproduzidos; não foram ocultados.
+- Node: a extração verifica estrutura antes da execução. O código existente já
+  separava ambas; não há prova de que a mensagem 'estrutura incompleta' original
+  tenha sido causada por noexec. O novo resolvedor permite copiar o ELF Node e
+  o npm continua sendo interpretado com Node. O middleware resolve Node ao iniciar.
+  Falha de execução do Codex agora reprova sua instalação em vez de anunciar êxito.
+- Agentes de túnel usam a mesma escolha de diretório, incorporada no script enviado
+  ao cliente, sem exigir arquivos auxiliares remotos. Mantidos hashes, autenticação,
+  pinning e TLS existentes. Verificam execução antes do túnel. Mensagens distinguem
+  TLS, autenticação, DNS e conectividade; refused/timeout não prova sozinho bloqueio
+  do provedor nem indisponibilidade do destino, e o diagnóstico informa ambas.
+
+ANTES / DEPOIS
+- pcg com chmod +x em noexec: Permission denied / cópia verificada em local executável.
+- filemanagerctl direto em noexec: Permission denied / Bash interpreta o script.
+- Composer falha e instalação prossegue / falha crítica encerra e explica requisitos.
+- Shell sem controlling TTY / setsid --ctty comprovado via proc_open e job control.
+- systemd dependente de caminho volátil / resolve runtime a partir da origem persistente.
+- Túnel baixado em TMPDIR noexec / diretório privado com prova real de execução.
+
+TESTES REALIZADOS
+- Docker isolado Alpine, UID 1000, sem sudo, capacidades removidas, rootfs read-only,
+  /home e /tmp tmpfs noexec; /dev/shm tmpfs exec de 512 MiB. Nenhuma montagem do host
+  foi alterada. O PHP estático fornecido foi 8.5.10 ZTS com Swoole 6.3.0RC1, não
+  exatamente o PHP 8.5.4 do provedor.
+- ELF em home/tmp falha realmente. PHP/Swoole em shm executa, SHA256 coincide,
+  cache é reutilizado e recriado após remoção. Diretório autorizado inexistente,
+  inacessível, sem execução e espaço insuficiente falham com diagnóstico.
+- proc_open: ls, cat, ps, grep, controlling TTY, Ctrl+Z, bg, fg, Ctrl+C em sleep 30,
+  resize stty 37x101: passaram, sem Node e sem privilégios.
+- Composer PHAR real em home noexec: 8 pacotes instalados conforme lock,
+  check-platform-reqs passou, autoload carregou. Segunda instalação após remover
+  autoload.php o recuperou. Uma repetição posterior encontrou lentidão externa
+  no download de phpstan; foi interrompida e repetida com --no-dev. Os seis pacotes
+  essenciais instalaram e o servidor respondeu HTTPS com certificado validado.
+- No contêiner também passaram start duplicado, status, restart, stop e tick após
+  parada. disable encerrou o servidor e persistiu disabled, mas reportou erro porque
+  crontab instalado no contêiner não podia ser lido; o ensaio sem cron é separado.
+- startup-swoole-test.py: 6/6 (inicialização, TLS, IPv6, reinício, SIGINT/SIGTERM).
+- filemanagerctl-test.py: 5/5. Corrigida corrida da fixture que lia porta antiga
+  após restart; agora aguarda conexão real à porta publicada.
+- supervision-test.py: 19/20 na rodada completa; o erro era mkdir duplicado na
+  fixture ao copiar o helper. Caso corrigido e reexecutado: 1/1. Recuperação após
+  SIGKILL ~2,3 s; stop/disable permaneceram desligados por 120 s com ticks de cron;
+  start concorrente, identidade PID, isolamento e verificação systemd passaram.
+  Cron/systemd são fixtures nessa suíte; não equivalem a reboot real.
+- PTY PHP WebSocket real: autenticação, reconexão, revogação: 1/1.
+- Agentes de túnel: 10/10, incluindo integridade, fallback de download, incompatibilidade,
+  encerramento pelo painel e rejeição de alterações. Downloads/binários são fixtures
+  nesses testes; não comprovam conectividade Cloudflare real.
+- tunnels-test.php executado com php8.4: passou. O PHP estático com Swoole não serve
+  para esse teste que declara stubs de Swoole (redeclaração); isso não foi ocultado.
+- Bootstrap instalador 6/6; HOME/XDG, install-tmp e install-codex-native passaram.
+  A suíte nativa inclui carregamento real de node-pty no ambiente comum e fixtures
+  de toolchain/rede; não comprova addon nativo em montagem noexec.
+- PHP lint, Bash syntax e git diff --check: passaram nos arquivos alterados.
+
+OPERAÇÃO E RECUPERAÇÃO
+Use bash installer.sh e bash filemanagerctl {start|stop|restart|status|enable|disable}.
+Use FILEMANAGER_EXEC_DIR=/local/autorizado quando a política do provedor assim exigir;
+configure essa variável também no contexto de boot, se necessário. Não remonte discos.
+Mantenha pcg persistente no projeto. Não remova sua origem após preparar shm.
+Se o cache desaparecer, iniciar pelo controlador ou pela unidade gerada o recria.
+Sem local executável e espaço suficiente, peça ao provedor um local autorizado.
+stop persiste a parada para este boot; disable também retira o autostart.
+Sem cron funcional ou systemd persistente, só há execução supervisionada no boot atual.
+Após atualizar scripts: bash installer.sh --supervision-only reconfigura supervisão;
+revise o backend em bash filemanagerctl status e logs .runtime/supervision/events.log.
+Não conclua que crontab aceito significa daemon ativo: valide um tick/reboot no host.
+Credenciais e certificados não devem ser enviados com diagnósticos.
+
+LIMITAÇÕES / TRABALHO PENDENTE (CRITÉRIOS NÃO HOMOLOGADOS)
+- Não executado installer.sh integralmente em contêiner restrito: ele tenta provisionar
+  pacotes, downloads e outros componentes; o teste restrito usa etapas essenciais.
+- Não executados reboot real com cron ativo, systemd PID 1/linger ativo, atualização
+  integral e preservação de configurações sob todas as combinações de supervisão.
+- A cópia do ELF Node NÃO resolve por si o mmap de addons .node em noexec, nem
+  executáveis nativos aninhados do Codex/toolchain. node-pty/Codex completos ainda
+  precisam de cópias executáveis das árvores nativas e recuperação correspondente.
+  Intelephense, npm e LSP não foram homologados integralmente nesse cenário.
+- Nem todos os consumidores Node do painel foram migrados ao resolvedor comum.
+- Não testados cloudflared real com TCP e UDP 7844 bloqueados, reconexão externa,
+  downloads reais dos agentes e todos os cenários de DNS/certificados/autenticação.
+- Não reproduzidos logs Bad file descriptor, certificate unknown e access_denied
+  específicos do provedor. Testes existentes de segurança permaneceram ativos;
+  checkToken aceito não implica autorização administrativa em todas as rotas.
+- Não testados todos os limites de múltiplos terminais e reinício de backend/browser
+  no contêiner restrito. Há teste de reconexão WebSocket no Linux comum.
+- Caches antigos após atualização de binário podem consumir espaço até limpeza/reboot;
+  não há coletor automático para cópias antigas. Concorrência fora do controlador
+  pode preparar mais de uma cópia privada. Não apagar diretórios de outras instalações.
+- Não homologado macOS para novos caminhos; o resolvedor de cópia de runtime é Linux.
+- A opção Docker no-new-privileges foi recusada pelo ambiente antes de executar Bash;
+  o ensaio usa UID sem privilégios, --cap-drop ALL e rootfs somente leitura.
+
+REPRODUÇÃO
+bash scripts/tests/restricted/run.sh
+SECURITY_PTY_BACKEND=php node --test scripts/security/pty-integration.cjs
+python3 scripts/tests/startup-swoole-test.py
+SECURITY_PHP_BINARY=/usr/local/bin/php python3 scripts/tests/supervision-test.py
+python3 scripts/tests/filemanagerctl-test.py
+php8.4 scripts/tests/tunnels-test.php
+node --test scripts/tests/tunnel-agent-test.cjs scripts/tests/tunnel-direct-bootstrap-test.cjs
+O runner Docker copia somente o runtime para staging local privado e remove-o ao sair.
+Não altera o crontab, serviços ou firewall do host. O repositório entra read-only.
+
+ARQUIVOS MODIFICADOS / NOVOS
+filemanagerctl
+installer.sh
+middleware.php
+plugins/Request/components/tunnelManager.php
+pty.php
+scripts/install-codex.sh
+scripts/install-supervision.sh
+scripts/tests/filemanagerctl-test.py
+scripts/tests/startup-swoole-test.py
+scripts/tests/supervision-test.py
+scripts/tests/tunnel-agent-test.cjs
+scripts/tests/tunnel-direct-bootstrap-test.cjs
+scripts/tunnel-agent.sh
+scripts/tunnel-direct-agent.sh
+server.php
+scripts/runtime-exec.sh
+docs/restricted-hosting.txt
+scripts/tests/restricted/Dockerfile
+scripts/tests/restricted/runtime.sh
+scripts/tests/restricted/run.sh
+scripts/tests/restricted/pty-jobs.php
+
+RESULTADO FINAL DO ENSAIO RESTRITO
+Runner terminou com código 0. O ensaio final sem crontab nem systemd passou
+start (duas vezes), status, restart, stop, tick que respeita parada e disable.
+HTTPS respondeu com --cacert do certificado temporário da fixture. Composer
+instalou seis dependências essenciais (--no-dev) e recuperou o autoload removido.
+A evidência bruta está em docs/restricted-hosting-evidence.txt (saída coletada após
+início do build; os downloads e comandos internos não expõem chaves privadas).
+No ensaio anterior, crontab BusyBox existia mas era inacessível: disable parou o
+serviço e reportou impossibilidade de inspecionar o cron, sem ocultar o erro.
+O ensaio sem cron remove somente esse applet na imagem de teste, nunca no host.
+A implementação continua parcial pelos requisitos opcionais e de homologação
+explicitados acima; não equivale à conclusão integral da tarefa.

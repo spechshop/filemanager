@@ -1,0 +1,204 @@
+#5 0.878 (2/82) Installing libncursesw (6.4_p20240420-r2)
+#5 0.937 (3/82) Installing readline (8.2.10-r0)
+#5 0.989 (4/82) Installing bash (5.2.26-r0)
+#5 1.088 Executing bash-5.2.26-r0.post-install
+#5 1.095 (5/82) Installing ca-certificates (20261020-r0)
+#5 1.158 (6/82) Installing coreutils-env (9.5-r2)
+#5 1.199 (7/82) Installing coreutils-fmt (9.5-r2)
+#5 1.237 (8/82) Installing coreutils-sha512sum (9.5-r2)
+#5 1.277 (9/82) Installing libacl (2.3.2-r0)
+#5 1.313 (10/82) Installing libattr (2.5.2-r0)
+#5 1.348 (11/82) Installing gmp (6.3.0-r1)
+#5 1.408 (12/82) Installing skalibs (2.14.1.1-r0)
+#5 1.504 (13/82) Installing utmps-libs (0.1.2.2-r1)
+#5 1.540 (14/82) Installing coreutils (9.5-r2)
+#5 1.688 (15/82) Installing brotli-libs (1.1.0-r2)
+#5 1.792 (16/82) Installing c-ares (1.33.1-r0)
+#5 1.837 (17/82) Installing libunistring (1.2-r0)
+#5 1.978 (18/82) Installing libidn2 (2.3.7-r0)
+#5 2.026 (19/82) Installing nghttp2-libs (1.62.1-r0)
+#5 2.072 (20/82) Installing libpsl (0.21.5-r1)
+#5 2.115 (21/82) Installing zstd-libs (1.5.6-r0)
+#5 2.215 (22/82) Installing libcurl (8.14.1-r2)
+#5 2.302 (23/82) Installing curl (8.14.1-r2)
+#5 2.362 (24/82) Installing libmnl (1.0.5-r2)
+#5 2.398 (25/82) Installing libnftnl (1.2.6-r0)
+#5 2.447 (26/82) Installing libxtables (1.8.10-r3)
+#5 2.486 (27/82) Installing iptables (1.8.10-r3)
+#5 2.598 (28/82) Installing libgcc (13.2.1_git20240309-r1)
+#5 2.641 (29/82) Installing libstdc++ (13.2.1_git20240309-r1)
+#5 2.831 (30/82) Installing ada-libs (2.7.8-r0)
+#5 2.892 (31/82) Installing libbase64 (0.5.2-r0)
+#5 2.932 (32/82) Installing icu-data-en (74.2-r1)
+#5 3.165 Executing icu-data-en-74.2-r1.post-install
+#5 3.174 *
+#5 3.174 * If you need ICU with non-English locales and legacy charset support, install
+#5 3.174 * package icu-data-full.
+#5 3.174 *
+#5 3.175 (33/82) Installing icu-libs (74.2-r1)
+#5 3.708 (34/82) Installing nodejs (20.15.1-r0)
+#5 10.79 (35/82) Installing npm (10.9.1-r0)
+#5 12.09 (36/82) Installing openssl (3.3.7-r0)
+#5 12.28 (37/82) Installing libintl (0.22.5-r0)
+#5 12.33 (38/82) Installing libproc2 (4.0.4-r0)
+#5 12.39 (39/82) Installing procps-ng (4.0.4-r0)
+#5 12.51 (40/82) Installing libbz2 (1.0.8-r6)
+#5 12.56 (41/82) Installing libexpat (2.8.1-r0)
+#5 12.62 (42/82) Installing libffi (3.4.6-r0)
+#5 12.66 (43/82) Installing gdbm (1.23-r1)
+#5 12.70 (44/82) Installing xz-libs (5.8.3-r0)
+#5 12.78 (45/82) Installing mpdecimal (4.0.0-r0)
+#5 12.85 (46/82) Installing libpanelw (6.4_p20240420-r2)
+#5 12.88 (47/82) Installing sqlite-libs (3.45.3-r3)
+#5 13.26 (48/82) Installing python3 (3.12.13-r0)
+#5 16.91 (49/82) Installing python3-pycache-pyc0 (3.12.13-r0)
+#5 18.39 (50/82) Installing pyc (3.12.13-r0)
+#5 18.42 (51/82) Installing python3-pyc (3.12.13-r0)
+#5 18.46 (52/82) Installing util-linux (2.40.1-r1)
+#5 18.50 (53/82) Installing dmesg (2.40.1-r1)
+#5 18.54 (54/82) Installing setarch (2.40.1-r1)
+#5 18.58 (55/82) Installing libeconf (0.6.3-r0)
+#5 18.63 (56/82) Installing libblkid (2.40.1-r1)
+#5 18.69 (57/82) Installing libuuid (2.40.1-r1)
+#5 18.74 (58/82) Installing libfdisk (2.40.1-r1)
+#5 18.82 (59/82) Installing libmount (2.40.1-r1)
+#5 18.92 (60/82) Installing libsmartcols (2.40.1-r1)
+#5 18.97 (61/82) Installing util-linux-misc (2.40.1-r1)
+#5 19.24 (62/82) Installing linux-pam (1.6.0-r0)
+#5 19.35 (63/82) Installing runuser (2.40.1-r1)
+#5 19.39 (64/82) Installing mount (2.40.1-r1)
+#5 19.43 (65/82) Installing losetup (2.40.1-r1)
+#5 19.47 (66/82) Installing hexdump (2.40.1-r1)
+#5 19.52 (67/82) Installing uuidgen (2.40.1-r1)
+#5 19.56 (68/82) Installing blkid (2.40.1-r1)
+#5 19.60 (69/82) Installing sfdisk (2.40.1-r1)
+#5 19.65 (70/82) Installing mcookie (2.40.1-r1)
+#5 19.69 (71/82) Installing agetty (2.40.1-r1)
+#5 19.74 (72/82) Installing wipefs (2.40.1-r1)
+#5 19.78 (73/82) Installing cfdisk (2.40.1-r1)
+#5 19.82 (74/82) Installing umount (2.40.1-r1)
+#5 19.86 (75/82) Installing flock (2.40.1-r1)
+#5 19.90 (76/82) Installing lsblk (2.40.1-r1)
+#5 20.00 (77/82) Installing libcap-ng (0.8.5-r0)
+#5 20.04 (78/82) Installing setpriv (2.40.1-r1)
+#5 20.08 (79/82) Installing logger (2.40.1-r1)
+#5 20.12 (80/82) Installing partx (2.40.1-r1)
+#5 20.16 (81/82) Installing fstrim (2.40.1-r1)
+#5 20.20 (82/82) Installing findmnt (2.40.1-r1)
+#5 20.25 Executing busybox-1.36.1-r31.trigger
+#5 20.26 Executing ca-certificates-20261020-r0.trigger
+#5 20.30 OK: 131 MiB in 96 packages
+#5 DONE 20.9s
+
+#6 exporting to image
+#6 exporting layers
+#6 exporting layers 3.4s done
+#6 exporting manifest sha256:ca922cf8da3189f1413616d6de8b1c0f07fffe299992f7fb0be8534ef03dfc87 done
+#6 exporting config sha256:93f4859d6defc4f72ebed85090c55d678371272fd1e7d1920373622d37c4f14d done
+#6 exporting attestation manifest sha256:bd41441620009a2fa24f3a5721eba92e0e2358830b570dc2b7712f02ab4a8ae2 done
+#6 exporting manifest list sha256:48b9dd1cf69fd8e0367d96760f886c75cb49cf1108d02be1fd5752bc064883c9 done
+#6 naming to docker.io/library/filemanager-restricted-test:latest done
+#6 unpacking to docker.io/library/filemanager-restricted-test:latest
+#6 unpacking to docker.io/library/filemanager-restricted-test:latest 0.8s done
+#6 DONE 4.3s
+Execução bloqueada por noexec: /home/restricted/app/pcg
+Filesystem noexec: /tmp
+8.5.10 Swoole 6.3.0RC1
+Execução bloqueada por noexec: /home/restricted/app/pcg
+Execução bloqueada por noexec: /home/restricted/app/pcg
+Filesystem noexec: /tmp
+PHP 8.5.10 (cli) (built: Nov  9 2026 00:41:24) (ZTS)
+Copyright (c) The PHP Group
+Zend Engine v4.5.10, Copyright (c) Zend Technologies
+    with Zend OPcache v8.5.10, Copyright (c), by Zend Technologies
+Execução bloqueada por noexec: /home/restricted/app/pcg
+Filesystem noexec: /tmp
+Sem diretório gravável e executável com espaço suficiente. Solicite um local autorizado ao provedor (FILEMANAGER_EXEC_DIR).
+Filesystem noexec: /tmp
+Sem diretório gravável e executável com espaço suficiente. Solicite um local autorizado ao provedor (FILEMANAGER_EXEC_DIR).
+Sem diretório gravável e executável com espaço suficiente. Solicite um local autorizado ao provedor (FILEMANAGER_EXEC_DIR).
+PASS proc_open: controlling tty, commands, Ctrl+Z/bg/fg/Ctrl+C, resize
+Installing dependencies from lock file
+Verifying lock file contents can be installed on current platform.
+Package operations: 6 installs, 0 updates, 0 removals
+  - Downloading symfony/finder (v7.4.20)
+  - Downloading composer/pcre (3.4.0)
+  - Downloading composer/class-map-generator (1.8.0)
+  - Downloading nikic/php-parser (v5.9.0)
+  - Downloading symfony/translation-contracts (v3.7.1)
+  - Downloading varunsridharan/php-classmap-generator (1.2.2)
+ 0/6 [>---------------------------]   0%
+ 3/6 [==============>-------------]  50%
+ 4/6 [==================>---------]  66%
+ 5/6 [=======================>----]  83%
+ 6/6 [============================] 100%
+  - Installing symfony/finder (v7.4.20): Extracting archive
+  - Installing composer/pcre (3.4.0): Extracting archive
+  - Installing composer/class-map-generator (1.8.0): Extracting archive
+  - Installing nikic/php-parser (v5.9.0): Extracting archive
+  - Installing symfony/translation-contracts (v3.7.1): Extracting archive
+  - Installing varunsridharan/php-classmap-generator (1.2.2): Extracting archive
+ 0/6 [>---------------------------]   0%
+ 6/6 [============================] 100%
+Generating autoload files
+5 packages you are using are looking for funding.
+Use the `composer fund` command to find out more!
+Checking non-dev platform requirements for packages in the vendor dir
+ext-json      8.5.10     success 
+ext-sockets   8.5.10     success 
+ext-swoole    6.3.0RC1   success 
+ext-tokenizer 8.5.10     success 
+ext-zip       1.22.8     success 
+php           8.5.10     success 
+PASS Composer autoload
+Installing dependencies from lock file
+Verifying lock file contents can be installed on current platform.
+Nothing to install, update or remove
+Generating autoload files
+5 packages you are using are looking for funding.
+Use the `composer fund` command to find out more!
+curl: (7) Failed to connect to localhost port 18080 after 0 ms: Could not connect to server
+curl: (7) Failed to connect to localhost port 18080 after 0 ms: Could not connect to server
+curl: (7) Failed to connect to localhost port 18080 after 0 ms: Could not connect to server
+curl: (7) Failed to connect to localhost port 18080 after 0 ms: Could not connect to server
+curl: (7) Failed to connect to localhost port 18080 after 0 ms: Could not connect to server
+curl: (7) Failed to connect to localhost port 18080 after 0 ms: Could not connect to server
+PASS Composer clean/repeated/partial install and real server on noexec home
+[filemanager][ok] FileManager iniciado.
+[filemanager][ok] FileManager iniciado.
+[filemanager] Supervisor: background (PID: 349)
+[filemanager] Supervisão automática: ativa
+[filemanager] Autostart: desativado
+[filemanager] Parada administrativa: não
+[filemanager] Logs: /home/restricted/app/filemanager.log; /home/restricted/app/.runtime/supervision/events.log; journalctl [--user] -u filemanager-restricted-test.service (systemd)
+[filemanager][ok] FileManager está rodando (PID(s): 409 ).
+[filemanager] Parando o FileManager...
+[filemanager][ok] FileManager desligado.
+[filemanager][ok] FileManager iniciado.
+[filemanager] Parando o FileManager...
+[filemanager][ok] FileManager desligado.
+[filemanager] Supervisor: background (PID: ausente)
+[filemanager] Supervisão automática: inativa
+[filemanager] Autostart: desativado
+[filemanager] Parada administrativa: sim (boot atual)
+[filemanager] Logs: /home/restricted/app/filemanager.log; /home/restricted/app/.runtime/supervision/events.log; journalctl [--user] -u filemanager-restricted-test.service (systemd)
+[filemanager][aviso] FileManager está desligado.
+[filemanager] Supervisor: background (PID: ausente)
+[filemanager] Supervisão automática: inativa
+[filemanager] Autostart: desativado
+[filemanager] Parada administrativa: sim (boot atual)
+[filemanager] Logs: /home/restricted/app/filemanager.log; /home/restricted/app/.runtime/supervision/events.log; journalctl [--user] -u filemanager-restricted-test.service (systemd)
+[filemanager][aviso] FileManager está desligado.
+[filemanager][ok] FileManager iniciado.
+[filemanager] Parando o FileManager...
+[filemanager][ok] FileManager desligado.
+[filemanager][ok] Inicialização automática desativada.
+[filemanager] Supervisor: background (PID: ausente)
+[filemanager] Supervisão automática: inativa
+[filemanager] Autostart: desativado
+[filemanager] Parada administrativa: sim (boot atual)
+[filemanager] Logs: /home/restricted/app/filemanager.log; /home/restricted/app/.runtime/supervision/events.log; journalctl [--user] -u filemanager-restricted-test.service (systemd)
+[filemanager][aviso] FileManager está desligado.
+PASS real controller on noexec: start twice/status/restart/stop/tick/start/disable
+PASS: uid=1000; home/tmp noexec, usr read-only, ELF/Swoole, SHA256, reuse, recovery, no executable directory, insufficient space, inaccessible directory, PTY jobs
+

@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 # FILEMANAGER_TUNNEL_AGENT
+# FILEMANAGER_EXEC_HELPER
+if ! declare -F fm_exec_dir >/dev/null; then
+    source "$(dirname -- "${BASH_SOURCE[0]}")/runtime-exec.sh" || exit 1
+fi
 # This entire function is received before execution when downloaded with curl | bash.
 fm_tunnel_main() {
     # FILEMANAGER_CONFIG
@@ -37,6 +41,21 @@ fm_tunnel_main() {
         printf '{"session":"%s","status":"%s","url":"%s","message":"%s"}' \
             "$FM_SESSION" "$1" "$2" "${3:-}" > "$FM_WORK/report.json"
         fm_panel_request
+    }
+
+    fm_connection_diagnostic() {
+        local log="$FM_WORK/cloudflared.log"
+        if grep -Eqi 'certificate|x509|tls.*(error|alert)' "$log"; then
+            printf '%s' 'Falha TLS/certificado. Confira a cadeia de confiança e o nome do certificado.'
+        elif grep -Eqi 'unauthorized|authentication|invalid token|forbidden' "$log"; then
+            printf '%s' 'Falha de autenticação do túnel. Confira credenciais e autorização.'
+        elif grep -Eqi 'no such host|lookup .*failed|DNS.*(error|fail)' "$log"; then
+            printf '%s' 'Falha de DNS. Solicite ao provedor verificar a resolução dos destinos Cloudflare.'
+        elif grep -Eqi 'connection refused|network is unreachable|i/o timeout|QUIC.*(fail|timeout)|dial tcp.*7844' "$log"; then
+            printf '%s' 'Falha de conectividade após executar cloudflared. Saída TCP/UDP 7844 bloqueada ou destino indisponível; solicite diagnóstico ao provedor.'
+        else
+            printf '%s' 'cloudflared encerrou ou não conectou. Consulte o log para identificar a falha externa.'
+        fi
     }
 
     fm_current_url() {
@@ -90,7 +109,7 @@ fm_tunnel_main() {
             wait "$FM_INSTALL" 2>/dev/null || true
         fi
         if [ "$FM_FINAL_STATUS" = error ]; then
-            fm_report error '' 'Não foi possível manter o túnel. Consulte o log informado ao iniciar o comando.' || true
+            fm_report error '' "$(fm_connection_diagnostic)" || true
         else
             fm_report offline '' 'Conexão encerrada na máquina remota.' || true
         fi
@@ -175,7 +194,7 @@ fm_tunnel_main() {
     fi
     fm_keepalive || exit 1
     if command -v cloudflared >/dev/null 2>&1; then
-        FM_BINARY=$(command -v cloudflared)
+        FM_BINARY=$(fm_prepare_binary "$(command -v cloudflared)" "$FM_LAUNCH_DIR" --version) || { FM_FINAL_STATUS=error; exit 1; }
     else
         FM_BINARY="$FM_WORK/cloudflared"
         (trap - EXIT INT TERM HUP; fm_install_cloudflared) &
@@ -192,6 +211,10 @@ fm_tunnel_main() {
         FM_INSTALL=''
     fi
 
+    "$FM_BINARY" --version >/dev/null 2>&1 || {
+        printf '%s\n' 'cloudflared existe mas não executa: verifique permissões, noexec, arquitetura e bibliotecas.' >&2
+        FM_FINAL_STATUS=error; exit 1;
+    }
     printf '{}\n' > "$FM_WORK/config.yml"
     local arguments=(tunnel --config "$FM_WORK/config.yml" --no-autoupdate --url "$FM_TARGET"
         --protocol http2 --ha-connections 1 --metrics 127.0.0.1:0)
@@ -203,7 +226,8 @@ fm_tunnel_main() {
     while kill -0 "$FM_CHILD" 2>/dev/null; do
         fm_keepalive || exit 1
         if [ $((SECONDS - FM_LAST_ONLINE)) -gt 180 ]; then
-            printf '%s\n' 'Tempo de conexão esgotado. Verifique a rede e tente novamente.' >&2
+            printf '%s\n' 'cloudflared executou, mas não conectou. Confira DNS, TLS e saída TCP/UDP 7844 com o administrador da hospedagem.' >&2
+            cat "$FM_WORK/cloudflared.log" >&2
             FM_FINAL_STATUS=error
             exit 1
         fi
@@ -225,12 +249,12 @@ fm_tunnel_start() {
         printf '%s\n' 'Não foi encontrado nohup para iniciar o túnel em segundo plano.' >&2
         return 1
     fi
-    launch_dir=$(mktemp -d "${TMPDIR:-/tmp}/filemanager-tunnel.XXXXXXXX") || return 1
+    launch_dir=$(fm_exec_dir "tunnel-${FM_SESSION:-remote}" 209715200) || return 1
     # Serialize the complete worker, including its configuration, before detaching.
     # All three standard streams must be detached from the curl | bash pipeline.
     if ! {
         printf '#!/usr/bin/env bash\n'
-        declare -f fm_tunnel_main
+        declare -f fm_noexec fm_exec_dir fm_prepare_binary fm_tunnel_main
         printf 'fm_tunnel_main "$1"\n'
     } > "$launch_dir/agent.sh"; then
         rm -rf -- "$launch_dir"

@@ -103,8 +103,11 @@ function terminalEnvironment(): array
 
     unset($env['FILEMANAGER_BRIDGE_SECRET'], $env['CODEX_ACCESS_TOKEN']);
     $preferredBins = [
+        dirname(getenv('FILEMANAGER_NODE_BINARY') ?: __DIR__ . '/.runtime/node/bin/node'),
         __DIR__ . '/.runtime/node/bin',
         __DIR__ . '/.runtime/codex/bin',
+        '/usr/local/bin', '/usr/bin', '/bin', '/usr/local/sbin', '/usr/sbin', '/sbin',
+        (getenv('HOME') ?: __DIR__) . '/.local/bin',
     ];
     $inheritedPath = isset($env['PATH']) ? (string) $env['PATH'] : '';
     $pathEntries = array_merge($preferredBins, explode(PATH_SEPARATOR, $inheritedPath));
@@ -141,7 +144,10 @@ function createNewTerminal(Server $server, string $token, int $fd): bool
     $env['LINES']   = (string) DEFAULT_ROWS;
 
     $pipes = [];
-    $proc  = @proc_open([$shell], $descriptorspec, $pipes, $filesDir, $env);
+    // util-linux setsid takes fd 0 as the controlling terminal before exec.
+    $setsid = is_executable('/usr/bin/setsid') ? '/usr/bin/setsid' : '/bin/setsid';
+    if (!is_executable($setsid)) throw new RuntimeException('PTY requer setsid (util-linux) para controle de jobs.');
+    $proc  = proc_open([$setsid, '--ctty', $shell, '-i'], $descriptorspec, $pipes, $filesDir, $env);
     if (!is_resource($proc)) {
         return false;
     }
@@ -168,6 +174,7 @@ function createNewTerminal(Server $server, string $token, int $fd): bool
         'owner' => $owner,
         'proc'   => $proc,
         'master' => $master,
+        'pipes' => $pipes,
         'pid'    => $pid,
         'pts'    => $pts,
         'cache'  => '',
@@ -302,11 +309,23 @@ function destroyTerminal(string $token): void
         @Swoole\Event::del($s['master']);
     }
     if (isset($s['pid']) && $s['pid'] > 0) {
-        @posix_kill($s['pid'], SIGKILL);
+        // Jobs have their own process groups; kill every member of this SID.
+        // The leader still exists here, so the SID cannot have been reused.
+        $sid = $s['pid'];
+        if (posix_getsid($sid) === $sid) {
+            foreach (glob('/proc/[0-9]*/stat') ?: [] as $stat) {
+                $metadata = @file_get_contents($stat);
+                if (!is_string($metadata)) continue;
+                $fields = explode(' ', trim(substr($metadata, strrpos($metadata, ')') + 1)));
+                if ((int) ($fields[3] ?? 0) === $sid) @posix_kill((int) basename(dirname($stat)), SIGKILL);
+            }
+        }
+        @posix_kill($sid, SIGKILL);
     }
     if (isset($s['master']) && is_resource($s['master'])) {
         @fclose($s['master']);
     }
+    foreach (($s['pipes'] ?? []) as $pipe) if (is_resource($pipe)) @fclose($pipe);
     if (isset($s['proc']) && is_resource($s['proc'])) {
         @proc_close($s['proc']);
     }

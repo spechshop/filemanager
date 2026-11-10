@@ -4,7 +4,7 @@
 
 supervision_as_owner() {
     if [ "$(id -un)" = "$FILEMANAGER_USER" ]; then
-        "$CONTROL_SCRIPT" "$@"
+        /bin/bash "$CONTROL_SCRIPT" "$@"
     elif [ "$IS_ROOT" -eq 1 ]; then
         runuser -u "$FILEMANAGER_USER" -- /bin/bash "$CONTROL_SCRIPT" "$@"
     elif [ -n "$SUDO" ]; then
@@ -50,7 +50,7 @@ supervision_write_unit() {
     {
         printf '[Unit]\nDescription=FileManager Server\nAfter=network.target\nStartLimitIntervalSec=0\n\n'
         printf '[Service]\nType=simple\nWorkingDirectory=%s\n' "${CURRENT_DIR//%/%%}"
-        printf 'ExecStart=/usr/bin/env %s %s\n' "$(supervision_unit_quote "$PHP_BIN" exec)" "$(supervision_unit_quote "$CURRENT_DIR/server.php" exec)"
+        printf 'ExecStart=/bin/bash %s run %s %s\n' "$(supervision_unit_quote "$CURRENT_DIR/scripts/runtime-exec.sh" exec)" "$(supervision_unit_quote "$CURRENT_DIR" exec)" "$(supervision_unit_quote "$CURRENT_DIR/server.php" exec)"
         printf 'Restart=always\nRestartSec=2\nKillMode=control-group\nTimeoutStopSec=15\n'
         [ "$kind" = system ] && printf 'User=%s\n' "$FILEMANAGER_USER"
         printf '\n[Install]\nWantedBy=%s\n' "$target"

@@ -100,6 +100,7 @@ fi
 json_state running "Verificando o ambiente..." null
 
 # shellcheck source=secure-download.sh
+source "$SCRIPT_DIR/runtime-exec.sh" || exit 1
 source "$SCRIPT_DIR/secure-download.sh" || exit 1
 download() { secure_download "$@"; }
 
@@ -120,12 +121,14 @@ NODE_BIN=""
 NPM_CLI=""
 
 if [ "$NODE_TARGET" = "preserve" ]; then
-    if [ -x "$MANAGED_NODE_DIR/bin/node" ] \
-        && [ "$(node_major "$MANAGED_NODE_DIR/bin/node")" -ge "$MIN_NODE_MAJOR" ] 2>/dev/null; then
-        NODE_BIN="$MANAGED_NODE_DIR/bin/node"
+    if NODE_BIN="$(fm_prepare_binary "$MANAGED_NODE_DIR/bin/node" "$PROJECT_ROOT" --version 2>/dev/null)" \
+        && [ "$(node_major "$NODE_BIN")" -ge "$MIN_NODE_MAJOR" ] 2>/dev/null; then
+        : # validated above
     elif command -v node >/dev/null 2>&1 \
         && [ "$(node_major "$(command -v node)")" -ge "$MIN_NODE_MAJOR" ] 2>/dev/null; then
         NODE_BIN="$(command -v node)"
+    else
+        NODE_BIN=""
     fi
 fi
 
@@ -231,7 +234,7 @@ install_managed_node() {
         return 1
     fi
     node_error="$temp_dir/node-runtime-error.log"
-    if ! "$extracted/bin/node" --version > /dev/null 2> "$node_error"; then
+    if ! fm_prepare_binary "$extracted/bin/node" "$PROJECT_ROOT" --version > /dev/null 2> "$node_error"; then
         if [ "$machine" = "x64" ] && [ "$archive_suffix" != "linux-x64-glibc-217" ]; then
             warn "O Node.js oficial não executa neste sistema; tentando build compatível com glibc 2.17."
             rm -rf -- "$temp_dir"
@@ -246,7 +249,7 @@ install_managed_node() {
     rm -rf -- "$MANAGED_NODE_DIR"
     mv -- "$extracted" "$MANAGED_NODE_DIR"
     rm -rf -- "$temp_dir"
-    NODE_BIN="$MANAGED_NODE_DIR/bin/node"
+    NODE_BIN="$(fm_prepare_binary "$MANAGED_NODE_DIR/bin/node" "$PROJECT_ROOT" --version)" || return 1
     ok "Node.js $($NODE_BIN --version) instalado em .runtime/node."
 }
 
@@ -258,10 +261,14 @@ else
     ok "Usando $NODE_BIN ($($NODE_BIN --version))."
 fi
 
+NODE_BIN="$(fm_prepare_binary "$NODE_BIN" "$PROJECT_ROOT" --version)" || exit 1
+export FILEMANAGER_NODE_BINARY="$NODE_BIN"
 PATH="$(dirname -- "$NODE_BIN"):$CODEX_PREFIX/bin:${PATH:-}"
 export PATH
 
-if [ -f "$(dirname -- "$NODE_BIN")/../lib/node_modules/npm/bin/npm-cli.js" ]; then
+if [ -f "$MANAGED_NODE_DIR/lib/node_modules/npm/bin/npm-cli.js" ]; then
+    NPM_CLI="$MANAGED_NODE_DIR/lib/node_modules/npm/bin/npm-cli.js"
+elif [ -f "$(dirname -- "$NODE_BIN")/../lib/node_modules/npm/bin/npm-cli.js" ]; then
     NPM_CLI="$(dirname -- "$NODE_BIN")/../lib/node_modules/npm/bin/npm-cli.js"
 elif command -v npm >/dev/null 2>&1; then
     NPM_CLI="$(command -v npm)"
@@ -297,7 +304,11 @@ if [ ! -x "$CODEX_BIN" ]; then
     LAST_MESSAGE="O Codex CLI foi instalado, mas o executável não foi encontrado."
     exit 1
 fi
-ok "$($CODEX_BIN --version 2>/dev/null) instalado em .runtime/codex."
+if ! "$CODEX_BIN" --version; then
+    LAST_MESSAGE="Codex instalado mas não executável: confira noexec, arquitetura e binário nativo do pacote."
+    exit 1
+fi
+ok "Codex validado em .runtime/codex."
 
 # Torna o comando conveniente para o mesmo usuário, sem sobrescrever um
 # executável real que já esteja instalado fora do FileManager.

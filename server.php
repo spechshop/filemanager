@@ -11,23 +11,11 @@
         return; // já estamos rodando com Swoole, ok
     }
 
-    $cwd      = __DIR__;
-    $localPhp = $cwd . '/pcg';
-
-    // Verifica se o runtime ./pcg local existe e tem Swoole.
-    if (!file_exists($localPhp) || !is_executable($localPhp)) {
-        fwrite(STDERR, "[server.php] Swoole não encontrado e o runtime ./pcg não está disponível. Execute o installer.sh.\n");
+    $localPhp = trim((string) shell_exec('/bin/bash ' . escapeshellarg(__DIR__ . '/scripts/runtime-exec.sh') . ' php ' . escapeshellarg(__DIR__)));
+    if ($localPhp === '' || !is_file($localPhp)) {
+        fwrite(STDERR, "[server.php] Runtime PHP/Swoole indisponível. Execute bash installer.sh.\n");
         exit(1);
     }
-
-    $hasSwoole = trim((string) shell_exec(escapeshellarg($localPhp) . ' --ri swoole 2>/dev/null'));
-    if (empty($hasSwoole)) {
-        fwrite(STDERR, "[server.php] O runtime ./pcg não possui Swoole. Não é possível continuar.\n");
-        exit(1);
-    }
-
-    fwrite(STDOUT, "[server.php] PHP atual sem Swoole. Re-executando com o runtime isolado ./pcg...\n");
-
     // ---------------------------------------------------------
     // Re-executa este mesmo script com o ./pcg local.
     // pcntl_exec substitui o processo atual (sem fork).
@@ -74,6 +62,7 @@ if (!is_file($deploymentAutoloader)) {
 require $deploymentAutoloader;
 // Diagnostics and migrations are explicit CLI operator actions. Never execute
 // commands from fixs.json or run installation/repair while starting HTTP.
+if (!is_file(__DIR__ . '/vendor/autoload.php')) throw new RuntimeException('Dependências ausentes: execute bash installer.sh para preparar Composer com PHP/Swoole.');
 require_once __DIR__ . '/vendor/autoload.php';
 include_once 'plugins/autoload.php';
 

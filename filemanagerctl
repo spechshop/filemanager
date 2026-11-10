@@ -206,17 +206,9 @@ inside_service_cgroup() {
 }
 
 php_binary() {
-    if [ -s "$STATE_DIR/php" ] && [ -x "$(cat "$STATE_DIR/php")" ]; then
-        cat "$STATE_DIR/php"
-    elif [ -x "$APP_DIR/pcg" ]; then
-        printf '%s\n' "$APP_DIR/pcg"
-    elif command -v pcg >/dev/null 2>&1; then
-        command -v pcg
-    elif command -v php >/dev/null 2>&1; then
-        command -v php
-    else
-        return 1
-    fi
+    # A cache under /dev/shm may disappear at reboot. Always resolve from source.
+    source "$APP_DIR/scripts/runtime-exec.sh" || return 1
+    fm_php "$APP_DIR"
 }
 
 update_system_controller() {
@@ -558,7 +550,7 @@ cron_update() {
     if [ "$mode" = install ]; then
         # POSIX shell quoting, including spaces, quotes, and cron's special %.
         command_line="$(printf '%s' "$SCRIPT_PATH" | sed "s/'/'\\\\''/g")"
-        command_line="'$command_line' __tick >/dev/null 2>&1"
+        command_line="/bin/bash '$command_line' __tick >/dev/null 2>&1"
         command_line="${command_line//%/\\%}"
         printf '@reboot %s # filemanager:%s\n' "$command_line" "$INSTANCE_ID" >> "$tmp"
         printf '* * * * * %s # filemanager:%s\n' "$command_line" "$INSTANCE_ID" >> "$tmp"
@@ -645,10 +637,10 @@ restart_server() {
         state_write restart-request "$request" || return 1
         if system_unit_matches; then
             run_systemd_run --quiet --collect --unit="filemanager-restart-$SELF_PID" --on-active=2s \
-                "$SCRIPT_PATH" __restart "$request" || return 1
+                "$BASH" "$SCRIPT_PATH" __restart "$request" || return 1
         else
             systemd-run --user --quiet --collect --unit="filemanager-restart-$SELF_PID" --on-active=2s \
-                "$SCRIPT_PATH" __restart "$request" || return 1
+                "$BASH" "$SCRIPT_PATH" __restart "$request" || return 1
         fi
         ok "Reinício agendado. O painel pode desconectar por alguns segundos."
         return 0

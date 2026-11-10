@@ -99,10 +99,14 @@ try {
     exit(1);
 }
 
+// Resolve optional Node through the same executable-cache policy after reboot.
+$resolvedNode = trim((string) shell_exec('/bin/bash ' . escapeshellarg(__DIR__ . '/scripts/runtime-exec.sh') . ' node ' . escapeshellarg(__DIR__) . ' 2>/dev/null'));
+if ($resolvedNode !== '') putenv('FILEMANAGER_NODE_BINARY=' . $resolvedNode);
+
 if (!function_exists('fileManagerNodeBinary')) {
     function fileManagerNodeBinary(): string
     {
-        $managed = __DIR__ . '/.runtime/node/bin/node';
+        $managed = getenv('FILEMANAGER_NODE_BINARY') ?: __DIR__ . '/.runtime/node/bin/node';
         if (is_file($managed) && is_executable($managed)) {
             $version = trim((string) shell_exec(escapeshellarg($managed) . ' --version 2>/dev/null'));
             if (preg_match('/^v(\d+)\./', $version, $matches) === 1 && (int) $matches[1] >= 22) {
@@ -121,7 +125,7 @@ if (!function_exists('fileManagerPtyNodeBinary')) {
      */
     function fileManagerPtyNodeBinary(): string
     {
-        $managed = __DIR__ . '/.runtime/node/bin/node';
+        $managed = getenv('FILEMANAGER_NODE_BINARY') ?: __DIR__ . '/.runtime/node/bin/node';
         $system = trim((string) shell_exec('command -v node 2>/dev/null'));
         $candidates = array_values(array_unique(array_filter([
             is_file($managed) && is_executable($managed) ? $managed : null,
@@ -326,6 +330,12 @@ if ($uploadPort > 0) {
 }
 $uploadTemporary = \plugins\Request\securityPolicy::uploadDirectory();
 if (!is_dir($uploadTemporary) && !mkdir($uploadTemporary, 0700, true) && !is_dir($uploadTemporary)) throw new RuntimeException('Cannot prepare private upload directory');
+$taskTemporary = __DIR__ . '/.runtime/swoole-tasks';
+if (is_link($taskTemporary) || (!is_dir($taskTemporary) && !mkdir($taskTemporary, 0700, true)) || !is_writable($taskTemporary)) {
+    throw new RuntimeException('Diretório temporário privado Swoole indisponível: ' . $taskTemporary);
+}
+chmod($taskTemporary, 0700);
+$serverSettings['task_tmpdir'] = $taskTemporary;
 $serverSettings['upload_tmp_dir'] = $uploadTemporary;
 $serverSettings['upload_max_filesize'] = \plugins\Request\securityPolicy::limit('UPLOAD_BYTES', 2147483648);
 $serverSettings['socket_buffer_size'] = \plugins\Request\securityPolicy::limit('OUTPUT_BUFFER_BYTES', 4194304);

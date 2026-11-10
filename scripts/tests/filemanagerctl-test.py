@@ -37,6 +37,8 @@ class ControllerTests(unittest.TestCase):
         self.root = Path(self.temp.name) / 'instance with spaces'
         self.root.mkdir()
         shutil.copy2(ROOT / 'filemanagerctl', self.root / 'filemanagerctl')
+        (self.root / 'scripts').mkdir(exist_ok=True)
+        shutil.copy2(ROOT / 'scripts/runtime-exec.sh', self.root / 'scripts/runtime-exec.sh')
         (self.root / 'pcg').symlink_to(PHP)
         (self.root / 'middleware.php').write_text('''<?php
 file_put_contents(__DIR__ . '/middleware.pid', (string) getmypid());
@@ -87,10 +89,15 @@ exit 1
         return subprocess.run([str(self.root / 'filemanagerctl'), action], cwd='/', env=self.env, capture_output=True, text=True, timeout=15)
 
     def ready(self):
-        until(lambda: (self.root / 'port').exists())
-        port = int((self.root / 'port').read_text())
-        with socket.create_connection(('127.0.0.1', port), timeout=1):
-            pass
+        # A restart can leave the previous marker until the new child binds.
+        def listening():
+            try:
+                port = int((self.root / 'port').read_text())
+                with socket.create_connection(('127.0.0.1', port), timeout=0.2):
+                    return port
+            except (OSError, ValueError):
+                return False
+        port = until(listening)
         self.owned.update(int(marker.read_text()) for marker in self.root.glob('*.pid'))
         return port
 

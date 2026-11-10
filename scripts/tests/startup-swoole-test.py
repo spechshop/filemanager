@@ -75,6 +75,7 @@ class StartupTest(unittest.TestCase):
         for name in ['server.php', 'middleware.php', 'pty.js', 'pty.php', 'lsp.js']:
             shutil.copy2(ROOT / name, self.root / name)
         (self.root / 'scripts/security').mkdir(parents=True)
+        shutil.copy2(ROOT / 'scripts/runtime-exec.sh', self.root / 'scripts/runtime-exec.sh')
         shutil.copy2(ROOT / 'scripts/security/bridge-auth.cjs', self.root / 'scripts/security/bridge-auth.cjs')
         (self.root / '.env').write_text('')
         (self.root / 'files').mkdir()

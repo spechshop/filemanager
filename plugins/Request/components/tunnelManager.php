@@ -58,7 +58,7 @@ final class tunnelManager
                 $url = 'https://' . $asset['host'] . ($asset['host'] === 'nodejs.org' ? '/dist/v' : '/download/release/v') . $catalog['version'] . '/' . $asset['name'];
                 $cases .= '            ' . $platform . ') FM_ASSET=' . escapeshellarg($asset['name']) . '; FM_SHA256=' . escapeshellarg($asset['sha256']) . '; FM_NODE_URL=' . escapeshellarg($url) . ";;\n";
             }
-            return strtr($launcher, ['FILEMANAGER_AGENT_BASE64' => $payload, '# FILEMANAGER_CONFIG' => $header, '# FILEMANAGER_NODE_PLATFORMS' => $cases]);
+            return strtr($launcher, ['# FILEMANAGER_EXEC_HELPER' => self::execHelper($root), 'FILEMANAGER_AGENT_BASE64' => $payload, '# FILEMANAGER_CONFIG' => $header, '# FILEMANAGER_NODE_PLATFORMS' => $cases]);
         }
         $source = file_get_contents($root . '/scripts/tunnel-agent.sh');
         $manifest = json_decode((string) file_get_contents($root . '/scripts/tunnel-cloudflared.json'), true, 16, JSON_THROW_ON_ERROR);
@@ -75,8 +75,16 @@ final class tunnelManager
                 || !preg_match('/^[a-f0-9]{64}$/D', $asset['sha256'])) throw new \RuntimeException('Invalid tunnel manifest');
             $cases .= '        ' . $platform . ') FM_ASSET=' . escapeshellarg($asset['name']) . '; FM_SHA256=' . escapeshellarg($asset['sha256']) . ";;\n";
         }
-        return strtr($source, ['# FILEMANAGER_CONFIG' => $header,
+        return strtr($source, ['# FILEMANAGER_EXEC_HELPER' => self::execHelper($root), '# FILEMANAGER_CONFIG' => $header,
             '# FILEMANAGER_PLATFORMS' => $cases, 'FILEMANAGER_CLOUDFLARED_VERSION' => $manifest['version']]);
+    }
+
+    private static function execHelper(string $root): string
+    {
+        $helper = file_get_contents($root . '/scripts/runtime-exec.sh');
+        if ($helper === false) throw new \RuntimeException('Execution policy unavailable');
+        // Only function definitions; omit the standalone CLI dispatcher.
+        return explode('if [ "${BASH_SOURCE[0]}" = "$0" ]; then', $helper, 2)[0];
     }
 
     public static function listing(string $actor): array
