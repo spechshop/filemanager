@@ -113,31 +113,33 @@ test('authorization and file errors keep navigation and closing usable', async (
     } finally { dom.window.close(); }
 });
 
-test('zoom supports buttons, wheel, double click and bounded dragging; changing files resets it', async () => {
+test('zoom supports wheel across the stage, double click and bounded dragging; changing files resets it', async () => {
     const dom = browser(), w = dom.window;
     try {
         await w.showImage('/one.jpg');
         const image = w.document.getElementById('viewerImage');
         Object.defineProperties(image, {clientWidth: {value: 400}, clientHeight: {value: 200}});
         image.setPointerCapture = () => {};
-        w.document.getElementById('imageZoomIn').click();
+        w.changeImageZoom(0.25);
+        const stage = w.document.getElementById('mediaStage'); stage.setPointerCapture = () => {};
         assert.equal(w.document.getElementById('imageZoomLevel').textContent, '125%');
         const wheel = new w.WheelEvent('wheel', {deltaY: -100, bubbles: true, cancelable: true});
-        image.dispatchEvent(wheel);
+        stage.dispatchEvent(wheel);
         assert.equal(wheel.defaultPrevented, true);
         assert.match(image.style.transform, /scale\(1.5\)/);
-        image.onpointerdown({button: 0, pointerId: 1, clientX: 0, clientY: 0, preventDefault() {}});
-        image.onpointermove({pointerId: 1, clientX: 500, clientY: -500});
+        w.document.getElementById('mediaStage').onpointerdown({button: 0, pointerId: 1, clientX: 0, clientY: 0, preventDefault() {}});
+        w.document.getElementById('mediaStage').onpointermove({pointerId: 1, clientX: 500, clientY: -500});
         assert.match(image.style.transform, /translate\(100px, -50px\)/);
-        image.onpointerup();
+        stage.onpointerup({pointerId:1,clientX:500,clientY:-500});
         assert.equal(image.style.cursor, 'grab');
-        image.dispatchEvent(new w.MouseEvent('dblclick'));
+        stage.dispatchEvent(new w.MouseEvent('dblclick'));
         assert.match(image.style.transform, /translate\(0px, 0px\) scale\(1\)/);
-        image.dispatchEvent(new w.MouseEvent('dblclick'));
+        stage.dispatchEvent(new w.MouseEvent('dblclick'));
         assert.match(image.style.transform, /scale\(2\)/);
         await w.navNext();
         assert.equal(w.document.getElementById('imageZoomLevel').textContent, '100%');
-        assert.equal(w.document.getElementById('imageZoomOut').disabled, true);
+        assert.equal(w.document.getElementById('imageZoomOut'), null);
+        assert.equal(w.document.getElementById('imageZoomIn'), null);
     } finally { dom.window.close(); }
 });
 
@@ -346,9 +348,9 @@ test('horizontal touch and mouse drags navigate, while short, vertical, cancelle
         const image = w.document.getElementById('viewerImage');
         image.setPointerCapture = () => {};
         const event = {button: 0, pointerId: 7, isPrimary: true, pointerType, clientX: 180, clientY: 100, preventDefault() {}};
-        image.onpointerdown(event);
-        image.onpointermove({...event, clientX: 180 + dx, clientY: 100 + dy});
-        image['onpointer' + end]({...event, clientX: 180 + dx, clientY: 100 + dy});
+        w.document.getElementById('mediaStage').onpointerdown(event);
+        w.document.getElementById('mediaStage').onpointermove({...event, clientX: 180 + dx, clientY: 100 + dy});
+        w.document.getElementById('mediaStage')['onpointer' + end]({...event, clientX: 180 + dx, clientY: 100 + dy});
         await tick();
     };
     try {
@@ -367,9 +369,9 @@ test('horizontal touch and mouse drags navigate, while short, vertical, cancelle
         assert.equal(w.__currentIndex, 0, 'zoomed dragging pans without changing files');
         w.resetImageZoom();
         const image = w.document.getElementById('viewerImage');
-        image.onpointerdown({button: 0, pointerId: 1, clientX: 100, clientY: 0, preventDefault() {}});
-        image.onpointerdown({isPrimary: false});
-        image.onpointerup({pointerId: 1, clientX: 0, clientY: 0});
+        w.document.getElementById('mediaStage').onpointerdown({button: 0, pointerId: 1, clientX: 100, clientY: 0, preventDefault() {}});
+        w.document.getElementById('mediaStage').onpointerdown({button:0,pointerId:2,clientX:200,clientY:0,preventDefault(){}});
+        w.document.getElementById('mediaStage').onpointerup({pointerId: 1, clientX: 0, clientY: 0});
         assert.equal(w.__currentIndex, 0, 'multitouch cancels navigation');
     } finally { dom.window.close(); }
 });
@@ -564,4 +566,52 @@ test('folders discovered without media appear while scan is still running', asyn
         assert.equal(w.document.getElementById('mediaGallery').getAttribute('aria-busy'), 'true');
         w.closeImageViewer();
     } finally { dom.window.close(); }
+});
+
+test('two fingers zoom and one remaining finger pans without triggering navigation', async () => {
+    const dom=browser(), w=dom.window;
+    try {
+        await w.showImage('/one.jpg');
+        const image=w.document.getElementById('viewerImage'), stage=w.document.getElementById('mediaStage');
+        Object.defineProperties(image,{clientWidth:{value:400},clientHeight:{value:200}});
+        stage.setPointerCapture=()=>{};
+        const event=(id,x,y=100)=>({pointerId:id,button:0,clientX:x,clientY:y,preventDefault(){}});
+        stage.onpointerdown(event(1,100));stage.onpointerdown(event(2,200));
+        stage.onpointermove(event(2,300));
+        assert.equal(w.document.getElementById('imageZoomLevel').textContent,'200%');
+        stage.onpointerup(event(2,300));stage.onpointermove(event(1,160));stage.onpointerup(event(1,160));
+        assert.equal(w.__currentIndex,0);
+        assert.match(image.style.transform,/scale\(2\)/);
+        await w.navNext();assert.equal(w.document.getElementById('imageZoomLevel').textContent,'100%');
+        w.closeImageViewer();assert.equal(stage.onpointermove,null);
+    } finally {dom.window.close();}
+});
+
+test('filmstrip has bounded items, highlights selection and navigates on click', async () => {
+    const dom=browser(),w=dom.window;
+    try {
+        w.fileList=Array.from({length:1000},(_,i)=>`/photo-${i}.jpg`);
+        await w.showImage(w.fileList[500]);
+        assert.equal(w.document.querySelectorAll('#mediaFilmstrip button').length,41);
+        assert.equal(w.document.querySelector('#mediaFilmstrip [aria-current="true"]').dataset.path,'/photo-500.jpg');
+        w.document.querySelector('#mediaFilmstrip button').click();await tick();
+        assert.equal(w.__currentIndex,480);
+        w.setMediaGalleryMode(true);assert.equal(w.document.getElementById('mediaFilmstrip').childElementCount,0);
+        w.closeImageViewer();
+    } finally {dom.window.close();}
+});
+
+test('slideshow uses photos, stops at the end without repeat and clears its timer on close', async () => {
+    const dom=browser(),w=dom.window;
+    try {
+        w.fileList=['/one.jpg','/video.mp4','/two.png'];
+        await w.showImage('/one.jpg');w.toggleGallerySlideshow();
+        assert.equal(w.document.getElementById('gallerySlideshow').getAttribute('aria-pressed'),'true');
+        w.advanceGallerySlide();await tick();assert.equal(w.__currentIndex,2);
+        w.document.getElementById('slideLoop').checked=false;
+        w.advanceGallerySlide();assert.equal(w.document.getElementById('gallerySlideshow').getAttribute('aria-pressed'),'false');
+        w.toggleGallerySlideshow();w.closeImageViewer();
+        assert.equal(w.document.getElementById('gallerySlideshow').getAttribute('aria-pressed'),'false');
+        w.advanceGallerySlide();assert.equal(w.__fileList,undefined);
+    } finally {dom.window.close();}
 });
