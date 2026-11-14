@@ -615,3 +615,42 @@ test('slideshow uses photos, stops at the end without repeat and clears its time
         w.advanceGallerySlide();assert.equal(w.__fileList,undefined);
     } finally {dom.window.close();}
 });
+
+test('filmstrip mouse drag scrolls without opening a thumbnail and ordinary clicks still work', async () => {
+    const dom=browser(),w=dom.window;
+    try {
+        await w.showImage('/two.png');
+        const strip=w.document.getElementById('mediaFilmstrip'), button=strip.firstElementChild;
+        strip.setPointerCapture=()=>{};strip.hasPointerCapture=()=>false;
+        const pointer=(type,x)=>{const e=new w.MouseEvent(type,{button:0,buttons:type==='pointerup'?0:1,clientX:x,bubbles:true,cancelable:true});Object.defineProperties(e,{pointerId:{value:1},pointerType:{value:'mouse'}});return e;};
+        strip.scrollLeft=100;
+        button.dispatchEvent(pointer('pointerdown',200));strip.dispatchEvent(pointer('pointermove',100));
+        assert.equal(strip.scrollLeft,200);assert.equal(strip.classList.contains('is-dragging'),true);
+        strip.dispatchEvent(pointer('pointerup',100));
+        button.dispatchEvent(new w.MouseEvent('click',{bubbles:true,cancelable:true,detail:1}));await tick();
+        assert.equal(w.__currentIndex,1);
+        button.dispatchEvent(pointer('pointerdown',100));button.dispatchEvent(pointer('pointerup',100));
+        button.dispatchEvent(new w.MouseEvent('click',{bubbles:true,cancelable:true,detail:1}));await tick();
+        assert.equal(w.__currentIndex,0);assert.equal(strip.classList.contains('is-dragging'),false);
+        w.closeImageViewer();
+    } finally {dom.window.close();}
+});
+
+test('image context menu rotates, handles keyboard dismissal, and cleans up on navigation', async () => {
+    const dom=browser(),w=dom.window;
+    try {
+        await w.showImage('/one.jpg');
+        const stage=w.document.getElementById('mediaStage'),menu=w.document.getElementById('galleryContextMenu');
+        const event=new w.MouseEvent('contextmenu',{bubbles:true,cancelable:true,clientX:900,clientY:600});
+        stage.dispatchEvent(event);assert.equal(event.defaultPrevented,true);assert.equal(menu.hidden,false);
+        menu.children[1].click();assert.match(w.document.getElementById('viewerImage').style.transform,/rotate\(90deg\)/);assert.equal(menu.hidden,true);
+        w.rotateGalleryImage(-90);assert.match(w.document.getElementById('viewerImage').style.transform,/rotate\(0deg\)/);
+        w.document.getElementById('galleryMore').click();
+        w.dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowDown',cancelable:true}));assert.equal(w.document.activeElement,menu.children[1]);
+        w.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',cancelable:true}));
+        assert.equal(menu.hidden,true);assert.equal(w.document.getElementById('customImageViewer').style.display,'block');
+        w.document.getElementById('galleryMore').click();await w.navNext();assert.equal(menu.hidden,true);
+        assert.match(w.document.getElementById('viewerImage').style.transform,/rotate\(0deg\)/);
+        w.closeImageViewer();assert.equal(stage.oncontextmenu,null);
+    } finally {dom.window.close();}
+});

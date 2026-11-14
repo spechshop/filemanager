@@ -681,7 +681,7 @@
     let mediaGalleryRoot = '/';
     let galleryLocation = null;
     const galleryBackStack = [];
-    const imageZoom = {scale: 1, x: 0, y: 0, drag: null, points: new Map(), pinch: null, multi: false};
+    const imageZoom = {rotation: 0, scale: 1, x: 0, y: 0, drag: null, points: new Map(), pinch: null, multi: false};
 
     function queueMediaPreview(file, operation, valid, ready, signal, failed = () => {}) {
         mediaPreviewQueue.push({file, operation, valid, ready, signal, failed});
@@ -745,6 +745,8 @@
     }
 
     function resetBoxMedias() {
+        closeGalleryContextMenu();
+        imageZoom.rotation = 0;
         document.querySelectorAll('#modalMedia img').forEach(image => image.removeAttribute('src'));
         document.querySelectorAll('#modalMedia video, #modalMedia audio').forEach(media => {
             media.pause();
@@ -761,11 +763,16 @@
     function applyImageZoom() {
         const image = document.getElementById('viewerImage');
         if (!image) return;
-        const maxX = image.clientWidth * (imageZoom.scale - 1) / 2;
-        const maxY = image.clientHeight * (imageZoom.scale - 1) / 2;
+        const turned = imageZoom.rotation % 180 !== 0;
+        const width = turned ? image.clientHeight : image.clientWidth;
+        const height = turned ? image.clientWidth : image.clientHeight;
+        const area = document.getElementById('modalMedia');
+        const fit = turned ? Math.min(1, (area.clientWidth || width) / (width || 1), (area.clientHeight || height) / (height || 1)) : 1;
+        const maxX = width * fit * (imageZoom.scale - 1) / 2;
+        const maxY = height * fit * (imageZoom.scale - 1) / 2;
         imageZoom.x = Math.max(-maxX, Math.min(maxX, imageZoom.x));
         imageZoom.y = Math.max(-maxY, Math.min(maxY, imageZoom.y));
-        image.style.transform = `translate(${imageZoom.x}px, ${imageZoom.y}px) scale(${imageZoom.scale})`;
+        image.style.transform = `translate(${imageZoom.x}px, ${imageZoom.y}px) scale(${imageZoom.scale * fit}) rotate(${imageZoom.rotation}deg)`;
         image.style.cursor = imageZoom.drag ? 'grabbing' : 'grab';
         document.getElementById('imageZoomLevel').textContent = `${Math.round(imageZoom.scale * 100)}%`;
         document.getElementById('mediaStage').style.cursor = imageZoom.scale > 1 ? (imageZoom.drag ? 'grabbing' : 'grab') : 'default';
@@ -796,6 +803,7 @@
         };
         if (image.complete && image.naturalWidth) image.onload();
         const stage = document.getElementById('mediaStage');
+        stage.oncontextmenu = openGalleryContextMenu;
         stage.ondblclick = event => {
             if (event.target.closest?.('button')) return;
             imageZoom.scale > 1 ? resetImageZoom() : changeImageZoom(1);
@@ -874,6 +882,10 @@
     }
 
     function handleImageViewerKey(event) {
+        if (!document.getElementById('galleryContextMenu').hidden) {
+            if (handleGalleryMenuKey(event)) return;
+            if (event.key !== 'Tab') return;
+        }
         if (event.key === 'Escape') {
             event.preventDefault();
             event.stopPropagation();
@@ -912,6 +924,105 @@
     let filmSession = null;
     const slideshow = {playing: false, timer: null};
 
+    function bindFilmstripDrag(strip, signal) {
+        let drag = null, suppressClick = false;
+        const finish = () => {
+            const id = drag?.id;
+            drag = null; strip.classList.remove('is-dragging');
+            if (id !== undefined && strip.hasPointerCapture?.(id)) strip.releasePointerCapture(id);
+        };
+        strip.addEventListener('pointerdown', event => {
+            suppressClick = false;
+            if (event.pointerType === 'touch' || event.button !== 0) return;
+            drag = {id:event.pointerId, x:event.clientX, left:strip.scrollLeft, moved:false};
+        }, {signal});
+        strip.addEventListener('pointermove', event => {
+            if (!drag || drag.id !== event.pointerId) return;
+            const dx = event.clientX-drag.x;
+            if (!drag.moved && Math.abs(dx) < 6) return;
+            if (!drag.moved) {
+                drag.moved = true; suppressClick = true; stopGallerySlideshow();
+                strip.setPointerCapture?.(event.pointerId); strip.classList.add('is-dragging');
+            }
+            event.preventDefault(); strip.scrollLeft = drag.left-dx;
+        }, {signal});
+        for (const type of ['pointerup','pointercancel','lostpointercapture']) strip.addEventListener(type, event => {
+            if (drag?.id === event.pointerId) finish();
+        }, {signal});
+        strip.addEventListener('click', event => {
+            if (!suppressClick || event.detail === 0) return;
+            suppressClick = false; event.preventDefault(); event.stopPropagation();
+        }, {capture:true, signal});
+        strip.addEventListener('pointerleave', () => { if (drag && !drag.moved) finish(); }, {signal});
+        strip.addEventListener('dragstart', event => event.preventDefault(), {signal});
+        signal.addEventListener('abort', finish, {once:true});
+    }
+
+    let galleryMenuController = null;
+    function closeGalleryContextMenu(focus = false) {
+        const menu = document.getElementById('galleryContextMenu');
+        menu.hidden = true; galleryMenuController?.abort(); galleryMenuController = null;
+        if (focus) document.getElementById('galleryMore').focus({preventScroll:true});
+    }
+
+    function rotateGalleryImage(degrees) {
+        if (!document.getElementById('viewerImage')) return;
+        stopGallerySlideshow();
+        imageZoom.rotation = (imageZoom.rotation + degrees + 360) % 360;
+        resetImageZoom();
+    }
+
+    function openGalleryContextMenu(event) {
+        if (!document.getElementById('viewerImage')) return;
+        event?.preventDefault(); event?.stopPropagation();
+        closeGalleryContextMenu();
+        const menu = document.getElementById('galleryContextMenu');
+        menu.replaceChildren();
+        const file = window.__fileList?.[window.__currentIndex];
+        const actions = [
+            ['undo','Girar à esquerda',()=>rotateGalleryImage(-90)],
+            ['redo','Girar à direita',()=>rotateGalleryImage(90)],
+            ['compress-arrows-alt','Ajustar à tela',resetImageZoom],
+            ['expand-arrows-alt','Tamanho original',originalImageSize],
+            ['download','Baixar imagem',()=>downloadFile(file)],
+            ['star',galleryLibrary.favorites.has(file)?'Remover dos favoritos':'Adicionar aos favoritos',galleryFavorite],
+            ['images','Adicionar a álbum',galleryAlbum],
+            [slideshow.playing?'pause':'play',slideshow.playing?'Pausar slides':'Iniciar slides',toggleGallerySlideshow],
+            ['expand','Tela cheia',toggleMediaFullscreen],
+        ];
+        for (const [icon,label,action] of actions) {
+            const button = document.createElement('button'); button.type = 'button'; button.setAttribute('role','menuitem');
+            button.innerHTML = galleryIcon(icon); button.append(document.createTextNode(label));
+            button.onclick = () => { closeGalleryContextMenu(true); action(); };
+            menu.append(button);
+        }
+        menu.hidden = false;
+        const anchor = document.getElementById('galleryMore').getBoundingClientRect();
+        const x = event?.type === 'contextmenu' ? event.clientX : anchor.right;
+        const y = event?.type === 'contextmenu' ? event.clientY : anchor.bottom;
+        menu.style.left = Math.max(8,Math.min(x,window.innerWidth-menu.offsetWidth-8))+'px';
+        menu.style.top = Math.max(8,Math.min(y,window.innerHeight-menu.offsetHeight-8))+'px';
+        galleryMenuController = new AbortController();
+        const signal = galleryMenuController.signal;
+        document.addEventListener('pointerdown', e => { if (!menu.contains(e.target)) closeGalleryContextMenu(); }, {capture:true,signal});
+        window.addEventListener('resize',()=>closeGalleryContextMenu(),{signal});
+        menu.firstElementChild.focus({preventScroll:true});
+    }
+
+    function handleGalleryMenuKey(event) {
+        const menu = document.getElementById('galleryContextMenu');
+        if (event.key === 'Tab') { closeGalleryContextMenu(true); return false; }
+        if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); closeGalleryContextMenu(true); return true; }
+        const items = [...menu.children], index = items.indexOf(document.activeElement);
+        let next;
+        if (event.key === 'ArrowDown') next = (index+1)%items.length;
+        if (event.key === 'ArrowUp') next = (index+items.length-1)%items.length;
+        if (event.key === 'Home') next = 0;
+        if (event.key === 'End') next = items.length-1;
+        if (next !== undefined) { event.preventDefault(); event.stopPropagation(); items[next].focus(); return true; }
+        return false;
+    }
+
     function disposeFilmstrip() {
         filmSession?.observer?.disconnect(); filmSession?.controller.abort(); filmSession = null;
         document.getElementById('mediaFilmstrip').replaceChildren();
@@ -924,6 +1035,7 @@
         const old = new Map([...strip.children].map(b => [b.dataset.path, b]));
         filmSession?.observer?.disconnect(); filmSession?.controller.abort();
         const session = {controller: new AbortController(), observer: null}; filmSession = session;
+        bindFilmstripDrag(strip, session.controller.signal);
         strip.replaceChildren();
         const start = Math.max(0, Math.min(files.length-41, center-20));
         document.getElementById('filmPrevious').disabled = start === 0;
@@ -1083,7 +1195,9 @@
     function originalImageSize() {
         const image = document.getElementById('viewerImage');
         if (!image?.clientWidth) return;
-        imageZoom.scale = Math.max(1, Math.min(8, image.naturalWidth / image.clientWidth));
+        const area = document.getElementById('modalMedia');
+        const fit = imageZoom.rotation % 180 !== 0 ? Math.min(1, (area.clientWidth || image.clientHeight) / (image.clientHeight || 1), (area.clientHeight || image.clientWidth) / image.clientWidth) : 1;
+        imageZoom.scale = Math.max(1, Math.min(8, image.naturalWidth / image.clientWidth / fit));
         applyImageZoom();
     }
 
@@ -1542,7 +1656,7 @@ Seu navegador não oferece suporte ao player de áudio.
         document.removeEventListener('visibilitychange', pauseHiddenSlideshow);
         document.getElementById('mediaStage').removeEventListener('wheel', handleImageViewerWheel);
         const stage = document.getElementById('mediaStage');
-        stage.onpointerdown = stage.onpointermove = stage.onpointerup = stage.onpointercancel = stage.onlostpointercapture = stage.ondblclick = null;
+        stage.onpointerdown = stage.onpointermove = stage.onpointerup = stage.onpointercancel = stage.onlostpointercapture = stage.ondblclick = stage.oncontextmenu = null;
         stopGallerySlideshow(); disposeFilmstrip();
         delete window.__fileList;
         delete window.__currentIndex;
@@ -1558,6 +1672,7 @@ Seu navegador não oferece suporte ao player de áudio.
 
 
 <div id="customImageViewer" style="display:none;" role="dialog" aria-modal="true" aria-label="Galeria de mídia">
+    <div id="galleryContextMenu" role="menu" aria-label="Opções da imagem" hidden></div>
     <div id="modalContent">
         <header id="modalHeader">
             <div class="media-viewer-location">
@@ -1617,6 +1732,7 @@ Seu navegador não oferece suporte ao player de áudio.
                     <button type="button" onclick="downloadFile(window.__fileList[window.__currentIndex])" title="Baixar mídia"><i class="fas fa-download" aria-hidden="true"></i></button>
                     <button id="mediaFavorite" type="button" onclick="galleryFavorite()" aria-pressed="false" title="Favoritar mídia"><i class="fas fa-star" aria-hidden="true"></i></button>
                     <button type="button" onclick="galleryAlbum()" title="Adicionar mídia a álbum"><i class="fas fa-plus" aria-hidden="true"></i> Álbum</button>
+                    <button id="galleryMore" type="button" onclick="openGalleryContextMenu(event)" aria-haspopup="menu" aria-label="Opções da imagem" title="Opções da imagem"><i class="fas fa-ellipsis-h" aria-hidden="true"></i></button>
                     <button id="gallerySlideshow" type="button" onclick="toggleGallerySlideshow()" aria-pressed="false" aria-label="Iniciar apresentação" title="Iniciar apresentação"><i class="fas fa-play" aria-hidden="true"></i></button>
                     <details class="gallery-slide-options"><summary aria-label="Configurar apresentação" title="Configurar apresentação"><i class="fas fa-sliders-h" aria-hidden="true"></i></summary>
                         <div class="gallery-options-menu">
@@ -2004,4 +2120,12 @@ Seu navegador não oferece suporte ao player de áudio.
         .media-preview-toolbar > button { padding: 6px 8px !important; }
         .gallery-slide-options .gallery-options-menu { position: fixed; top: 160px; right: 12px; }
     }
+    #mediaFilmstrip, #customImageViewer #mediaFilmstrip button { cursor: grab; user-select: none; }
+    #mediaFilmstrip { touch-action: pan-x; }
+    #mediaFilmstrip.is-dragging, #customImageViewer #mediaFilmstrip.is-dragging button { cursor: grabbing; }
+    #mediaFilmstrip img { pointer-events: none; -webkit-user-drag: none; }
+    #galleryContextMenu { position: fixed; z-index: 10; width: 230px; max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); overflow-y: auto; padding: 6px; background: #202c3b; border: 1px solid #455974; border-radius: 10px; box-shadow: 0 12px 40px #0008; }
+    #customImageViewer #galleryContextMenu button { display: flex; align-items: center; gap: 12px; width: 100%; border: 0; background: transparent; text-align: left; font-size: 13px; padding: 9px; }
+    #customImageViewer #galleryContextMenu button:hover, #customImageViewer #galleryContextMenu button:focus-visible { background: #344963; }
+    #galleryContextMenu i { width: 18px; text-align: center; }
 </style>
