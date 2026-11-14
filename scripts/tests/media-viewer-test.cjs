@@ -508,3 +508,60 @@ test('scope restart aborts previous discovery and grouping uses supplied modific
         w.closeImageViewer();
     } finally { dom.window.close(); }
 });
+
+test('gallery keeps its own directory across file-manager navigation and supports breadcrumbs/back', async () => {
+    const dom = browser(), w = dom.window;
+    try {
+        const path = w.document.createElement('span'); path.id = 'pathInvisible'; path.textContent = '/files'; w.document.body.append(path);
+        const requests = [];
+        w.fetch = (url, options) => { requests.push({url, options}); return new Promise(() => {}); };
+        await w.openMediaGallery('/photos');
+        await w.openMediaGallery('/photos/trip');
+        assert.equal(requests[0].options.signal.aborted, true);
+        assert.equal(path.textContent, '/files');
+        w.closeImageViewer(); path.textContent = '/documents';
+        await w.openMediaGallery();
+        assert.equal(new URL(requests.at(-1).url, 'http://localhost').searchParams.get('path'), '/photos/trip');
+        w.document.getElementById('galleryBack').click();
+        assert.equal(new URL(requests.at(-1).url, 'http://localhost').searchParams.get('path'), '/photos');
+        w.document.querySelector('#mediaFolderPath button').click();
+        assert.equal(new URL(requests.at(-1).url, 'http://localhost').searchParams.get('path'), '/');
+        assert.equal(path.textContent, '/documents');
+        assert.equal(w.localStorage.length, 0);
+        w.closeImageViewer();
+    } finally { dom.window.close(); }
+});
+
+test('scan busy indicator clears on cancellation and thumbnail animation clears on success/error', async () => {
+    const dom = browser(), w = dom.window;
+    try {
+        w.fetch = () => new Promise(() => {});
+        await w.showImage('/one.jpg'); await tick();
+        assert.equal(w.document.getElementById('mediaGallery').getAttribute('aria-busy'), 'true');
+        assert.equal(w.document.querySelectorAll('.is-loading').length, 3);
+        const active = w.previewImages.filter(image => image.onload && image.hasAttribute('src'));
+        active[0].dispatchEvent(new w.Event('load'));
+        active[1].dispatchEvent(new w.Event('error'));
+        assert.equal(w.document.querySelectorAll('.is-loading').length, 1);
+        w.stopMediaDiscovery();
+        assert.equal(w.document.getElementById('mediaGallery').getAttribute('aria-busy'), 'false');
+        w.closeImageViewer();
+        assert.equal(w.document.querySelectorAll('.is-loading').length, 0);
+    } finally { dom.window.close(); }
+});
+
+test('folders discovered without media appear while scan is still running', async () => {
+    const dom = browser(), w = dom.window;
+    try {
+        let stream;
+        w.TextDecoder = TextDecoder;
+        w.fetch = async () => ({ok: true, headers: {get: () => 'application/x-ndjson'}, body: new ReadableStream({start(controller) { stream = controller; }})});
+        await w.openMediaGallery('/root'); w.filterMediaGallery('folder');
+        stream.enqueue(new TextEncoder().encode(JSON.stringify({success: true, information: [], folders: ['/root/Pictures'], done: false}) + '\n'));
+        await tick();
+        assert.equal(w.document.querySelector('.media-thumbnail').dataset.path, '/root/Pictures');
+        assert.equal(w.document.getElementById('mediaGalleryCount').textContent, '1 pasta');
+        assert.equal(w.document.getElementById('mediaGallery').getAttribute('aria-busy'), 'true');
+        w.closeImageViewer();
+    } finally { dom.window.close(); }
+});

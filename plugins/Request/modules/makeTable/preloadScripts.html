@@ -679,6 +679,8 @@
     const filePreviewSessions = new WeakMap();
     let mediaDiscovery = null;
     let mediaGalleryRoot = '/';
+    let galleryLocation = null;
+    const galleryBackStack = [];
     const imageZoom = {scale: 1, x: 0, y: 0, drag: null};
 
     function queueMediaPreview(file, operation, valid, ready, signal, failed = () => {}) {
@@ -707,7 +709,7 @@
                         resolve();
                     };
                     const cancel = () => finish(false);
-                    const timeout = setTimeout(cancel, 60000);
+                    const timeout = setTimeout(() => { if (!task.signal.aborted && task.valid()) task.failed(); cancel(); }, 60000);
                     task.signal.addEventListener('abort', cancel, {once: true});
                     image.onload = () => finish(true);
                     image.onerror = () => { if (!task.signal.aborted && task.valid()) task.failed(); cancel(); };
@@ -976,7 +978,8 @@
         const controller = new AbortController();
         mediaDiscovery = controller;
         const status = document.getElementById('mediaGalleryStatus');
-        status.textContent = 'Buscando nas subpastas…';
+        status.textContent = 'Buscando mídias…';
+        document.getElementById('mediaGallery').setAttribute('aria-busy', 'true');
         document.getElementById('mediaGalleryProgress').hidden = false;
         document.getElementById('mediaGalleryStop').hidden = false;
         document.getElementById('mediaGalleryRetry').hidden = true;
@@ -984,9 +987,13 @@
         const folder = mediaGalleryRoot;
         let completed = false;
         let pendingFiles = [];
+        let foldersChanged = false;
         const flush = () => {
-            if (pendingFiles.length && !controller.signal.aborted && mediaDiscovery === controller) renderMediaThumbnails(pendingFiles, true);
-            pendingFiles = [];
+            if (!controller.signal.aborted && mediaDiscovery === controller) {
+                if (pendingFiles.length) renderMediaThumbnails(pendingFiles, true);
+                else if (foldersChanged && document.getElementById('mediaGallery').dataset.filter === 'folder') filterMediaGallery(undefined, true);
+            }
+            pendingFiles = []; foldersChanged = false;
         };
         const known = new Set(window.__fileList);
         const applyBatch = data => {
@@ -997,7 +1004,10 @@
                 known.add(file); return true;
             });
             for (const [file, metadata] of Object.entries(data.metadata || {})) galleryMetadata.set(file, metadata);
-            for (const directory of data.folders || []) addGalleryFolder(directory);
+            for (const directory of data.folders || []) {
+                if (!galleryFolders.has(directory)) foldersChanged = true;
+                addGalleryFolder(directory);
+            }
             window.__fileList.push(...added);
             pendingFiles.push(...added);
             toggleArrowButtons();
@@ -1047,6 +1057,7 @@
         } finally {
             if (mediaDiscovery === controller) {
                 flush();
+                document.getElementById('mediaGallery').setAttribute('aria-busy', 'false');
                 document.getElementById('mediaGalleryProgress').hidden = true;
                 document.getElementById('mediaGalleryStop').hidden = true;
                 document.getElementById('mediaGalleryEmpty').hidden = sessionHasResults();
@@ -1058,6 +1069,7 @@
 
     function stopMediaDiscovery() {
         mediaDiscovery?.abort();
+        document.getElementById('mediaGallery').setAttribute('aria-busy', 'false');
         document.getElementById('mediaGalleryStatus').textContent = 'Busca interrompida. Os arquivos encontrados foram mantidos.';
         document.getElementById('mediaGalleryProgress').hidden = true;
         document.getElementById('mediaGalleryStop').hidden = true;
@@ -1079,6 +1091,7 @@
         const searchPrefix = mediaGalleryRoot.replace(/\/$/, '') + '/';
         const candidates = filter === 'folder' ? [...galleryFolders] : [...session.paths];
         const files = candidates.filter(file => {
+            if (filter === 'folder' && file === mediaGalleryRoot) return false;
             const parent = file.slice(0, file.lastIndexOf('/')) || '/';
             return (filter === 'folder' || filter === 'all' || getMediaKind(file) === filter
                 || filter === 'favorite' && galleryLibrary.favorites.has(file))
@@ -1108,14 +1121,18 @@
         const enqueue = button => {
             if (button.dataset.kind === 'audio' || button.dataset.kind === 'folder' || button.querySelector('img') || button.dataset.loading === 'true') return;
             button.dataset.loading = 'true';
+            button.setAttribute('aria-busy', 'true');
             const previewController = new AbortController();
             button.previewController = previewController;
-            const stop = () => { previewController.abort(); delete button.dataset.loading; };
+            const stop = () => { previewController.abort(); delete button.dataset.loading; button.setAttribute('aria-busy', 'false'); };
             session.controller.signal.addEventListener('abort', stop, {once: true});
-            previewController.signal.addEventListener('abort', () => { session.controller.signal.removeEventListener('abort', stop); delete button.dataset.loading; }, {once: true});
+            previewController.signal.addEventListener('abort', () => { session.controller.signal.removeEventListener('abort', stop); delete button.dataset.loading; button.setAttribute('aria-busy', 'false'); }, {once: true});
             const preview = button.querySelector('.media-thumbnail-preview');
+            preview.classList.add('is-loading');
+            preview.title = 'Carregando miniatura…';
+            previewController.signal.addEventListener('abort', () => preview.classList.remove('is-loading'), {once: true});
             queueMediaPreview(button.dataset.path, 'getPreview', () => !session.cancelled && preview.isConnected,
-                image => { delete button.dataset.loading; session.controller.signal.removeEventListener('abort', stop); image.alt = getFilename(button.dataset.path); preview.replaceChildren(image); }, previewController.signal, () => { delete button.dataset.loading; preview.textContent = '⚠'; preview.title = 'Miniatura indisponível; tente abrir a mídia'; session.controller.signal.removeEventListener('abort', stop); });
+                image => { delete button.dataset.loading; button.setAttribute('aria-busy', 'false'); session.controller.signal.removeEventListener('abort', stop); image.alt = getFilename(button.dataset.path); preview.classList.remove('is-loading'); preview.removeAttribute('title'); preview.replaceChildren(image); }, previewController.signal, () => { delete button.dataset.loading; button.setAttribute('aria-busy', 'false'); preview.classList.remove('is-loading'); preview.textContent = '⚠'; preview.title = 'Miniatura indisponível; tente abrir a mídia'; session.controller.signal.removeEventListener('abort', stop); });
         };
         const visible = files.slice(galleryPage * galleryPageSize, (galleryPage + 1) * galleryPageSize);
         for (const file of visible) {
@@ -1139,7 +1156,8 @@
                 button.dataset.path = file; button.dataset.kind = filter === 'folder' ? 'folder' : getMediaKind(file); button.dataset.folder = parent;
                 button.title = file; button.setAttribute('aria-label', `Abrir ${getFilename(file)}`);
                 const preview = document.createElement('span'); preview.className = 'media-thumbnail-preview';
-                preview.textContent = filter === 'folder' ? '▱' : getMediaKind(file) === 'audio' ? '♫' : getMediaKind(file) === 'video' ? '▶' : '▧';
+                if (filter === 'folder') preview.classList.add('gallery-folder-icon');
+                preview.textContent = filter === 'folder' ? '' : getMediaKind(file) === 'audio' ? '♫' : getMediaKind(file) === 'video' ? '▶' : '▧';
                 const name = document.createElement('span'); name.className = 'media-thumbnail-name'; name.textContent = getFilename(file);
                 const type = document.createElement('span'); type.className = 'media-thumbnail-type';
                 button.append(preview, name, type);
@@ -1154,7 +1172,7 @@
         session.cards = new Map(session.buttons.map(button => [button.dataset.path, button]));
         for (const group of session.groups.values()) group.count.textContent = group.buttons.length;
         gallery.querySelectorAll('[data-media-filter]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mediaFilter === filter)));
-        document.getElementById('mediaGalleryCount').textContent = `${files.length} ${files.length === 1 ? 'arquivo' : 'arquivos'}`;
+        document.getElementById('mediaGalleryCount').textContent = `${files.length} ${filter === 'folder' ? (files.length === 1 ? 'pasta' : 'pastas') : (files.length === 1 ? 'arquivo' : 'arquivos')}`;
         document.getElementById('mediaGalleryEmpty').hidden = files.length !== 0 || !document.getElementById('mediaGalleryProgress').hidden;
         thumbNav.scrollTop = scrollTop;
         document.getElementById('mediaPageControls').hidden = files.length <= galleryPageSize;
@@ -1195,9 +1213,49 @@
         }
     }
 
-    function openMediaGallery(folder = document.getElementById('pathInvisible')?.textContent || '/') {
+    // Gallery location is session state, independent of pathInvisible/fileList.
+    function openMediaGallery(folder, remember = true) {
+        const target = (folder || galleryLocation || document.getElementById('pathInvisible')?.textContent || '/').replace(/\/$/, '') || '/';
+        if (remember && galleryLocation && galleryLocation !== target) {
+            galleryBackStack.push(galleryLocation);
+            if (galleryBackStack.length > 50) galleryBackStack.shift();
+        }
+        galleryLocation = target;
         if (document.getElementById('customImageViewer').style.display !== 'none') closeImageViewer();
-        return showImage('', {folder, expanded: true});
+        return showImage('', {folder: target, expanded: true});
+    }
+
+    function galleryGoBack() {
+        const folder = galleryBackStack.pop();
+        if (folder) return openMediaGallery(folder, false);
+    }
+
+    function renderGalleryLocation() {
+        const nav = document.getElementById('mediaFolderPath');
+        nav.replaceChildren();
+        nav.title = mediaGalleryRoot;
+        const parts = mediaGalleryRoot.split('/').filter(Boolean);
+        const add = (label, path, current) => {
+            const button = document.createElement('button');
+            button.type = 'button'; button.textContent = label;
+            button.title = path; button.onclick = () => openMediaGallery(path);
+            if (current) button.setAttribute('aria-current', 'location');
+            nav.append(button);
+        };
+        add('/', '/', !parts.length);
+        parts.forEach((part, index) => {
+            const separator = document.createElement('span'); separator.textContent = '›'; separator.setAttribute('aria-hidden', 'true');
+            nav.append(separator);
+            add(part, '/' + parts.slice(0, index + 1).join('/'), index === parts.length - 1);
+        });
+        document.getElementById('galleryBack').disabled = galleryBackStack.length === 0;
+        document.getElementById('galleryDirectory').value = mediaGalleryRoot;
+        scrollGalleryLocation();
+    }
+
+    function scrollGalleryLocation() {
+        const nav = document.getElementById('mediaFolderPath');
+        nav.scrollLeft = nav.scrollWidth;
     }
 
     async function showImage(path, options = {}) {
@@ -1225,7 +1283,7 @@
         window.__currentIndex = currentIndex;
         toggleArrowButtons();
         viewer.style.display = 'block';
-        document.getElementById('mediaFolderPath').textContent = mediaGalleryRoot;
+        renderGalleryLocation();
         document.getElementById('mediaGalleryToggle').disabled = !path;
         document.getElementById('mediaFilePosition').textContent = `${currentIndex + 1} de ${mediaFileList.length}`;
         document.getElementById('mediaFileDetails').textContent = ext.toUpperCase() + (galleryMetadata.get(path)?.size != null ? ' · ' + galleryMetadata.get(path).size.toLocaleString('pt-BR') + ' bytes' : '');
@@ -1235,6 +1293,7 @@
         modalMedia.innerHTML = '<p role="status">Carregando mídia…</p>';
         modalMedia.addEventListener('wheel', handleImageViewerWheel, {passive: false});
         window.addEventListener('keydown', handleImageViewerKey, true);
+        window.addEventListener('resize', scrollGalleryLocation);
 
         if (!path) {
             modalMedia.innerHTML = '<p>Selecione uma mídia na galeria.</p>';
@@ -1331,9 +1390,12 @@ Seu navegador não oferece suporte ao player de áudio.
         resetBoxMedias();
         mediaDiscovery?.abort();
         mediaDiscovery = null;
+        document.getElementById('mediaGallery').setAttribute('aria-busy', 'false');
+        document.getElementById('mediaGalleryProgress').hidden = true;
         disposeMediaGallery();
         document.getElementById('thumbNav').replaceChildren();
         window.removeEventListener('keydown', handleImageViewerKey, true);
+        window.removeEventListener('resize', scrollGalleryLocation);
         document.getElementById('modalMedia').removeEventListener('wheel', handleImageViewerWheel);
         delete window.__fileList;
         delete window.__currentIndex;
@@ -1353,7 +1415,7 @@ Seu navegador não oferece suporte ao player de áudio.
         <header id="modalHeader">
             <div class="media-viewer-location">
                 <span class="media-viewer-eyebrow">GALERIA DE MÍDIA</span>
-                <span id="mediaFolderPath" title="Pasta atual">/</span>
+                <div class="gallery-location-row"><button id="galleryBack" type="button" onclick="galleryGoBack()" title="Voltar à pasta anterior da galeria" aria-label="Voltar à pasta anterior da galeria" disabled>←</button><nav id="mediaFolderPath" aria-label="Caminho da galeria">/</nav></div>
             </div>
             <label class="media-gallery-search"><span aria-hidden="true">⌕</span><input id="mediaGallerySearch" type="search" placeholder="Buscar por arquivo ou pasta" aria-label="Buscar por arquivo ou pasta" oninput="filterMediaGallery()"></label>
             <div class="media-viewer-header-actions">
@@ -1376,6 +1438,10 @@ Seu navegador não oferece suporte ao player de áudio.
                     <select id="mediaSort" aria-label="Ordenação" onchange="document.getElementById('mediaMenuSort').value=this.value;filterMediaGallery()"><option value="asc">Nome A–Z</option><option value="desc">Nome Z–A</option></select>
                     <details id="galleryOptions"><summary aria-label="Opções da galeria">☷ Opções</summary>
                         <div class="gallery-options-menu">
+                            <form onsubmit="event.preventDefault();openMediaGallery(document.getElementById('galleryDirectory').value);document.getElementById('galleryOptions').open=false">
+                                <label>Pasta da galeria<input id="galleryDirectory" type="text" required placeholder="/caminho/da/pasta" autocomplete="off"></label>
+                                <button type="submit">Abrir pasta</button>
+                            </form>
                             <label>Ordenação <select id="mediaMenuSort" onchange="document.getElementById('mediaSort').value=this.value;filterMediaGallery()"><option value="asc">Nome A–Z</option><option value="desc">Nome Z–A</option></select></label>
                             <label>Escopo <select id="mediaScope" onchange="restartMediaGallery()"><option value="recursive">Pasta e subpastas</option><option value="current">Somente pasta atual</option></select></label>
                             <label>Agrupar <select id="mediaGroupBy" onchange="filterMediaGallery()"><option value="folder">Pasta</option><option value="date">Data de modificação</option><option value="none">Sem agrupamento</option></select></label>
@@ -1389,7 +1455,7 @@ Seu navegador não oferece suporte ao player de áudio.
                     </details>
                 </div>
                 <div class="gallery-discovery" role="status">
-                    <span id="mediaGalleryCount"></span><span id="mediaGalleryStatus"></span>
+                    <span id="mediaGalleryCount"></span><span class="gallery-scan-spinner" aria-hidden="true"></span><span id="mediaGalleryStatus"></span>
                     <progress id="mediaGalleryProgress" aria-label="Buscando mídias" hidden></progress>
                     <button id="mediaGalleryStop" type="button" onclick="stopMediaDiscovery()" hidden>Cancelar</button>
                     <button id="mediaGalleryRetry" type="button" onclick="discoverMediaGallery()" hidden>Tentar novamente</button>
@@ -1739,5 +1805,25 @@ Seu navegador não oferece suporte ao player de áudio.
         .media-preview-footer { padding: 10px 12px; }
         .media-shortcut-hint { display: none; }
         #leftArrow { left: 4px; } #rightArrow { right: 4px; }
+    }
+    .gallery-location-row { display: flex; align-items: center; min-width: 0; overflow: hidden; gap: 6px; }
+    #mediaFolderPath { display: flex; flex: 1; min-width: 0; align-items: center; gap: 4px; overflow-x: auto; scrollbar-width: none; max-width: 100%; }
+    #customImageViewer #mediaFolderPath button, #customImageViewer #galleryBack { min-height: 26px; padding: 2px 6px; background: transparent; border: 0; flex-shrink: 0; font-size: 12px; }
+    #customImageViewer #mediaFolderPath button:hover { background: #293e58; }
+    #mediaFolderPath [aria-current="location"] { color: #a9cfff; }
+    #galleryDirectory { width: 100%; min-width: 0; background: #101720; color: #edf1f7; border: 1px solid #42516a; border-radius: 6px; padding: 8px; }
+    .gallery-options-menu form { display: grid; gap: 8px; }
+    .gallery-scan-spinner { display: none; width: 14px; height: 14px; border: 2px solid #93b6ff30; border-top-color: #93b6ff; border-radius: 50%; flex-shrink: 0; }
+    #mediaGallery[aria-busy="true"] .gallery-scan-spinner { display: inline-block; animation: gallery-spin .8s linear infinite; }
+    .media-thumbnail-preview.is-loading { position: relative; background: #192331; }
+    .media-thumbnail-preview.is-loading::after { content: ''; position: absolute; inset: 0; background: linear-gradient(105deg,transparent 25%,#93b6ff20 45%,#93b6ff35 50%,transparent 75%); transform: translateX(-100%); animation: gallery-shimmer 1.6s ease-in-out infinite; }
+    .gallery-folder-icon { position: relative; background: linear-gradient(145deg,#18283c,#101720); }
+    .gallery-folder-icon::before { content: ''; position: absolute; width: 46%; height: 38%; border-radius: 7px; background: #456f9f; transform: translateY(-5px); clip-path: polygon(0 0,42% 0,52% 18%,100% 18%,100% 100%,0 100%); }
+    .gallery-folder-icon::after { content: ''; width: 47%; height: 29%; border: 1px solid #85b5eb; border-radius: 6px; background: linear-gradient(150deg,#729dd0,#3d6597); transform: translateY(5px); box-shadow: 0 8px 18px #0004; }
+    @keyframes gallery-spin { to { transform: rotate(360deg); } }
+    @keyframes gallery-shimmer { to { transform: translateX(100%); } }
+    @media (prefers-reduced-motion: reduce) {
+        #mediaGallery[aria-busy="true"] .gallery-scan-spinner, .media-thumbnail-preview.is-loading::after { animation: none; }
+        .media-thumbnail-preview.is-loading::after { transform: none; opacity: .4; }
     }
 </style>
