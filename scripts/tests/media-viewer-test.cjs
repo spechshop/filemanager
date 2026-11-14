@@ -28,6 +28,7 @@ function browser(mediaUrl = async file => '/media?path=' + encodeURIComponent(fi
         if (args[0] === 'img') w.previewImages.push(element);
         return element;
     };
+    w.HTMLMediaElement.prototype.play = async function () {};
     w.HTMLMediaElement.prototype.pause = function () {};
     w.HTMLMediaElement.prototype.load = function () {};
     w.fileList = ['/one.jpg', '/two.png', '/three.webp'];
@@ -173,8 +174,9 @@ test('videos and audio are stopped and released when navigating or closing', asy
         w.HTMLMediaElement.prototype.load = function () { loaded.push(this); };
         await w.showImage('/video.mp4');
         const video = w.document.querySelector('#modalMedia video');
-        assert.ok(video.controls);
-        assert.equal(w.document.getElementById('imageZoomControls').hidden, true);
+        assert.equal(video.controls, false);
+        assert.equal(w.document.getElementById('videoControls').hidden, false);
+        assert.equal(w.document.getElementById('imageZoomControls').hidden, false);
         await w.navNext();
         const audio = w.document.querySelector('#modalMedia audio');
         assert.ok(audio.controls);
@@ -652,5 +654,41 @@ test('image context menu rotates, handles keyboard dismissal, and cleans up on n
         w.document.getElementById('galleryMore').click();await w.navNext();assert.equal(menu.hidden,true);
         assert.match(w.document.getElementById('viewerImage').style.transform,/rotate\(0deg\)/);
         w.closeImageViewer();assert.equal(stage.oncontextmenu,null);
+    } finally {dom.window.close();}
+});
+
+test('custom video controls seek, change speed/volume, loop and ignore obsolete media events', async () => {
+    const dom=browser(),w=dom.window;
+    try {
+        await w.showImage('/clip.mp4');
+        const video=w.document.getElementById('viewerVideo');
+        Object.defineProperties(video,{duration:{value:120},videoWidth:{value:1920},videoHeight:{value:1080}});
+        video.dispatchEvent(new w.Event('loadedmetadata'));
+        assert.equal(w.document.getElementById('videoSeek').disabled,false);
+        w.seekGalleryVideo(10);assert.equal(video.currentTime,10);
+        const seek=w.document.getElementById('videoSeek');seek.value='60';seek.dispatchEvent(new w.Event('input'));assert.equal(video.currentTime,60);
+        const speed=w.document.getElementById('videoSpeed');speed.value='2';speed.dispatchEvent(new w.Event('change'));assert.equal(video.playbackRate,2);
+        const volume=w.document.getElementById('videoMenuVolume');volume.value='0.3';volume.dispatchEvent(new w.Event('input'));assert.equal(video.volume,.3);
+        w.document.getElementById('videoMute').click();assert.equal(video.muted,true);
+        const loop=w.document.getElementById('videoLoop');loop.checked=true;loop.dispatchEvent(new w.Event('change'));assert.equal(video.loop,true);
+        video.dispatchEvent(new w.Event('waiting'));assert.equal(w.document.getElementById('videoBusy').hidden,false);
+        await w.showImage('/one.jpg');video.dispatchEvent(new w.Event('waiting'));
+        assert.equal(w.document.getElementById('videoBusy').hidden,true);assert.equal(w.document.getElementById('videoControls').hidden,true);
+        assert.equal(video.hasAttribute('src'),false);
+    } finally {dom.window.close();}
+});
+
+test('custom video supports pinch zoom and keyboard seeking without hijacking range inputs', async () => {
+    const dom=browser(),w=dom.window;
+    try {
+        await w.showImage('/clip.mp4');const video=w.document.getElementById('viewerVideo'),stage=w.document.getElementById('mediaStage');
+        Object.defineProperties(video,{duration:{value:120},clientWidth:{value:400},clientHeight:{value:240}});
+        stage.setPointerCapture=()=>{};
+        const pointer=(id,x)=>({pointerId:id,button:0,clientX:x,clientY:100,preventDefault(){}});
+        stage.onpointerdown(pointer(1,100));stage.onpointerdown(pointer(2,200));stage.onpointermove(pointer(2,300));stage.onpointerup(pointer(2,300));stage.onpointerup(pointer(1,100));
+        assert.match(video.style.transform,/scale\(2\)/);
+        w.dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowRight',cancelable:true}));assert.equal(video.currentTime,5);
+        w.document.getElementById('videoSeek').dispatchEvent(new w.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,cancelable:true}));assert.equal(video.currentTime,5);
+        w.closeImageViewer();assert.equal(stage.onpointerdown,null);
     } finally {dom.window.close();}
 });

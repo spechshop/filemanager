@@ -745,6 +745,7 @@
     }
 
     function resetBoxMedias() {
+        disposeGalleryVideo();
         closeGalleryContextMenu();
         imageZoom.rotation = 0;
         document.querySelectorAll('#modalMedia img').forEach(image => image.removeAttribute('src'));
@@ -760,8 +761,10 @@
         document.getElementById('imageZoomControls').hidden = true;
     }
 
+    function getZoomMedia() { return document.getElementById('viewerImage') || document.getElementById('viewerVideo'); }
+
     function applyImageZoom() {
-        const image = document.getElementById('viewerImage');
+        const image = getZoomMedia();
         if (!image) return;
         const turned = imageZoom.rotation % 180 !== 0;
         const width = turned ? image.clientHeight : image.clientWidth;
@@ -774,6 +777,14 @@
         imageZoom.y = Math.max(-maxY, Math.min(maxY, imageZoom.y));
         image.style.transform = `translate(${imageZoom.x}px, ${imageZoom.y}px) scale(${imageZoom.scale * fit}) rotate(${imageZoom.rotation}deg)`;
         image.style.cursor = imageZoom.drag ? 'grabbing' : 'grab';
+        if (image.id === 'viewerVideo') {
+            const select = document.getElementById('videoZoom');
+            select.querySelector('[data-gesture]')?.remove();
+            if (![...select.options].some(option=>Number(option.value)===imageZoom.scale)) {
+                const option = new Option(Math.round(imageZoom.scale*100)+'%',String(imageZoom.scale));option.dataset.gesture='true';select.add(option);
+            }
+            select.value=String(imageZoom.scale);
+        }
         document.getElementById('imageZoomLevel').textContent = `${Math.round(imageZoom.scale * 100)}%`;
         document.getElementById('mediaStage').style.cursor = imageZoom.scale > 1 ? (imageZoom.drag ? 'grabbing' : 'grab') : 'default';
     }
@@ -802,10 +813,14 @@
             document.getElementById('mediaFileDetails').textContent = `${image.alt.split('.').pop().toUpperCase()} · ${image.naturalWidth} × ${image.naturalHeight} px`;
         };
         if (image.complete && image.naturalWidth) image.onload();
+        bindGalleryGestures();
+    }
+
+    function bindGalleryGestures() {
         const stage = document.getElementById('mediaStage');
         stage.oncontextmenu = openGalleryContextMenu;
         stage.ondblclick = event => {
-            if (event.target.closest?.('button')) return;
+            if (event.target.closest?.('button, input, select, summary, [data-video-controls]')) return;
             imageZoom.scale > 1 ? resetImageZoom() : changeImageZoom(1);
         };
         stage.onpointerdown = galleryPointerDown;
@@ -815,7 +830,7 @@
     }
 
     function galleryPointerDown(event) {
-        if (!document.getElementById('viewerImage') || event.target?.closest?.('button') || event.button > 0) return;
+        if (!getZoomMedia() || event.target?.closest?.('button, input, select, summary, [data-video-controls]') || event.button > 0) return;
         event.preventDefault();
         stopGallerySlideshow();
         const stage = document.getElementById('mediaStage');
@@ -875,7 +890,7 @@
     }
 
     function handleImageViewerWheel(event) {
-        if (!document.getElementById('viewerImage') || !event.deltaY) return;
+        if (!getZoomMedia() || !event.deltaY || event.target?.closest?.('[data-video-controls]')) return;
         event.preventDefault();
         stopGallerySlideshow();
         changeImageZoom(event.deltaY < 0 ? 0.25 : -0.25);
@@ -908,6 +923,17 @@
         if (event.ctrlKey || event.metaKey || event.altKey
             || (event.target instanceof Element && event.target.closest('input, textarea, select, [contenteditable], audio, video'))) return;
         if (document.getElementById('customImageViewer').classList.contains('gallery-expanded')) return;
+        const video = document.getElementById('viewerVideo');
+        if (video && !event.target?.closest?.('button, summary')) {
+            const videoActions = { ' ':toggleGalleryVideo, k:toggleGalleryVideo,
+                ArrowLeft:()=>seekGalleryVideo(-5), ArrowRight:()=>seekGalleryVideo(5),
+                j:()=>seekGalleryVideo(-10), l:()=>seekGalleryVideo(10),
+                m:()=>{video.muted=!video.muted;}, f:toggleGalleryVideoFullscreen,
+                ArrowUp:()=>{video.volume=Math.min(1,video.volume+.1);}, ArrowDown:()=>{video.volume=Math.max(0,video.volume-.1);} };
+            const action = videoActions[event.key];
+            if (action) { event.preventDefault(); event.stopPropagation(); action(); return; }
+        }
+        if (event.key === ' ' && event.target?.closest?.('button, summary')) return;
         const actions = {
             ArrowLeft: navPrev, ArrowRight: navNext,
             '+': () => changeImageZoom(0.25), '=': () => changeImageZoom(0.25),
@@ -918,6 +944,143 @@
         event.preventDefault();
         event.stopPropagation();
         actions[event.key]();
+    }
+
+    let galleryVideoSession = null;
+
+    function videoTime(value) {
+        if (!Number.isFinite(value) || value < 0) return '0:00';
+        const seconds = Math.floor(value), hours = Math.floor(seconds/3600);
+        return (hours ? hours+':'+String(Math.floor(seconds/60)%60).padStart(2,'0') : Math.floor(seconds/60)) + ':' + String(seconds%60).padStart(2,'0');
+    }
+
+    function disposeGalleryVideo() {
+        const session = galleryVideoSession; galleryVideoSession = null;
+        session?.controller.abort(); clearTimeout(session?.hideTimer);
+        if (session && document.pictureInPictureElement === session.video) document.exitPictureInPicture?.().catch(()=>{});
+        document.getElementById('videoControls').hidden = true;
+        document.getElementById('videoCenterPlay').hidden = true;
+        document.getElementById('videoBusy').hidden = true;
+        document.getElementById('videoSettings').open = false;
+        document.getElementById('mediaStage').classList.remove('video-active','video-controls-hidden');
+    }
+
+    function revealGalleryVideoControls() {
+        const session = galleryVideoSession;
+        if (!session) return;
+        const stage = document.getElementById('mediaStage');
+        stage.classList.remove('video-controls-hidden');
+        clearTimeout(session.hideTimer);
+        if (!session.video.paused && !session.video.ended) session.hideTimer = setTimeout(()=>{
+            if (galleryVideoSession !== session || session.video.paused || document.getElementById('videoSettings').open
+                || document.getElementById('videoControls').contains(document.activeElement)
+                || document.getElementById('videoControls').matches(':hover')) return;
+            stage.classList.add('video-controls-hidden');
+        }, 2600);
+    }
+
+    async function toggleGalleryVideo() {
+        const session = galleryVideoSession; if (!session) return;
+        const video = session.video;
+        if (!video.paused && !video.ended) video.pause();
+        else {
+            if (video.ended) video.currentTime = 0;
+            try { await video.play(); } catch (error) {
+                if (galleryVideoSession === session) {
+                    document.getElementById('videoPlaybackStatus').textContent = error.name === 'NotAllowedError' ? 'Toque em reproduzir para iniciar.' : 'Não foi possível iniciar a reprodução.';
+                    updateGalleryVideo();
+                }
+            }
+        }
+        revealGalleryVideoControls();
+    }
+
+    function seekGalleryVideo(delta) {
+        const video = galleryVideoSession?.video;
+        if (!video || !Number.isFinite(video.duration)) return;
+        video.currentTime = Math.max(0, Math.min(video.duration, video.currentTime+delta));
+        updateGalleryVideo(); revealGalleryVideoControls();
+    }
+
+    function updateGalleryVideo() {
+        const session = galleryVideoSession; if (!session) return;
+        const video = session.video, valid = Number.isFinite(video.duration) && video.duration > 0;
+        const paused = video.paused || video.ended;
+        const play = document.getElementById('videoPlay');
+        play.innerHTML = galleryIcon(paused?'play':'pause'); play.setAttribute('aria-label',paused?'Reproduzir vídeo':'Pausar vídeo'); play.title = play.getAttribute('aria-label');
+        const center = document.getElementById('videoCenterPlay'); center.hidden = !paused;
+        center.innerHTML = galleryIcon(video.ended?'redo':'play'); center.setAttribute('aria-label',video.ended?'Reproduzir novamente':'Reproduzir vídeo');
+        document.getElementById('videoClock').textContent = videoTime(video.currentTime)+' / '+videoTime(video.duration);
+        const seek = document.getElementById('videoSeek');
+        seek.disabled = !valid; seek.max = valid?String(video.duration):'1';
+        if (document.activeElement !== seek) seek.value = valid?String(video.currentTime):'0';
+        seek.setAttribute('aria-valuetext',videoTime(video.currentTime)+' de '+videoTime(video.duration));
+        let buffered = 0;
+        try { for(let i=0;i<video.buffered.length;i++) if(video.buffered.start(i)<=video.currentTime) buffered=Math.max(buffered,video.buffered.end(i)); } catch(error) {}
+        seek.style.setProperty('--played', (valid?100*video.currentTime/video.duration:0)+'%');
+        seek.style.setProperty('--buffered', (valid?100*buffered/video.duration:0)+'%');
+        const mute = document.getElementById('videoMute');
+        mute.innerHTML = galleryIcon(video.muted || !video.volume?'volume-mute':'volume-up');
+        mute.setAttribute('aria-label',video.muted?'Ativar som':'Silenciar'); mute.setAttribute('aria-pressed',String(video.muted));
+        document.getElementById('videoVolume').value = video.muted?'0':String(video.volume);
+        document.getElementById('videoMenuVolume').value = video.muted?'0':String(video.volume);
+        document.getElementById('videoSpeed').value = String(video.playbackRate);
+        document.getElementById('videoLoop').checked = video.loop;
+        if (paused) revealGalleryVideoControls();
+    }
+
+    async function toggleGalleryVideoFullscreen() {
+        const stage = document.getElementById('mediaStage');
+        try {
+            if (document.fullscreenElement) await document.exitFullscreen();
+            else if (stage.requestFullscreen) await stage.requestFullscreen();
+        } catch(error) { if (galleryVideoSession) document.getElementById('videoPlaybackStatus').textContent = 'Tela cheia indisponível neste navegador.'; }
+    }
+
+    async function toggleGalleryVideoPip() {
+        const session = galleryVideoSession; if (!session) return;
+        try {
+            if (document.pictureInPictureElement === session.video) await document.exitPictureInPicture();
+            else await session.video.requestPictureInPicture();
+        } catch(error) { if (galleryVideoSession === session) document.getElementById('videoPlaybackStatus').textContent = 'Janela flutuante indisponível neste momento.'; }
+    }
+
+    function setupGalleryVideo(video) {
+        const session = {video, controller:new AbortController(),hideTimer:null}; galleryVideoSession = session;
+        const signal = session.controller.signal, stage = document.getElementById('mediaStage');
+        stage.classList.add('video-active');
+        document.getElementById('videoControls').hidden = false;
+        document.getElementById('imageZoomControls').hidden = false;
+        document.getElementById('videoPlaybackStatus').textContent = '';
+        document.getElementById('videoPip').hidden = !document.pictureInPictureEnabled || typeof video.requestPictureInPicture !== 'function';
+        document.getElementById('videoFullscreen').hidden = !document.fullscreenEnabled;
+        bindGalleryGestures(); applyImageZoom();
+        const listen = (id,type,callback) => document.getElementById(id).addEventListener(type,callback,{signal});
+        listen('videoPlay','click',toggleGalleryVideo); listen('videoCenterPlay','click',toggleGalleryVideo);
+        listen('videoBack','click',()=>seekGalleryVideo(-10)); listen('videoForward','click',()=>seekGalleryVideo(10));
+        listen('videoMute','click',()=>{video.muted=!video.muted;updateGalleryVideo();});
+        listen('videoVolume','input',event=>{video.volume=Number(event.target.value);video.muted=video.volume===0;updateGalleryVideo();});
+        listen('videoMenuVolume','input',event=>{video.volume=Number(event.target.value);video.muted=video.volume===0;updateGalleryVideo();});
+        listen('videoSeek','input',event=>{if(Number.isFinite(video.duration))video.currentTime=Math.max(0,Math.min(video.duration,Number(event.target.value)));updateGalleryVideo();});
+        listen('videoSpeed','change',event=>{video.playbackRate=Number(event.target.value);});
+        listen('videoLoop','change',event=>{video.loop=event.target.checked;});
+        listen('videoZoom','change',event=>{imageZoom.scale=Number(event.target.value);imageZoom.x=imageZoom.y=0;applyImageZoom();});
+        listen('videoFullscreen','click',toggleGalleryVideoFullscreen);listen('videoPip','click',toggleGalleryVideoPip);
+        for(const type of ['pointermove','pointerdown','focusin']) stage.addEventListener(type,revealGalleryVideoControls,{signal});
+        stage.addEventListener('pointerleave',revealGalleryVideoControls,{signal});
+        for(const type of ['timeupdate','durationchange','progress','ratechange','volumechange','ended']) video.addEventListener(type,updateGalleryVideo,{signal});
+        for(const type of ['play','pause']) video.addEventListener(type,()=>{updateGalleryVideo();revealGalleryVideoControls();},{signal});
+        for(const type of ['waiting','seeking']) video.addEventListener(type,()=>{document.getElementById('videoBusy').hidden=false;},{signal});
+        for(const type of ['playing','canplay','seeked','pause','ended']) video.addEventListener(type,()=>{document.getElementById('videoBusy').hidden=true;},{signal});
+        video.addEventListener('loadedmetadata',()=>{
+            updateGalleryVideo();applyImageZoom();
+            document.getElementById('mediaFileDetails').textContent = video.videoWidth+' × '+video.videoHeight+' px · '+videoTime(video.duration);
+        },{signal});
+        document.addEventListener('fullscreenchange',()=>{applyImageZoom();revealGalleryVideoControls();},{signal});
+        video.addEventListener('leavepictureinpicture',updateGalleryVideo,{signal});
+        updateGalleryVideo();
+        // Autoplay is best effort; the central play control stays available when blocked.
+        Promise.resolve(video.play()).catch(()=>{if(galleryVideoSession===session)updateGalleryVideo();});
     }
 
     function galleryIcon(name) { return `<i class="fas fa-${name}" aria-hidden="true"></i>`; }
@@ -966,14 +1129,15 @@
     }
 
     function rotateGalleryImage(degrees) {
-        if (!document.getElementById('viewerImage')) return;
+        if (!getZoomMedia()) return;
         stopGallerySlideshow();
         imageZoom.rotation = (imageZoom.rotation + degrees + 360) % 360;
         resetImageZoom();
     }
 
     function openGalleryContextMenu(event) {
-        if (!document.getElementById('viewerImage')) return;
+        if (!getZoomMedia()) return;
+        if (event?.target?.closest?.('[data-video-controls]')) return;
         event?.preventDefault(); event?.stopPropagation();
         closeGalleryContextMenu();
         const menu = document.getElementById('galleryContextMenu');
@@ -984,7 +1148,7 @@
             ['redo','Girar à direita',()=>rotateGalleryImage(90)],
             ['compress-arrows-alt','Ajustar à tela',resetImageZoom],
             ['expand-arrows-alt','Tamanho original',originalImageSize],
-            ['download','Baixar imagem',()=>downloadFile(file)],
+            ['download',document.getElementById('viewerVideo')?'Baixar vídeo':'Baixar imagem',()=>downloadFile(file)],
             ['star',galleryLibrary.favorites.has(file)?'Remover dos favoritos':'Adicionar aos favoritos',galleryFavorite],
             ['images','Adicionar a álbum',galleryAlbum],
             [slideshow.playing?'pause':'play',slideshow.playing?'Pausar slides':'Iniciar slides',toggleGallerySlideshow],
@@ -1193,11 +1357,11 @@
     }
 
     function originalImageSize() {
-        const image = document.getElementById('viewerImage');
+        const image = getZoomMedia();
         if (!image?.clientWidth) return;
         const area = document.getElementById('modalMedia');
         const fit = imageZoom.rotation % 180 !== 0 ? Math.min(1, (area.clientWidth || image.clientHeight) / (image.clientHeight || 1), (area.clientHeight || image.clientWidth) / image.clientWidth) : 1;
-        imageZoom.scale = Math.max(1, Math.min(8, image.naturalWidth / image.clientWidth / fit));
+        imageZoom.scale = Math.max(1, Math.min(8, (image.naturalWidth || image.videoWidth) / image.clientWidth / fit));
         applyImageZoom();
     }
 
@@ -1425,7 +1589,7 @@
         button.setAttribute('aria-pressed', String(expanded));
         button.textContent = expanded ? 'Ver mídia' : 'Ver galeria';
         if (expanded) document.getElementById('mediaGallerySearch').focus({preventScroll: true});
-        if (expanded) { stopGallerySlideshow(); disposeFilmstrip(); resetBoxMedias(); }
+        if (expanded) { if (document.fullscreenElement === document.getElementById('mediaStage')) document.exitFullscreen().catch(()=>{}); stopGallerySlideshow(); disposeFilmstrip(); resetBoxMedias(); }
     }
 
     function updateMediaGallerySelection(path) {
@@ -1567,7 +1731,7 @@
         renderFilmstrip();
         let media = '';
         if (['mp4', 'webm', 'ogg'].includes(ext)) {
-            media = `<video src="${FMUI.html(url)}" controls autoplay style="max-width:100%;max-height:100%;border-radius:15px;box-shadow:0 20px 40px rgba(0,0,0,0.4);background:#000;outline:none;"></video>`;
+            media = `<video id="viewerVideo" src="${FMUI.html(url)}" playsinline preload="metadata" aria-label="${FMUI.html(getFilename(path))}"></video>`;
         } else if (['mp3', 'wav', 'flac'].includes(ext)) {
             document.querySelector('title').innerText = getFilename(path);
             media = `
@@ -1590,6 +1754,8 @@ Seu navegador não oferece suporte ao player de áudio.
             media = '<p>Formato não suportado</p>';
         }
         modalMedia.innerHTML = media;
+        const video = document.getElementById('viewerVideo');
+        if (video) setupGalleryVideo(video);
         const image = document.getElementById('viewerImage');
         if (image) {
             enableImageZoom(image);
@@ -1643,7 +1809,7 @@ Seu navegador não oferece suporte ao player de áudio.
         ++mediaViewerRequest;
         const viewer = document.getElementById('customImageViewer');
         viewer.style.display = 'none';
-        if (document.fullscreenElement === viewer) document.exitFullscreen().catch(() => {});
+        if (document.fullscreenElement && viewer.contains(document.fullscreenElement)) document.exitFullscreen().catch(() => {});
         resetBoxMedias();
         mediaDiscovery?.abort();
         mediaDiscovery = null;
@@ -1672,7 +1838,7 @@ Seu navegador não oferece suporte ao player de áudio.
 
 
 <div id="customImageViewer" style="display:none;" role="dialog" aria-modal="true" aria-label="Galeria de mídia">
-    <div id="galleryContextMenu" role="menu" aria-label="Opções da imagem" hidden></div>
+    <div id="galleryContextMenu" role="menu" aria-label="Opções da mídia" hidden></div>
     <div id="modalContent">
         <header id="modalHeader">
             <div class="media-viewer-location">
@@ -1732,7 +1898,7 @@ Seu navegador não oferece suporte ao player de áudio.
                     <button type="button" onclick="downloadFile(window.__fileList[window.__currentIndex])" title="Baixar mídia"><i class="fas fa-download" aria-hidden="true"></i></button>
                     <button id="mediaFavorite" type="button" onclick="galleryFavorite()" aria-pressed="false" title="Favoritar mídia"><i class="fas fa-star" aria-hidden="true"></i></button>
                     <button type="button" onclick="galleryAlbum()" title="Adicionar mídia a álbum"><i class="fas fa-plus" aria-hidden="true"></i> Álbum</button>
-                    <button id="galleryMore" type="button" onclick="openGalleryContextMenu(event)" aria-haspopup="menu" aria-label="Opções da imagem" title="Opções da imagem"><i class="fas fa-ellipsis-h" aria-hidden="true"></i></button>
+                    <button id="galleryMore" type="button" onclick="openGalleryContextMenu(event)" aria-haspopup="menu" aria-label="Opções da mídia" title="Opções da mídia"><i class="fas fa-ellipsis-h" aria-hidden="true"></i></button>
                     <button id="gallerySlideshow" type="button" onclick="toggleGallerySlideshow()" aria-pressed="false" aria-label="Iniciar apresentação" title="Iniciar apresentação"><i class="fas fa-play" aria-hidden="true"></i></button>
                     <details class="gallery-slide-options"><summary aria-label="Configurar apresentação" title="Configurar apresentação"><i class="fas fa-sliders-h" aria-hidden="true"></i></summary>
                         <div class="gallery-options-menu">
@@ -1742,7 +1908,7 @@ Seu navegador não oferece suporte ao player de áudio.
                             <label><input id="slideShuffle" type="checkbox"> Ordem aleatória</label>
                         </div>
                     </details>
-                    <div id="imageZoomControls" hidden role="group" aria-label="Zoom da imagem">
+                    <div id="imageZoomControls" hidden role="group" aria-label="Zoom da mídia">
                         <span id="imageZoomLevel" aria-live="polite">100%</span>
                         <button type="button" onclick="resetImageZoom()" title="Ajustar à janela (0)">Ajustar</button><button type="button" onclick="originalImageSize()">Original</button>
                     </div>
@@ -1750,6 +1916,30 @@ Seu navegador não oferece suporte ao player de áudio.
                 <div id="mediaStage" class="media-preview-stage">
                     <div id="modalMedia"></div>
                     <div id="modalAudio" hidden></div>
+                    <span id="videoBusy" hidden role="status" aria-label="Carregando vídeo"><i class="fas fa-spinner fa-spin" aria-hidden="true"></i></span>
+                    <button id="videoCenterPlay" hidden type="button" aria-label="Reproduzir vídeo"><i class="fas fa-play" aria-hidden="true"></i></button>
+                    <div id="videoControls" data-video-controls hidden>
+                        <span id="videoPlaybackStatus" role="status"></span>
+                        <input id="videoSeek" type="range" min="0" max="1" step="0.1" value="0" aria-label="Posição do vídeo" disabled>
+                        <div class="video-control-row">
+                            <button id="videoPlay" type="button" aria-label="Reproduzir vídeo"><i class="fas fa-play" aria-hidden="true"></i></button>
+                            <button id="videoBack" type="button" aria-label="Voltar 10 segundos" title="Voltar 10 segundos"><i class="fas fa-undo" aria-hidden="true"></i><small>10</small></button>
+                            <button id="videoForward" type="button" aria-label="Avançar 10 segundos" title="Avançar 10 segundos"><i class="fas fa-redo" aria-hidden="true"></i><small>10</small></button>
+                            <span id="videoClock">0:00 / 0:00</span>
+                            <div class="video-volume"><button id="videoMute" type="button" aria-label="Silenciar"><i class="fas fa-volume-up" aria-hidden="true"></i></button><input id="videoVolume" type="range" min="0" max="1" step="0.05" value="1" aria-label="Volume"></div>
+                            <details id="videoSettings"><summary aria-label="Configurações do vídeo" title="Configurações do vídeo"><i class="fas fa-cog" aria-hidden="true"></i></summary>
+                                <div class="video-settings-menu">
+                                    <label>Velocidade<select id="videoSpeed"><option value="0.25">0,25×</option><option value="0.5">0,5×</option><option value="0.75">0,75×</option><option value="1" selected>Normal</option><option value="1.25">1,25×</option><option value="1.5">1,5×</option><option value="2">2×</option></select></label>
+                                    <label>Zoom<select id="videoZoom"><option value="1">Ajustar</option><option value="1.5">150%</option><option value="2">200%</option><option value="3">300%</option><option value="4">400%</option><option value="8">800%</option></select></label>
+                                    <label>Volume<input id="videoMenuVolume" type="range" min="0" max="1" step="0.05" value="1" aria-label="Volume do vídeo"></label>
+                                    <label class="video-loop-option"><input id="videoLoop" type="checkbox">Repetir vídeo</label>
+                                    <small>Pinça ou roda para zoom. Arraste para mover. Espaço: reproduzir; J/L: 10 s; M: som.</small>
+                                </div>
+                            </details>
+                            <button id="videoPip" type="button" aria-label="Janela flutuante" title="Janela flutuante"><i class="fas fa-external-link-alt" aria-hidden="true"></i></button>
+                            <button id="videoFullscreen" type="button" aria-label="Tela cheia do vídeo" title="Tela cheia"><i class="fas fa-expand" aria-hidden="true"></i></button>
+                        </div>
+                    </div>
                     <button id="leftArrow" class="media-viewer-arrow" type="button" onclick="navPrev()" aria-label="Mídia anterior"><i class="fas fa-chevron-left" aria-hidden="true"></i></button>
                     <button id="rightArrow" class="media-viewer-arrow" type="button" onclick="navNext()" aria-label="Próxima mídia"><i class="fas fa-chevron-right" aria-hidden="true"></i></button>
                 </div>
@@ -2101,7 +2291,7 @@ Seu navegador não oferece suporte ao player de áudio.
         .media-thumbnail-preview.is-loading::after { transform: none; opacity: .4; }
     }
     #mediaStage { touch-action: none; overscroll-behavior: contain; }
-    #mediaStage:has(video), #mediaStage:has(audio) { touch-action: auto; }
+    #mediaStage:has(audio) { touch-action: auto; }
     #viewerImage { pointer-events: none; }
     .gallery-film-row { display: flex; flex-shrink: 0; align-items: center; gap: 8px; padding: 8px 12px; background: #19212c; border-top: 1px solid var(--gallery-line); }
     #mediaFilmstrip { display: flex; flex: 1; gap: 8px; min-width: 0; overflow-x: auto; scrollbar-width: thin; padding: 4px; overscroll-behavior-x: contain; }
@@ -2128,4 +2318,41 @@ Seu navegador não oferece suporte ao player de áudio.
     #customImageViewer #galleryContextMenu button { display: flex; align-items: center; gap: 12px; width: 100%; border: 0; background: transparent; text-align: left; font-size: 13px; padding: 9px; }
     #customImageViewer #galleryContextMenu button:hover, #customImageViewer #galleryContextMenu button:focus-visible { background: #344963; }
     #galleryContextMenu i { width: 18px; text-align: center; }
+    #viewerVideo { display: block; flex-shrink: 0; max-width: 100%; max-height: 100%; object-fit: contain; transform-origin: center; pointer-events: none; }
+    #mediaStage.video-active { background: #05070b; padding-bottom: 90px; }
+    #videoControls { position: absolute; left: 32px; right: 32px; bottom: 8px; z-index: 3; padding: 18px 16px 8px; border-radius: 14px; color: #f1f4fa; background: linear-gradient(transparent,#080b12e6); transition: opacity .2s; touch-action: auto; }
+    #videoControls input { accent-color: #a8c7fa; cursor: pointer; }
+    #videoSeek { display: block; width: 100%; margin: 0 0 8px; height: 18px; background: transparent; }
+    #videoSeek::-webkit-slider-runnable-track { height: 4px; border-radius: 4px; background: linear-gradient(to right,#a8c7fa var(--played,0%),#b3bfd370 var(--played,0%),#b3bfd370 var(--buffered,0%),#53607180 var(--buffered,0%)); }
+    #videoSeek::-webkit-slider-thumb { margin-top: -6px; }
+    .video-control-row { display: flex; align-items: center; gap: 10px; }
+    #customImageViewer #videoControls button { border: 0; background: transparent; border-radius: 50%; min-width: 36px; padding: 7px; }
+    #customImageViewer #videoControls button:hover { background: #ffffff20; }
+    #videoControls small { font-size: 10px; }
+    #videoClock { margin-right: auto; font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .video-volume { display: flex; align-items: center; gap: 4px; }
+    #videoVolume { width: 70px; }
+    #videoSettings { position: relative; }
+    #videoSettings summary { cursor: pointer; padding: 9px; list-style: none; }
+    .video-settings-menu { position: absolute; bottom: 48px; right: 0; display: grid; gap: 14px; width: 230px; max-width: calc(100vw - 32px); max-height: 50vh; overflow: auto; padding: 18px; background: #202631f5; border: 1px solid #536071; border-radius: 14px; box-shadow: 0 10px 40px #0008; }
+    .video-settings-menu label { display: grid; gap: 6px; font-size: 12px; }
+    .video-settings-menu .video-loop-option { display: flex; align-items: center; gap: 8px; }
+    .video-settings-menu small { line-height: 1.5; color: #aab8cb; }
+    #videoPlaybackStatus:empty { display: none; }
+    #videoPlaybackStatus { display: block; font-size: 12px; padding: 8px 0; }
+    #customImageViewer #videoCenterPlay { position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%); z-index: 2; width: 64px; height: 64px; border-radius: 50%; background: #111a2ebd; border: 1px solid #ffffff33; font-size: 24px; backdrop-filter: blur(8px); }
+    #videoBusy { position: absolute; left: 50%; top: 40%; font-size: 24px; color: #a8c7fa; pointer-events: none; }
+    #mediaStage.video-controls-hidden #videoControls { opacity: 0; pointer-events: none; }
+    #mediaStage.video-controls-hidden #videoControls:focus-within { opacity: 1; pointer-events: auto; }
+    #mediaStage:fullscreen { width: 100%; height: 100%; }
+    @media(max-width:600px) {
+        #mediaStage.video-active { padding: 8px 40px 88px; }
+        #videoControls { left: 4px; right: 4px; padding: 12px 4px 4px; }
+        .video-control-row { gap: 2px; }
+        #videoClock { font-size: 10px; }
+        #videoVolume { display: none; }
+        #customImageViewer #videoControls button { min-width: 32px; padding: 6px; }
+        .video-settings-menu { right: -32px; }
+    }
+    @media(prefers-reduced-motion: reduce) { #videoControls { transition: none; } #videoBusy i { animation: none; } }
 </style>
