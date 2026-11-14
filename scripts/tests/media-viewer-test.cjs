@@ -211,16 +211,16 @@ test('the gallery includes the entire folder and combines filename search with m
         assert.equal(w.document.getElementById('mediaGalleryCount').textContent, '32 arquivos');
         assert.equal(w.document.getElementById('mediaFilePosition').textContent, '13 de 32');
         w.filterMediaGallery('video');
-        assert.deepEqual(cards.filter(card => !card.hidden).map(card => card.dataset.path), ['/holiday.mp4']);
+        assert.deepEqual([...w.document.querySelectorAll('.media-thumbnail')].map(card => card.dataset.path), ['/holiday.mp4']);
         const search = w.document.getElementById('mediaGallerySearch');
         search.value = 'PHOTO';
         search.dispatchEvent(new w.Event('input'));
         assert.equal(w.document.getElementById('mediaGalleryEmpty').hidden, false);
         w.filterMediaGallery('image');
-        assert.equal(cards.filter(card => !card.hidden).length, 30);
+        assert.equal([...w.document.querySelectorAll('.media-thumbnail')].length, 30);
         assert.equal(w.document.getElementById('mediaGalleryEmpty').hidden, true);
         await w.navNext();
-        assert.equal(w.document.querySelectorAll('.media-thumbnail')[0], cards[0]);
+        assert.equal(w.document.querySelectorAll('.media-thumbnail')[0].dataset.path, '/photo-0.jpg');
         assert.equal(search.value, 'PHOTO');
         assert.equal(w.document.querySelector('.media-thumbnail[aria-current="true"]').dataset.path, '/photo-13.jpg');
     } finally { dom.window.close(); }
@@ -257,7 +257,7 @@ test('general gallery opens an empty parent and adds grouped folders as streamed
         const filter = w.document.getElementById('mediaFolderFilter');
         filter.value = '/album/férias'; filter.dispatchEvent(new w.Event('change'));
         assert.deepEqual([...w.document.querySelectorAll('.media-thumbnail:not([hidden])')].map(button => button.dataset.path), ['/album/férias/ação.png']);
-        assert.equal(w.document.querySelector('.media-folder-group').hidden, true);
+        assert.equal(w.document.querySelectorAll('.media-folder-group').length, 1);
         w.document.getElementById('mediaGroupFolders').click();
         assert.equal(w.document.getElementById('thumbNav').classList.contains('media-ungrouped'), true);
         w.document.querySelector('.media-thumbnail:not([hidden])').click();
@@ -297,7 +297,7 @@ test('expanded gallery returns to the selected media and restores page scroll an
         w.document.getElementById('mediaGalleryToggle').click();
         assert.equal(w.document.getElementById('customImageViewer').classList.contains('gallery-expanded'), true);
         assert.equal(w.document.activeElement.id, 'mediaGallerySearch');
-        w.document.querySelectorAll('.media-thumbnail')[2].click();
+        w.document.querySelector('.media-thumbnail[data-path="/three.webp"]').click();
         await tick();
         assert.equal(w.__currentIndex, 2);
         assert.equal(w.document.getElementById('customImageViewer').classList.contains('gallery-expanded'), false);
@@ -389,7 +389,7 @@ test('recursive results preserve selection and filters and can be found by subfo
         await tick();
         assert.equal(new URL(request.url, 'http://localhost').searchParams.get('media'), 'recursive');
         assert.equal(request.options.headers.Authorization, 'Bearer fixture-owner');
-        assert.equal(w.document.querySelector('.media-thumbnail'), firstCard);
+        assert.equal(firstCard.isConnected, false); // filtered-out cards are released by the bounded grid
         assert.equal(w.__fileList[w.__currentIndex], '/two.png');
         assert.equal(search.value, 'viagem');
         assert.deepEqual([...w.document.querySelectorAll('.media-thumbnail:not([hidden])')].map(button => button.dataset.path), ['/viagem/foto.JPG', '/viagem/nested/outra.png']);
@@ -449,5 +449,62 @@ test('100 gallery photos and file previews share transfer slots, including failu
         w.loadFilePreviews(list);
         await tick();
         assert.equal(old.hasAttribute('src'), false, 'changing folders cancels an active stale preview');
+    } finally { dom.window.close(); }
+});
+
+test('large gallery pages keep DOM bounded and filters search the whole collection', async () => {
+    const dom = browser(), w = dom.window;
+    try {
+        w.fileList = Array.from({length: 1500}, (_, i) => `/album/foto-${i}.png`);
+        await w.showImage(w.fileList[0]);
+        assert.equal(w.document.querySelectorAll('.media-thumbnail').length, 120);
+        assert.equal(w.document.getElementById('mediaGalleryCount').textContent, '1500 arquivos');
+        w.document.getElementById('mediaPageNext').click();
+        assert.match(w.document.getElementById('mediaPageLabel').textContent, /^2 /);
+        w.document.getElementById('mediaGallerySearch').value = 'foto-1499';
+        w.filterMediaGallery();
+        assert.equal(w.document.querySelectorAll('.media-thumbnail').length, 1);
+        assert.equal(w.document.querySelector('.media-thumbnail').dataset.path, '/album/foto-1499.png');
+        w.closeImageViewer();
+        assert.equal(w.document.getElementById('thumbNav').childElementCount, 0);
+    } finally { dom.window.close(); }
+});
+
+test('session favorites and albums remain accessible without writing browser storage', async () => {
+    const dom = browser(), w = dom.window;
+    try {
+        await w.showImage('/one.jpg');
+        w.galleryFavorite();
+        w.filterMediaGallery('favorite');
+        assert.equal(w.document.querySelectorAll('.media-thumbnail').length, 1);
+        w.prompt = () => '<álbum privado>';
+        w.galleryAlbum();
+        assert.equal(w.document.getElementById('mediaAlbumFilter').value, '<álbum privado>');
+        w.closeImageViewer();
+        w.fetch = async () => ({ok: true, json: async () => ({success: true, information: ['/one.jpg']})});
+        await w.openMediaGallery('/');
+        await tick();
+        w.filterMediaGallery('favorite');
+        assert.equal(w.document.querySelector('.media-thumbnail').dataset.path, '/one.jpg');
+        assert.equal(w.localStorage.length, 0);
+        assert.equal(w.sessionStorage.length, 0);
+    } finally { dom.window.close(); }
+});
+
+test('scope restart aborts previous discovery and grouping uses supplied modification dates', async () => {
+    const dom = browser(), w = dom.window;
+    try {
+        const requests = [];
+        w.fetch = (url, options) => { requests.push({url, options}); return new Promise(() => {}); };
+        await w.openMediaGallery('/album');
+        w.document.getElementById('mediaScope').value = 'current';
+        w.restartMediaGallery();
+        assert.equal(requests[0].options.signal.aborted, true);
+        assert.equal(new URL(requests[1].url, 'http://localhost').searchParams.get('scope'), 'current');
+        w.renderMediaThumbnails(['/album/foto.png'], true);
+        w.document.getElementById('mediaGroupBy').value = 'date';
+        w.filterMediaGallery();
+        assert.match(w.document.querySelector('.media-folder-group h3').textContent, /Data indisponível/);
+        w.closeImageViewer();
     } finally { dom.window.close(); }
 });

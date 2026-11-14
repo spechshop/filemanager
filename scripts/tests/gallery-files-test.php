@@ -105,6 +105,12 @@ namespace {
             $held = [];
         }
         checkGallery(true, 'all 100 photos transfer successfully in bounded batches alongside the active media');
+        $current = invokeGallery('syncPath', ['path' => $tmp . '/files/album', 'media' => 'recursive', 'stream' => '1', 'scope' => 'current']);
+        $currentBatches = array_map(fn($line) => json_decode($line, true), array_filter(explode("\n", trim($current->body))));
+        $currentFiles = array_merge(...array_column($currentBatches, 'information'));
+        checkGallery(count($currentFiles) === 50, 'current-folder scope excludes nested media');
+        $withMetadata = array_values(array_filter($currentBatches, fn($batch) => !empty($batch['metadata'])));
+        checkGallery(isset($withMetadata[0]['metadata'][$currentFiles[0]]['mtime']), 'group dates come from filesystem metadata');
         $tokens['gallery-owner']['revoked'] = true;
         file_put_contents($tmp . '/tokens.json', json_encode($tokens));
         checkGallery(invokeGallery('syncPath', ['path' => $tmp . '/files/album', 'media' => 'recursive'])->code === 401, 'revoked credentials cannot enumerate gallery files');

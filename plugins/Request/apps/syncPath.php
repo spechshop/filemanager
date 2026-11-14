@@ -26,7 +26,7 @@ class syncPath
                 $response->header('Cache-Control', 'no-store');
                 $response->header('X-Accel-Buffering', 'no');
                 try {
-                    foreach (self::mediaBatches($pathf, $owner) as $batch) {
+                    foreach (self::mediaBatches($pathf, $owner, ($request->get['scope'] ?? 'recursive') !== 'current') as $batch) {
                         if ($response->write(json_encode(['success' => true] + $batch,
                             JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE) . "\n") === false) return true;
                     }
@@ -89,16 +89,17 @@ class syncPath
     }
 
     /** Send small batches while scanning, so the first folder is usable immediately. */
-    public static function mediaBatches(string $path, string $owner): \Generator
+    public static function mediaBatches(string $path, string $owner, bool $recursive = true): \Generator
     {
         $root = securityPolicy::path($path, $owner);
         $prefix = rtrim($root, '/') . '/';
         $pending = [$root]; $seen = []; $files = []; $examined = 0; $batch = []; $skipped = 0;
+        $metadata = []; $folders = [];
         $deadline = microtime(true) + securityPolicy::limit('GALLERY_SCAN_SECONDS', 60);
         yield ['information' => [], 'scannedFolders' => 0, 'pendingFolders' => 1, 'done' => false];
         while ($pending !== []) {
             if (microtime(true) >= $deadline) {
-                yield ['information' => $batch, 'done' => true, 'truncated' => true, 'skippedFolders' => $skipped];
+                yield ['information' => $batch, 'metadata' => $metadata, 'folders' => $folders, 'done' => true, 'truncated' => true, 'skippedFolders' => $skipped];
                 return;
             }
             $directory = array_pop($pending);
@@ -114,12 +115,16 @@ class syncPath
             }
             foreach ($entries as $entry) {
                 if (++$examined > 50000 || count($files) >= 10000 || microtime(true) >= $deadline) {
-                    yield ['information' => $batch, 'done' => true, 'truncated' => true, 'skippedFolders' => $skipped];
+                    yield ['information' => $batch, 'metadata' => $metadata, 'folders' => $folders, 'done' => true, 'truncated' => true, 'skippedFolders' => $skipped];
                     return;
                 }
-                if ($entry['directory']) { $pending[] = $entry['path']; continue; }
+                if ($entry['directory']) {
+                    try { $directoryPath = securityPolicy::path($entry['path'], $owner); } catch (\DomainException $error) { continue; }
+                    if (str_starts_with($directoryPath, $prefix)) { $folders[] = $directoryPath; if ($recursive) $pending[] = $directoryPath; }
+                    continue;
+                }
                 $extension = strtolower(pathinfo($entry['path'], PATHINFO_EXTENSION));
-                if (!in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg', 'mp4', 'webm', 'ogg', 'mp3', 'wav'], true)) continue;
+                if (!in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg', 'mp4', 'webm', 'ogg', 'mp3', 'wav', 'flac'], true)) continue;
                 try { $file = securityPolicy::path($entry['path'], $owner); }
                 catch (\DomainException $error) {
                     if (!securityPolicy::validToken($owner)) throw $error;
@@ -128,15 +133,16 @@ class syncPath
                 if (str_starts_with($file, $prefix) && !isset($files[$file])) {
                     $files[$file] = true;
                     $batch[] = $file;
+                    $metadata[$file] = ['mtime' => $entry['mtime'] ?? null, 'size' => $entry['size'] ?? null];
                 }
                 if (count($batch) >= 200) {
-                    yield ['information' => $batch, 'scannedFolders' => count($seen), 'pendingFolders' => count($pending), 'done' => false];
-                    $batch = [];
+                    yield ['information' => $batch, 'metadata' => $metadata, 'folders' => $folders, 'scannedFolders' => count($seen), 'pendingFolders' => count($pending), 'done' => false];
+                    $batch = []; $metadata = []; $folders = [];
                 }
             }
-            yield ['information' => $batch, 'scannedFolders' => count($seen), 'pendingFolders' => count($pending), 'done' => false];
-            $batch = [];
+            yield ['information' => $batch, 'metadata' => $metadata, 'folders' => $folders, 'scannedFolders' => count($seen), 'pendingFolders' => count($pending), 'done' => false];
+            $batch = []; $metadata = []; $folders = [];
         }
-        yield ['information' => $batch, 'done' => true, 'truncated' => false, 'skippedFolders' => $skipped];
+        yield ['information' => $batch, 'metadata' => $metadata, 'folders' => $folders, 'done' => true, 'truncated' => false, 'skippedFolders' => $skipped];
     }
 }

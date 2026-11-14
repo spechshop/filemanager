@@ -48,6 +48,7 @@ class imageBase64
     {
         if (!security::authorize($request, $response, __CLASS__)) return true;
 
+        $response->header('Cache-Control', 'private, no-store');
         $path = $request->get["path"] ?? null;
         if (!$path || !file_exists($path)) {
             $response->status(404);

@@ -681,8 +681,8 @@
     let mediaGalleryRoot = '/';
     const imageZoom = {scale: 1, x: 0, y: 0, drag: null};
 
-    function queueMediaPreview(file, operation, valid, ready, signal) {
-        mediaPreviewQueue.push({file, operation, valid, ready, signal});
+    function queueMediaPreview(file, operation, valid, ready, signal, failed = () => {}) {
+        mediaPreviewQueue.push({file, operation, valid, ready, signal, failed});
         pumpMediaPreviews();
     }
 
@@ -710,10 +710,10 @@
                     const timeout = setTimeout(cancel, 60000);
                     task.signal.addEventListener('abort', cancel, {once: true});
                     image.onload = () => finish(true);
-                    image.onerror = cancel;
+                    image.onerror = () => { if (!task.signal.aborted && task.valid()) task.failed(); cancel(); };
                     image.src = url;
                 });
-            })().catch(() => {}).finally(() => {
+            })().catch(() => { if (!task.signal.aborted && task.valid()) task.failed(); }).finally(() => {
                 --activeMediaPreviews;
                 pumpMediaPreviews();
             });
@@ -790,6 +790,7 @@
             applyImageZoom();
             document.getElementById('mediaFileDetails').textContent = `${image.alt.split('.').pop().toUpperCase()} · ${image.naturalWidth} × ${image.naturalHeight} px`;
         };
+        if (image.complete && image.naturalWidth) image.onload();
         image.ondblclick = () => imageZoom.scale > 1 ? resetImageZoom() : changeImageZoom(1);
         image.onpointerdown = event => {
             if (event.isPrimary === false) { imageZoom.drag = null; applyImageZoom(); return; }
@@ -884,7 +885,7 @@
 
     function getMediaKind(file) {
         const ext = file.split('.').pop().toLowerCase();
-        return ['mp4', 'webm', 'ogg'].includes(ext) ? 'video' : ['mp3', 'wav'].includes(ext) ? 'audio' : 'image';
+        return ['mp4', 'webm', 'ogg'].includes(ext) ? 'video' : ['mp3', 'wav', 'flac'].includes(ext) ? 'audio' : 'image';
     }
 
     function disposeMediaGallery() {
@@ -895,84 +896,79 @@
         mediaGallerySession = null;
     }
 
-    function renderMediaThumbnails(mediaFileList, append = false) {
-        if (!append) disposeMediaGallery();
-        const thumbNav = document.getElementById('thumbNav');
-        if (!append) thumbNav.replaceChildren();
-        const session = mediaGallerySession || {cancelled: false, controller: new AbortController(), observer: null, buttons: [], paths: new Set(), groups: new Map()};
-        mediaGallerySession = session;
+    // Only metadata lives in memory. No media, tickets or private URLs are persisted.
+    const galleryLibrary = {favorites: new Set(), albums: new Map()};
+    let galleryPage = 0;
+    const galleryPageSize = 120;
+    let galleryMetadata = new Map();
+    let galleryFolders = new Set();
+
+    function renderMediaThumbnails(files, append = false) {
         if (!append) {
+            disposeMediaGallery();
+            galleryPage = 0;
+            galleryMetadata = new Map();
+            galleryFolders = new Set();
+            document.getElementById('mediaGallerySearch').value = '';
             document.getElementById('mediaFolderFilter').replaceChildren(new Option('Todas as pastas', ''));
+            mediaGallerySession = {cancelled: false, controller: new AbortController(), observer: null,
+                buttons: [], paths: new Set(), groups: new Map()};
         }
-        const enqueue = button => {
-            if (session.cancelled || button.dataset.queued || button.dataset.kind === 'audio') return;
-            button.dataset.queued = 'true';
-            const preview = button.querySelector('.media-thumbnail-preview');
-            queueMediaPreview(button.dataset.path, button.dataset.kind === 'video' ? 'getPreview' : 'imageBase64',
-                () => !session.cancelled && preview.isConnected, image => preview.replaceChildren(image), session.controller.signal);
-        };
-        if (!session.observer && typeof IntersectionObserver === 'function') {
-            session.observer = new IntersectionObserver(entries => {
-                entries.forEach(entry => {
-                    if (!entry.isIntersecting) return;
-                    enqueue(entry.target);
-                    session.observer.unobserve(entry.target);
-                });
-            }, {root: thumbNav, rootMargin: '200px'});
+        for (const file of files) {
+            mediaGallerySession.paths.add(file);
+            addGalleryFolder(file.slice(0, file.lastIndexOf('/')) || '/');
         }
-        const newButtons = [];
-        mediaFileList.forEach(file => {
-            if (session.paths.has(file)) return;
-            session.paths.add(file);
-            const folder = file.slice(0, file.lastIndexOf('/')) || '/';
-            let group = session.groups.get(folder);
-            if (!group) {
-                const section = document.createElement('section');
-                section.className = 'media-folder-group';
-                const heading = document.createElement('h3');
-                const name = document.createElement('span');
-                const prefix = mediaGalleryRoot.replace(/\/$/, '') + '/';
-                name.textContent = folder === mediaGalleryRoot ? 'Pasta atual' : folder.startsWith(prefix) ? folder.slice(prefix.length) : folder;
-                name.title = folder;
-                const count = document.createElement('span');
-                heading.append(name, count);
-                const grid = document.createElement('div');
-                grid.className = 'media-folder-grid';
-                section.append(heading, grid);
-                thumbNav.append(section);
-                group = {section, grid, count, buttons: []};
-                session.groups.set(folder, group);
-                document.getElementById('mediaFolderFilter').add(new Option(name.textContent, folder));
-            }
-            const kind = getMediaKind(file);
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.className = 'media-thumbnail';
-            button.dataset.path = file;
-            button.dataset.kind = kind;
-            button.dataset.folder = folder;
-            button.title = file;
-            button.setAttribute('aria-label', `Abrir ${getFilename(file)}`);
-            button.setAttribute('aria-current', 'false');
-            const preview = document.createElement('span');
-            preview.className = 'media-thumbnail-preview';
-            preview.textContent = kind === 'audio' ? '♫' : kind === 'video' ? '▶' : '▧';
-            const name = document.createElement('span');
-            name.className = 'media-thumbnail-name';
-            name.textContent = getFilename(file);
-            const type = document.createElement('span');
-            type.className = 'media-thumbnail-type';
-            type.textContent = file.split('.').pop().toUpperCase();
-            button.append(preview, name, type);
-            button.onclick = () => showImage(file);
-            group.grid.appendChild(button);
-            group.buttons.push(button);
-            session.buttons.push(button);
-            newButtons.push(button);
-        });
-        newButtons.forEach(button => session.observer ? session.observer.observe(button) : enqueue(button));
-        if (!append) document.getElementById('mediaGallerySearch').value = '';
-        filterMediaGallery(append ? undefined : 'all');
+        filterMediaGallery(append ? undefined : 'all', append);
+    }
+
+    function addGalleryFolder(folder) {
+        if (galleryFolders.has(folder)) return;
+        galleryFolders.add(folder);
+        const name = folder === mediaGalleryRoot ? 'Pasta atual' : folder.slice(mediaGalleryRoot.replace(/\/$/, '').length + 1);
+        document.getElementById('mediaFolderFilter').add(new Option(name || folder, folder));
+    }
+
+    function galleryFavorite() {
+        const path = window.__fileList?.[window.__currentIndex];
+        if (!path) return;
+        if (galleryLibrary.favorites.has(path)) galleryLibrary.favorites.delete(path);
+        else galleryLibrary.favorites.add(path);
+        document.getElementById('mediaFavorite').setAttribute('aria-pressed', String(galleryLibrary.favorites.has(path)));
+        filterMediaGallery();
+    }
+
+    function galleryAlbum() {
+        const name = prompt('Nome do álbum desta sessão:');
+        if (!name?.trim()) return;
+        const label = name.trim().slice(0, 80);
+        if (!galleryLibrary.albums.has(label)) {
+            galleryLibrary.albums.set(label, new Set());
+            document.getElementById('mediaAlbumFilter').add(new Option(label, label));
+        }
+        const path = window.__fileList?.[window.__currentIndex];
+        if (path) galleryLibrary.albums.get(label).add(path);
+        document.getElementById('mediaAlbumFilter').value = label;
+        filterMediaGallery();
+    }
+
+    function restartMediaGallery() {
+        mediaDiscovery?.abort();
+        window.__fileList = [];
+        renderMediaThumbnails([]);
+        discoverMediaGallery();
+    }
+
+    function galleryChangePage(delta) {
+        galleryPage = Math.max(0, galleryPage + delta);
+        document.getElementById('thumbNav').scrollTop = 0;
+        filterMediaGallery(undefined, true);
+    }
+
+    function originalImageSize() {
+        const image = document.getElementById('viewerImage');
+        if (!image?.clientWidth) return;
+        imageZoom.scale = Math.max(1, Math.min(8, image.naturalWidth / image.clientWidth));
+        applyImageZoom();
     }
 
     async function discoverMediaGallery(path) {
@@ -1000,6 +996,8 @@
                 if (known.has(file)) return false;
                 known.add(file); return true;
             });
+            for (const [file, metadata] of Object.entries(data.metadata || {})) galleryMetadata.set(file, metadata);
+            for (const directory of data.folders || []) addGalleryFolder(directory);
             window.__fileList.push(...added);
             pendingFiles.push(...added);
             toggleArrowButtons();
@@ -1013,7 +1011,7 @@
             if (completed) document.getElementById('mediaGalleryRetry').hidden = !data.truncated && !data.skippedFolders;
         };
         try {
-            const query = new URLSearchParams({path: folder, media: 'recursive', stream: '1'});
+            const query = new URLSearchParams({path: folder, media: 'recursive', stream: '1', scope: document.getElementById('mediaScope').value});
             const response = await fetch('/syncPath?' + query, {
                 headers: {Authorization: 'Bearer ' + document.getElementById('fp').textContent.trim()},
                 signal: controller.signal,
@@ -1051,10 +1049,12 @@
                 flush();
                 document.getElementById('mediaGalleryProgress').hidden = true;
                 document.getElementById('mediaGalleryStop').hidden = true;
-                filterMediaGallery();
+                document.getElementById('mediaGalleryEmpty').hidden = sessionHasResults();
             }
         }
     }
+
+    function sessionHasResults() { return (mediaGallerySession?.buttons.length || 0) !== 0; }
 
     function stopMediaDiscovery() {
         mediaDiscovery?.abort();
@@ -1065,29 +1065,102 @@
         filterMediaGallery();
     }
 
-    function filterMediaGallery(kind) {
+    function filterMediaGallery(kind, keepPage = false) {
+        const session = mediaGallerySession;
+        if (!session) return;
+        if (!keepPage) galleryPage = 0;
         const gallery = document.getElementById('mediaGallery');
         if (kind) gallery.dataset.filter = kind;
+        const filter = gallery.dataset.filter;
         const query = document.getElementById('mediaGallerySearch').value.trim().toLocaleLowerCase();
         const folder = document.getElementById('mediaFolderFilter').value;
-        let count = 0;
-        for (const button of mediaGallerySession?.buttons || []) {
-            button.hidden = !((gallery.dataset.filter === 'all' || button.dataset.kind === gallery.dataset.filter)
-                && (!folder || button.dataset.folder === folder)
-                && button.dataset.path.toLocaleLowerCase().includes(query));
-            if (!button.hidden) ++count;
-        }
-        gallery.querySelectorAll('[data-media-filter]').forEach(button => {
-            button.setAttribute('aria-pressed', String(button.dataset.mediaFilter === gallery.dataset.filter));
+        const album = document.getElementById('mediaAlbumFilter').value;
+        const groupBy = document.getElementById('mediaGroupBy').value;
+        const searchPrefix = mediaGalleryRoot.replace(/\/$/, '') + '/';
+        const candidates = filter === 'folder' ? [...galleryFolders] : [...session.paths];
+        const files = candidates.filter(file => {
+            const parent = file.slice(0, file.lastIndexOf('/')) || '/';
+            return (filter === 'folder' || filter === 'all' || getMediaKind(file) === filter
+                || filter === 'favorite' && galleryLibrary.favorites.has(file))
+                && (!folder || parent === folder || filter === 'folder' && file === folder)
+                && (!album || galleryLibrary.albums.get(album)?.has(file))
+                && (file.startsWith(searchPrefix) ? file.slice(searchPrefix.length) : file).toLocaleLowerCase().includes(query);
         });
-        for (const group of mediaGallerySession?.groups.values() || []) {
-            const visible = group.buttons.filter(button => !button.hidden).length;
-            group.section.hidden = visible === 0;
-            group.count.textContent = `${visible}`;
+        const descending = document.getElementById('mediaSort').value === 'desc';
+        files.sort((a, b) => a.localeCompare(b, 'pt-BR', {numeric: true}) * (descending ? -1 : 1));
+        session.observer?.disconnect();
+        mediaPreviewQueue.splice(0, mediaPreviewQueue.length, ...mediaPreviewQueue.filter(task => !task.signal.aborted));
+        const thumbNav = document.getElementById('thumbNav');
+        // Reuse loaded thumbnails on incremental updates; detached previews are released.
+        const old = session.cards || new Map();
+        for (const button of session.buttons) old.set(button.dataset.path, button);
+        session.cards = old;
+        session.buttons = []; session.groups = new Map();
+        const scrollTop = thumbNav.scrollTop;
+        thumbNav.replaceChildren();
+        thumbNav.classList.toggle('media-ungrouped', groupBy === 'none');
+        session.observer = typeof IntersectionObserver === 'function' ? new IntersectionObserver(entries => {
+            for (const entry of entries) if (entry.isIntersecting) {
+                session.observer.unobserve(entry.target);
+                enqueue(entry.target);
+            }
+        }, {root: thumbNav, rootMargin: '160px'}) : null;
+        const enqueue = button => {
+            if (button.dataset.kind === 'audio' || button.dataset.kind === 'folder' || button.querySelector('img') || button.dataset.loading === 'true') return;
+            button.dataset.loading = 'true';
+            const previewController = new AbortController();
+            button.previewController = previewController;
+            const stop = () => { previewController.abort(); delete button.dataset.loading; };
+            session.controller.signal.addEventListener('abort', stop, {once: true});
+            previewController.signal.addEventListener('abort', () => { session.controller.signal.removeEventListener('abort', stop); delete button.dataset.loading; }, {once: true});
+            const preview = button.querySelector('.media-thumbnail-preview');
+            queueMediaPreview(button.dataset.path, 'getPreview', () => !session.cancelled && preview.isConnected,
+                image => { delete button.dataset.loading; session.controller.signal.removeEventListener('abort', stop); image.alt = getFilename(button.dataset.path); preview.replaceChildren(image); }, previewController.signal, () => { delete button.dataset.loading; preview.textContent = '⚠'; preview.title = 'Miniatura indisponível; tente abrir a mídia'; session.controller.signal.removeEventListener('abort', stop); });
+        };
+        const visible = files.slice(galleryPage * galleryPageSize, (galleryPage + 1) * galleryPageSize);
+        for (const file of visible) {
+            const parent = file.slice(0, file.lastIndexOf('/')) || '/';
+            const date = galleryMetadata.get(file)?.mtime;
+            const key = groupBy === 'date' ? (date ? new Date(date * 1000).toLocaleDateString('pt-BR') : 'Data indisponível') : parent;
+            let group = session.groups.get(key);
+            if (!group) {
+                const section = document.createElement('section'); section.className = 'media-folder-group';
+                const heading = document.createElement('h3');
+                const name = document.createElement('span');
+                name.textContent = groupBy === 'date' ? key : key === mediaGalleryRoot ? 'Pasta atual' : key.slice(mediaGalleryRoot.length + 1);
+                const count = document.createElement('span'); heading.append(name, count);
+                const grid = document.createElement('div'); grid.className = 'media-folder-grid';
+                section.append(heading, grid); thumbNav.append(section);
+                group = {section, grid, count, buttons: []}; session.groups.set(key, group);
+            }
+            let button = old.get(file);
+            if (!button) {
+                button = document.createElement('button'); button.type = 'button'; button.className = 'media-thumbnail';
+                button.dataset.path = file; button.dataset.kind = filter === 'folder' ? 'folder' : getMediaKind(file); button.dataset.folder = parent;
+                button.title = file; button.setAttribute('aria-label', `Abrir ${getFilename(file)}`);
+                const preview = document.createElement('span'); preview.className = 'media-thumbnail-preview';
+                preview.textContent = filter === 'folder' ? '▱' : getMediaKind(file) === 'audio' ? '♫' : getMediaKind(file) === 'video' ? '▶' : '▧';
+                const name = document.createElement('span'); name.className = 'media-thumbnail-name'; name.textContent = getFilename(file);
+                const type = document.createElement('span'); type.className = 'media-thumbnail-type';
+                button.append(preview, name, type);
+            }
+            button.querySelector('.media-thumbnail-type').textContent = (galleryLibrary.favorites.has(file) ? '★ · ' : '') + (filter === 'folder' ? 'PASTA' : file.split('.').pop().toUpperCase());
+            button.setAttribute('aria-current', String(file === window.__fileList?.[window.__currentIndex]));
+            button.onclick = () => filter === 'folder' ? openMediaGallery(file) : showImage(file);
+            group.grid.append(button); group.buttons.push(button); session.buttons.push(button);
+            session.observer ? session.observer.observe(button) : enqueue(button);
         }
-        document.getElementById('thumbNav').classList.toggle('media-ungrouped', !document.getElementById('mediaGroupFolders').checked);
-        document.getElementById('mediaGalleryCount').textContent = `${count} ${count === 1 ? 'arquivo' : 'arquivos'}`;
-        document.getElementById('mediaGalleryEmpty').hidden = count !== 0 || !document.getElementById('mediaGalleryProgress').hidden;
+        for (const button of old.values()) if (!button.isConnected) { button.previewController?.abort(); button.querySelector('img')?.removeAttribute('src'); }
+        session.cards = new Map(session.buttons.map(button => [button.dataset.path, button]));
+        for (const group of session.groups.values()) group.count.textContent = group.buttons.length;
+        gallery.querySelectorAll('[data-media-filter]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mediaFilter === filter)));
+        document.getElementById('mediaGalleryCount').textContent = `${files.length} ${files.length === 1 ? 'arquivo' : 'arquivos'}`;
+        document.getElementById('mediaGalleryEmpty').hidden = files.length !== 0 || !document.getElementById('mediaGalleryProgress').hidden;
+        thumbNav.scrollTop = scrollTop;
+        document.getElementById('mediaPageControls').hidden = files.length <= galleryPageSize;
+        document.getElementById('mediaPageLabel').textContent = `${galleryPage + 1} / ${Math.max(1, Math.ceil(files.length / galleryPageSize))}`;
+        document.getElementById('mediaPagePrevious').disabled = galleryPage === 0;
+        document.getElementById('mediaPageNext').disabled = (galleryPage + 1) * galleryPageSize >= files.length;
     }
 
     function setMediaGalleryMode(expanded) {
@@ -1097,6 +1170,7 @@
         button.setAttribute('aria-pressed', String(expanded));
         button.textContent = expanded ? 'Ver mídia' : 'Ver galeria';
         if (expanded) document.getElementById('mediaGallerySearch').focus({preventScroll: true});
+        if (expanded) resetBoxMedias();
     }
 
     function updateMediaGallerySelection(path) {
@@ -1154,7 +1228,8 @@
         document.getElementById('mediaFolderPath').textContent = mediaGalleryRoot;
         document.getElementById('mediaGalleryToggle').disabled = !path;
         document.getElementById('mediaFilePosition').textContent = `${currentIndex + 1} de ${mediaFileList.length}`;
-        document.getElementById('mediaFileDetails').textContent = ext.toUpperCase();
+        document.getElementById('mediaFileDetails').textContent = ext.toUpperCase() + (galleryMetadata.get(path)?.size != null ? ' · ' + galleryMetadata.get(path).size.toLocaleString('pt-BR') + ' bytes' : '');
+        document.getElementById('mediaFavorite').setAttribute('aria-pressed', String(galleryLibrary.favorites.has(path))); 
         document.getElementById('mediaFullscreenButton').hidden = !document.fullscreenEnabled;
         if (!wasOpen || wasGallery) document.getElementById('mediaViewerClose').focus({preventScroll: true});
         modalMedia.innerHTML = '<p role="status">Carregando mídia…</p>';
@@ -1171,7 +1246,7 @@
 
         let url;
         try {
-            const mediaUrl = FMAuth.mediaUrl(path);
+            const mediaUrl = FMAuth.mediaUrl(path, ext === 'svg' ? 'getPreview' : 'imageBase64');
             if (!wasOpen) {
                 renderMediaThumbnails(mediaFileList);
                 discoverMediaGallery(path);
@@ -1190,11 +1265,11 @@
         let media = '';
         if (['mp4', 'webm', 'ogg'].includes(ext)) {
             media = `<video src="${FMUI.html(url)}" controls autoplay style="max-width:100%;max-height:100%;border-radius:15px;box-shadow:0 20px 40px rgba(0,0,0,0.4);background:#000;outline:none;"></video>`;
-        } else if (['mp3', 'wav'].includes(ext)) {
+        } else if (['mp3', 'wav', 'flac'].includes(ext)) {
             document.querySelector('title').innerText = getFilename(path);
             media = `
 <div class="modern-audio-container">
-<dotlottie-player class="modern-audio-artwork" src="https://lottie.host/ca316c43-00ba-458e-9070-f94fb0a10c1a/yBA3TkFfHx.json" background="transparent" speed="1" loop autoplay></dotlottie-player>
+<div class="modern-audio-artwork" aria-hidden="true" style="display:grid;place-items:center;font-size:120px">♫</div>
 <div class="modern-audio-details">
 <p class="modern-audio-filename">${FMUI.html(getFilename(path))}</p>
 <div class="native-audio-player-frame">
@@ -1265,6 +1340,8 @@ Seu navegador não oferece suporte ao player de áudio.
         document.body.style.overflow = mediaViewerBodyOverflow;
         if (mediaViewerFocus?.isConnected) mediaViewerFocus.focus({preventScroll: true});
         mediaViewerFocus = null;
+        mediaPreviewQueue.splice(0, mediaPreviewQueue.length, ...mediaPreviewQueue.filter(task => !task.signal.aborted));
+        galleryMetadata.clear(); galleryFolders.clear();
     }
 
 
@@ -1278,6 +1355,7 @@ Seu navegador não oferece suporte ao player de áudio.
                 <span class="media-viewer-eyebrow">GALERIA DE MÍDIA</span>
                 <span id="mediaFolderPath" title="Pasta atual">/</span>
             </div>
+            <label class="media-gallery-search"><span aria-hidden="true">⌕</span><input id="mediaGallerySearch" type="search" placeholder="Buscar por arquivo ou pasta" aria-label="Buscar por arquivo ou pasta" oninput="filterMediaGallery()"></label>
             <div class="media-viewer-header-actions">
                 <button id="mediaGalleryToggle" type="button" onclick="setMediaGalleryMode(!document.getElementById('customImageViewer').classList.contains('gallery-expanded'))" aria-pressed="false">Ver galeria</button>
                 <button id="mediaFullscreenButton" type="button" onclick="toggleMediaFullscreen()" title="Alternar tela cheia" aria-label="Alternar tela cheia">⛶</button>
@@ -1286,41 +1364,51 @@ Seu navegador não oferece suporte ao player de áudio.
         </header>
         <div class="media-viewer-workspace">
             <aside id="mediaGallery" data-filter="all" aria-label="Mídias da pasta e subpastas">
-                <div class="media-gallery-heading">
-                    <h2>Pasta e subpastas</h2>
-                    <span id="mediaGalleryCount" aria-live="polite"></span>
+                <div class="gallery-filterbar">
+                    <div class="media-gallery-filters" role="group" aria-label="Filtrar por tipo">
+                        <button type="button" data-media-filter="all" onclick="filterMediaGallery('all')" aria-pressed="true">Todos</button>
+                        <button type="button" data-media-filter="image" onclick="filterMediaGallery('image')" aria-pressed="false">Fotos</button>
+                        <button type="button" data-media-filter="video" onclick="filterMediaGallery('video')" aria-pressed="false">Vídeos</button>
+                        <button type="button" data-media-filter="audio" onclick="filterMediaGallery('audio')" aria-pressed="false">Áudios</button>
+                        <button type="button" data-media-filter="folder" onclick="filterMediaGallery('folder')" aria-pressed="false">Pastas</button>
+                        <button type="button" data-media-filter="favorite" onclick="filterMediaGallery('favorite')" aria-pressed="false">Favoritos</button>
+                    </div>
+                    <select id="mediaSort" aria-label="Ordenação" onchange="document.getElementById('mediaMenuSort').value=this.value;filterMediaGallery()"><option value="asc">Nome A–Z</option><option value="desc">Nome Z–A</option></select>
+                    <details id="galleryOptions"><summary aria-label="Opções da galeria">☷ Opções</summary>
+                        <div class="gallery-options-menu">
+                            <label>Ordenação <select id="mediaMenuSort" onchange="document.getElementById('mediaSort').value=this.value;filterMediaGallery()"><option value="asc">Nome A–Z</option><option value="desc">Nome Z–A</option></select></label>
+                            <label>Escopo <select id="mediaScope" onchange="restartMediaGallery()"><option value="recursive">Pasta e subpastas</option><option value="current">Somente pasta atual</option></select></label>
+                            <label>Agrupar <select id="mediaGroupBy" onchange="filterMediaGallery()"><option value="folder">Pasta</option><option value="date">Data de modificação</option><option value="none">Sem agrupamento</option></select></label>
+                            <label hidden><input id="mediaGroupFolders" type="checkbox" checked onchange="document.getElementById('mediaGroupBy').value=this.checked?'folder':'none';filterMediaGallery()">Agrupar por pastas</label>
+                            <label>Pasta <select id="mediaFolderFilter" onchange="filterMediaGallery()"><option value="">Todas as pastas</option></select></label>
+                            <label>Álbum <select id="mediaAlbumFilter" onchange="filterMediaGallery()"><option value="">Todos os álbuns</option></select></label>
+                            <button type="button" onclick="galleryAlbum()">Criar álbum / adicionar mídia aberta</button>
+                            <small>Álbuns e favoritos duram esta sessão da página. Nenhuma cópia offline.</small>
+                            <button type="button" onclick="restartMediaGallery()">Atualizar busca</button>
+                        </div>
+                    </details>
                 </div>
-                <p id="mediaGalleryStatus" role="status"></p>
-                <div class="media-scan-controls">
-                    <progress id="mediaGalleryProgress" aria-label="Buscando fotos nas subpastas" hidden></progress>
-                    <button id="mediaGalleryStop" type="button" onclick="stopMediaDiscovery()" hidden>Parar busca</button>
+                <div class="gallery-discovery" role="status">
+                    <span id="mediaGalleryCount"></span><span id="mediaGalleryStatus"></span>
+                    <progress id="mediaGalleryProgress" aria-label="Buscando mídias" hidden></progress>
+                    <button id="mediaGalleryStop" type="button" onclick="stopMediaDiscovery()" hidden>Cancelar</button>
                     <button id="mediaGalleryRetry" type="button" onclick="discoverMediaGallery()" hidden>Tentar novamente</button>
                 </div>
-                <label class="media-gallery-search">
-                    <span aria-hidden="true">⌕</span>
-                    <input id="mediaGallerySearch" type="search" placeholder="Buscar por nome ou pasta" aria-label="Buscar arquivos na galeria e subpastas" oninput="filterMediaGallery()">
-                </label>
-                <div class="media-gallery-filters" role="group" aria-label="Filtrar por tipo">
-                    <button type="button" data-media-filter="all" onclick="filterMediaGallery('all')" aria-pressed="true">Todos</button>
-                    <button type="button" data-media-filter="image" onclick="filterMediaGallery('image')" aria-pressed="false">Imagens</button>
-                    <button type="button" data-media-filter="video" onclick="filterMediaGallery('video')" aria-pressed="false">Vídeos</button>
-                    <button type="button" data-media-filter="audio" onclick="filterMediaGallery('audio')" aria-pressed="false">Áudios</button>
-                </div>
-                <div class="media-folder-controls">
-                    <label><input id="mediaGroupFolders" type="checkbox" checked onchange="filterMediaGallery()"> Agrupar por pastas</label>
-                    <select id="mediaFolderFilter" aria-label="Filtrar por pasta" onchange="filterMediaGallery()"><option value="">Todas as pastas</option></select>
-                </div>
-                <div id="thumbNav" aria-label="Todos os arquivos de mídia"></div>
+                <div id="thumbNav" aria-label="Arquivos de mídia"></div>
                 <p id="mediaGalleryEmpty" hidden>Nenhum arquivo encontrado.</p>
+                <div id="mediaPageControls" hidden><button id="mediaPagePrevious" type="button" onclick="galleryChangePage(-1)">Anterior</button><span id="mediaPageLabel"></span><button id="mediaPageNext" type="button" onclick="galleryChangePage(1)">Próxima</button></div>
             </aside>
             <main id="mediaPreview" aria-label="Visualização da mídia">
                 <div class="media-preview-toolbar">
                     <span id="nameFileModalMedia">Arquivo</span>
+                    <button type="button" onclick="downloadFile(window.__fileList[window.__currentIndex])" title="Baixar mídia">↓</button>
+                    <button id="mediaFavorite" type="button" onclick="galleryFavorite()" aria-pressed="false" title="Favoritar mídia">★</button>
+                    <button type="button" onclick="galleryAlbum()" title="Adicionar mídia a álbum">＋ Álbum</button>
                     <div id="imageZoomControls" hidden role="group" aria-label="Zoom da imagem">
                         <button id="imageZoomOut" type="button" onclick="changeImageZoom(-0.25)" aria-label="Diminuir zoom" title="Diminuir zoom (-)">−</button>
                         <span id="imageZoomLevel" aria-live="polite">100%</span>
                         <button id="imageZoomIn" type="button" onclick="changeImageZoom(0.25)" aria-label="Aumentar zoom" title="Aumentar zoom (+)">+</button>
-                        <button type="button" onclick="resetImageZoom()" title="Ajustar à janela (0)">Ajustar</button>
+                        <button type="button" onclick="resetImageZoom()" title="Ajustar à janela (0)">Ajustar</button><button type="button" onclick="originalImageSize()">Original</button>
                     </div>
                 </div>
                 <div class="media-preview-stage">
@@ -1593,37 +1681,63 @@ Seu navegador não oferece suporte ao player de áudio.
     .media-shortcut-hint { margin-left: auto; }
     .media-shortcut-hint span { margin: 0 8px; }
 
-    #customImageViewer.gallery-expanded #mediaGallery { width: 100%; border-right: 0; padding: 24px; }
+    /* Gallery chrome: one header, one filter row, then media. */
+    #modalHeader { min-height: 72px; height: 72px; padding: 10px 24px; background: #101720; }
+    .media-viewer-location { flex: 1; }
+    #modalHeader .media-gallery-search { width: min(36vw, 480px); border-radius: 24px; background: #202b3a; }
+    #mediaGallery { padding: 0; gap: 0; background: #101720; }
+    #customImageViewer.gallery-expanded #mediaGallery { width: 100%; border: 0; }
     #customImageViewer.gallery-expanded #mediaPreview { display: none; }
-    #customImageViewer.gallery-expanded #thumbNav { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px; }
-    #customImageViewer.gallery-expanded .media-folder-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 20px; }
-    #customImageViewer.gallery-expanded .media-gallery-search { max-width: 440px; }
-    #customImageViewer.gallery-expanded .media-gallery-filters { max-width: 360px; }
-    #customImageViewer.gallery-expanded .media-thumbnail-name { font-size: 13px; }
-
-    @media (max-width: 1000px) {
-        #mediaGallery { width: 250px; padding: 16px 10px 10px; gap: 12px; }
-        .media-preview-toolbar { flex-wrap: wrap; gap: 8px; padding: 12px 16px; }
-        #nameFileModalMedia { flex-basis: 100%; }
-        #imageZoomControls { margin-left: auto; }
+    .gallery-filterbar { display: flex; align-items: center; gap: 12px; padding: 8px 24px; min-height: 52px; height: 52px; border-bottom: 1px solid var(--gallery-line); flex-shrink: 0; }
+    .media-gallery-filters { flex: 1; overflow-x: auto; min-width: 0; scrollbar-width: thin; }
+    #customImageViewer .media-gallery-filters button { flex: 0 0 auto; padding: 6px 18px; border-radius: 20px; font-size: 12px; }
+    #customImageViewer select { color: #d1dded; background: #202b3a; border: 1px solid var(--gallery-line); border-radius: 6px; padding: 6px; max-width: 100%; min-width: 0; font: inherit; font-size: 12px; }
+    #galleryOptions { position: relative; flex-shrink: 0; font-size: 12px; }
+    #galleryOptions summary { cursor: pointer; padding: 8px; border-radius: 6px; }
+    .gallery-options-menu { position: absolute; top: 38px; right: 0; z-index: 5; width: 300px; max-width: calc(100vw - 24px); display: grid; gap: 14px; padding: 18px; background: #1d2735; border: 1px solid #42516a; border-radius: 10px; box-shadow: 0 16px 40px #0009; }
+    .gallery-options-menu label { display: grid; gap: 5px; }
+    .gallery-options-menu small { color: var(--gallery-muted); }
+    .gallery-discovery { display: flex; align-items: center; gap: 12px; padding: 8px 27px; min-height: 32px; color: var(--gallery-muted); font-size: 11px; flex-shrink: 0; }
+    #mediaGalleryStatus:empty { display: none; }
+    #mediaGalleryProgress { width: 70px; height: 4px; accent-color: var(--gallery-accent); }
+    #customImageViewer .gallery-discovery button { min-height: 24px; padding: 2px 8px; font-size: 11px; }
+    #customImageViewer.gallery-expanded #thumbNav, #customImageViewer.gallery-expanded .media-folder-grid { grid-template-columns: repeat(auto-fill,minmax(210px,1fr)); gap: 12px 10px; }
+    #thumbNav { padding: 4px 24px 24px; }
+    .media-folder-group h3 { margin: 6px 0 10px; line-height: 20px; }
+    #customImageViewer .media-thumbnail { padding: 0; gap: 5px; border-radius: 8px; }
+    .media-thumbnail-preview { border-radius: 8px; aspect-ratio: 4 / 3; }
+    .media-thumbnail-name { padding: 0 2px; }
+    .media-thumbnail-type { padding: 0 2px 3px; }
+    #mediaPageControls { display: flex; justify-content: center; align-items: center; gap: 18px; padding: 8px; }
+    #customImageViewer:not(.gallery-expanded) #mediaGallery { display: none; }
+    #customImageViewer:not(.gallery-expanded) .media-gallery-search { display: none; }
+    @media(max-width: 1000px) {
+        #customImageViewer.gallery-expanded #thumbNav, #customImageViewer.gallery-expanded .media-folder-grid { grid-template-columns: repeat(auto-fill,minmax(170px,1fr)); }
+        #modalHeader { gap: 12px; padding: 10px 16px; }
+        .gallery-filterbar { padding: 8px 16px; gap: 6px; }
+        #customImageViewer .media-gallery-filters button { padding: 6px 12px; }
+        #thumbNav { padding: 4px 16px 16px; }
     }
-
-    @media (max-width: 700px) {
-        #modalHeader { min-height: 66px; padding: 12px; gap: 10px; }
-        .media-viewer-eyebrow { font-size: 9px; letter-spacing: 1px; }
-        #mediaFolderPath { max-width: 35vw; font-size: 12px; }
-        .media-viewer-header-actions { gap: 5px; }
-        #mediaGalleryToggle { padding: 6px 9px !important; font-size: 12px !important; }
-        #mediaGallery { display: none; }
-        #customImageViewer.gallery-expanded #mediaGallery { display: flex; padding: 16px 12px; }
-        #customImageViewer.gallery-expanded #thumbNav { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
-        #customImageViewer.gallery-expanded .media-folder-grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
-        #mediaGallery { gap: 10px; }
-        .media-preview-stage { padding: 12px 42px; }
-        #customImageViewer .media-viewer-arrow { width: 28px; height: 42px; font-size: 16px; }
-        #leftArrow { left: 6px; }
-        #rightArrow { right: 6px; }
-        .media-preview-footer { padding: 10px 14px; gap: 10px; }
+    @media(max-width: 600px) {
+        #modalHeader { height: auto; min-height: 70px; flex-wrap: wrap; padding: 10px 12px; gap: 8px; }
+        #modalHeader .media-gallery-search { order: 3; width: 100%; }
+        #mediaFolderPath { max-width: 46vw; font-size: 11px; }
+        #mediaGalleryToggle { font-size: 11px !important; padding: 5px 8px !important; }
+        #mediaFullscreenButton { display: none; }
+        .gallery-filterbar { padding: 6px 12px; min-height: 48px; height: 48px; }
+        #mediaSort { display: none; }
+        #galleryOptions summary { font-size: 0; }
+        #galleryOptions summary::after { content: '☷'; font-size: 20px; }
+        .gallery-discovery { padding: 6px 12px; flex-wrap: wrap; gap: 5px 10px; }
+        #mediaGalleryStatus { max-width: 100%; }
+        #customImageViewer.gallery-expanded #thumbNav, #customImageViewer.gallery-expanded .media-folder-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px 8px; }
+        #thumbNav { padding: 4px 12px 12px; }
+        .media-preview-toolbar { padding: 8px 12px; flex-wrap: wrap; gap: 8px; }
+        #nameFileModalMedia { flex-basis: 60%; }
+        #imageZoomControls { max-width: 100%; flex-wrap: wrap; }
+        .media-preview-stage { padding: 10px 40px; }
+        .media-preview-footer { padding: 10px 12px; }
         .media-shortcut-hint { display: none; }
+        #leftArrow { left: 4px; } #rightArrow { right: 4px; }
     }
 </style>
