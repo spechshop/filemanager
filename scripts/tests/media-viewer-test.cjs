@@ -692,3 +692,41 @@ test('custom video supports pinch zoom and keyboard seeking without hijacking ra
         w.closeImageViewer();assert.equal(stage.onpointerdown,null);
     } finally {dom.window.close();}
 });
+
+test('playback preferences survive video changes, images and closing/reopening the gallery', async () => {
+    const dom=browser(),w=dom.window;
+    try {
+        await w.showImage('/first.mp4');
+        const first=w.document.getElementById('viewerVideo');
+        first.playbackRate=1.5; first.volume=.4; first.muted=true;
+        const loop=w.document.getElementById('videoLoop');loop.checked=true;loop.dispatchEvent(new w.Event('change'));
+        await w.showImage('/one.jpg');w.closeImageViewer();await w.showImage('/second.mp4');
+        const second=w.document.getElementById('viewerVideo');
+        assert.equal(second.loop,true);assert.equal(loop.checked,true);
+        assert.equal(second.playbackRate,1.5);assert.equal(second.volume,.4);assert.equal(second.muted,true);
+        first.loop=false;first.dispatchEvent(new w.Event('volumechange'));
+        await w.showImage('/third.mp4');assert.equal(w.document.getElementById('viewerVideo').loop,true);
+        loop.checked=false;loop.dispatchEvent(new w.Event('change'));await w.showImage('/fourth.mp4');
+        assert.equal(w.document.getElementById('viewerVideo').loop,false);
+        assert.equal(w.localStorage.length,0);assert.equal(w.sessionStorage.length,0);
+        w.closeImageViewer();
+    } finally {dom.window.close();}
+});
+
+test('gallery floating menus close outside or on Escape but stay open when using controls inside', async () => {
+    const dom=browser(),w=dom.window;
+    try {
+        await w.showImage('/clip.mp4');
+        for (const menu of w.document.querySelectorAll('#customImageViewer details')) {
+            menu.open=true;
+            menu.dispatchEvent(new w.MouseEvent('pointerdown',{bubbles:true}));assert.equal(menu.open,true);
+            w.document.getElementById('nameFileModalMedia').dispatchEvent(new w.MouseEvent('pointerdown',{bubbles:true}));assert.equal(menu.open,false);
+            menu.open=true;w.dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',cancelable:true}));assert.equal(menu.open,false);
+            assert.equal(w.document.getElementById('customImageViewer').style.display,'block');
+        }
+        const settings=w.document.getElementById('videoSettings');settings.open=true;
+        w.document.getElementById('videoLoop').click();assert.equal(settings.open,true);
+        w.closeImageViewer();assert.equal(settings.open,false);
+        settings.open=true;w.document.body.dispatchEvent(new w.MouseEvent('pointerdown',{bubbles:true}));assert.equal(settings.open,true,'listeners are removed on close');
+    } finally {dom.window.close();}
+});

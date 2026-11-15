@@ -901,6 +901,11 @@
             if (handleGalleryMenuKey(event)) return;
             if (event.key !== 'Tab') return;
         }
+        if (event.key === 'Escape' && document.querySelector('#customImageViewer details[open]')) {
+            const summary = document.querySelector('#customImageViewer details[open] summary');
+            dismissGalleryPopovers(); summary?.focus({preventScroll:true});
+            event.preventDefault(); event.stopPropagation(); return;
+        }
         if (event.key === 'Escape') {
             event.preventDefault();
             event.stopPropagation();
@@ -947,6 +952,18 @@
     }
 
     let galleryVideoSession = null;
+    // Playback choices belong to the page session, not to an individual video.
+    const galleryVideoPreferences = {loop:false, playbackRate:1, volume:1, muted:false};
+
+    function rememberGalleryVideoPreferences(video) {
+        for (const key of Object.keys(galleryVideoPreferences)) galleryVideoPreferences[key] = video[key];
+    }
+
+    function dismissGalleryPopovers(event) {
+        const opened = [...document.querySelectorAll('#customImageViewer details[open]')];
+        for (const menu of opened) if (!event || !menu.contains(event.target)) menu.open = false;
+    }
+
 
     function videoTime(value) {
         if (!Number.isFinite(value) || value < 0) return '0:00';
@@ -955,7 +972,9 @@
     }
 
     function disposeGalleryVideo() {
-        const session = galleryVideoSession; galleryVideoSession = null;
+        const session = galleryVideoSession;
+        if (session) rememberGalleryVideoPreferences(session.video);
+        galleryVideoSession = null;
         session?.controller.abort(); clearTimeout(session?.hideTimer);
         if (session && document.pictureInPictureElement === session.video) document.exitPictureInPicture?.().catch(()=>{});
         document.getElementById('videoControls').hidden = true;
@@ -1004,7 +1023,9 @@
 
     function updateGalleryVideo() {
         const session = galleryVideoSession; if (!session) return;
-        const video = session.video, valid = Number.isFinite(video.duration) && video.duration > 0;
+        const video = session.video;
+        rememberGalleryVideoPreferences(video);
+        const valid = Number.isFinite(video.duration) && video.duration > 0;
         const paused = video.paused || video.ended;
         const play = document.getElementById('videoPlay');
         play.innerHTML = galleryIcon(paused?'play':'pause'); play.setAttribute('aria-label',paused?'Reproduzir vídeo':'Pausar vídeo'); play.title = play.getAttribute('aria-label');
@@ -1046,6 +1067,7 @@
     }
 
     function setupGalleryVideo(video) {
+        for (const [key,value] of Object.entries(galleryVideoPreferences)) video[key] = value;
         const session = {video, controller:new AbortController(),hideTimer:null}; galleryVideoSession = session;
         const signal = session.controller.signal, stage = document.getElementById('mediaStage');
         stage.classList.add('video-active');
@@ -1063,7 +1085,7 @@
         listen('videoMenuVolume','input',event=>{video.volume=Number(event.target.value);video.muted=video.volume===0;updateGalleryVideo();});
         listen('videoSeek','input',event=>{if(Number.isFinite(video.duration))video.currentTime=Math.max(0,Math.min(video.duration,Number(event.target.value)));updateGalleryVideo();});
         listen('videoSpeed','change',event=>{video.playbackRate=Number(event.target.value);});
-        listen('videoLoop','change',event=>{video.loop=event.target.checked;});
+        listen('videoLoop','change',event=>{video.loop=event.target.checked;rememberGalleryVideoPreferences(video);});
         listen('videoZoom','change',event=>{imageZoom.scale=Number(event.target.value);imageZoom.x=imageZoom.y=0;applyImageZoom();});
         listen('videoFullscreen','click',toggleGalleryVideoFullscreen);listen('videoPip','click',toggleGalleryVideoPip);
         for(const type of ['pointermove','pointerdown','focusin']) stage.addEventListener(type,revealGalleryVideoControls,{signal});
@@ -1583,6 +1605,7 @@
     function pauseHiddenSlideshow() { if (document.hidden) stopGallerySlideshow(); }
 
     function setMediaGalleryMode(expanded) {
+        dismissGalleryPopovers();
         const viewer = document.getElementById('customImageViewer');
         viewer.classList.toggle('gallery-expanded', expanded);
         const button = document.getElementById('mediaGalleryToggle');
@@ -1698,6 +1721,8 @@
         modalMedia.innerHTML = '<p role="status">Carregando mídia…</p>';
         document.getElementById('mediaStage').addEventListener('wheel', handleImageViewerWheel, {passive: false});
         window.addEventListener('keydown', handleImageViewerKey, true);
+        document.addEventListener('pointerdown', dismissGalleryPopovers, true);
+        document.addEventListener('focusin', dismissGalleryPopovers, true);
         window.addEventListener('resize', scrollGalleryLocation);
         document.addEventListener('visibilitychange', pauseHiddenSlideshow);
 
@@ -1818,6 +1843,9 @@ Seu navegador não oferece suporte ao player de áudio.
         disposeMediaGallery();
         document.getElementById('thumbNav').replaceChildren();
         window.removeEventListener('keydown', handleImageViewerKey, true);
+        document.removeEventListener('pointerdown', dismissGalleryPopovers, true);
+        document.removeEventListener('focusin', dismissGalleryPopovers, true);
+        dismissGalleryPopovers();
         window.removeEventListener('resize', scrollGalleryLocation);
         document.removeEventListener('visibilitychange', pauseHiddenSlideshow);
         document.getElementById('mediaStage').removeEventListener('wheel', handleImageViewerWheel);
