@@ -126,6 +126,60 @@ Do not disable certificate validation. Fix the CA bundle or configure your
 organization's trusted CA. Executable releases have checked SHA256 digests;
 Node's checksums are retrieved over verified HTTPS. Non-Git source archive
 fallbacks require FILEMANAGER_SOURCE_SHA256 / FILEMANAGER_LIBSPECH_SHA256.
+
+#### Instalação sem root, Git, curl ou wget
+
+Ao executar o instalador dentro de um checkout existente, ele não tenta
+instalar pacotes do sistema se não houver root ou sudo não interativo.
+Quando curl/wget faltam, usa Perl e OpenSSL (ambos já devem existir) para
+downloads HTTPS com verificação da cadeia de certificados e hostname,
+inclusive em redirecionamentos. TLS inválido ou downgrade para HTTP
+interrompe o download. O helper não substitui a validação SHA-256.
+
+Para baixar libspech sem Git, obtenha o SHA-256 do arquivo
+`spechshop/libspech` branch `spech` por um canal confiável e execute:
+
+```bash
+FILEMANAGER_LIBSPECH_SHA256=<sha256-revisado> bash ./installer.sh
+```
+
+Para instalação totalmente offline, copie o arquivo tar.gz revisado para o
+servidor e informe o caminho absoluto, além de seu digest previamente
+verificado (não derive o hash de um arquivo não confiável no momento do uso):
+
+```bash
+FILEMANAGER_LIBSPECH_ARCHIVE=/caminho/libspech.tar.gz \
+FILEMANAGER_LIBSPECH_SHA256=<sha256-revisado> \
+    bash ./installer.sh
+```
+
+Para obter o próprio FileManager sem Git, use
+`FILEMANAGER_SOURCE_ARCHIVE` e `FILEMANAGER_SOURCE_SHA256` com o mesmo
+procedimento. Um checkout existente é reutilizado, sem ser sobrescrito.
+
+O downloader comum também aceita um cache offline por URL, útil para
+Node.js, Composer e pcg729:
+
+```bash
+FILEMANAGER_OFFLINE_DIR=/caminho/artefatos bash ./installer.sh
+```
+
+Cada URL `https://...` é mapeada para dois arquivos:
+`<sha256-da-url>.payload` (conteúdo exato da resposta) e
+`<sha256-da-url>.sha256` (digest do conteúdo, revisado por canal
+independente). Se o par existir e a verificação falhar, o instalador
+recusa o conteúdo e não tenta baixar uma alternativa silenciosamente.
+Os hashes de artefatos específicos exigidos pelo instalador continuam
+obrigatórios. O cache offline cobre downloads realizados pelo script;
+instalações npm/Composer podem precisar de seus próprios caches ou
+espelhos configurados separadamente.
+
+O fallback Perl/OpenSSL exige OpenSSL compatível com
+`s_client -verify_hostname -verify_return_error`, e funciona apenas com
+HTTPS na porta 443. O bootstrap inicial, executado sem um checkout local,
+continua exigindo curl/wget ou um arquivo fonte local previamente fixado
+por SHA-256. Nenhum modo permite ignorar a verificação de certificados.
+
 The standalone install-tmp.sh requires FILEMANAGER_ARCHIVE_SHA256 from an
 independently reviewed archive before executing anything from that archive.
 
