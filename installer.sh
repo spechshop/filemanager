@@ -165,6 +165,7 @@ done
 [ -n "$PM" ] && log "Gerenciador de pacotes detectado: $PM" || warn "Nenhum gerenciador de pacotes conhecido encontrado."
 
 pkg_update() {
+    [ "$IS_ROOT" -ne 1 ] && [ -z "$SUDO" ] && return 0
     [ -z "$PM" ] && return 0
     case "$PM" in
         apt|apt-get) run_priv "$PM" update -y  2>/dev/null ;;
@@ -181,6 +182,7 @@ pkg_update() {
 # nome para todos, mas permite variação via segundo argumento opcional.
 pkg_install() {
     local pkg="$1"
+    [ "$IS_ROOT" -ne 1 ] && [ -z "$SUDO" ] && return 1
     [ -z "$PM" ] && { warn "Sem gerenciador de pacotes; não foi possível instalar '$pkg'."; return 1; }
     case "$PM" in
         apt|apt-get) run_priv "$PM" install -y "$pkg" ;;
@@ -215,6 +217,12 @@ ensure_cmd() {
 # Deve funcionar via pipe antes de o checkout e scripts/ existirem.
 # Manter as mesmas proteções de scripts/secure-download.sh.
 download() {
+    # After obtaining a checkout, reuse the verified rootless/offline downloader.
+    if [ -r "scripts/secure-download.sh" ]; then
+        source "scripts/secure-download.sh" || return 1
+        secure_download "$@"
+        return $?
+    fi
     local url="$1" output="$2" expected="${3:-}" status
     case "$url" in
         https://*)
@@ -249,7 +257,7 @@ download() {
 # instalar Git. Extrai em diretório temporário e só então move para o destino.
 download_github_archive() {
     local repository="$1" branch="$2" destination="$3"
-    local repository_name archive_dir archive_file extracted_dir expected
+    local repository_name archive_dir archive_file extracted_dir expected archive_url
 
     if ! command -v tar >/dev/null 2>&1; then
         ensure_cmd tar tar >/dev/null 2>&1 || return 1
@@ -261,12 +269,21 @@ download_github_archive() {
         *) return 1 ;;
     esac
     [[ "$expected" =~ ^[a-fA-F0-9]{64}$ ]] || { warn "O fallback de arquivo requer SHA256 revisado para $repository."; return 1; }
+    archive_url="https://github.com/$repository/archive/refs/heads/$branch.tar.gz"
+    case "$repository" in
+        spechshop/filemanager)
+            [ -z "${FILEMANAGER_SOURCE_ARCHIVE:-}" ] || archive_url="file://${FILEMANAGER_SOURCE_ARCHIVE}"
+            ;;
+        spechshop/libspech)
+            [ -z "${FILEMANAGER_LIBSPECH_ARCHIVE:-}" ] || archive_url="file://${FILEMANAGER_LIBSPECH_ARCHIVE}"
+            ;;
+    esac
     repository_name="${repository##*/}"
     archive_dir="$(mktemp -d "${TMPDIR:-/tmp}/filemanager-archive.XXXXXX" 2>/dev/null)" || return 1
     archive_file="$archive_dir/source.tar.gz"
     extracted_dir="$archive_dir/$repository_name-$branch"
 
-    if ! download "https://github.com/$repository/archive/refs/heads/$branch.tar.gz" "$archive_file" "$expected" \
+    if ! download "$archive_url" "$archive_file" "$expected" \
         || ! tar -xzf "$archive_file" -C "$archive_dir" \
         || [ ! -d "$extracted_dir" ] \
         || ! mv -- "$extracted_dir" "$destination"; then
@@ -283,9 +300,11 @@ download_github_archive() {
 # ---------------------------------------------------------------------
 pkg_update
 # upgrade é opcional; não deve travar a instalação
-case "$PM" in
-    apt|apt-get) run_priv "$PM" upgrade -y 2>/dev/null ;;
-esac
+if [ "$IS_ROOT" -eq 1 ] || [ -n "$SUDO" ]; then
+    case "$PM" in
+        apt|apt-get) run_priv "$PM" upgrade -y 2>/dev/null ;;
+    esac
+fi
 
 ensure_cmd git git
 ensure_cmd screen screen
