@@ -23,7 +23,7 @@ with tempfile.TemporaryDirectory(prefix='fm-semgrep-') as directory:
         file = root / name
         file.parent.mkdir(parents=True, exist_ok=True)
         file.write_text(text)
-    result = subprocess.run(['semgrep', 'scan', '--config', str(configuration), '--json', '--metrics=off', '--disable-version-check', '.'], cwd=root, capture_output=True, text=True, timeout=60)
+    result = subprocess.run(['semgrep', 'scan', '-j', '1', '--config', str(configuration), '--json', '--metrics=off', '--disable-version-check', '.'], cwd=root, capture_output=True, text=True, timeout=60)
     if result.returncode:
         raise RuntimeError(result.stderr)
     report = json.loads(result.stdout)
