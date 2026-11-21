@@ -1,5 +1,20 @@
 # LIPC — PHP Swoole + Node PTY WebSocket Server
 
+[![Security](https://github.com/spechshop/filemanager/actions/workflows/security.yml/badge.svg?branch=newterm)](https://github.com/spechshop/filemanager/actions/workflows/security.yml?query=branch%3Anewterm)
+[![Lifecycle](https://github.com/spechshop/filemanager/actions/workflows/lifecycle.yml/badge.svg?branch=newterm)](https://github.com/spechshop/filemanager/actions/workflows/lifecycle.yml?query=branch%3Anewterm)
+
+<!-- Individual job status for the newterm branch (exact GitHub check names). -->
+[![PHP 8.3](https://img.shields.io/github/check-runs/spechshop/filemanager/newterm?nameFilter=PHP%208.3%20syntax%2C%20static%20analysis%20and%20regressions&label=PHP%208.3)](https://github.com/spechshop/filemanager/actions/workflows/security.yml?query=branch%3Anewterm)
+[![PHP 8.4](https://img.shields.io/github/check-runs/spechshop/filemanager/newterm?nameFilter=PHP%208.4%20syntax%2C%20static%20analysis%20and%20regressions&label=PHP%208.4)](https://github.com/spechshop/filemanager/actions/workflows/security.yml?query=branch%3Anewterm)
+[![PHP 8.5](https://img.shields.io/github/check-runs/spechshop/filemanager/newterm?nameFilter=PHP%208.5%20syntax%2C%20static%20analysis%20and%20regressions&label=PHP%208.5)](https://github.com/spechshop/filemanager/actions/workflows/security.yml?query=branch%3Anewterm)
+[![Node 22](https://img.shields.io/github/check-runs/spechshop/filemanager/newterm?nameFilter=Node%2022%20browser%20and%20real%20PTY%20regressions&label=Node%2022)](https://github.com/spechshop/filemanager/actions/workflows/security.yml?query=branch%3Anewterm)
+[![Node 24](https://img.shields.io/github/check-runs/spechshop/filemanager/newterm?nameFilter=Node%2024%20browser%20and%20real%20PTY%20regressions&label=Node%2024)](https://github.com/spechshop/filemanager/actions/workflows/security.yml?query=branch%3Anewterm)
+[![Swoole](https://img.shields.io/github/check-runs/spechshop/filemanager/newterm?nameFilter=Real%20Swoole%20HTTP%2C%20WebSocket%20and%20PHP%20PTY%20regressions&label=Swoole)](https://github.com/spechshop/filemanager/actions/workflows/security.yml?query=branch%3Anewterm)
+[![Dependencies](https://img.shields.io/github/check-runs/spechshop/filemanager/newterm?nameFilter=Composer%20and%20npm%20advisories%20%28blocking%29&label=Dependencies)](https://github.com/spechshop/filemanager/actions/workflows/security.yml?query=branch%3Anewterm)
+[![Semgrep](https://img.shields.io/github/check-runs/spechshop/filemanager/newterm?nameFilter=Semgrep%20PHP%2C%20JavaScript%20and%20web%20security&label=Semgrep)](https://github.com/spechshop/filemanager/actions/workflows/security.yml?query=branch%3Anewterm)
+[![Tooling](https://img.shields.io/github/check-runs/spechshop/filemanager/newterm?nameFilter=Gitleaks%2C%20ShellCheck%20and%20workflow%20validation&label=Tooling)](https://github.com/spechshop/filemanager/actions/workflows/security.yml?query=branch%3Anewterm)
+[![Lifecycle job](https://img.shields.io/github/check-runs/spechshop/filemanager/newterm?nameFilter=lifecycle&label=Lifecycle%20job)](https://github.com/spechshop/filemanager/actions/workflows/lifecycle.yml?query=branch%3Anewterm)
+
 > **📝 Note**: SSL certificates for localhost are **automatically generated** on first run. No manual certificate configuration needed for local development.
 
 ## Overview
