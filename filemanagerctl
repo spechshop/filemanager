@@ -465,7 +465,7 @@ launch_watchdog() {
     # not require GNU env --default-signal (absent on older hosting systems).
     local -a reset_signals=()
     if env --default-signal=TERM,INT /bin/true >/dev/null 2>&1; then
-        reset_signals=(env --default-signal=TERM,INT)
+        reset_signals=(env '--default-signal=TERM,INT')
     fi
     rotate_log "$START_LOG"
     nohup setsid "${reset_signals[@]}" "$BASH" "$SCRIPT_PATH" __watchdog </dev/null >>"$START_LOG" 2>&1 9>&- &

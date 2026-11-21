@@ -1,6 +1,7 @@
 #!/bin/bash
 set -euo pipefail
-mkdir -m 700 -p /home/restricted/app
+mkdir -p /home/restricted/app
+chmod 700 /home/restricted/app
 cd /home/restricted/app
 cp /runtime/php pcg
 chmod 700 pcg
@@ -9,8 +10,9 @@ cp /repo/installer.sh /repo/filemanagerctl .
 chmod 600 filemanagerctl
 cp /repo/scripts/{runtime-exec,install-supervision,install-php-runtime,secure-download}.sh scripts/
 cp /repo/scripts/pcg-release.py scripts/
+export FILEMANAGER_PHP_SHA256
 export FILEMANAGER_PHP_URL=file:///runtime/php
-export FILEMANAGER_PHP_SHA256=$(sha256sum /runtime/php | cut -d' ' -f1)
+FILEMANAGER_PHP_SHA256=$(sha256sum /runtime/php | cut -d' ' -f1)
 cat >server.php <<'PHP'
 <?php
 file_put_contents(__DIR__ . '/.runtime/actual-runtime', PHP_BINARY);

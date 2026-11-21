@@ -11,8 +11,9 @@ cp pcg /dev/shm/pcg
 printf '<?php file_put_contents(__DIR__."/started", PHP_BINARY); while(true) usleep(100000);' > server.php
 # Only the static PCG binary; no extension loading or injected php.ini.
 unset PHPRC PHP_INI_SCAN_DIR
+export FILEMANAGER_PHP_SHA256
 export FILEMANAGER_PHP_URL=file:///runtime/php
-export FILEMANAGER_PHP_SHA256=$(sha256sum /runtime/php | cut -d' ' -f1)
+FILEMANAGER_PHP_SHA256=$(sha256sum /runtime/php | cut -d' ' -f1)
 /dev/shm/pcg -v
 /dev/shm/pcg -r 'foreach (["swoole","zip","sockets","pcntl","posix"] as $e) if (!extension_loaded($e)) exit(3); exit(PHP_VERSION_ID >= 80300 ? 0 : 2);'
 ! ./pcg -v
@@ -62,8 +63,9 @@ rm "$recovered"
 printf 'PASS deletion: both installer modes recover temporary PHP from noexec persistent source\n'
 # Isolate discovery for download scenarios, preserving real copy/probe behavior.
 fm_php_candidates() { printf '%s\n' "$1/pcg"; }
+export FILEMANAGER_PHP_SHA256
 export FILEMANAGER_PHP_URL=file:///runtime/php
-export FILEMANAGER_PHP_SHA256=$(fm_sha256 /runtime/php)
+FILEMANAGER_PHP_SHA256=$(fm_sha256 /runtime/php)
 printf 'invalid' > pcg
 runtime=$(fm_available_bytes() { return 1; }; fm_install_php "$PWD" 2>download.err)
 grep 'Sem medição de espaço: /dev/shm será a primeira tentativa' download.err
@@ -81,7 +83,7 @@ grep 'int(1)' download.err
 cmp pcg /runtime/php
 printf 'PASS download: absent and invalid persistent source repaired\n'
 printf 'invalid preserved' > pcg
-export FILEMANAGER_PHP_SHA256=$(printf '%064d' 0)
+FILEMANAGER_PHP_SHA256=$(printf '%064d' 0)
 if fm_install_php "$PWD" >bad.out 2>bad.err; then exit 1; fi
 grep 'nenhum local permitiu download íntegro' bad.err
 [ "$(cat pcg)" = 'invalid preserved' ]

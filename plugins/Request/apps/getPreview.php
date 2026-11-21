@@ -68,14 +68,14 @@ class getPreview
             do {
                 $status = proc_get_status($process);
                 if (!$status['running']) break;
-                if (microtime(true) > $deadline || !securityPolicy::validToken($owner) || (method_exists($response, 'isWritable') && !$response->isWritable())) { proc_terminate($process, 9); break; }
+                if (microtime(true) > $deadline || !securityPolicy::validToken($owner) || !$response->isWritable()) { proc_terminate($process, 9); break; }
                 if (\Swoole\Coroutine::getCid() >= 0) \Swoole\Coroutine::sleep(0.02); else usleep(20000);
             } while (true);
             proc_close($process);
             if (!securityPolicy::validToken($owner)) throw new \DomainException('revoked');
-            if (empty($status) || $status['running'] || $status['exitcode'] !== 0 || !filesize($thumbnail)) { $response->status(415); return $response->end(); }
+            if ($status['running'] || $status['exitcode'] !== 0 || !filesize($thumbnail)) { $response->status(415); return $response->end(); }
             $response->header('Content-Type', 'image/jpeg');
             return $response->end(file_get_contents($thumbnail));
-        } finally { if (is_string($input)) @unlink($input); if (is_string($thumbnail)) @unlink($thumbnail); }
+        } finally { @unlink($input); if (is_string($thumbnail)) @unlink($thumbnail); }
     }
 }

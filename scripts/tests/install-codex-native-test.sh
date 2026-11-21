@@ -85,7 +85,7 @@ case_sigkill_retries_with_reduced_resources() {
         printf '%s\n' "$*" >> "$calls"
         if [ "$(wc -l < "$calls")" = 1 ]; then return 137; fi
         [[ "$NODE_OPTIONS" = *--max-old-space-size=256* ]] || return 1
-        [ "$npm_config_maxsockets" = 1 ] && [ "$npm_config_jobs" = 1 ] || return 1
+        [ "${npm_config_maxsockets:-}" = 1 ] && [ "${npm_config_jobs:-}" = 1 ] || return 1
         [[ "$*" = *--omit=dev* ]]
     }
     install_filemanager_node_dependencies || return 1

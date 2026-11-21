@@ -36,6 +36,7 @@ for (const mode of ['http', 'self-signed', 'hostname-mismatch']) test(`validated
     const cache = path.join(directory, 'tunnel-binaries'); fs.mkdirSync(cache, {mode: 0o700});
     const fake = path.join(cache, '0.0.0-cloudflared-linux-amd64');
     fs.writeFileSync(fake, `#!/bin/bash
+if [ "\${1:-}" = --version ]; then printf 'cloudflared fixture 0.0.0\\n'; exit 0; fi
 printf '%s' "$$" > "$TUNNEL_FIXTURE_DIR/child.pid"
 printf '%s\\n' "$@" > "$TUNNEL_FIXTURE_DIR/child.args"
 target='' tls=()
@@ -206,6 +207,7 @@ exit 18
         server.kill('SIGTERM');
         await Promise.race([once(server, 'exit').catch(() => {}), delay(2000)]);
         if (server.exitCode === null) server.kill('SIGKILL');
+        origin.closeAllConnections();
         await new Promise(resolve => origin.close(resolve));
         fs.rmSync(directory, {recursive: true, force: true});
     }

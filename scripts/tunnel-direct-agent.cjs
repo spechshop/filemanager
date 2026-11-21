@@ -25,6 +25,9 @@ fs.unlinkSync(__filename);
 // Only send credentials on the self-signed fallback after verifying the exact pinned public key.
 const pinnedAgent = new https.Agent({keepAlive: false});
 pinnedAgent.createConnection = (options, callback) => {
+    // Trust the command's SPKI pin instead of a CA for self-signed panels. The
+    // socket reaches HTTPS (and can send credentials) only after the pin matches.
+    // nosemgrep: problem-based-packs.insecure-transport.js-node.bypass-tls-verification.bypass-tls-verification
     const socket = tls.connect({...options, rejectUnauthorized: false});
     let completed = false;
     const done = (error) => {

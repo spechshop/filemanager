@@ -219,9 +219,6 @@ class server extends OpenConnection
                                     }
                                     // recv() devolve "" em timeout — não derruba o PTY.
                                     if ($message === '' || $message === null) {
-                                        if (!$wsClient->connected) {
-                                            break;
-                                        }
                                         continue;
                                     }
                                     if (!is_object($message) || $message->data === null) {

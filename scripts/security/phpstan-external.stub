@@ -14,6 +14,6 @@ namespace libspech\Cli {
 }
 namespace libspech\Network {
     class network {
-        public static function getLocalIp() {}
+        public static function getLocalIp(int $ipVersion = 4): string {}
     }
 }

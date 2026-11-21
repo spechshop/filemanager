@@ -91,7 +91,7 @@ fm_sha256() {
 # Refuse files other users can replace/modify before probing them. A digest,
 # when available, is checked BEFORE execution. Do not follow cache symlinks.
 fm_private_file() {
-    local file="$1" metadata owner mode permissions links rest
+    local file="$1" metadata owner mode permissions _links rest
     [ -f "$file" ] && [ ! -L "$file" ] && [ -r "$file" ] || return 1
     if metadata=$(stat -c '%u %a' -- "$file" 2>/dev/null); then
         read -r owner mode <<< "$metadata"
@@ -100,7 +100,7 @@ fm_private_file() {
         (( (8#$mode & 022) == 0 )) || return 1
     else
         metadata=$(LC_ALL=C ls -ldn -- "$file" 2>/dev/null) || return 1
-        read -r permissions links owner rest <<< "$metadata"
+        read -r permissions _links owner rest <<< "$metadata"
         [ "$owner" = "$EUID" ] || [ "$owner" = 0 ] || return 1
         [[ "$permissions" = -* && "${permissions:5:1}" != w && "${permissions:8:1}" != w ]] || return 1
     fi
@@ -110,7 +110,7 @@ fm_private_file() {
     while [ -n "$parent" ] && [ "$parent" != / ] && [ "$parent" != . ]; do
         [ -L "$parent" ] && return 1
         metadata=$(LC_ALL=C ls -ldn -- "$parent" 2>/dev/null) || return 1
-        read -r permissions links owner rest <<< "$metadata"
+        read -r permissions _links owner rest <<< "$metadata"
         if [[ "${permissions:5:1}" = w || "${permissions:8:1}" = w ]]; then
             [[ "${permissions:9:1}" = t || "${permissions:9:1}" = T ]] || return 1
         fi
@@ -119,7 +119,7 @@ fm_private_file() {
 }
 
 fm_available_bytes() {
-    local base="$1" result blocks blocksize php magic
+    local base="$1" result blocks blocksize
     if result=$(LC_ALL=C df -Pk -- "$base" 2>/dev/null); then
         result=$(awk 'END {print $4}' <<< "$result")
         if [[ "$result" =~ ^[0-9]+$ ]]; then printf '%s\n' "$((result * 1024))"; return; fi

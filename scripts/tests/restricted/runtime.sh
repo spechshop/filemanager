@@ -55,7 +55,7 @@ export FILEMANAGER_CONFIG_FILE="$PWD/plugins/configInterface.json"
 "$runtime" server.php >server.log 2>&1 &
 server_pid=$!
 trap 'kill "$server_pid" 2>/dev/null || true; wait "$server_pid" 2>/dev/null || true' EXIT
-for attempt in {1..60}; do
+for _attempt in {1..60}; do
     if curl -fsS --cacert cert.pem --resolve localhost:18080:127.0.0.1 https://localhost:18080/ > response.html; then break; fi
     sleep 0.2
 done

@@ -58,7 +58,7 @@ async function ftpFixture(t) {
 }
 
 test('basic-ftp override preserves get-uri downloads, MDTM, LIST fallback, cache and missing file errors', {timeout: 15000}, async t => {
-    assert.equal(getUriRequire('basic-ftp/package.json').version, '6.2.3');
+    assert.equal(getUriRequire('basic-ftp/package.json').version, '6.2.6');
     const ftp = await ftpFixture(t);
     const direct = await getUri(ftp.base + '/proxy.pac');
     assert.match(await contents(direct), /FindProxyForURL/);

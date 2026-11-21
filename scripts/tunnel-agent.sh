@@ -93,11 +93,11 @@ fm_tunnel_main() {
 
     fm_cleanup() {
         local code=$?
-        local attempt
+        local _attempt
         trap - EXIT INT TERM HUP
         if [ -n "$FM_CHILD" ]; then
             kill "$FM_CHILD" 2>/dev/null || true
-            for attempt in 1 2 3 4 5; do
+            for _attempt in 1 2 3 4 5; do
                 kill -0 "$FM_CHILD" 2>/dev/null || break
                 sleep 1
             done

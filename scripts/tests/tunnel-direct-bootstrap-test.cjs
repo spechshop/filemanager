@@ -83,7 +83,10 @@ process.on('SIGTERM', () => process.exit(0)); setInterval(() => {}, 1000);
         .replace('# FILEMANAGER_EXEC_HELPER', () => fs.readFileSync(path.join(ROOT, 'scripts/runtime-exec.sh'), 'utf8').split('if [ "${BASH_SOURCE[0]}" = "$0" ]; then')[0]).replace('# FILEMANAGER_CONFIG', header).replace('# FILEMANAGER_NODE_PLATFORMS', cases)
         .replace('FILEMANAGER_AGENT_BASE64', Buffer.from(payload).toString('base64'));
     // Controlled counters exercise diagnosis; no real OOM is induced.
-    const testedSource = source.replace('memory_file=$(fm_memory_file)', 'memory_file="$TUNNEL_FIXTURE_DIR/memory.events"');
+    // The shared helper repairs PATH in production. Keep this fixture hermetic
+    // so the host's Node and hash tools cannot bypass download/fallback cases.
+    const testedSource = source.replace('memory_file=$(fm_memory_file)', 'memory_file="$TUNNEL_FIXTURE_DIR/memory.events"')
+        .replace('unset fm_system_bin\nexport PATH', 'unset fm_system_bin\nPATH="$TUNNEL_FIXTURE_DIR/bin"\nexport PATH');
     const script = path.join(directory, 'bootstrap.sh'); fs.writeFileSync(script, testedSource);
     const child = spawn('/bin/bash', [script], {env: {...process.env, PATH: bin, TMPDIR: directory, TUNNEL_FIXTURE_DIR: directory}, stdio: ['ignore', 'pipe', 'pipe']});
     let output = '', closed = false;

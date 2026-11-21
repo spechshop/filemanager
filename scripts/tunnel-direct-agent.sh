@@ -66,12 +66,12 @@ fm_tunnel_main() {
         done
     }
     fm_cleanup() {
-        local code=$? pid attempt
+        local code=$? pid _attempt
         trap - EXIT INT TERM
         for pid in "$FM_INSTALL" "$FM_CHILD"; do
             [ -n "$pid" ] || continue
             kill "$pid" 2>/dev/null || true
-            for attempt in 1 2 3 4 5; do
+            for _attempt in 1 2 3 4 5; do
                 kill -0 "$pid" 2>/dev/null || break
                 sleep 1
             done
@@ -254,7 +254,7 @@ fm_tunnel_main() {
 }
 fm_tunnel_start() {
     umask 077
-    local launch_dir agent_pid attempt shown=0 lines message
+    local launch_dir agent_pid _attempt shown=0 lines message
     printf '%s\n' 'Preparando o túnel direto nesta máquina...'
     launch_dir=$(fm_exec_dir "tunnel-${FM_SESSION:-remote}" 209715200) || {
         printf '%s\n' 'Não foi possível criar a pasta privada do túnel. Verifique TMPDIR e as permissões do usuário.' >&2
@@ -272,7 +272,7 @@ fm_tunnel_start() {
     printf 'Túnel direto iniciado em segundo plano (PID %s). Você pode fechar este terminal ou a sessão SSH.\n' "$agent_pid"
     printf 'Log: %s/agent.log\n' "$launch_dir"
     # Show initial progress while the detached worker keeps running independently.
-    for attempt in 1 2; do
+    for _attempt in 1 2; do
         sleep 1
         lines=0
         while IFS= read -r message; do

@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Bash rcfile for FileManager terminals. Read with Bash, including on noexec.
 # Keep the account's commands and preferences, adding fallbacks when needed.
 if [[ $- = *i* ]] && [ -r "$HOME/.bashrc" ]; then
@@ -50,5 +51,7 @@ filemanager_refresh_commands
 if declare -p PROMPT_COMMAND 2>/dev/null | /bin/grep -q 'declare -a'; then
     PROMPT_COMMAND+=(filemanager_refresh_commands)
 else
+    # PROMPT_COMMAND supports both array and scalar forms; this branch is scalar.
+    # shellcheck disable=SC2178,SC2128
     PROMPT_COMMAND="${PROMPT_COMMAND:+$PROMPT_COMMAND; }filemanager_refresh_commands"
 fi

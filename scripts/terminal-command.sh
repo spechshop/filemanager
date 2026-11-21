@@ -141,9 +141,6 @@ if [ "${1:-}" = --prepare ]; then
     exit 0
 fi
 command_name="${1:-}"; shift || exit 64
-if [ -r "$ROOT/.runtime/terminal-bin.path" ]; then
-    IFS= read -r FILEMANAGER_TERMINAL_BIN < "$ROOT/.runtime/terminal-bin.path" || :
-fi
 case "$command_name" in
     --npm-shell)
         shell_bin=$(prepare_commands --npm-shell) || exit 1
