@@ -51,7 +51,7 @@ file_put_contents(__DIR__ . '/server.pid', (string) getmypid());
 $child = proc_open([PHP_BINARY, __DIR__ . '/middleware.php'], [['file','/dev/null','r'],['file','/dev/null','w'],['file','/dev/null','w']], $pipes);
 while (true) usleep(100000);
 ''')
-        (self.root / 'pty.js').write_text('setInterval(() => {}, 1000);')
+        (self.root / 'pty.js').write_text('require("node:fs").writeFileSync(".pty-ready", String(process.pid)); setInterval(() => {}, 1000);')
         self.bin = Path(self.temp.name) / 'bin'
         self.bin.mkdir()
         self.script('systemctl', '''case " $* " in
@@ -143,7 +143,9 @@ exit 1
     def test_orphan_bridge_does_not_block_start_and_restart_replaces_relative_supervisor(self):
         self.env['CTL_UNIT_STATE'] = 'not-found'
         bridge = self.spawn(['node', 'pty.js'])
-        until(lambda: alive(bridge.pid))
+        # A PID exists before exec() has replaced the spawning process. Wait
+        # until Node has loaded the bridge before asking the controller to scan.
+        until(lambda: (self.root / '.pty-ready').exists())
         status = self.ctl('status')
         self.assertEqual(status.returncode, 1)
         self.assertIn('auxiliares', status.stderr)
