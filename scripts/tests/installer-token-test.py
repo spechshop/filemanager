@@ -13,7 +13,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 INSTALLER = PROJECT_ROOT / "installer.sh"
-PHP_BIN = os.environ.get("SECURITY_PHP_BINARY") or shutil.which("pcg")
+PHP_BIN = os.environ.get("SECURITY_PHP_BINARY") or shutil.which("pcg") or shutil.which("php")
 
 
 def require(condition, message):
