@@ -53,6 +53,9 @@ for (const secure of [false, true]) test(`direct tunnel with ${secure ? 'pinned 
     }
     const oldNode = '#!/bin/bash\nif [ "$1" = --version ]; then printf "v18.0.0\\n"; exit 0; fi\nexit 1\n';
     if (secure) fs.writeFileSync(path.join(bin, 'node'), oldNode, {mode: 0o700});
+    // The execution helper appends system paths; mask the host runtime so the
+    // HTTP case still exercises automatic installation on CI machines with Node.
+    else fs.symlinkSync('/bin/false', path.join(bin, 'node'));
     const nodeName = 'node-v22.0.0-linux-x64.tar.gz';
     const nodePackage = path.join(directory, 'node-v22.0.0-linux-x64'); fs.mkdirSync(nodePackage); fs.mkdirSync(path.join(nodePackage, 'bin'));
     // Inert fixture runtime delegates to the test runner, outside the remote PATH.

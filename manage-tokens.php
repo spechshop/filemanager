@@ -61,12 +61,13 @@ function loadTokens(string $file): array
     }
 
     $content = file_get_contents($file);
-    $GLOBALS['loadedTokenSnapshots'][$file] = hash('sha256', $content);
+    if ($content === false) throw new RuntimeException('Unable to read token store.');
     $tokens = json_decode($content, true);
-
-
-
-    return $tokens ?? [];
+    if (json_last_error() !== JSON_ERROR_NONE || !is_array($tokens)) {
+        throw new RuntimeException('Malformed token store. Original bytes were preserved.');
+    }
+    $GLOBALS['loadedTokenSnapshots'][$file] = hash('sha256', $content);
+    return $tokens;
 }
 
 function saveTokens(string $file, array $tokens): bool
