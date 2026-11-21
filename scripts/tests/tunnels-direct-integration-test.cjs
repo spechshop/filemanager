@@ -142,7 +142,7 @@ function file_get_contents($file, ...$args) {
         assert.deepEqual(fs.readdirSync(path.dirname(logPath)).filter(name => !name.startsWith('work.')).sort(), ['agent.log', 'agent.pid']);
         assert.match(fs.readFileSync(logPath, 'utf8'), /Baixando Node.js privado/);
         if (secure) assert.equal(fs.readFileSync(path.join(bin, 'node'), 'utf8'), oldNode, 'System Node must remain unchanged');
-        else assert.equal(fs.existsSync(path.join(bin, 'node')), false, 'Do not install Node into PATH');
+        else assert.equal(fs.readlinkSync(path.join(bin, 'node')), '/bin/false', 'Do not replace the Node mask in PATH');
         assert.match(fs.readFileSync(logPath, 'utf8'), /Link do túnel direto/);
         assert.doesNotMatch(fs.readFileSync(logPath, 'utf8'), /cloudflare|TLS.*mudou/);
         const registry = JSON.parse(fs.readFileSync(path.join(directory, 'tunnels/registry.json')));

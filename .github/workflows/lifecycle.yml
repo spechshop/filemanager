@@ -28,7 +28,7 @@ jobs:
       - uses: shivammathur/setup-php@d52fc211a0436f8839a587b3b5b8efddab4744ea # v2
         with:
           php-version: '8.4'
-          extensions: pcntl
+          extensions: swoole-6.2.3, zip, sockets, pcntl
           coverage: none
       - run: shellcheck --severity=warning filemanagerctl installer.sh scripts/install-supervision.sh
       - run: python3 scripts/tests/supervision-test.py
