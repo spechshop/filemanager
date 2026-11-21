@@ -3,7 +3,7 @@
 [![Security](https://github.com/spechshop/filemanager/actions/workflows/security.yml/badge.svg?branch=newterm)](https://github.com/spechshop/filemanager/actions/workflows/security.yml?query=branch%3Anewterm)
 [![Lifecycle](https://github.com/spechshop/filemanager/actions/workflows/lifecycle.yml/badge.svg?branch=newterm)](https://github.com/spechshop/filemanager/actions/workflows/lifecycle.yml?query=branch%3Anewterm)
 
-<!-- Individual job status for the newterm branch (exact GitHub check names). -->
+<!-- Individual job status for the newterm branch (exact GitHub check names). refresh -->
 [![PHP 8.3](https://img.shields.io/github/check-runs/spechshop/filemanager/newterm?nameFilter=PHP%208.3%20syntax%2C%20static%20analysis%20and%20regressions&label=PHP%208.3)](https://github.com/spechshop/filemanager/actions/workflows/security.yml?query=branch%3Anewterm)
 [![PHP 8.4](https://img.shields.io/github/check-runs/spechshop/filemanager/newterm?nameFilter=PHP%208.4%20syntax%2C%20static%20analysis%20and%20regressions&label=PHP%208.4)](https://github.com/spechshop/filemanager/actions/workflows/security.yml?query=branch%3Anewterm)
 [![PHP 8.5](https://img.shields.io/github/check-runs/spechshop/filemanager/newterm?nameFilter=PHP%208.5%20syntax%2C%20static%20analysis%20and%20regressions&label=PHP%208.5)](https://github.com/spechshop/filemanager/actions/workflows/security.yml?query=branch%3Anewterm)
