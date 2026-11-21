@@ -169,7 +169,9 @@ test('real Intelephense through authenticated WebSocket: PHP features, updates, 
         }
     }
     t.diagnostic('LSP resource samples: ' + JSON.stringify(samples));
-    assert.ok(Math.max(...samples.map(s => s.rssKiB)) - Math.min(...samples.map(s => s.rssKiB)) < 128 * 1024, 'repeated starts stay within 128 MiB RSS spread');
+    // Cold indexing can retain more memory than restarts using the on-disk
+    // cache. Detect growth from the first start, while allowing memory to fall.
+    assert.ok(samples.every(s => s.rssKiB - samples[0].rssKiB < 128 * 1024), 'repeated starts do not grow RSS by 128 MiB');
 });
 
 test('LSP disconnect, crash, session revocation and bridge SIGTERM reap real children', {timeout: 90000}, async t => {
