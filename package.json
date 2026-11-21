@@ -11,6 +11,7 @@
     "jsdom": "30.1.3"
   },
   "scripts": {
+    "test:terminal:reload": "node --test scripts/security/terminal-reload-integration.cjs",
     "test:security:ui": "node --test scripts/security/ui-regression.cjs",
     "test:security:pty": "node --test scripts/security/pty-integration.cjs",
     "test:security:threads": "node --test scripts/security/thread-regression.cjs",

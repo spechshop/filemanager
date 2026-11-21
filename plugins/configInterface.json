@@ -38,9 +38,9 @@
         "ptyBackend": "node",
         "services": {
             "pty": true,
-            "lsp": true,
+            "lsp": false,
             "gpt": false,
-            "codex": true
+            "codex": false
         }
     },
     "serverSettings": {

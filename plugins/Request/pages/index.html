@@ -239,11 +239,14 @@
     </button>
     @import(downloadFile/importRepGit)
 
-    <button class="btn btn-light-green" onclick="$('#edit-code').modal('show')">
+    <button class="btn btn-light-green" onclick="FMTerminalWorkspace.editor(); $('#edit-code').modal('show')">
         <div class="d-block">
             <i class="fa-sharp-duoton fa-solid fa-code"></i>
             Abrir editor
         </div>
+    </button>
+    <button class="btn btn-outline-light" type="button" onclick="FMTerminalWorkspace.open()">
+        <i class="fa-solid fa-terminal" aria-hidden="true"></i> Abrir terminal
     </button>
     <button class="btn btn-primary" data-bs-toggle="offcanvas" href="#offcanvasExample" role="button"
             aria-controls="offcanvasExample">

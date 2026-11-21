@@ -28,9 +28,9 @@ test('HTTP, XHR, WebSocket and media transports keep durable credentials out of 
         const media = await w.FMAuth.mediaUrl('/fixture/image.png');
         assert.equal(media.includes('fixture-owner'), false); assert.ok(media.includes('accessTicket=' + id));
         await assert.rejects(w.FMAuth.socketUrl('wss://other.invalid/fixture-owner'), /externo/);
-        const terminalSource = fs.readFileSync(path.resolve(__dirname, '../../plugins/Request/modules/modalEditCode.html'), 'utf8');
-        const start = terminalSource.indexOf('                    window.runCommand =');
-        w.eval(terminalSource.slice(start, terminalSource.indexOf('                    // ---- "+" button', start)));
+        const terminalSource = fs.readFileSync(path.resolve(__dirname, '../../js/terminal/sessions.js'), 'utf8');
+        const start = terminalSource.indexOf('window.runCommand =');
+        w.eval(terminalSource.slice(start, terminalSource.indexOf('// ---- "+" button', start)));
         let sent;
         w.runCommand({readyState: w.WebSocket.OPEN, url: socket, send: raw => { sent = JSON.parse(raw); }}, 'synthetic-input');
         assert.equal(sent.command, 'synthetic-input'); assert.equal(sent.isCodex, true);

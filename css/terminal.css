@@ -1,0 +1,202 @@
+/* Terminal presentation is shared by the dedicated workspace and the editor. */
+#footer-terminal {
+    --terminal-bg: #141627; --terminal-surface: #222439; --terminal-border: #33364d;
+    color-scheme: dark; scrollbar-color: #454a65 #141627;
+    display: flex; flex-direction: column; position: fixed; bottom: 0; left: 0;
+    width: 100%; padding: 0; background: var(--terminal-bg); color: #e8e9f0;
+    z-index: 1000; overflow: hidden;
+}
+#footer-terminal [hidden] { display: none !important; }
+#footer-terminal button, #terminalWorkspaceToggle {
+    border: 1px solid #33364d; border-radius: 8px; background: #222439;
+    color: #e8e9f0; padding: 7px 12px; font: inherit; font-size: 14px; cursor: pointer;
+}
+#footer-terminal button:hover { background: #2b2e46; }
+#footer-terminal button:disabled { opacity: .45; cursor: default; }
+#footer-terminal button:focus-visible, #footer-terminal a:focus-visible,
+#footer-terminal input:focus-visible, #terminal-ctx-menu button:focus-visible {
+    outline: 2px solid #89b4ff; outline-offset: -2px;
+}
+#terminalWorkspaceTitle, #terminalLibrary, #mobileTerminalHeading { display: none !important; }
+#terminalWorkspaceToggle { flex: 0 0 auto; margin-right: .5rem; }
+#terminalWorkspaceBar {
+    display: flex; align-items: center; flex: 0 0 48px; gap: 12px;
+    padding: 2px 12px; background: #1b1d31; border-bottom: 1px solid #33364d;
+}
+#terminalToolbarCaption { flex: 1; color: #a3a7ba; font-size: 14px; }
+#terminalZoom { display: flex; flex: 0 0 auto; align-items: center; gap: 2px; }
+#footer-terminal #terminalZoom button { min-width: 38px; padding: 5px 8px; }
+#terminalLibraryToggle { display: none; }
+#resizer { order: -1; flex: 0 0 5px; background: #30364f; cursor: row-resize; }
+#edit-code #footer-terminal #tabsTerm {
+    display: flex; flex: 0 0 48px; min-height: 48px; margin: 0;
+    padding: 5px 12px; gap: 6px; background: #141627; flex-wrap: nowrap;
+    overflow-x: auto; overflow-y: hidden; scrollbar-width: thin;
+}
+#edit-code #footer-terminal #tabsTerm .nav-item { display: flex; align-items: center; flex: 0 0 auto; border-radius: 10px; background: #222439; }
+#edit-code #footer-terminal #tabsTerm .nav-link {
+    display: flex; align-items: center; gap: 7px; margin: 0 !important;
+    padding: 8px 10px !important; border: 0 !important; border-radius: 10px;
+    background: transparent !important; color: #a3a7ba !important;
+    white-space: nowrap; font-size: 14px; min-height: 36px;
+}
+#edit-code #footer-terminal #tabsTerm .nav-item:has(.nav-link.active) { background: #183c38; }
+#edit-code #footer-terminal #tabsTerm .nav-link.active { color: #70deb5 !important; }
+#edit-code #footer-terminal #tabsTerm #new-terminal { display: none; }
+#edit-code #tabsTerm button.close-tab {
+    position: static; margin: 0 3px 0 0; display: flex; align-items: center; justify-content: center;
+    min-width: 30px; min-height: 32px; padding: 0; border: 0; background: transparent;
+    font-size: 18px; color: #a3a7ba; font-weight: 400;
+}
+#edit-code #tabsTerm button.close-tab:hover { color: #ffa0a8; background: #522b38; }
+.terminal-tab-label { display: inline-block; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; user-select: none; }
+.terminal-rename-input { width: 140px; padding: 2px; background: #141627; color: #e8e9f0; border: 1px solid #89b4ff; font: inherit; }
+.terminal-symbol { font: 500 13px ui-monospace, monospace; opacity: .8; }
+#footer-terminal #terms { height: var(--terminal-panel-height, 240px); min-height: 0; overflow: hidden; padding: 12px; background: #141627; }
+#edit-code #terms .xterm-container { width: 100%; height: 100%; overflow: hidden; }
+#edit-code #mobileTerminalEmpty { display: flex; height: 100%; align-items: center; justify-content: center; text-align: center; color: #a3a7ba; padding: 16px; background: #141627; }
+#edit-code #terms:has(.xterm-container) #mobileTerminalEmpty { display: none; }
+#mobileTerminalEmpty h2 { margin: 18px 0 8px; font-size: 20px; color: #e8e9f0; }
+#mobileTerminalEmpty p { max-width: 52ch; font-size: 14px; }
+#terminalNotice { display: flex; flex: 0 0 auto; align-items: center; gap: 12px; padding: 8px 12px; border-bottom: 1px solid #725f3c; background: #302b23; color: #ffe1a6; font-size: 14px; }
+#terminalNoticeText { flex: 1; }
+#terminalNoticeAction { flex: 0 0 auto; }
+#terminalStatusBar { display: none; }
+#edit-code.terminal-workspace .modal-content { display: flex; flex-direction: column; }
+#edit-code.terminal-workspace .modal-header { flex: 0 0 48px; height: 48px !important; gap: 12px; background: #1b1d31 !important; border-bottom: 1px solid #33364d; }
+#edit-code.terminal-workspace #terminalWorkspaceTitle { display: block !important; margin-right: auto; color: #e8e9f0; }
+#edit-code.terminal-workspace #tab-bar,
+#edit-code.terminal-workspace #tabsFilesEditor,
+#edit-code.terminal-workspace #editorSaveButton,
+#edit-code.terminal-workspace #mobileTreeToggle,
+#edit-code.terminal-workspace #mobileWorkspaceTitle,
+#edit-code.terminal-workspace #mobileWorkspaceSwitch,
+#edit-code.terminal-workspace #context-menu,
+#edit-code.terminal-workspace #modalBodyEditor > .container-fluid,
+#edit-code.terminal-workspace #resizer { display: none !important; }
+#edit-code.terminal-workspace #modalBodyEditor { flex: 1 1 auto; min-height: 0; position: relative; overflow: hidden; }
+#edit-code.terminal-workspace #footer-terminal {
+    position: absolute; inset: 0; width: 100%; height: 100% !important; max-height: none !important;
+    display: grid; grid-template-columns: 224px minmax(0, 1fr);
+    grid-template-rows: 48px 48px auto minmax(0, 1fr) auto 28px;
+}
+#edit-code.terminal-workspace #terminalWorkspaceBar { grid-column: 1 / -1; grid-row: 1; }
+#edit-code.terminal-workspace #terminalLibrary {
+    display: flex !important; flex-direction: column; gap: 14px; padding: 18px 12px;
+    grid-column: 1; grid-row: 2 / -1; min-width: 0; background: #1b1d31; overflow: auto; border-right: 1px solid #33364d;
+}
+#terminalLibrary label { color: #e8e9f0; font-size: 15px; font-weight: 600; }
+#terminalSessionSearch { width: 100%; min-width: 0; min-height: 44px; padding: 10px; color: #e8e9f0; background: #141627; border: 1px solid #33364d; border-radius: 8px; font-size: 14px; }
+#terminalSessionList { display: grid; align-content: start; gap: 8px; }
+#terminalLibraryMessage { color: #a3a7ba; font-size: 14px; }
+.terminal-session-card { display: flex; min-width: 0; background: #222439; border-radius: 12px; }
+#footer-terminal .terminal-session-card button { border: 0; background: transparent; min-width: 0; text-align: left; }
+#footer-terminal .terminal-session-card .terminal-session-select { flex: 1; padding: 12px; }
+#footer-terminal .terminal-session-card .terminal-session-actions { flex: 0 0 40px; text-align: center; padding: 0; font-size: 20px; }
+.terminal-session-card strong { display: block; font-weight: 500; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.terminal-session-state { display: block; color: #a3a7ba; font-size: 13px; margin-top: 5px; white-space: normal; overflow-wrap: anywhere; }
+.terminal-session-card.active { box-shadow: inset 3px 0 #47c99b; }
+.terminal-session-card.active strong { color: #70deb5; }
+.terminal-session-card[data-status="connected"] .terminal-session-state { color: #a5d8c2; }
+.terminal-session-card[data-status="reconnecting"] .terminal-session-state { color: #f2c572; }
+.terminal-session-card[data-status="unauthorized"] .terminal-session-state { color: #f07b86; }
+#edit-code.terminal-workspace #tabsTerm { grid-column: 2; grid-row: 2; }
+#edit-code.terminal-workspace #terminalNotice { grid-column: 2; grid-row: 3; }
+#edit-code.terminal-workspace #terms { grid-column: 2; grid-row: 4; height: auto !important; }
+#edit-code.terminal-workspace #mobileTerminalKeys { grid-column: 2; grid-row: 5; }
+#edit-code.terminal-workspace #terminalStatusBar { display: flex; align-items: center; grid-column: 2; grid-row: 6; padding: 0 12px; border-top: 1px solid #33364d; background: #1b1d31; color: #a3a7ba; font-size: 13px; }
+#terminal-ctx-menu { position: fixed; z-index: 99999; display: none; min-width: 240px; max-width: calc(100vw - 16px); margin: 0; padding: 4px; list-style: none; background: #222439; border: 1px solid #454a65; border-radius: 10px; box-shadow: 0 8px 24px #0008; }
+#terminal-ctx-menu li { padding: 0; }
+#terminal-ctx-menu button { display: block; width: 100%; padding: 10px 12px; min-height: 44px; border: 0; border-radius: 6px; text-align: left; font-size: 14px; color: #e8e9f0; background: transparent; }
+#terminal-ctx-menu button:hover { background: #343850; }
+#terminal-ctx-menu .ctx-danger { color: #f7a3ab; }
+@media (max-width: 1023.98px) {
+    #edit-code.terminal-workspace #footer-terminal { grid-template-columns: minmax(0, 1fr); }
+    #edit-code.terminal-workspace #tabsTerm, #edit-code.terminal-workspace #terminalNotice,
+    #edit-code.terminal-workspace #terms, #edit-code.terminal-workspace #mobileTerminalKeys,
+    #edit-code.terminal-workspace #terminalStatusBar { grid-column: 1; }
+    #edit-code.terminal-workspace #terminalLibrary { display: none !important; }
+    #edit-code #terminalLibraryToggle { display: block; }
+    #edit-code.terminal-workspace.terminal-library-open #terminalLibrary { display: flex !important; position: absolute; inset: 48px 0 0; z-index: 8; border: 0; }
+    #edit-code.terminal-library-open #terminalZoom,
+    #edit-code.terminal-library-open #tabsTerm { visibility: hidden; }
+    #terminalSessionList { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+}
+@media (max-width: 767.98px) {
+    #edit-code #terminalWorkspaceToggle { min-height: 44px; font-size: 14px; }
+    #edit-code:not(.mobile-view-terminal):not(.terminal-workspace) #terminalWorkspaceToggle { display: none; }
+    #edit-code.mobile-view-terminal .modal-header,
+    #edit-code.terminal-workspace .modal-header { flex: 0 0 44px; min-height: 44px; height: 44px !important; }
+    #edit-code.mobile-view-terminal .modal-header > .btn-close,
+    #edit-code.terminal-workspace .modal-header > .btn-close { width: 44px; height: 44px; }
+    #edit-code.mobile-view-terminal #editorSaveButton,
+    #edit-code.mobile-view-terminal #mobileWorkspaceSwitch,
+    #edit-code.mobile-view-terminal #mobileTreeToggle,
+    #edit-code.mobile-view-terminal #tabsFilesEditor,
+    #edit-code.mobile-view-terminal #mobileWorkspaceTitle { display: none !important; }
+    #edit-code.mobile-view-terminal #terminalWorkspaceTitle,
+    #edit-code.terminal-workspace #terminalWorkspaceTitle { display: block !important; margin-right: auto; color: #e8e9f0; font-size: 15px; }
+    #edit-code.mobile-view-terminal #modalBodyEditor { flex: 1 1 auto; position: relative; min-height: 0; }
+    #edit-code.mobile-view-terminal #footer-terminal,
+    #edit-code.terminal-workspace #footer-terminal {
+        position: absolute; inset: 0; width: 100%; height: 100% !important; max-height: none !important;
+        display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: 44px 44px auto minmax(0, 1fr) 48px 0;
+    }
+    #edit-code #footer-terminal button { min-height: 44px; }
+    #edit-code #footer-terminal #terminalWorkspaceBar { grid-column: 1; grid-row: 1; height: 44px; padding: 0 8px; gap: 8px; }
+    #edit-code #terminalToolbarCaption { display: none; }
+    #edit-code #terminalZoom button { min-width: 44px; min-height: 44px; padding: 0 7px; }
+    #edit-code #footer-terminal #terminalWorkspaceBar > [data-terminal-create] { width: 44px; height: 44px; padding: 0; font-size: 0; }
+    #edit-code #footer-terminal #terminalWorkspaceBar > [data-terminal-create]::before { content: '+'; font-size: 22px; }
+    #edit-code #footer-terminal #tabsTerm { grid-column: 1; grid-row: 2; min-height: 44px; height: 44px; padding: 0 8px; gap: 6px; }
+    #edit-code #footer-terminal #tabsTerm .nav-link { min-height: 44px; max-width: 190px; }
+    #edit-code #tabsTerm button.close-tab { min-width: 44px; min-height: 44px; }
+    #edit-code #footer-terminal #terminalNotice { grid-column: 1; grid-row: 3; padding: 6px 8px; gap: 8px; }
+    #edit-code #terminalNoticeText { font-size: 13px; }
+    #edit-code #footer-terminal #terms { grid-column: 1; grid-row: 4; height: auto !important; padding: 8px; }
+    #edit-code #footer-terminal #mobileTerminalKeys { display: flex; align-items: center; grid-column: 1; grid-row: 5; height: 48px; min-height: 48px; gap: 4px; padding: 2px 8px; border-top: 1px solid #33364d; background: #1b1d31; }
+    #edit-code #footer-terminal #mobileTerminalKeys button { min-width: 44px; min-height: 44px; font-size: 13px; padding: 0 8px; }
+    #edit-code #footer-terminal #terminalStatusBar { display: none; }
+    #edit-code .terminal-session-card .terminal-session-actions { flex-basis: 44px; }
+    #edit-code.terminal-workspace.terminal-library-open #terminalLibrary { inset: 44px 0 0; }
+    #edit-code .terminal-tab-label { max-width: 125px; }
+}
+
+/* Native horizontal panning must also be allowed when a drag starts on a key. */
+@media (max-width: 767.98px) {
+    #edit-code #footer-terminal #mobileTerminalKeys {
+        min-width: 0; overflow-x: auto; overflow-y: hidden;
+        touch-action: pan-x; overscroll-behavior-x: contain;
+        scroll-snap-type: none; -webkit-overflow-scrolling: touch;
+    }
+    #edit-code #footer-terminal #mobileTerminalKeys button {
+        flex: 0 0 auto; touch-action: pan-x; user-select: none;
+    }
+}
+#edit-code #terms, #edit-code #terms .xterm, #edit-code #terms .xterm-viewport,
+#edit-code #terms .xterm-screen, #edit-code #terms .xterm-screen * {
+    touch-action: none;
+}
+#edit-code #footer-terminal [data-terminal-action="select"][aria-pressed="true"] {
+    background: #183c38; color: #70deb5; border-color: #47c99b;
+}
+#edit-code.terminal-selecting #terms { box-shadow: inset 0 0 0 2px #89b4ff; }
+#terminalActionStatus {
+    position: absolute; z-index: 12; left: 12px; right: 12px; bottom: 62px;
+    width: fit-content; max-width: calc(100% - 24px); margin: 0 auto;
+    padding: 10px 14px; border: 1px solid #454a65; border-radius: 10px;
+    background: #222439f2; color: #e8e9f0; font-size: 14px; pointer-events: none;
+}
+#terminalClipboardDialog {
+    width: min(520px, calc(100vw - 24px)); max-height: 80dvh; overflow: auto;
+    padding: 20px; background: #1b1d31; color: #e8e9f0; border: 1px solid #454a65; border-radius: 12px;
+}
+#terminalClipboardDialog::backdrop { background: #0009; }
+#terminalClipboardDialog h3 { font-size: 19px; }
+#terminalClipboardDialog p { color: #a3a7ba; font-size: 14px; }
+#terminalClipboardText {
+    display: block; width: 100%; min-height: 150px; margin: 12px 0;
+    padding: 10px; font: 16px/1.4 ui-monospace, monospace; color: #e8e9f0;
+    border: 1px solid #454a65; border-radius: 8px; background: #141627;
+    user-select: text; touch-action: auto;
+}

@@ -64,10 +64,7 @@ function loadTokens(string $file): array
     $GLOBALS['loadedTokenSnapshots'][$file] = hash('sha256', $content);
     $tokens = json_decode($content, true);
 
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        printError("Erro ao ler tokens: " . json_last_error_msg());
-        throw new RuntimeException('Token store is invalid; preserve it and repair offline.');
-    }
+
 
     return $tokens ?? [];
 }

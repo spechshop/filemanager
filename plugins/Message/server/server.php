@@ -21,6 +21,7 @@ class server extends OpenConnection
     private static array $metricsPending = [];
     private static array $metricsNextAt = [];
     private static array $bridgeClients = [];
+    private static array $terminalGuards = [];
 
     public static function stopWorker(): void
     {
@@ -68,6 +69,10 @@ class server extends OpenConnection
         if (!empty($GLOBALS['xterm'])) {
             foreach ($GLOBALS['xterm'] as $token => $terminal) {
                 if (($terminal['fd'] ?? null) === $fd) {
+                    if (isset($terminal['heartbeat'])) {
+                        Coroutine::cancel($terminal['heartbeat']);
+                        unset($GLOBALS['xterm'][$token]['heartbeat']);
+                    }
                     $GLOBALS['xterm'][$token]['fd'] = null;
                     $GLOBALS['xterm'][$token]['wsClient'] = false;
                     $GLOBALS['xterm'][$token]['relay'] = false;
@@ -169,90 +174,117 @@ class server extends OpenConnection
             if (!self::activeBinding($server, $frame->fd, $binding, $tokenClient, $privileged)) return;
 
             if (!empty($tokenBrowser)) {
-                $GLOBALS["xterm"][$tokenBrowser]["fd"] = $frame->fd;
+                $gate = self::terminalGate($tokenBrowser);
+                $locked = $gate->pop(10) !== false;
+                try {
+                    if (!self::activeBinding($server, $frame->fd, $binding, $tokenClient, true)) return;
+                    if (!$locked) return $server->disconnect($frame->fd, 1013, 'Terminal busy');
+                    $GLOBALS["xterm"][$tokenBrowser]["fd"] = $frame->fd;
 
-                // Conecta no PTY de forma síncrona nesta corrotina para o push
-                // logo abaixo já ter wsClient pronto (evita race "foi fechado").
-                $wsClient = $GLOBALS["xterm"][$tokenBrowser]["wsClient"] ?? null;
-                if (!($wsClient instanceof Client) || !$wsClient->connected) {
-                    try {
-                        $wsClient = self::getWsClient($tokenBrowser);
-                    } catch (Throwable) {
-                        $GLOBALS["xterm"][$tokenBrowser]["wsClient"] = false;
-                        return $server->close($frame->fd);
-                    }
-                }
-
-                if (empty($GLOBALS["xterm"][$tokenBrowser]["relay"])) {
-                    $GLOBALS["xterm"][$tokenBrowser]["relay"] = true;
-                    Coroutine::create(function () use ($tokenBrowser, $server, $wsClient) {
+                    // Conecta no PTY de forma síncrona nesta corrotina para o push
+                    // logo abaixo já ter wsClient pronto (evita race "foi fechado").
+                    $wsClient = $GLOBALS["xterm"][$tokenBrowser]["wsClient"] ?? null;
+                    if (!($wsClient instanceof Client) || !$wsClient->connected) {
                         try {
-                            while (true) {
-                                $message = $wsClient->recv();
-                                if ($message === false) {
-                                    break;
-                                }
-                                // recv() devolve "" em timeout — não derruba o PTY.
-                                if ($message === '' || $message === null) {
-                                    if (!$wsClient->connected) {
+                            $wsClient = self::getWsClient($tokenBrowser);
+                        } catch (Throwable) {
+                            $GLOBALS["xterm"][$tokenBrowser]["wsClient"] = false;
+                            return $server->close($frame->fd);
+                        }
+                    }
+
+                    // The browser can disappear while HTTP upgrade yields. Never
+                    // publish an orphaned relay after that binding has been revoked.
+                    if (!self::activeBinding($server, $frame->fd, $binding, $tokenClient, true)) {
+                        if (($GLOBALS['xterm'][$tokenBrowser]['wsClient'] ?? null) === $wsClient) {
+                            $GLOBALS['xterm'][$tokenBrowser]['wsClient'] = false;
+                            if (isset($GLOBALS['xterm'][$tokenBrowser]['heartbeat'])) {
+                                Coroutine::cancel($GLOBALS['xterm'][$tokenBrowser]['heartbeat']);
+                                unset($GLOBALS['xterm'][$tokenBrowser]['heartbeat']);
+                            }
+                        }
+                        $wsClient->close();
+                        return;
+                    }
+
+                    if (empty($GLOBALS["xterm"][$tokenBrowser]["relay"])) {
+                        $GLOBALS["xterm"][$tokenBrowser]["relay"] = true;
+                        Coroutine::create(function () use ($tokenBrowser, $server, $wsClient) {
+                            try {
+                                while (($GLOBALS['xterm'][$tokenBrowser]['wsClient'] ?? null) === $wsClient && $wsClient->connected) {
+                                    $message = $wsClient->recv();
+                                    if (($GLOBALS['xterm'][$tokenBrowser]['wsClient'] ?? null) !== $wsClient) break;
+                                    if ($message === false) {
                                         break;
                                     }
-                                    continue;
-                                }
-                                if (!is_object($message) || $message->data === null) {
-                                    break;
-                                }
+                                    // recv() devolve "" em timeout — não derruba o PTY.
+                                    if ($message === '' || $message === null) {
+                                        if (!$wsClient->connected) {
+                                            break;
+                                        }
+                                        continue;
+                                    }
+                                    if (!is_object($message) || $message->data === null) {
+                                        break;
+                                    }
 
-                                $fd = $GLOBALS["xterm"][$tokenBrowser]["fd"] ?? null;
-                                if (!is_int($fd) || !$server->exist($fd)) {
-                                    // Browser saiu temporariamente; mantém a sessão PTY.
-                                    continue;
-                                }
+                                    $fd = $GLOBALS["xterm"][$tokenBrowser]["fd"] ?? null;
+                                    if (!is_int($fd) || !$server->exist($fd)) {
+                                        // Browser saiu temporariamente; mantém a sessão PTY.
+                                        continue;
+                                    }
 
-                                if (!securityPolicy::terminalAllowed(securityPolicy::socketOwner($tokenBrowser))) break;
-                                if (($GLOBALS['websocketConnections'][$fd]['token'] ?? '') !== $tokenBrowser) continue;
-                                $server->push($fd, (string) $message->data);
+                                    if (!securityPolicy::terminalAllowed(securityPolicy::socketOwner($tokenBrowser))) break;
+                                    if (($GLOBALS['xterm'][$tokenBrowser]['wsClient'] ?? null) !== $wsClient) break;
+                                    if (($GLOBALS['websocketConnections'][$fd]['token'] ?? '') !== $tokenBrowser) continue;
+                                    $server->push($fd, (string) $message->data);
+                                }
+                            } finally {
+                                if (($GLOBALS["xterm"][$tokenBrowser]["wsClient"] ?? null) === $wsClient) {
+                                    $GLOBALS["xterm"][$tokenBrowser]["relay"] = false;
+                                    $GLOBALS["xterm"][$tokenBrowser]["wsClient"] = false;
+                                }
+                                try {
+                                    if ($wsClient->connected) {
+                                        $wsClient->close();
+                                    }
+                                } catch (Throwable) {
+                                }
                             }
-                        } finally {
-                            if (($GLOBALS["xterm"][$tokenBrowser]["wsClient"] ?? null) === $wsClient) {
-                                $GLOBALS["xterm"][$tokenBrowser]["relay"] = false;
-                                $GLOBALS["xterm"][$tokenBrowser]["wsClient"] = false;
-                            }
+                        });
+                    }
+
+                    $wsClient = $GLOBALS["xterm"][$tokenBrowser]["wsClient"] ?? null;
+                    if (!($wsClient instanceof Client) || !$wsClient->connected) {
+                        return $server->close($frame->fd);
+                    }
+
+                    if (!self::activeBinding($server, $frame->fd, $binding, $tokenClient, true)) return;
+                    if (empty($object["command"])) {
+                        if (!empty($object["dirCurrent"])) {
+                            try { $dirCurrent = securityPolicy::path($object['dirCurrent'], $tokenClient); }
+                            catch (\DomainException $e) { return $server->disconnect($frame->fd, 1008, 'Forbidden'); }
                             try {
-                                if ($wsClient->connected) {
-                                    $wsClient->close();
-                                }
-                            } catch (Throwable) {
+                                $wsClient->push('cd -- ' . escapeshellarg($dirCurrent) . PHP_EOL);
+                            } catch (Exception $e) {
                             }
-                        }
-                    });
-                }
-
-                $wsClient = $GLOBALS["xterm"][$tokenBrowser]["wsClient"] ?? null;
-                if (!($wsClient instanceof Client) || !$wsClient->connected) {
-                    return $server->close($frame->fd);
-                }
-
-                if (!self::activeBinding($server, $frame->fd, $binding, $tokenClient, true)) return;
-                if (empty($object["command"])) {
-                    if (!empty($object["dirCurrent"])) {
-                        try { $dirCurrent = securityPolicy::path($object['dirCurrent'], $tokenClient); }
-                        catch (\DomainException $e) { return $server->disconnect($frame->fd, 1008, 'Forbidden'); }
-                        try {
-                            $wsClient->push('cd -- ' . escapeshellarg($dirCurrent) . PHP_EOL);
-                        } catch (Exception $e) {
+                        } else {
+                            $wsClient->push("0");
                         }
                     } else {
-                        $wsClient->push("0");
-                    }
-                } else {
-                    try {
-                        $wsClient->push("{$object["command"]}");
-                        if ($object['command'] == 'resizeXtermHandlerCommand') {
-                            $wsClient->push("{$object["cols"]}");
-                            $wsClient->push("{$object["rows"]}");
+                        try {
+                            $wsClient->push("{$object["command"]}");
+                            if ($object['command'] == 'resizeXtermHandlerCommand') {
+                                $wsClient->push("{$object["cols"]}");
+                                $wsClient->push("{$object["rows"]}");
+                            }
+                        } catch (Throwable $e) {
                         }
-                    } catch (Throwable $e) {
+                    }
+                } finally {
+                    if ($locked) $gate->push(true);
+                    if (isset(self::$terminalGuards[$tokenBrowser]) && --self::$terminalGuards[$tokenBrowser]['users'] === 0) {
+                        unset(self::$terminalGuards[$tokenBrowser]);
                     }
                 }
             }
@@ -763,6 +795,18 @@ class server extends OpenConnection
                 $GLOBALS[$service][$token]['chan'] = null;
             }
         }
+    }
+
+    /** Serialize upgrade, relay installation and compound resize writes per session. */
+    private static function terminalGate(string $token): \Swoole\Coroutine\Channel
+    {
+        if (!isset(self::$terminalGuards[$token])) {
+            $gate = new \Swoole\Coroutine\Channel(1);
+            $gate->push(true);
+            self::$terminalGuards[$token] = ['gate' => $gate, 'users' => 0];
+        }
+        self::$terminalGuards[$token]['users']++;
+        return self::$terminalGuards[$token]['gate'];
     }
 
     public static function getWsClient(mixed $tokenBrowser): Client

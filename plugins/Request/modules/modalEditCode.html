@@ -165,6 +165,8 @@
     <div class="modal-dialog modal-fullscreen" role="document">
         <div class="modal-content headerModal" style="border-bottom: none; border-radius: 13px !important">
             <div class="modal-header" style="height: 53px">
+                <span id="terminalWorkspaceTitle"><i class="fa-solid fa-terminal" aria-hidden="true"></i> Terminal</span>
+                <button type="button" id="terminalWorkspaceToggle" class="btn btn-outline-light btn-sm">Expandir terminal</button>
                 <button type="button" id="mobileTreeToggle" class="btn btn-outline-light btn-sm" aria-controls="fArch" aria-expanded="false">Arquivos</button>
                 <span id="mobileWorkspaceTitle">EDITOR</span>
 
@@ -416,122 +418,59 @@
                     </div>
                 </div>
 
-                <style>
-                    #resizer {
-                        background: #1d2245;
-                        width: 100%;
-                        height: 5px;
-                        cursor: row-resize;
-                        position: relative;
-                        z-index: 100;
-                    }
-                    .footer-terminal {
-                        position: fixed;
-                        bottom: 0;
-                        left: 0;
-                        background: #000000;
-                        color: #fff;
-                        z-index: 1000;
-                        overflow: hidden;
-                    }
-                    .terminal-tab-label {
-                        display: inline-block;
-                        max-width: 120px;
-                        overflow: hidden;
-                        text-overflow: ellipsis;
-                        white-space: nowrap;
-                        vertical-align: middle;
-                        cursor: pointer;
-                        user-select: none;
-                    }
-                    .terminal-rename-input {
-                        background: transparent;
-                        border: none;
-                        border-bottom: 1px solid #4e8ef7;
-                        color: #fff;
-                        font-size: inherit;
-                        outline: none;
-                        width: 100px;
-                        padding: 0;
-                    }
-                    #tabsTerm .nav-link .close-tab {
-                        opacity: 0.5;
-                        font-size: 14px;
-                        line-height: 1;
-                        vertical-align: middle;
-                        cursor: pointer;
-                        margin-left: 4px;
-                    }
-                    #tabsTerm .nav-link .close-tab:hover {
-                        opacity: 1;
-                        color: #ff5555;
-                    }
-                    #tabsTerm .nav-link.active {
-                        border-bottom: 2px solid #4e8ef7;
-                    }
-                    .xterm-container {
-                        width: 100%;
-                    }
-                    /* ---- Context menu ---- */
-                    #terminal-ctx-menu {
-                        position: fixed;
-                        z-index: 99999;
-                        background: #1a1d2e;
-                        border: 1px solid #2e3250;
-                        border-radius: 6px;
-                        padding: 4px 0;
-                        min-width: 170px;
-                        box-shadow: 0 8px 24px rgba(0,0,0,.55);
-                        list-style: none;
-                        margin: 0;
-                        display: none;
-                        font-size: 13px;
-                    }
-                    #terminal-ctx-menu li {
-                        padding: 7px 16px;
-                        cursor: pointer;
-                        color: #d0d4f0;
-                        display: flex;
-                        align-items: center;
-                        gap: 9px;
-                        white-space: nowrap;
-                        transition: background .12s;
-                    }
-                    #terminal-ctx-menu li:hover {
-                        background: #252947;
-                        color: #fff;
-                    }
-                    #terminal-ctx-menu li.ctx-danger:hover {
-                        background: #3d1c1c;
-                        color: #ff6b6b;
-                    }
-                    #terminal-ctx-menu hr {
-                        border-color: #2e3250;
-                        margin: 3px 0;
-                    }
-                </style>
-                <ul id="terminal-ctx-menu">
-                    <li data-action="rename"><i class="fa-solid fa-pencil fa-fw"></i> Renomear</li>
-                    <li data-action="duplicate"><i class="fa-solid fa-clone fa-fw"></i> Duplicar terminal</li>
-                    <li data-action="new"><i class="fa-solid fa-plus fa-fw"></i> Novo terminal</li>
-                    <hr/>
-                    <li data-action="close-others"><i class="fa-solid fa-xmark-to-slot fa-fw"></i> Fechar outros</li>
-                    <li data-action="close" class="ctx-danger"><i class="fa-solid fa-xmark fa-fw"></i> Fechar</li>
+                <link rel="stylesheet" href="css/terminal.css?v=mobile-selection-1">
+                <ul id="terminal-ctx-menu" role="menu" aria-label="Ações da sessão">
+                    <li role="none"><button type="button" role="menuitem" data-action="rename">Renomear</button></li>
+                    <li role="none"><button type="button" role="menuitem" data-action="duplicate">Abrir outra sessão</button></li>
+                    <li role="none"><button type="button" role="menuitem" data-action="close-others">Encerrar outras sessões</button></li>
+                    <li role="none"><button type="button" role="menuitem" data-action="close" class="ctx-danger">Encerrar sessão</button></li>
                 </ul>
                 <div class="col-md-12 footer-terminal" id="footer-terminal">
+                    <div id="terminalWorkspaceBar">
+                        <button type="button" id="terminalLibraryToggle" aria-controls="terminalLibrary" aria-expanded="false">Sessões</button>
+                        <span id="terminalToolbarCaption">Terminal deste servidor</span>
+                        <div id="terminalZoom" role="group" aria-label="Tamanho do texto do terminal">
+                            <button type="button" data-terminal-zoom="-1" aria-label="Diminuir texto">−</button>
+                            <button type="button" data-terminal-zoom="0" id="terminalZoomValue" title="Restaurar tamanho padrão">100%</button>
+                            <button type="button" data-terminal-zoom="1" aria-label="Aumentar texto">+</button>
+                        </div>
+                        <button type="button" data-terminal-create>+ Nova sessão</button>
+                    </div>
+                    <aside id="terminalLibrary" aria-label="Biblioteca de sessões">
+                        <label for="terminalSessionSearch">Sessões deste servidor</label>
+                        <input id="terminalSessionSearch" type="search" placeholder="Buscar sessão…" autocomplete="off">
+                        <div id="terminalSessionList"></div>
+                    </aside>
                     <div id="resizer"></div>
                     <div id="mobileTerminalHeading"><span class="terminal-live-dot"></span><span>SESSÕES</span><span class="terminal-heading-caption">Terminal integrado</span></div>
                     <ul class="nav nav-tabs" id="tabsTerm">
                         <li class="nav-item" id="new-terminal">
-                            <a class="nav-link active mt-1" href="#" title="Novo terminal">
-                                <i class="fa-duotone fa-solid fa-circle-plus"></i>
+                            <a class="nav-link active mt-1" href="#" title="Novo terminal" aria-label="Nova sessão de shell">
+                                <span aria-hidden="true">+</span>
                             </a>
                         </li>
                     </ul>
-                    <div id="terms"><div id="mobileTerminalEmpty"><span>Toque em <strong>+</strong> para abrir um terminal.</span></div></div>
+                    <div id="terminalNotice" role="status" aria-live="polite" hidden>
+                        <span id="terminalNoticeText"></span><button type="button" id="terminalNoticeAction"></button>
+                    </div>
+                    <div id="terms"><div id="mobileTerminalEmpty"><div><i class="fa-solid fa-terminal" aria-hidden="true"></i><h2 id="terminalEmptyTitle">Seu terminal, seu espaço</h2><p>Abra uma sessão para começar a trabalhar.</p><button type="button" id="terminalEmptyAction">Nova sessão</button></div></div></div>
                     <div id="mobileTerminalKeys" role="toolbar" aria-label="Teclas do terminal">
+                        <button type="button" data-terminal-action="select" aria-pressed="false" title="Ativar seleção por arraste">Selecionar</button>
+                        <button type="button" data-terminal-action="copy">Copiar</button>
+                        <button type="button" data-terminal-action="paste" title="Colar o texto da área de transferência">Colar</button>
+                        <button type="button" data-terminal-key="ctrlv" title="Enviar Ctrl+V ao programa no terminal; não cola texto">Ctrl V</button>
+                        <button type="button" data-terminal-action="all">Sel. tudo</button>
+                        <button type="button" data-terminal-action="clear-selection">Limpar seleção</button>
                         <button type="button" data-terminal-key="esc">Esc</button>
                         <button type="button" data-terminal-key="tab">Tab</button>
+                        <button type="button" data-terminal-key="enter">Enter</button>
+                        <button type="button" data-terminal-key="backspace">⌫</button>
+                        <button type="button" data-terminal-key="ctrld">Ctrl D</button>
+                        <button type="button" data-terminal-key="ctrlz">Ctrl Z</button>
+                        <button type="button" data-terminal-key="ctrll">Ctrl L</button>
+                        <button type="button" data-terminal-key="ctrlr">Ctrl R</button>
+                        <button type="button" data-terminal-key="ctrla">Ctrl A</button>
+                        <button type="button" data-terminal-key="ctrle">Ctrl E</button>
                         <button type="button" data-terminal-key="ctrlc">Ctrl C</button>
                         <button type="button" data-terminal-key="up" aria-label="Seta para cima">↑</button>
                         <button type="button" data-terminal-key="down" aria-label="Seta para baixo">↓</button>
@@ -542,528 +481,24 @@
                         <button type="button" data-terminal-key="slash">/</button>
                         <button type="button" data-terminal-key="pipe">|</button>
                         <button type="button" data-terminal-key="tilde">~</button>
+                        <button type="button" data-terminal-key="pageup">PgUp</button>
+                        <button type="button" data-terminal-key="pagedown">PgDn</button>
+                        <button type="button" data-terminal-action="top">Início histórico</button>
+                        <button type="button" data-terminal-action="bottom">Fim histórico</button>
                     </div>
+                    <dialog id="terminalClipboardDialog" aria-labelledby="terminalClipboardTitle">
+                        <h3 id="terminalClipboardTitle"></h3>
+                        <p id="terminalClipboardHint"></p>
+                        <textarea id="terminalClipboardText" aria-label="Texto da área de transferência" spellcheck="false"></textarea>
+                        <div><button type="button" id="terminalClipboardConfirm">Colar no terminal</button><button type="button" id="terminalClipboardClose">Fechar</button></div>
+                    </dialog>
+                    <div id="terminalActionStatus" role="status" aria-live="polite" hidden></div>
+                    <div id="terminalStatusBar" role="status" aria-live="polite">Nenhuma sessão selecionada</div>
                 </div>
-                <script>
-                    let terminals = {};
-
-                    // ---- Token helper ----
-                    function getToken() {
-                        return localStorage.tokenBrowser || document.getElementById('fp')?.innerText?.trim() || '';
-                    }
-
-                    async function waitForToken() {
-                        return new Promise((resolve) => {
-                            const check = setInterval(() => {
-                                const t = getToken();
-                                if (t && t.length > 3) {
-                                    clearInterval(check);
-                                    resolve(t);
-                                }
-                            }, 100);
-                        });
-                    }
-
-                    // ---- API helpers ----
-                    async function apiSaveTerminal(session) {
-                        const token = getToken();
-                        return fetch(`/saveTerminal?tokenBrowser=${token}`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                id: session.id,
-                                name: session.name,
-                            }),
-                        }).then(r => r.json()).catch(() => ({}));
-                    }
-
-                    async function apiDeleteTerminal(terminalId) {
-                        const token = getToken();
-                        return fetch(`/deleteTerminal?tokenBrowser=${token}&id=${terminalId}`)
-                            .then(r => r.json()).catch(() => ({}));
-                    }
-
-                    async function apiGetTerminals() {
-                        const token = getToken();
-                        return fetch(`/getTerminals?tokenBrowser=${token}`)
-                            .then(r => r.json()).catch(() => []);
-                    }
-
-                    // ---- LocalStorage helpers ----
-                    function getStoredTerminals() {
-                        try {
-                            const raw = localStorage.getItem('storageTerminals');
-                            return raw ? JSON.parse(raw) : [];
-                        } catch { return []; }
-                    }
-
-                    function setStoredTerminals(sessions) {
-                        localStorage.setItem('storageTerminals', JSON.stringify(sessions));
-                    }
-
-                    function getXtermDimensions() {
-                        try {
-                            const raw = localStorage.getItem('xtermDimensions');
-                            return raw ? JSON.parse(raw) : null;
-                        } catch { return null; }
-                    }
-
-                    // ---- Tab & terminal creation ----
-                    function createTerminalTab(options) {
-                        const { id: terminalId, name } = options;
-
-                        let container = document.getElementById(terminalId);
-                        if (!container) {
-                            container = document.createElement('div');
-                            container.id = terminalId;
-                            container.className = 'xterm-container';
-                            container.style.display = 'none';
-                            document.getElementById('terms').appendChild(container);
-                        }
-
-                        const li = document.createElement('li');
-                        li.classList.add('nav-item');
-                        li.dataset.terminalId = terminalId;
-
-                        const link = document.createElement('a');
-                        link.classList.add('nav-link');
-                        link.href = '#';
-
-                        const icon = document.createElement('i');
-                        icon.className = 'fa-duotone fa-solid fa-terminal me-1';
-
-                        const label = document.createElement('span');
-                        label.className = 'terminal-tab-label';
-                        label.textContent = name;
-                        label.title = 'Clique duplo para renomear';
-
-                        const closeBtn = document.createElement('span');
-                        closeBtn.className = 'close-tab';
-                        closeBtn.innerHTML = '&times;';
-
-                        link.appendChild(icon);
-                        link.appendChild(label);
-                        link.appendChild(closeBtn);
-                        li.appendChild(link);
-                        document.getElementById('new-terminal').before(li);
-
-                        label.addEventListener('dblclick', (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            startRename(label, options);
-                        });
-
-                        link.addEventListener('click', (e) => {
-                            if (e.target === closeBtn || e.target.closest('.close-tab')) return;
-                            selectTerminalTab(terminalId);
-                        });
-
-                        closeBtn.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            closeTerminalTab(terminalId);
-                        });
-
-                        link.addEventListener('contextmenu', (e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            showTerminalCtxMenu(e.clientX, e.clientY, terminalId, label, options);
-                        });
-
-                        const dims = getXtermDimensions();
-                        const term = new window.Terminal({
-                            cursorBlink: true,
-                            cols: dims?.cols ?? 100,
-                            rows: dims?.rows ?? 30,
-                            scrollback: 5000,
-                            allowProposedApi: true,
-                            theme: {
-                                background: '#000000',
-                                foreground: '#f0f0f0',
-                                cursor: '#00bfff',
-                            },
-                        });
-                        term.open(container);
-                        terminals[terminalId] = { terminal: term, socket: null, options };
-
-                        term.onResize((size) => {
-                            const sock = terminals[terminalId]?.socket;
-                            if (sock?.readyState === WebSocket.OPEN) {
-                                sock.send(JSON.stringify({
-                                    command: 'resizeXtermHandlerCommand',
-                                    cols: size.cols,
-                                    rows: size.rows,
-                                    isCodex: true,
-                                }));
-                            }
-                        });
-
-                        // Ctrl+C inteligente (copia se houver seleção) e Ctrl+V com
-                        // bracketed paste — roda ANTES do xterm processar a tecla,
-                        // evitando que o browser/atalho nativo interfira na seleção.
-                        term.attachCustomKeyEventHandler((event) => {
-                            if (event.type !== 'keydown') return true;
-                            if (!event.ctrlKey || event.altKey || event.metaKey) return true;
-
-                            const key = event.key.toLowerCase();
-
-                            if (key === 'c' && !event.shiftKey) {
-                                const sel = term.getSelection();
-                                if (sel) {
-                                    navigator.clipboard.writeText(sel).catch(() => {});
-                                    term.clearSelection();
-                                    event.preventDefault();
-                                    return false;
-                                }
-                                return true;
-                            }
-
-                            if (key === 'v' && !event.shiftKey) {
-                                navigator.clipboard.readText().then((text) => {
-                                    if (text) term.paste(text);
-                                }).catch(() => {});
-                                event.preventDefault();
-                                return false;
-                            }
-
-                            return true;
-                        });
-
-                        // onData captura teclado + sequências de mouse geradas pelo xterm
-                        // quando apps como htop habilitam mouse reporting (ex: \x1b[?1000h)
-                        term.onData((data) => {
-                            const sock = terminals[terminalId]?.socket;
-                            if (!sock || sock.readyState !== WebSocket.OPEN) return;
-                            try {
-                                runCommand(sock, data);
-                            } catch (e) {
-                                console.error('Erro ao processar entrada:', e);
-                            }
-                        });
-
-                        initWebSocket(term, options);
-                        selectTerminalTab(terminalId);
-                        return { term, container };
-                    }
-
-                    // ---- Context menu ----
-                    (function () {
-                        const ctxMenu = document.getElementById('terminal-ctx-menu');
-                        let ctxTarget = null; // { terminalId, labelEl, options }
-
-                        function hideCtxMenu() {
-                            ctxMenu.style.display = 'none';
-                            ctxTarget = null;
-                        }
-
-                        window.showTerminalCtxMenu = function (x, y, terminalId, labelEl, options) {
-                            ctxTarget = { terminalId, labelEl, options };
-                            // Keep menu inside the viewport
-                            const menuW = 180, menuH = 180;
-                            const left = Math.min(x, window.innerWidth - menuW - 8);
-                            const top = Math.min(y, window.innerHeight - menuH - 8);
-                            ctxMenu.style.left = left + 'px';
-                            ctxMenu.style.top = top + 'px';
-                            ctxMenu.style.display = 'block';
-                        };
-
-                        ctxMenu.addEventListener('click', async (e) => {
-                            const item = e.target.closest('[data-action]');
-                            if (!item || !ctxTarget) return;
-                            const { terminalId, labelEl, options } = ctxTarget;
-                            hideCtxMenu();
-
-                            switch (item.dataset.action) {
-                                case 'rename':
-                                    startRename(labelEl, options);
-                                    break;
-
-                                case 'duplicate': {
-                                    const sessions = getStoredTerminals();
-                                    const newId = Math.random().toString(36).substring(2, 15)
-                                               + Math.random().toString(36).substring(2, 15);
-                                    const srcName = options.name || 'Terminal';
-                                    const newName = srcName + ' (cópia)';
-                                    const token = await waitForToken();
-                                    sessions.push({ id: newId, name: newName });
-                                    setStoredTerminals(sessions);
-                                    createTerminalTab({ id: newId, name: newName, token });
-                                    await apiSaveTerminal({ id: newId, name: newName });
-                                    break;
-                                }
-
-                                case 'new':
-                                    document.getElementById('new-terminal').click();
-                                    break;
-
-                                case 'close-others': {
-                                    const allIds = [...document.querySelectorAll('#tabsTerm li[data-terminal-id]')]
-                                        .map(li => li.dataset.terminalId)
-                                        .filter(id => id !== terminalId);
-                                    for (const id of allIds) await closeTerminalTab(id);
-                                    selectTerminalTab(terminalId);
-                                    break;
-                                }
-
-                                case 'close':
-                                    await closeTerminalTab(terminalId);
-                                    break;
-                            }
-                        });
-
-                        // Close on outside click or Escape
-                        document.addEventListener('click', (e) => {
-                            if (!ctxMenu.contains(e.target)) hideCtxMenu();
-                        });
-                        document.addEventListener('keydown', (e) => {
-                            if (e.key === 'Escape') hideCtxMenu();
-                        });
-                    })();
-
-                    // ---- Rename (double-click on tab label) ----
-                    function startRename(labelEl, options) {
-                        const terminalId = options.id;
-                        const currentName = labelEl.textContent;
-                        labelEl.classList.add('editing');
-
-                        const input = document.createElement('input');
-                        input.type = 'text';
-                        input.value = currentName;
-                        input.className = 'terminal-rename-input';
-                        labelEl.textContent = '';
-                        labelEl.appendChild(input);
-                        input.focus();
-                        input.select();
-
-                        const finishRename = async () => {
-                            const newName = input.value.trim() || currentName;
-                            labelEl.classList.remove('editing');
-                            labelEl.textContent = newName;
-                            options.name = newName;
-
-                            const sessions = getStoredTerminals();
-                            const idx = sessions.findIndex(s => s.id === terminalId);
-                            if (idx !== -1) sessions[idx].name = newName;
-                            setStoredTerminals(sessions);
-                            await apiSaveTerminal({ id: terminalId, name: newName });
-                        };
-
-                        input.addEventListener('blur', finishRename);
-                        input.addEventListener('keydown', (e) => {
-                            if (e.key === 'Enter') input.blur();
-                            if (e.key === 'Escape') { input.value = currentName; input.blur(); }
-                        });
-                    }
-
-                    // ---- Select/show tab ----
-                    function selectTerminalTab(terminalId) {
-                        document.querySelectorAll('#tabsTerm .nav-link').forEach(l => l.classList.remove('active'));
-                        document.querySelectorAll('#terms .xterm-container').forEach(c => { c.style.display = 'none'; });
-                        const li = document.querySelector(`#tabsTerm [data-terminal-id="${terminalId}"]`);
-                        if (li) li.querySelector('.nav-link').classList.add('active');
-                        const container = document.getElementById(terminalId);
-                        if (container) container.style.display = 'block';
-                        adjustTerminalSizeFromStorage(terminalId);
-                    }
-
-                    // ---- Close tab ----
-                    async function closeTerminalTab(terminalId) {
-                        const termInfo = terminals[terminalId];
-                        if (termInfo?.socket?.readyState === WebSocket.OPEN) {
-                            try {
-                                termInfo.socket.send(JSON.stringify({
-                                    command: 'closeXtermHandlerCommand',
-                                    isCodex: true,
-                                }));
-                            } catch {}
-                            termInfo.socket.onclose = null;
-                            termInfo.socket.close();
-                        }
-
-                        document.querySelector(`#tabsTerm [data-terminal-id="${terminalId}"]`)?.remove();
-                        document.getElementById(terminalId)?.remove();
-                        delete terminals[terminalId];
-
-                        const sessions = getStoredTerminals().filter(s => s.id !== terminalId);
-                        setStoredTerminals(sessions);
-                        await apiDeleteTerminal(terminalId);
-
-                        const remaining = document.querySelectorAll('#tabsTerm li[data-terminal-id]');
-                        if (remaining.length > 0) {
-                            selectTerminalTab(remaining[remaining.length - 1].dataset.terminalId);
-                        }
-                    }
-
-                    // ---- Vertical resizer ----
-                    document.getElementById('resizer').addEventListener('mousedown', (e) => {
-                        e.preventDefault();
-                        window.addEventListener('mousemove', onResizerMove);
-                        window.addEventListener('mouseup', () => window.removeEventListener('mousemove', onResizerMove));
-                    });
-
-                    function onResizerMove(e) {
-                        const footerTerminal = document.getElementById('footer-terminal');
-                        const editorEl = document.getElementById('editor');
-                        const fArch = document.getElementById('fArch');
-                        const filesArchitecture = document.getElementById('filesArchitecture');
-                        const newWidth = document.getElementById('terms').clientWidth;
-                        const newHeight = window.innerHeight - e.clientY;
-
-                        const editorHeight = footerTerminal.getBoundingClientRect().top;
-                        if (editorEl) editorEl.style.height = `${editorHeight - 80}px`;
-                        if (fArch) fArch.style.height = `${editorHeight - 70}px`;
-                        if (filesArchitecture) filesArchitecture.style.height = `${editorHeight - 130}px`;
-
-                        const calcCols = Math.floor(newWidth / 9) - 2;
-                        const calcRows = Math.floor(document.getElementById('terms').getBoundingClientRect().height / 17);
-
-                        Object.keys(terminals).forEach((id) => {
-                            const el = document.getElementById(id);
-                            if (el) {
-                                el.style.width = `${newWidth}px`;
-                                el.style.height = `${newHeight - 42}px`;
-                            }
-                            const info = terminals[id];
-                            if (info?.terminal) info.terminal.resize(calcCols, calcRows);
-                        });
-
-                        localStorage.setItem('xtermDimensions', JSON.stringify({
-                            cols: calcCols,
-                            rows: calcRows,
-                            width: newWidth,
-                            height: newHeight - 42,
-                            editor: { width: editorEl?.clientWidth, height: editorEl?.clientHeight },
-                            filesArchitecture: { width: filesArchitecture?.clientWidth, height: filesArchitecture?.clientHeight },
-                        }));
-                    }
-
-                    function adjustTerminalSizeFromStorage(terminalId) {
-                        const el = document.getElementById(terminalId);
-                        if (!el) return;
-                        if (window.matchMedia('(max-width: 767.98px)').matches) {
-                            const termsArea = document.getElementById('terms');
-                            const width = termsArea.clientWidth;
-                            const height = termsArea.clientHeight;
-                            if (!width || !height) return;
-                            el.style.width = `${width}px`;
-                            el.style.height = `${height}px`;
-                            terminals[terminalId]?.terminal?.resize(
-                                Math.max(20, Math.floor(width / 9) - 2),
-                                Math.max(3, Math.floor(height / 17) - 1)
-                            );
-                            return;
-                        }
-                        const dims = getXtermDimensions();
-                        if (!dims) return;
-                        el.style.width = `${dims.width}px`;
-                        el.style.height = `${dims.height}px`;
-                        const info = terminals[terminalId];
-                        if (info?.terminal) {
-                            const calcCols = Math.floor(dims.width / 9) - 2;
-                            const calcRows = Math.floor(dims.height / 17);
-                            info.terminal.resize(calcCols, calcRows);
-                        }
-                    }
-
-                    // ---- WebSocket ----
-                    async function initWebSocket(terminal, options) {
-                        const token = await waitForToken();
-                        options.token = token;
-
-                        const terminalId = options.id;
-                        const hostname = window.location.port
-                            ? `${window.location.hostname}:${window.location.port}`
-                            : window.location.hostname;
-                        const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-                        const wsToken = `${token}-${terminalId}`;
-                        let socket;
-                        try { socket = new WebSocket(await FMAuth.socketUrl(`${protocol}://${hostname}/${wsToken}`)); }
-                        catch (error) { if (terminals[terminalId] && FMAuth.shouldRetry(error)) setTimeout(() => initWebSocket(terminal, options), 3000); return; }
-
-                        if (terminals[terminalId]) terminals[terminalId].socket = socket;
-
-                        socket.onopen = () => {
-                            socket.send(JSON.stringify({
-                                command: 'startXtermHandlerCommand',
-                                token: wsToken,
-                                isCodex: true,
-                            }));
-                        };
-
-                        socket.onmessage = (event) => {
-                            if (event.data) {
-                                if (event.data.includes('\x1b[H') && event.data.includes('\x1b[2J')) {
-                                    terminal.clear();
-                                }
-                                terminal.write(event.data);
-                            }
-                        };
-
-                        socket.onclose = () => {
-                            if (terminals[terminalId] && FMAuth.shouldRetry()) {
-                                console.warn(`Terminal "${terminalId}" desconectado, reconectando em 3s...`);
-                                setTimeout(() => initWebSocket(terminal, options), 3000);
-                            }
-                        };
-
-                        socket.onerror = (err) => {
-                            console.error(`Erro no WebSocket do terminal "${terminalId}":`, err);
-                        };
-                    }
-
-                    window.runCommand = (socket, command) => {
-                        if (socket?.readyState === WebSocket.OPEN) {
-                            try {
-                                socket.send(JSON.stringify({
-                                    command,
-                                    isCodex: true,
-                                }));
-                            } catch (e) {
-                                console.error('Erro ao enviar comando:', e);
-                            }
-                        }
-                    };
-
-                    // ---- "+" button: create new terminal ----
-                    document.getElementById('new-terminal').addEventListener('click', async () => {
-                        const sessions = getStoredTerminals();
-                        const id = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-                        const name = `Terminal ${sessions.length + 1}`;
-                        const token = await waitForToken();
-                        const session = { id, name, token };
-                        sessions.push({ id, name });
-                        setStoredTerminals(sessions);
-                        createTerminalTab(session);
-                        await apiSaveTerminal({ id, name });
-                    });
-
-                    // Legacy alias
-                    window.createTabTerminal = async () => document.getElementById('new-terminal').click();
-
-                    // ---- Page load: restore saved terminals ----
-                    document.onreadystatechange = async function () {
-                        if (document.readyState !== 'complete') return;
-                        try { await FMAuth.ready(); }
-                        catch { return; }
-
-                        const dims = getXtermDimensions();
-                        const editorEl = document.getElementById('editor');
-                        const filesArchitecture = document.getElementById('filesArchitecture');
-                        if (!window.matchMedia('(max-width: 767.98px)').matches) {
-                            if (editorEl && dims?.editor?.height) editorEl.style.height = `${dims.editor.height}px`;
-                            if (filesArchitecture && dims?.filesArchitecture?.height) filesArchitecture.style.height = `${dims.filesArchitecture.height}px`;
-                        }
-
-                        const token = await waitForToken();
-                        const serverSessions = await apiGetTerminals();
-                        if (Array.isArray(serverSessions) && serverSessions.length > 0) {
-                            setStoredTerminals(serverSessions);
-                            for (const session of serverSessions) {
-                                createTerminalTab({ ...session, token });
-                            }
-                        }
-                    };
-                </script>
+                <script src="js/terminal/vendor/xterm-addon-fit.js"></script>
+                <script src="js/terminal/sessions.js?v=mobile-selection-1"></script>
+                <script src="js/terminal/mobile-actions.js?v=mobile-selection-1"></script>
+                <script src="js/terminal/workspace.js?v=mobile-selection-1"></script>
 
 
                 <script>
@@ -1119,8 +554,9 @@
             if (button.dataset.mobileView === view) button.setAttribute("aria-current", "page");
             else button.removeAttribute("aria-current");
         });
+        document.dispatchEvent(new CustomEvent('fm:terminal-layout'));
         requestAnimationFrame(() => {
-            if (typeof editor !== 'undefined') editor?.layout();
+            if (typeof editor !== 'undefined') editor?.layout?.();
             if (terminalView) refreshMobileEditor();
         });
     }
@@ -1132,8 +568,12 @@
         const active = document.querySelector("#tabsTerm [data-terminal-id] .nav-link.active")?.closest("[data-terminal-id]");
         const session = active && terminals[active.dataset.terminalId];
         if (!session) return;
+        if (button.dataset.terminalAction) { window.FMTerminalActions?.run(button.dataset.terminalAction); return; }
+        if (session.status !== 'connected') return;
         const keys = {
-            esc: "\x1b", tab: "\t", ctrlc: "\x03",
+            esc: "\x1b", tab: "\t", ctrlc: "\x03", ctrlv: "\x16",
+            enter: "\r", backspace: "\x7f", ctrld: "\x04", ctrlz: "\x1a", ctrll: "\x0c",
+            ctrlr: "\x12", ctrla: "\x01", ctrle: "\x05", pageup: "\x1b[5~", pagedown: "\x1b[6~",
             up: "\x1b[A", down: "\x1b[B", left: "\x1b[D", right: "\x1b[C",
             home: "\x1b[H", end: "\x1b[F", slash: "/", pipe: "|", tilde: "~"
         };
@@ -1141,15 +581,36 @@
         if (key) runCommand(session.socket, key);
         session.terminal.focus();
     }
+    // Let the browser scroll horizontally; a shortcut fires only after a tap.
+    let shortcutTouch = null;
+    let ignoreShortcutClickUntil = 0;
     mobileTerminalKeys.addEventListener("touchstart", event => {
-        const button = event.target.closest("button[data-terminal-key]");
-        if (!button) return;
+        const point = event.touches[0];
+        const button = event.target.closest("button[data-terminal-key], button[data-terminal-action]");
+        shortcutTouch = event.touches.length === 1 && button
+            ? {id: point.identifier, x: point.clientX, y: point.clientY, button, moved: false} : null;
+    }, {passive: true});
+    mobileTerminalKeys.addEventListener("touchmove", event => {
+        if (!shortcutTouch) return;
+        const point = [...event.touches].find(touch => touch.identifier === shortcutTouch.id);
+        if (!point || event.touches.length !== 1 || Math.hypot(point.clientX - shortcutTouch.x, point.clientY - shortcutTouch.y) > 8) shortcutTouch.moved = true;
+    }, {passive: true});
+    mobileTerminalKeys.addEventListener("touchend", event => {
+        ignoreShortcutClickUntil = Date.now() + 700;
+        const gesture = shortcutTouch;
+        shortcutTouch = null;
+        const point = gesture && [...event.changedTouches].find(touch => touch.identifier === gesture.id);
+        if (!gesture || gesture.moved || event.touches.length || !point || Math.hypot(point.clientX - gesture.x, point.clientY - gesture.y) > 8) return;
         event.preventDefault();
-        sendMobileTerminalKey(button);
+        sendMobileTerminalKey(gesture.button);
     }, {passive: false});
+    mobileTerminalKeys.addEventListener("touchcancel", () => {
+        shortcutTouch = null;
+        ignoreShortcutClickUntil = Date.now() + 700;
+    }, {passive: true});
     mobileTerminalKeys.addEventListener("click", event => {
-        const button = event.target.closest("button[data-terminal-key]");
-        if (!button || event.sourceCapabilities?.firesTouchEvents) return;
+        const button = event.target.closest("button[data-terminal-key], button[data-terminal-action]");
+        if (!button || (event.detail !== 0 && Date.now() < ignoreShortcutClickUntil) || event.sourceCapabilities?.firesTouchEvents) return;
         sendMobileTerminalKey(button);
     });
     let mobileViewportBaseline = 0;
@@ -1178,7 +639,7 @@
     function refreshMobileEditor() {
         if (!window.matchMedia("(max-width: 767.98px)").matches || !mobileEditorModal.classList.contains("show")) return;
         requestAnimationFrame(() => requestAnimationFrame(() => {
-            if (typeof editor !== "undefined") editor?.layout();
+            if (typeof editor !== "undefined") editor?.layout?.();
             const activeTerminal = document.querySelector("#tabsTerm [data-terminal-id] .nav-link.active")?.closest("[data-terminal-id]");
             if (activeTerminal) adjustTerminalSizeFromStorage(activeTerminal.dataset.terminalId);
         }));

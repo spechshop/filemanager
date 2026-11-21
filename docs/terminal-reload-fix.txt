@@ -1,0 +1,45 @@
+Correção de duplicação após recarregar e retomar um terminal — 21/11/2026
+
+Reprodução isolada, antes da correção:
+- Navegador abre WebSocket e envia início + resize imediatamente.
+- Upgrade do bridge atrasado em 60 ms para expor concorrência de corrotinas.
+- A entrada x chega uma vez ao bridge em todos os ciclos.
+- Com 0, 1, 2, 3, 4 e 5 recarregamentos, a saída é x, xx, xxx, xxxx,
+  xxxxx e xxxxxx. As conexões ao bridge crescem de 2 para 7.
+
+Causa confirmada:
+O upgrade HTTP do cliente PTY cede a execução da corrotina. Mensagens de
+início e resize podiam criar clientes simultâneos para o mesmo terminal.
+Um cliente sobrescrevia a referência global do outro. Ao recarregar, o
+close encerrava apenas o cliente referenciado; retransmissores órfãos
+continuavam recebendo saída e enviando para o fd da conexão nova.
+
+Correção em plugins/Message/server/server.php:
+- Exclusão por sessão na obtenção do cliente, instalação do relay e envio
+  dos comandos compostos de resize. A referência do bloqueio é removida
+  quando não há usuários ativos nem aguardando.
+- Revalidação do vínculo do navegador após esperar pelo bloqueio e depois
+  do upgrade: desconexões durante o upgrade não deixam um relay órfão.
+- Relay só encaminha saída enquanto continua sendo o cliente atual.
+- Heartbeat é cancelado no fechamento da conexão do navegador.
+- Não foi adicionada deduplicação de caracteres: teclas repetidas legítimas
+  permanecem permitidas. Backends PTY e protocolo externo foram preservados.
+
+Regressão em scripts/security/terminal-reload-integration.cjs:
+1. Servidor Swoole real + bridge controlado com upgrade atrasado: seis
+   retomadas, uma conexão, uma entrada x e uma saída x por ciclo; fechamento
+   libera todos os bridges. Também cobre navegador saindo durante o upgrade.
+2. Swoole + node-pty e shell reais: seis retomadas com eco único e mesmo PID.
+3. Swoole + PTY PHP e shell reais: mesmos critérios.
+
+Resultado: 3/3 testes aprovados, sem skips.
+Também aprovados: integração Swoole de autorização HTTP/WebSocket e os
+cinco testes de transporte/autenticação (6/6).
+
+Comando registrado para ambiente com runtimes gerenciados:
+source scripts/runtime-exec.sh
+SECURITY_PHP_BINARY="$(fm_php "$PWD")" SECURITY_RELOAD_BACKENDS=node,php \
+  ./.runtime/node/bin/node --test scripts/security/terminal-reload-integration.cjs
+
+Atalho disponível: npm run test:terminal:reload
+(O backend Node é o padrão; SECURITY_RELOAD_BACKENDS=node,php inclui PHP.)

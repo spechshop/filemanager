@@ -17,6 +17,7 @@ import time
 import unittest
 import urllib.error
 import urllib.request
+import urllib.parse
 
 ROOT = Path(__file__).resolve().parents[2]
 PHP = os.environ.get('SECURITY_PHP_BINARY', 'php')
@@ -297,6 +298,48 @@ os.execv('/usr/bin/python3',['python3']+sys.argv[1:])
         self.detached_terminal()
         self.stop()
 
+    def test_panel_can_stop_start_and_restart_managed_services(self):
+        # Point the real panel controller at the disposable instance's ports.
+        controller = self.root / 'plugins/Request/apps/fileManagerServices.php'
+        source = controller.read_text()
+        for original, replacement in [(6060, self.ports[1]), (3057, self.ports[2]),
+                                      (3090, free_port()), (3091, free_port())]:
+            source = source.replace(f"'port' => {original},", f"'port' => {replacement},")
+        controller.write_text(source)
+        self.config['fileManager']['ptyBackend'] = 'php'
+        self.start()
+
+        def action(service, operation):
+            request = urllib.request.Request(
+                f'https://127.0.0.1:{self.ports[0]}/fileManagerServices',
+                data=urllib.parse.urlencode({'service': service, 'action': operation}).encode(),
+                headers={'Authorization': 'Bearer fixture', 'Origin': self.env['FILEMANAGER_ORIGIN']})
+            try:
+                with self.http.open(request, timeout=15) as response:
+                    result = json.loads(response.read())
+                    self.assertTrue(result['success'], result)
+                    return next(s for s in result['services'] if s['id'] == service)
+            except Exception as error:
+                raise AssertionError(f'{service} {operation}: {error}\n{self.output()}') from error
+
+        for service, script, port in [('lsp', 'lsp.js', self.ports[2]),
+                                      ('pty', 'pty.php', self.ports[1])]:
+            original = until(lambda: self.service_pid(script))
+            state = action(service, 'stop')
+            self.assertFalse(state['enabled'])
+            self.assertFalse(state['running'])
+            self.assert_reaped({original})
+            time.sleep(1)
+            with self.assertRaises(OSError):
+                socket.create_connection(('127.0.0.1', port), timeout=0.3)
+            for operation in ['start', 'restart']:
+                state = action(service, operation)
+                self.assertTrue(state['enabled'])
+                self.assertTrue(state['running'])
+            state = action(service, 'stop')
+            self.assertFalse(state['running'])
+        self.stop()
+
     def test_php_backend_and_sigint(self):
         self.config['fileManager']['ptyBackend'] = 'php'
         self.start()
@@ -380,6 +423,14 @@ ws.on('close', code => process.exit(code === 1000 ? 0 : 1));
         self.assertEqual(self.output().count('Starting server...'), 2)
 
     def tearDown(self):
+        # Bridges launched by the panel can outlive their spawning HTTP worker.
+        scripts = {str(self.root / name).encode() for name in ['lsp.js', 'pty.js', 'pty.php']}
+        for entry in Path('/proc').glob('[0-9]*/cmdline'):
+            try:
+                if scripts.intersection(entry.read_bytes().split(b'\0')):
+                    self.owned.add(int(entry.parent.name))
+            except OSError:
+                pass
         if self.child and self.child.poll() is None:
             self.owned |= descendants(self.child.pid)
             self.child.terminate()

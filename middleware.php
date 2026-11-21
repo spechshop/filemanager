@@ -175,13 +175,25 @@ if (!function_exists('nodePtyAvailable')) {
  * these PIDs, restarts failed services, and sends SIGTERM + waitpid on shutdown.
  * exec replaces the user process: there is no shell/screen/nohup child to orphan.
  */
-function fileManagerAuxiliaryProcess(array $command): void
+function fileManagerAuxiliaryProcess(array $command, string $service, int $port): void
 {
     global $server;
-    $process = new \Swoole\Process(static function (\Swoole\Process $process) use ($command): void {
+    $process = new \Swoole\Process(static function (\Swoole\Process $process) use ($command, $service, $port): void {
         // The callback runs in a dedicated user process, outside HTTP workers.
         // It must exec in native mode even if the HTTP runtime enables hooks.
         \Swoole\Runtime::enableCoroutine(0);
+        $stopping = false;
+        $stop = static function () use (&$stopping): void { $stopping = true; };
+        pcntl_async_signals(true);
+        pcntl_signal(SIGTERM, $stop);
+        pcntl_signal(SIGINT, $stop);
+        // The manager respawns user processes even after an intentional stop.
+        // Stay idle while disabled, or while a bridge started by the panel owns
+        // the port. Re-read the saved setting instead of the manager's snapshot.
+        while (!$stopping && (!fileManagerServiceEnabled($service) || portAlive($port))) {
+            usleep(200000);
+        }
+        if ($stopping) return;
         $process->exec($command[0], array_slice($command, 1));
         throw new RuntimeException('Unable to execute auxiliary service');
     }, false, 0, false);
@@ -201,7 +213,7 @@ if (!function_exists('startPtyServer')) {
         $node = $backend !== 'php' ? fileManagerPtyNodeBinary() : '';
         if ($node !== '') {
             echo "Iniciando PTY via node (node-pty)...\n";
-            fileManagerAuxiliaryProcess([$node, __DIR__ . '/pty.js']);
+            fileManagerAuxiliaryProcess([$node, __DIR__ . '/pty.js'], 'pty', (int) (getenv('FILEMANAGER_PTY_PORT') ?: 6060));
             return;
         }
         if ($backend === 'node') {
@@ -218,7 +230,7 @@ if (!function_exists('startPtyServer')) {
         echo $backend === 'php'
             ? "Iniciando PTY via PHP/Swoole...\n"
             : "node-pty indisponível; usando fallback em Swoole (pty.php)...\n";
-        fileManagerAuxiliaryProcess([$php, $ptyPhp]);
+        fileManagerAuxiliaryProcess([$php, $ptyPhp], 'pty', (int) (getenv('FILEMANAGER_PTY_PORT') ?: 6060));
     }
 }
 
@@ -242,7 +254,7 @@ if (!function_exists('startLspServer')) {
         }
         if (!fileManagerNodeDependencies($node, ['ws'])) return;
         echo "Iniciando LSP PHP (Intelephense) via node...\n";
-        fileManagerAuxiliaryProcess([$node, __DIR__ . '/lsp.js']);
+        fileManagerAuxiliaryProcess([$node, __DIR__ . '/lsp.js'], 'lsp', (int) (getenv('FILEMANAGER_LSP_PORT') ?: 3057));
     }
 }
 
@@ -286,7 +298,7 @@ if (!function_exists('startGptServer')) {
         }
         if (!fileManagerNodeDependencies($node, ['ws'])) return;
         echo "Iniciando GPT Bridge via node...\n";
-        fileManagerAuxiliaryProcess([$node, __DIR__ . '/gpt.js']);
+        fileManagerAuxiliaryProcess([$node, __DIR__ . '/gpt.js'], 'gpt', 3090);
     }
 }
 
@@ -302,7 +314,7 @@ if (!function_exists('startCodexAgentServer')) {
         if (!fileManagerNodeDependencies($node, ['ws'])) return;
         // codex-agent.js carrega CODEX_ACCESS_TOKEN e CODEX_BIN diretamente do .env.
         echo "Iniciando Codex Agent via app-server...\n";
-        fileManagerAuxiliaryProcess([$node, $script]);
+        fileManagerAuxiliaryProcess([$node, $script], 'codex', (int) (getenv('CODEX_AGENT_PORT') ?: 3091));
     }
 }
 co\run(function () {

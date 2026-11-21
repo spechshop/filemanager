@@ -90,8 +90,8 @@ class fileManagerServices
         $name = self::SERVICES[$service]['name'];
 
         if ($action === 'stop') {
-            self::stop($service, $owner);
             fileManagerConfig::setServiceEnabled($service, false, $owner);
+            self::stop($service, $owner);
             return "$name interrompido.";
         }
 
@@ -102,6 +102,7 @@ class fileManagerServices
                 fileManagerConfig::setServiceEnabled('pty', true, $owner);
                 return 'Terminal PTY já está ativo; conexão recuperada pelo painel.';
             }
+            fileManagerConfig::setServiceEnabled($service, false, $owner);
             self::stop($service, $owner);
         }
 
@@ -228,9 +229,11 @@ class fileManagerServices
         $root = self::root();
         $log = securityPolicy::dataPath($definition['log'], $root . '/' . $definition['log']);
         $escapedCommand = implode(' ', array_map('escapeshellarg', $command));
-        $shellCommand = 'cd ' . escapeshellarg($root)
-            . ' && nohup ' . $escapedCommand
-            . ' >> ' . escapeshellarg($log) . ' 2>&1 < /dev/null &';
+        // Redirect the whole background subshell: otherwise `cd && nohup &`
+        // keeps exec()'s output pipe open for the lifetime of the bridge.
+        $shellCommand = '(cd ' . escapeshellarg($root)
+            . ' && exec nohup ' . $escapedCommand
+            . ') >> ' . escapeshellarg($log) . ' 2>&1 < /dev/null &';
         securityPolicy::requireAdmin($owner);
         exec($shellCommand);
 
@@ -339,7 +342,7 @@ class fileManagerServices
             if ($executable === '') {
                 $executable = basename($args[0] ?? '');
             }
-            if (!str_starts_with($executable, 'node') && !str_starts_with($executable, 'php')) {
+            if (!str_starts_with($executable, 'node') && !str_starts_with($executable, 'php') && $executable !== 'pcg') {
                 continue;
             }
             $cwd = (string) @readlink("/proc/$pid/cwd");
