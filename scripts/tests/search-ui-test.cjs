@@ -24,7 +24,10 @@ function browser() {
         open() { this.readyState = Socket.OPEN; this.onopen(); this.dispatchEvent(new w.Event('open')); }
         send(data) { this.sent.push(JSON.parse(data)); }
         close() { this.readyState = Socket.CLOSED; this.onclose(); this.dispatchEvent(new w.Event('close')); }
-        receive(payload) { this.onmessage({data: JSON.stringify({searchInFile: true, payload})}); }
+        receive(payload) {
+            const requestId = this.sent.filter(item => item.action === 'start').at(-1)?.requestId;
+            this.onmessage({data: JSON.stringify({searchInFile: true, payload: {requestId, ...payload}})});
+        }
     }
     w.WebSocket = Socket;
     w.FMAuth = {socketUrl: async address => { addresses.push(address); return 'wss://localhost:8080/ws/ticket'; }};
@@ -51,8 +54,10 @@ test('search uses the authorized socket identity for start, pause, resume and ca
         const socket = await b.start();
         assert.deepEqual(b.addresses, ['wss://localhost:8080/owner-with-hyphen-search']);
         assert.equal(socket.url, 'wss://localhost:8080/ws/ticket');
+        assert.match(socket.sent[0].requestId, /^s[0-9]+-[a-z0-9]+$/);
         assert.deepEqual(socket.sent[0], {
             searchInFile: true, action: 'start', token: 'owner-with-hyphen-search',
+            requestId: socket.sent[0].requestId,
             search: 'KEY=', path: '/files/a & b', limit: 1000,
         });
         b.w.toggleSearchPause();
@@ -60,6 +65,7 @@ test('search uses the authorized socket identity for start, pause, resume and ca
         b.w.cancelSearch();
         assert.deepEqual(socket.sent.map(command => command.action), ['start', 'pause', 'resume', 'cancel']);
         assert.ok(socket.sent.every(command => command.token === 'owner-with-hyphen-search'));
+        assert.ok(socket.sent.every(command => command.requestId === socket.sent[0].requestId));
     } finally { b.dom.window.close(); }
 });
 
@@ -118,5 +124,78 @@ test('authorization failures leave a visible error and restore the controls', as
         assert.equal(b.sockets.length, 0);
         assert.equal(b.el('searchCancelBtn').disabled, true);
         assert.equal(b.alerts.length, 1);
+    } finally { b.dom.window.close(); }
+});
+
+test('rapid repeated starts share the connection and only start the latest request', async () => {
+    const b = browser();
+    try {
+        b.w.beginSearch('OLD');
+        b.w.beginSearch('NEW');
+        await tick();
+        assert.equal(b.addresses.length, 1, 'only one socket ticket should be issued');
+        assert.equal(b.sockets.length, 1);
+        const socket = b.sockets[0];
+        socket.open();
+        await tick();
+        assert.equal(socket.sent.length, 1);
+        assert.equal(socket.sent[0].search, 'NEW');
+        assert.equal(b.el('searchCancelBtn').disabled, false);
+    } finally { b.dom.window.close(); }
+});
+
+test('stale events and old completion cannot overwrite a replacement search', async () => {
+    const b = browser();
+    try {
+        const socket = await b.start();
+        const oldId = socket.sent[0].requestId;
+        b.w.beginSearch('NEW');
+        await tick();
+        assert.equal(socket.sent.length, 2);
+        const freshId = socket.sent[1].requestId;
+        assert.notEqual(freshId, oldId);
+        socket.receive({requestId: oldId, type: 'result', item: {path: '/files/old.txt'}, found: 1, scanned: 1});
+        socket.receive({requestId: oldId, type: 'status', status: 'complete', found: 1, scanned: 1});
+        assert.equal(b.el('listFoundSearch').textContent.includes('old.txt'), false);
+        assert.equal(b.el('searchCancelBtn').disabled, false);
+        socket.receive({requestId: freshId, type: 'result', item: {path: '/files/new.txt'}, found: 1, scanned: 2});
+        assert.ok(b.el('listFoundSearch').textContent.includes('new.txt'));
+        socket.receive({requestId: freshId, type: 'status', status: 'complete', found: 1, scanned: 2});
+        assert.equal(b.el('searchCancelBtn').disabled, true);
+        assert.match(b.el('searchStatus').textContent, /concluída.*encontrados: 1/);
+    } finally { b.dom.window.close(); }
+});
+
+test('cancel while connecting prevents any delayed start command', async () => {
+    const b = browser();
+    try {
+        b.w.beginSearch('TO-CANCEL');
+        await tick();
+        const socket = b.sockets[0];
+        b.w.cancelSearch();
+        socket.open();
+        await tick();
+        assert.equal(socket.sent.length, 0);
+        assert.equal(b.el('searchCancelBtn').disabled, true);
+        b.w.beginSearch('RETRY');
+        await tick();
+        assert.equal(socket.sent.length, 1);
+        assert.equal(socket.sent[0].search, 'RETRY');
+    } finally { b.dom.window.close(); }
+});
+
+test('a rejected search from the server is not confused with the previous request', async () => {
+    const b = browser();
+    try {
+        const socket = await b.start();
+        const first = socket.sent[0].requestId;
+        b.w.beginSearch('INVALID-PATH');
+        await tick();
+        const second = socket.sent[1].requestId;
+        socket.receive({type:'status', status:'error', requestId:second, message:'A pasta de busca não está disponível ou não é permitida.'});
+        assert.match(b.el('searchStatus').textContent, /não está disponível/);
+        assert.equal(b.el('searchCancelBtn').disabled, true);
+        socket.receive({type:'status', status:'complete', requestId:first, found:2, scanned:10});
+        assert.match(b.el('searchStatus').textContent, /não está disponível/);
     } finally { b.dom.window.close(); }
 });

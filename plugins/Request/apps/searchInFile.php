@@ -48,11 +48,57 @@ class searchInFile
     public static function searchString(string $local, string $string, int $limit, string $owner, array &$found = [], array $seen = []): array
     {
         if (count($found) >= $limit) return $found;
-        foreach (self::walk($local, $owner, $seen) as $entry) {
-            if (count($found) >= $limit) break;
-            if (!$entry['directory'] && self::fileContainsString($entry['path'], $string, $owner)) $found[] = $entry['path'];
+        foreach (self::walkBatches($local, $owner, $seen) as $entries) {
+            $matching = safeFiles::searchFiles(array_column($entries, 'path'), $string, $owner);
+            foreach ($matching as $index) {
+                if (count($found) >= $limit) break 2;
+                $found[] = $entries[$index]['path'];
+            }
         }
         return $found;
+    }
+
+    /** Batch directory traversal as well as content reads. */
+    public static function walkBatches(string $path, string $owner, array $seen = []): \Generator
+    {
+        $root = securityPolicy::path($path, $owner);
+        $pending = [$root];
+        $batch = [];
+        while ($pending !== []) {
+            $directories = [];
+            while ($pending !== [] && count($directories) < 64) {
+                $directory = array_pop($pending);
+                try {
+                    $real = securityPolicy::path($directory, $owner);
+                    if (isset($seen[$real])) continue;
+                    $seen[$real] = true;
+                    $directories[] = $real;
+                } catch (\DomainException $e) {
+                    if ($directory === $root || !securityPolicy::validToken($owner)) throw $e;
+                }
+            }
+            if (!$directories) continue;
+            $groups = safeFiles::listingMany($directories, $owner);
+            foreach ($directories as $index => $directory) {
+                $entries = $groups[$index] ?? null;
+                if ($entries === null) {
+                    if ($directory === $root || !securityPolicy::validToken($owner)) throw new \DomainException('Search directory unavailable');
+                    continue;
+                }
+                foreach ($entries as $entry) {
+                    if ($entry['directory']) {
+                        $pending[] = $entry['path'];
+                    } else {
+                        $batch[] = $entry;
+                        if (count($batch) === 64) {
+                            yield $batch;
+                            $batch = [];
+                        }
+                    }
+                }
+            }
+        }
+        if ($batch) yield $batch;
     }
 
     /** Read-only traversal: skip inaccessible children, without weakening mutation preflights. */
