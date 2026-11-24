@@ -253,3 +253,128 @@ test('denied clipboard opens a native textarea fallback and pastes into the orig
         info.terminal.selected='output';await w.FMTerminalActions.run('copy');assert(dialog.open);assert.equal(w.document.getElementById('terminalClipboardText').value,'output');
     } finally {d.window.close();}
 });
+test('new session buttons create distinct persisted terminals without relying on hidden tab', async () => {
+    const f=fixture(), {w,d,sockets}=f;
+    try {
+        w.FMAuth.ready=async()=>({success:true});
+        w.document.getElementById('new-terminal').style.display='none';
+        let saves=0;
+        w.fetch=async address=>{if(String(address).startsWith('/getTerminals'))return {ok:true,json:async()=>[]}; saves++;return {ok:true,json:async()=>({success:true})};};
+        w.document.getElementById('terminalEmptyAction').click();
+        await new Promise(resolve=>setTimeout(resolve,300));
+        assert.equal(sockets.length,1,'first shell must open');
+        assert.equal(saves,1,'first session persisted');
+        assert.equal(w.document.querySelectorAll('#tabsTerm [data-terminal-id]').length,1);
+        const button=w.document.querySelector('[data-terminal-create]');
+        assert.equal(button.hidden,false);
+        button.click();await new Promise(resolve=>setTimeout(resolve,300));
+        assert.equal(sockets.length,2,'second shell must open');
+        assert.equal(saves,2);
+        assert.equal(w.document.querySelectorAll('#tabsTerm [data-terminal-id]').length,2);
+    } finally {d.window.close();}
+});
+test('new session reports missing authentication and creates no fake tab', async () => {
+    const f=fixture(), {w,d,sockets}=f;
+    try {
+        w.FMAuth.ready=async()=>{throw Object.assign(new Error('Credencial ausente.'),{status:401});};
+        w.document.getElementById('terminalEmptyAction').click();
+        await tick();
+        assert.equal(sockets.length,0);
+        assert.equal(w.document.querySelectorAll('#tabsTerm [data-terminal-id]').length,0);
+        assert.match(w.document.getElementById('terminalNoticeText').textContent,/Credencial ausente/);
+        assert.equal(w.document.getElementById('terminalNotice').hidden,false);
+    } finally {d.window.close();}
+});
+test('new session waits for successful persistence and rejects concurrent clicks', async () => {
+    const f=fixture(), {w,d,sockets}=f;
+    try {
+        w.FMAuth.ready=async()=>({success:true});
+        let resolveRequest, calls=0;
+        w.fetch=async address=>{if(String(address).startsWith('/getTerminals'))return {ok:true,json:async()=>[]}; calls++;return new Promise(resolve=>{resolveRequest=resolve;});};
+        w.document.getElementById('terminalEmptyAction').click();
+        w.document.getElementById('terminalEmptyAction').click();
+        await tick();
+        assert.equal(calls,1);
+        assert.equal(sockets.length,0,'do not open shell until server acknowledges');
+        resolveRequest({ok:true,json:async()=>({success:false,error:'Sem permissão para criar sessão'})});
+        await tick();
+        assert.equal(sockets.length,0);
+        assert.equal(w.document.querySelectorAll('#tabsTerm [data-terminal-id]').length,0);
+        assert.match(w.document.getElementById('terminalNoticeText').textContent,/Sem permissão/);
+        w.fetch=async()=>({ok:true,json:async()=>({success:true})});
+        w.document.getElementById('terminalNoticeAction').click();
+        await new Promise(resolve=>setTimeout(resolve,300));
+        assert.equal(sockets.length,1,'retry recovers after server failure');
+        assert.equal(w.document.getElementById('terminalNotice').hidden,true);
+    } finally {d.window.close();}
+});
+test('stale session-list response does not erase a newly created shell', async () => {
+    const f=fixture(),{w,d,sockets}=f;
+    try {
+        w.document.onreadystatechange=null;
+        w.FMAuth.ready=async()=>({success:true});
+        let completeList;
+        w.fetch=async address=> String(address).startsWith('/getTerminals')
+            ? new Promise(resolve=>{completeList=resolve;})
+            : {ok:true,json:async()=>({success:true})};
+        const pending=w.loadTerminalSessions();
+        await tick();
+        assert.equal(typeof completeList,'function');
+        w.document.getElementById('terminalEmptyAction').click();
+        await new Promise(resolve=>setTimeout(resolve,300));
+        assert.equal(sockets.length,1);
+        completeList({ok:true,json:async()=>[]});
+        await pending;
+        assert.equal(JSON.parse(w.localStorage.storageTerminals).length,1);
+        assert.equal(w.document.querySelectorAll('#tabsTerm [data-terminal-id]').length,1);
+    } finally {d.window.close();}
+});
+test('active credential wins over stale browser storage on session creation', async () => {
+    const f=fixture(),{w,d,sockets}=f;
+    try {
+        w.FMAuth.ready=async()=>({success:true});
+        const current=w.document.createElement('span');current.id='fp';current.textContent='new-valid-credential';
+        w.document.body.appendChild(current);
+        w.localStorage.tokenBrowser='old-expired-credential';
+        let savedUrl='';
+        w.fetch=async address=> {
+            if(String(address).startsWith('/getTerminals'))return {ok:true,json:async()=>[]};
+            savedUrl=String(address);
+            return {ok:true,json:async()=>({success:true})};
+        };
+        w.document.getElementById('terminalEmptyAction').click();
+        await new Promise(resolve=>setTimeout(resolve,300));
+        assert.match(savedUrl,/new-valid-credential/);
+        assert.equal(sockets.length,1);
+        const id=JSON.parse(w.localStorage.storageTerminals)[0].id;
+        assert.equal(f.info(id).options.token,'new-valid-credential');
+    } finally {d.window.close();}
+});
+test('toolbar plus is visible with zero sessions and opens the first shell', async () => {
+    const f=fixture(),{w,d,sockets}=f;
+    try {
+        w.FMAuth.ready=async()=>({success:true});
+        w.fetch=async address=> String(address).startsWith('/getTerminals')
+            ? {ok:true,json:async()=>[]}
+            : {ok:true,json:async()=>({success:true})};
+        const plus=w.document.querySelector('[data-terminal-create]');
+        assert.equal(plus.hidden,false,'plus must remain visible even with zero tabs');
+        assert.equal(plus.textContent.trim(),'+');
+        plus.click();
+        await new Promise(resolve=>setTimeout(resolve,320));
+        assert.equal(sockets.length,1,'plus must create first shell');
+        assert.equal(w.document.querySelectorAll('#tabsTerm [data-terminal-id]').length,1);
+    } finally {d.window.close();}
+});
+test('touch on empty state remains clickable and xterm touch suppression stays active', async () => {
+    const f=fixture(),{w,d}=f;
+    try {
+        const button=w.document.getElementById('terminalEmptyAction');
+        const finger=[{identifier:1,clientX:200,clientY:220}];
+        assert.equal(touch(w,button,'touchstart',finger).defaultPrevented,false);
+        assert.equal(touch(w,button,'touchend',[],finger).defaultPrevented,false);
+        w.createTerminalTab({id:'t1',name:'shell'});
+        await tick();
+        assert.equal(touch(w,w.document.getElementById('t1'),'touchstart',finger).defaultPrevented,true);
+    } finally {d.window.close();}
+});

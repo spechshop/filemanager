@@ -16,7 +16,7 @@
     const emptyAction = document.getElementById('terminalEmptyAction');
     const cards = new Map();
     const shortStatus = {...terminalStatusLabels, unauthorized: 'Acesso negado'};
-    let loadError = false, loadErrorStatus = null, loading = false, zoomKey = null, fontSizes = {}, recovery = null;
+    let loadError = false, loadErrorStatus = null, loading = false, creating = false, creationError = '', zoomKey = null, fontSizes = {}, recovery = null;
     function activeId() {
         return document.querySelector('#tabsTerm .nav-link.active')?.closest('[data-terminal-id]')?.dataset.terminalId;
     }
@@ -203,7 +203,10 @@
     // Avoid xterm's independent touch handler and synthetic mouse input during
     // captured gestures; mouse/trackpad events keep their normal behavior.
     for (const type of ['touchstart', 'touchmove', 'touchend', 'touchcancel']) {
-        touchSurface.addEventListener(type, consume, {capture: true, passive: false});
+        touchSurface.addEventListener(type, event => {
+            // Do not suppress synthetic clicks on the empty-state action.
+            if (event.target.closest('.xterm-container')) consume(event);
+        }, {capture: true, passive: false});
     }
     modal.addEventListener('hidden.bs.modal', cancelTouchGestures);
     window.addEventListener('blur', cancelTouchGestures);
@@ -224,7 +227,11 @@
     function renderNotice(selected) {
         recovery = null;
         let text = '', action = '';
-        if (loadError && Object.keys(terminals).length) {
+        if (creationError) {
+            text = creationError;
+            action = 'Tentar novamente';
+            recovery = () => window.createTabTerminal();
+        } else if (loadError && Object.keys(terminals).length) {
             text = 'Não foi possível carregar as sessões. As sessões já abertas foram preservadas.';
             const denied = [401, 403].includes(loadErrorStatus);
             action = denied ? 'Revisar acesso' : loading ? 'Carregando…' : 'Tentar novamente'; recovery = denied ? reviewAccess : reloadSessions;
@@ -304,8 +311,8 @@
         emptyTitle.textContent = loadError ? 'Não foi possível carregar as sessões' : 'Seu terminal, seu espaço';
         emptyText.textContent = loadError ? 'Tente consultar a lista novamente.' : 'Abra uma sessão de shell neste servidor para começar.';
         emptyAction.textContent = loadError ? ([401, 403].includes(loadErrorStatus) ? 'Revisar acesso' : loading ? 'Carregando…' : 'Tentar novamente') : 'Nova sessão';
-        emptyAction.disabled = loading;
-        document.querySelectorAll('[data-terminal-create]').forEach(button => button.hidden = !tabs.length || loadError);
+        emptyAction.disabled = loading || creating;
+        document.querySelectorAll('[data-terminal-create]').forEach(button => { button.hidden = false; button.disabled = creating; });
         renderNotice(selected);
         const mobileTerminal = matchMedia('(max-width: 767.98px)').matches && (modal.classList.contains('terminal-workspace') || modal.classList.contains('mobile-view-terminal'));
         toggle.textContent = mobileTerminal ? 'Editor' : modal.classList.contains('terminal-workspace') ? 'Voltar ao editor' : 'Expandir terminal';
@@ -350,13 +357,20 @@
         setLibrary(!modal.classList.contains('terminal-library-open'));
     });
     document.querySelectorAll('[data-terminal-create]').forEach(button => button.addEventListener('click', () => {
-        setLibrary(false); document.getElementById('new-terminal').click();
+        setLibrary(false); void window.createTabTerminal();
     }));
     emptyAction.addEventListener('click', () => {
         if (loadError) { if ([401, 403].includes(loadErrorStatus)) reviewAccess(); else reloadSessions(); }
-        else document.getElementById('new-terminal').click();
+        else void window.createTabTerminal();
     });
     noticeAction.addEventListener('click', () => recovery?.());
+    document.addEventListener('fm:terminal-create-start', () => { creating = true; creationError = ''; renderLibrary(); });
+    document.addEventListener('fm:terminal-create-end', () => { creating = false; renderLibrary(); });
+    document.addEventListener('fm:terminal-create-error', event => {
+        creationError = event.detail?.message || 'Não foi possível abrir uma nova sessão.';
+        renderLibrary();
+    });
+    document.addEventListener('fm:terminal-create-success', () => { creationError = ''; renderLibrary(); });
     new MutationObserver(renderLibrary).observe(document.getElementById('tabsTerm'), {
         subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class'],
     });

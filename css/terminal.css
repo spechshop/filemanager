@@ -26,6 +26,11 @@
 #terminalToolbarCaption { flex: 1; color: #a3a7ba; font-size: 14px; }
 #terminalZoom { display: flex; flex: 0 0 auto; align-items: center; gap: 2px; }
 #footer-terminal #terminalZoom button { min-width: 38px; padding: 5px 8px; }
+#edit-code #footer-terminal #terminalWorkspaceBar > [data-terminal-create] {
+    flex: 0 0 40px; width: 40px; min-width: 40px;
+    padding: 5px; font-size: 23px; font-weight: 600;
+    line-height: 1; touch-action: manipulation;
+}
 #terminalLibraryToggle { display: none; }
 #resizer { order: -1; flex: 0 0 5px; background: #30364f; cursor: row-resize; }
 #edit-code #footer-terminal #tabsTerm {
@@ -146,8 +151,8 @@
     #edit-code #footer-terminal #terminalWorkspaceBar { grid-column: 1; grid-row: 1; height: 44px; padding: 0 8px; gap: 8px; }
     #edit-code #terminalToolbarCaption { display: none; }
     #edit-code #terminalZoom button { min-width: 44px; min-height: 44px; padding: 0 7px; }
-    #edit-code #footer-terminal #terminalWorkspaceBar > [data-terminal-create] { width: 44px; height: 44px; padding: 0; font-size: 0; }
-    #edit-code #footer-terminal #terminalWorkspaceBar > [data-terminal-create]::before { content: '+'; font-size: 22px; }
+    #edit-code #footer-terminal #terminalWorkspaceBar > [data-terminal-create] { width: 44px; height: 44px; padding: 0; font-size: 23px; }
+
     #edit-code #footer-terminal #tabsTerm { grid-column: 1; grid-row: 2; min-height: 44px; height: 44px; padding: 0 8px; gap: 6px; }
     #edit-code #footer-terminal #tabsTerm .nav-link { min-height: 44px; max-width: 190px; }
     #edit-code #tabsTerm button.close-tab { min-width: 44px; min-height: 44px; }

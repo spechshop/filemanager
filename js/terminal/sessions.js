@@ -11,7 +11,9 @@ function setTerminalStatus(id, status) {
 
 // ---- Token helper ----
 function getToken() {
-    return localStorage.tokenBrowser || document.getElementById('fp')?.innerText?.trim() || '';
+    // The active credential (#fp) is what FMAuth validates. A persisted
+    // localStorage token may belong to an older login and must not override it.
+    return document.getElementById('fp')?.textContent?.trim() || localStorage.tokenBrowser || '';
 }
 
 async function waitForToken() {
@@ -29,14 +31,17 @@ async function waitForToken() {
 // ---- API helpers ----
 async function apiSaveTerminal(session) {
     const token = getToken();
-    return fetch(`/saveTerminal?tokenBrowser=${token}`, {
+    return fetch(`/saveTerminal?tokenBrowser=${encodeURIComponent(token)}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             id: session.id,
             name: session.name,
         }),
-    }).then(r => r.json()).catch(() => ({}));
+    }).then(async r => {
+        const result = await r.json();
+        return r.ok === false ? {success: false, error: 'HTTP ' + r.status} : result;
+    }).catch(() => ({success: false, error: 'Falha de comunicação com o servidor.'}));
 }
 
 async function apiDeleteTerminal(terminalId) {
@@ -55,13 +60,33 @@ async function apiGetTerminals() {
 }
 
 async function loadTerminalSessions() {
+    const revision = terminalSessionsRevision;
     const sessions = await apiGetTerminals();
     if (!Array.isArray(sessions)) throw new Error('Lista de sessões inválida.');
-    setStoredTerminals(sessions);
-    for (const session of sessions) if (!terminals[session.id]) createTerminalTab({...session});
+    // An in-flight GET may have started before a new session was saved.
+    // Never replace the newer local state with that stale response.
+    if (revision !== terminalSessionsRevision) {
+        document.dispatchEvent(new CustomEvent('fm:terminal-loaded'));
+        return getStoredTerminals();
+    }
+    // A GET issued just after saving a shell can still reach a replica or an
+    // earlier request and return the old list. Never erase an open local PTY.
+    const merged = [...sessions];
+    const known = new Set(merged.map(session => session.id));
+    for (const [id, info] of Object.entries(terminals)) {
+        if (!known.has(id)) {
+            merged.push({id, name: info.options.name});
+            known.add(id);
+        }
+    }
+    setStoredTerminals(merged);
+    for (const session of merged) if (!terminals[session.id]) createTerminalTab({...session});
     document.dispatchEvent(new CustomEvent('fm:terminal-loaded'));
-    return sessions;
+    return merged;
 }
+
+// A slower initial GET must not overwrite a session created while it ran.
+let terminalSessionsRevision = 0;
 
 // ---- LocalStorage helpers ----
 function getStoredTerminals() {
@@ -281,6 +306,7 @@ function createTerminalTab(options) {
                 const newName = srcName + ' (cópia)';
                 const token = await waitForToken();
                 sessions.push({ id: newId, name: newName });
+                terminalSessionsRevision++;
                 setStoredTerminals(sessions);
                 createTerminalTab({ id: newId, name: newName, token });
                 await apiSaveTerminal({ id: newId, name: newName });
@@ -348,6 +374,7 @@ function startRename(labelEl, options) {
         const sessions = getStoredTerminals();
         const idx = sessions.findIndex(s => s.id === terminalId);
         if (idx !== -1) sessions[idx].name = newName;
+        terminalSessionsRevision++;
         setStoredTerminals(sessions);
         await apiSaveTerminal({ id: terminalId, name: newName });
     };
@@ -400,6 +427,7 @@ async function closeTerminalTab(terminalId) {
     termInfo.terminal.dispose();
 
     const sessions = getStoredTerminals().filter(s => s.id !== terminalId);
+    terminalSessionsRevision++;
     setStoredTerminals(sessions);
     await apiDeleteTerminal(terminalId);
 
@@ -461,7 +489,12 @@ async function initWebSocket(terminal, options) {
     const info = terminals[options.id];
     if (!info || info.opening) return;
     info.opening = true;
-    const token = await waitForToken();
+    const token = getToken();
+    if (!token) {
+        info.opening = false;
+        setTerminalStatus(options.id, 'unauthorized');
+        return;
+    }
     if (terminals[options.id] !== info) return;
     const retry = () => {
         clearTimeout(info.retryTimer);
@@ -540,20 +573,45 @@ window.runCommand = (socket, command) => {
 };
 
 // ---- "+" button: create new terminal ----
-document.getElementById('new-terminal').addEventListener('click', async () => {
-    const sessions = getStoredTerminals();
-    const id = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-    const name = `Shell do servidor ${sessions.length + 1}`;
-    const token = await waitForToken();
-    const session = { id, name, token };
-    sessions.push({ id, name });
-    setStoredTerminals(sessions);
-    createTerminalTab(session);
-    await apiSaveTerminal({ id, name });
+let creatingTerminal = false;
+async function createTabTerminal() {
+    if (creatingTerminal) return false;
+    creatingTerminal = true;
+    document.dispatchEvent(new CustomEvent('fm:terminal-create-start'));
+    try {
+        // Unlike waitForToken(), ready() rejects missing/expired credentials,
+        // instead of silently waiting forever for a token to appear.
+        await FMAuth.ready();
+        const token = getToken();
+        if (!token) throw new Error('Credencial de acesso ausente. Faça login novamente.');
+        const sessions = getStoredTerminals();
+        const id = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        const name = `Shell do servidor ${sessions.length + 1}`;
+        const saved = await apiSaveTerminal({ id, name });
+        if (saved?.success !== true) throw new Error(saved?.error || 'Não foi possível salvar a sessão no servidor.');
+        sessions.push({ id, name });
+        terminalSessionsRevision++;
+        setStoredTerminals(sessions);
+        createTerminalTab({ id, name, token });
+        document.dispatchEvent(new CustomEvent('fm:terminal-create-success'));
+        return true;
+    } catch (error) {
+        document.dispatchEvent(new CustomEvent('fm:terminal-create-error', {
+            detail: {message: error?.message || 'Não foi possível abrir uma nova sessão.'}
+        }));
+        return false;
+    } finally {
+        creatingTerminal = false;
+        document.dispatchEvent(new CustomEvent('fm:terminal-create-end'));
+    }
+}
+document.getElementById('new-terminal').addEventListener('click', event => {
+    event.preventDefault();
+    void createTabTerminal();
 });
 
-// Legacy alias
-window.createTabTerminal = async () => document.getElementById('new-terminal').click();
+// Public entrypoint for every create button; no synthetic clicks on a hidden tab.
+window.createTabTerminal = createTabTerminal;
 
 // ---- Page load: restore saved terminals ----
 document.onreadystatechange = async function () {
