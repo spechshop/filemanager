@@ -64,12 +64,54 @@ try {
     }
     checkSearch($removedDirectory && $removedFile, 'traversal continues after a listed child directory disappears');
 
+    // Batch search must keep descriptor confinement and literal semantics.
+    $batchFiles = [];
+    for ($i = 0; $i < 70; $i++) {
+        $name = $tmp . '/files/batch-' . $i . '.txt';
+        file_put_contents($name, $i === 3 || $i === 68 ? 'needle=' . $i : 'unrelated');
+        $batchFiles[] = $name;
+    }
+    $batchMatches = [];
+    foreach (array_chunk($batchFiles, 64) as $group) {
+        foreach (\plugins\Request\safeFiles::searchFiles($group, 'NEEDLE=', 'search-fixture') as $index) {
+            $batchMatches[] = $group[$index];
+        }
+    }
+    sort($batchMatches);
+    checkSearch($batchMatches === [$batchFiles[3], $batchFiles[68]], 'batched search spans groups of 64 and preserves case-insensitive matches');
+    checkSearch(\plugins\Request\safeFiles::searchFiles([$tmp . '/outside/secret', $tmp . '/files/batch-3.txt'], 'needle=', 'search-fixture') === [1], 'batch search cannot expose outside content');
+    checkSearch(\plugins\Request\safeFiles::searchFiles([$tmp . '/files/broken', $tmp . '/files/batch-3.txt'], 'needle=', 'search-fixture') === [1], 'broken links do not abort batch search');
+    checkSearch(searchDenied(static fn() => \plugins\Request\safeFiles::searchFiles(array_fill(0, 65, $batchFiles[0]), 'needle=', 'search-fixture')), 'oversized search batches are rejected');
+
+    // Exercise multi-directory batching, confinement and cycles independently.
+    mkdir($tmp . '/files/folders');
+    $expected = [];
+    for ($i = 0; $i < 75; $i++) {
+        $folder = $tmp . '/files/folders/dir-' . $i;
+        mkdir($folder);
+        file_put_contents($folder . '/item.txt', $i % 17 === 0 ? 'DIR-NEEDLE' : 'no match');
+        if ($i % 17 === 0) $expected[] = $folder . '/item.txt';
+    }
+    sort($expected);
+    $actual = searchInFile::searchString($tmp . '/files/folders', 'DIR-NEEDLE', 100, 'search-fixture');
+    sort($actual);
+    checkSearch($actual === $expected, 'batched directory traversal finds files in more than 64 directories');
+    $directories = array_map(static fn($i) => $tmp . '/files/folders/dir-' . $i, range(0, 74));
+    $groups = [];
+    foreach (array_chunk($directories, 64) as $items) $groups = array_merge($groups, \plugins\Request\safeFiles::listingMany($items, 'search-fixture'));
+    checkSearch(count($groups) === 75 && count(array_filter($groups, 'is_array')) === 75, 'directory broker handles more than one batch');
+    checkSearch(searchDenied(static fn() => \plugins\Request\safeFiles::listingMany(array_fill(0, 65, $tmp . '/files'), 'search-fixture')), 'directory broker refuses oversized batches');
+    $groups = \plugins\Request\safeFiles::listingMany([$tmp . '/outside', $tmp . '/files/folders/dir-0'], 'search-fixture');
+    checkSearch($groups[0] === null && count($groups[1]) === 1, 'batched directory listing cannot expose outside root');
+
     $chunk = searchInFile::getSearchChunkSize();
     file_put_contents($tmp . '/files/boundary', str_repeat('x', $chunk - 3) . 'TOKEN=boundary');
     checkSearch(searchInFile::fileContainsString($tmp . '/files/boundary', 'TOKEN=', 'search-fixture'), 'literal matches spanning read chunks are found');
+    checkSearch(searchDenied(static fn() => \plugins\Request\safeFiles::searchFiles([$tmp . '/files/batch-3.txt'], str_repeat('n', 4097), 'search-fixture')), 'oversized search term is rejected');
     $tokens['search-fixture']['revoked'] = true;
     file_put_contents($tmp . '/tokens.json', json_encode($tokens));
     checkSearch(searchDenied(static fn() => searchInFile::fileContainsString($tmp . '/files/.env', 'TOKEN=', 'search-fixture')), 'revocation is not swallowed as an unreadable file');
+    checkSearch(searchDenied(static fn() => \plugins\Request\safeFiles::searchFiles([$tmp . '/files/batch-3.txt'], 'needle=', 'search-fixture')), 'batch search rejects revoked token');
     checkSearch(searchDenied(static fn() => iterator_to_array(searchInFile::walk($tmp . '/files', 'search-fixture'))), 'revocation stops traversal');
     echo "$count assertions passed\n";
 } finally {

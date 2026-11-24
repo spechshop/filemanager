@@ -62,6 +62,16 @@ final class safeFiles
 
     public static function reader(string $path, string $token, int $offset = 0, ?int $length = null): array { return self::start('read', $path, $token, null, $offset, $length); }
 
+    /** Batch secured text search, returning the matching input indices. */
+    public static function searchFiles(array $paths, string $needle, string $token): array
+    {
+        if ($paths === []) return [];
+        if (count($paths) > 64) throw new \DomainException('Search batch too large');
+        $operation = self::start('search-files', '', $token, parameters: ['paths' => array_values($paths), 'needle' => $needle]);
+        try { return $operation['result']['matched'] ?? []; }
+        finally { self::close($operation); }
+    }
+
     public static function read(string $path, string $token): string
     {
         $operation = self::reader($path, $token);
@@ -83,6 +93,20 @@ final class safeFiles
         try { fwrite($input, $data); rewind($input); self::writeStream($path, $input, $token); }
         finally { fclose($input); }
         return true;
+    }
+
+    /** Return one entry group per input directory, null for a missing child. */
+    public static function listingMany(array $paths, string $token): array
+    {
+        if ($paths === []) return [];
+        if (count($paths) > 64) throw new \DomainException('Directory batch too large');
+        $operation = self::start('list-many', '', $token, parameters: ['paths' => array_values($paths)]);
+        try {
+            return array_map(static function ($group) {
+                if (!is_array($group) || !is_array($group['entries'] ?? null)) return null;
+                return array_values(array_filter($group['entries'], static fn(array $entry): bool => empty($entry['denied'])));
+            }, $operation['result']['groups'] ?? []);
+        } finally { self::close($operation); }
     }
 
     public static function listing(string $path, string $token, bool $strict = false, bool $details = false): array

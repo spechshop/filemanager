@@ -138,7 +138,8 @@ test('real Swoole HTTP + WebSocket denied operations have no file/upload/process
                 assert.equal(sockets.at(-1).readyState, WebSocket.OPEN);
                 assert.equal(w.document.getElementById('searchCancelBtn').disabled, true);
             }
-            directory.textContent = path.join(tmp, 'files');
+            // Starting from a selected file searches its containing directory.
+            directory.textContent = searchFile;
             w.beginSearch('TOKEN=');
             for (let i = 0; i < 150 && !status.textContent.includes('Busca concluída.'); i++) await delay(20);
             assert.match(status.textContent, /Busca concluída.*encontrados: 2/, output);

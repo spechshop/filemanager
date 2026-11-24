@@ -409,6 +409,7 @@ class server extends OpenConnection
             || ($GLOBALS['websocketConnections'][$fd]['token'] ?? '') !== $jobSocket
             || ($GLOBALS['websocketConnections'][$fd]['identity'] ?? '') !== $binding
             || ($GLOBALS['searchInFileJobs'][$fd]['id'] ?? null) !== ($job['id'] ?? null)) return;
+        $payload['requestId'] ??= $job['requestId'] ?? null;
         $server->push($fd, json_encode([
             'searchInFile' => true,
             'payload' => $payload,
@@ -422,7 +423,13 @@ class server extends OpenConnection
         }
 
         $action = strtolower(trim((string) ($object['action'] ?? 'start')));
+        $rawRequestId = $object['requestId'] ?? '';
+        $requestId = is_string($rawRequestId) && preg_match('/^[A-Za-z0-9_-]{1,64}$/D', $rawRequestId) ? $rawRequestId : '';
         $job =& $GLOBALS['searchInFileJobs'][$fd];
+
+        // A delayed command from an older search must not affect the current one.
+        if (in_array($action, ['cancel', 'pause', 'resume'], true)
+            && $requestId !== '' && ($job['requestId'] ?? null) !== $requestId) return;
 
         if ($action === 'cancel') {
             if (!empty($job)) {
@@ -468,12 +475,18 @@ class server extends OpenConnection
             return;
         }
 
+        // Supersede the previous job even when the new request is invalid.
+        if (!empty($job)) {
+            $job['cancelled'] = true;
+            $job['paused'] = false;
+        }
         $search = trim((string) ($object['search'] ?? ''));
         if ($search === '') {
             self::pushSearchEvent($server, $fd, [
                 'type' => 'status',
                 'status' => 'error',
                 'message' => 'O texto de busca não pode ficar vazio.',
+                'requestId' => $requestId,
             ]);
             return;
         }
@@ -481,27 +494,25 @@ class server extends OpenConnection
         $binding = $GLOBALS['websocketConnections'][$fd]['identity'] ?? '';
         try {
             $path = securityPolicy::path($object['path'] ?? securityPolicy::initialPath($clientToken), $clientToken);
+            if (is_file($path)) $path = dirname($path);
         } catch (\DomainException $e) {
             if (!self::activeBinding($server, $fd, $binding, $clientToken)) return;
             self::pushSearchEvent($server, $fd, [
                 'type' => 'status',
                 'status' => 'error',
                 'message' => 'A pasta de busca não está disponível ou não é permitida.',
+                'requestId' => $requestId,
             ]);
             return;
         }
         if (!self::activeBinding($server, $fd, $binding, $clientToken)) return;
         $limit = max(1, min(10000, (int) ($object['limit'] ?? 1000)));
 
-        if (!empty($job)) {
-            $job['cancelled'] = true;
-            $job['paused'] = false;
-        }
-
         $jobId = bin2hex(random_bytes(8));
         $job = [
             'fd' => $fd,
             'id' => $jobId,
+            'requestId' => $requestId,
             'socketToken' => $socketToken,
             'clientToken' => $clientToken,
             'binding' => $binding,
@@ -559,10 +570,9 @@ class server extends OpenConnection
         $needle = $job['search'];
         $limit = (int) $job['limit'];
 
-        $iterator = \plugins\Request\searchInFile::walk($path, $owner);
+        $iterator = \plugins\Request\searchInFile::walkBatches($path, $owner);
 
-        $batch = 0;
-        foreach ($iterator as $item) {
+        foreach ($iterator as $items) {
             if (!securityPolicy::validToken($owner) || !$server->isEstablished($fd)) return;
             if (!isset($GLOBALS['searchInFileJobs'][$fd])) {
                 return;
@@ -623,59 +633,48 @@ class server extends OpenConnection
             }
             if (($GLOBALS['searchInFileJobs'][$fd]['id'] ?? null) !== $jobId) return;
 
-            if ($item['directory']) {
-                $batch++;
-                if ($batch % 40 === 0) {
-                    Coroutine::sleep(0.02);
-                }
-                continue;
-            }
-
-            $pathFile = $item['path'];
-            $job['scanned']++;
-
-            $contains = \plugins\Request\searchInFile::fileContainsString($pathFile, $needle, $owner);
-            // Descriptor IO can yield while another command replaces or cancels this job.
+            // Only one confined broker process per batch instead of one per file.
+            $matches = \plugins\Request\safeFiles::searchFiles(array_column($items, 'path'), $needle, $owner);
             if (($GLOBALS['searchInFileJobs'][$fd]['id'] ?? null) !== $jobId) return;
             if (!empty($job['cancelled'])) continue;
-            if ($contains) {
-                $job['found']++;
-                $size = $item['size'];
-                self::pushSearchEvent($server, $fd, [
-                    'type' => 'result',
-                    'item' => [
-                        'path' => $pathFile,
-                        'sizeBytes' => $size === false ? null : $size,
-                        'sizeLabel' => $size === false ? 'N/A' : utilsFunction::formatBytes($size),
-                    ],
-                    'found' => (int) $job['found'],
-                    'scanned' => (int) $job['scanned'],
-                ]);
-                if (($GLOBALS['searchInFileJobs'][$fd]['id'] ?? null) !== $jobId) return;
-                if ($job['found'] >= $limit) {
+            $matched = array_fill_keys($matches, true);
+            foreach ($items as $index => $item) {
+                if (!securityPolicy::validToken($owner) || !$server->isEstablished($fd)) return;
+                if (($GLOBALS['searchInFileJobs'][$fd]['id'] ?? null) !== $jobId || !empty($job['cancelled'])) return;
+                $job['scanned']++;
+                if (isset($matched[$index])) {
+                    $job['found']++;
+                    $size = $item['size'];
                     self::pushSearchEvent($server, $fd, [
-                        'type' => 'status',
-                        'status' => 'complete',
-                        'message' => 'Limite de resultados atingido.',
+                        'type' => 'result',
+                        'item' => [
+                            'path' => $item['path'],
+                            'sizeBytes' => $size === false ? null : $size,
+                            'sizeLabel' => $size === false ? 'N/A' : utilsFunction::formatBytes($size),
+                        ],
                         'found' => (int) $job['found'],
                         'scanned' => (int) $job['scanned'],
                     ]);
-                    return;
+                    if (($GLOBALS['searchInFileJobs'][$fd]['id'] ?? null) !== $jobId) return;
+                    if ($job['found'] >= $limit) {
+                        self::pushSearchEvent($server, $fd, [
+                            'type' => 'status',
+                            'status' => 'complete',
+                            'message' => 'Limite de resultados atingido.',
+                            'found' => (int) $job['found'],
+                            'scanned' => (int) $job['scanned'],
+                        ]);
+                        return;
+                    }
                 }
             }
-
-            if ($job['scanned'] % 25 === 0) {
-                self::pushSearchEvent($server, $fd, [
-                    'type' => 'progress',
-                    'found' => (int) $job['found'],
-                    'scanned' => (int) $job['scanned'],
-                    'path' => $path,
-                ]);
-                if (function_exists('gc_collect_cycles')) {
-                    gc_collect_cycles();
-                }
-                Coroutine::sleep(0.02);
-            }
+            self::pushSearchEvent($server, $fd, [
+                'type' => 'progress',
+                'found' => (int) $job['found'],
+                'scanned' => (int) $job['scanned'],
+                'path' => $path,
+            ]);
+            Coroutine::sleep(0.01);
         }
 
         if (($GLOBALS['searchInFileJobs'][$fd]['id'] ?? null) !== $jobId) return;

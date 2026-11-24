@@ -168,10 +168,13 @@
 </style>
 <script>
     let searchSocket = null;
+    let searchConnectPromise = null;
+    let searchSequence = 0;
     let searchSession = {
         active: false,
         paused: false,
         token: null,
+        requestId: null,
         query: '',
         found: 0,
         scanned: 0,
@@ -369,6 +372,8 @@
         }
 
         const payload = data.payload;
+        // A cancelled or replaced search can still have events in flight.
+        if (!searchSession.requestId || payload.requestId !== searchSession.requestId) return;
         if (typeof payload.found === 'number') {
             searchSession.found = payload.found;
         }
@@ -425,39 +430,50 @@
         }
     }
 
-    async function ensureSearchSocket(token) {
-        const socketAddress = searchSocket && searchSocket.readyState < WebSocket.CLOSING ? null : await FMAuth.socketUrl(getSearchSocketUrl(token));
-        return new Promise((resolve, reject) => {
-            if (searchSocket && [WebSocket.OPEN, WebSocket.CONNECTING].includes(searchSocket.readyState)) {
-                if (searchSocket.readyState === WebSocket.OPEN) {
-                    return resolve(searchSocket);
-                }
-                searchSocket.addEventListener('open', () => resolve(searchSocket), { once: true });
-                searchSocket.addEventListener('error', reject, { once: true });
-                return;
-            }
+    function ensureSearchSocket(token) {
+        if (searchSocket && searchSocket.readyState === WebSocket.OPEN) {
+            return Promise.resolve(searchSocket);
+        }
+        // Share ticket issuance and socket opening between overlapping start requests.
+        if (searchConnectPromise) return searchConnectPromise;
 
-            searchSocket = new WebSocket(socketAddress);
-            searchSocket.onopen = () => resolve(searchSocket);
-            searchSocket.onmessage = handleSearchSocketMessage;
-            searchSocket.onerror = (error) => {
-                searchSession.active = false;
-                searchSession.paused = false;
-                setSearchControls();
-                setSearchStatus('Não foi possível conectar ao websocket de busca.');
-                reject(error);
-            };
-            searchSocket.onclose = () => {
-                const wasActive = searchSession.active;
-                searchSession.active = false;
-                searchSession.paused = false;
-                setSearchControls();
-                if (wasActive) {
-                    setSearchStatus('A conexão de busca foi encerrada. Inicie a busca novamente.');
-                }
-                reject(new Error('Conexão de busca encerrada.'));
-            };
+        const pending = (async () => {
+            const socketAddress = await FMAuth.socketUrl(getSearchSocketUrl(token));
+            const socket = new WebSocket(socketAddress);
+            searchSocket = socket;
+            return new Promise((resolve, reject) => {
+                let opened = false;
+                socket.onopen = () => {
+                    opened = true;
+                    resolve(socket);
+                };
+                socket.onmessage = event => {
+                    if (searchSocket === socket) handleSearchSocketMessage(event);
+                };
+                socket.onerror = () => {
+                    if (!opened) reject(new Error('Falha ao conectar ao websocket de busca.'));
+                };
+                socket.onclose = () => {
+                    if (searchSocket === socket) {
+                        searchSocket = null;
+                        // Before open, leave the active flag to the failed-start handler.
+                        if (opened) {
+                            const wasActive = searchSession.active;
+                            searchSession.active = false;
+                            searchSession.paused = false;
+                            setSearchControls();
+                            if (wasActive) setSearchStatus('A conexão de busca foi encerrada. Inicie a busca novamente.');
+                        }
+                    }
+                    if (!opened) reject(new Error('Conexão de busca encerrada.'));
+                };
+            });
+        })();
+        const connection = pending.finally(() => {
+            if (searchConnectPromise === connection) searchConnectPromise = null;
         });
+        searchConnectPromise = connection;
+        return connection;
     }
 
     function sendSearchCommand(action, payload = {}) {
@@ -469,40 +485,46 @@
             searchInFile: true,
             action,
             token: searchSession.token,
+            requestId: searchSession.requestId,
             ...payload,
         }));
     }
 
     function beginSearch(query) {
-        searchSession = {
+        const session = {
             active: true,
             paused: false,
             token: `${$('#fp').text().trim()}-search`,
+            requestId: `s${++searchSequence}-${Date.now().toString(36)}`,
             query,
             found: 0,
             scanned: 0,
             results: [],
         };
-
+        searchSession = session;
         resetSearchList();
         setSearchStatus('Conectando ao websocket de busca...');
         setSearchControls();
 
-        ensureSearchSocket(searchSession.token)
-            .then(() => {
+        ensureSearchSocket(session.token)
+            .then(socket => {
+                // A subsequent start/cancel can supersede this pending connection.
+                if (searchSession !== session || !session.active || socket.readyState !== WebSocket.OPEN) return;
                 setSearchStatus('Pesquisando em tempo real...');
-                searchSocket.send(JSON.stringify({
+                socket.send(JSON.stringify({
                     searchInFile: true,
                     action: 'start',
-                    token: searchSession.token,
-                    search: searchSession.query,
+                    token: session.token,
+                    requestId: session.requestId,
+                    search: session.query,
                     path: $('#pathInvisible').text(),
                     limit: 1000,
                 }));
             })
             .catch(() => {
-                searchSession.active = false;
-                searchSession.paused = false;
+                if (searchSession !== session || !session.active) return;
+                session.active = false;
+                session.paused = false;
                 setSearchControls();
                 setSearchStatus('Não foi possível iniciar a busca. Tente novamente.');
                 Swal.fire({
@@ -523,13 +545,7 @@
             });
         }
 
-        if (searchSession.active) {
-            sendSearchCommand('cancel');
-            setSearchStatus('Cancelando busca anterior...');
-            setTimeout(() => beginSearch(valueInScriptSearch), 250);
-            return;
-        }
-
+        // A new 'start' supersedes the previous server job atomically.
         beginSearch(valueInScriptSearch);
     }
 
@@ -551,13 +567,13 @@
     }
 
     function cancelSearch() {
-        if (!searchSocket || searchSocket.readyState !== WebSocket.OPEN || !searchSession.active) {
-            resetSearchList();
+        if (!searchSession.active) {
             setSearchStatus('Aguardando pesquisa.');
             setSearchControls();
             return;
         }
 
+        // Even when the socket is connecting, invalidate its pending start.
         sendSearchCommand('cancel');
         searchSession.active = false;
         searchSession.paused = false;

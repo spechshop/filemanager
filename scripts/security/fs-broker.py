@@ -739,6 +739,64 @@ def main():
                     break
                 sys.stdout.buffer.write(block)
             sys.stdout.buffer.flush()
+        elif op == 'search-files':
+            # One authorized helper handles a bounded batch, avoiding one Python
+            # process per file. Every file remains confined by Files.open().
+            paths = request.get('paths')
+            needle = request.get('needle')
+            if (not isinstance(paths, list) or len(paths) > 64 or
+                    any(not isinstance(item, str) or len(item) > 8192 for item in paths) or
+                    not isinstance(needle, str) or not needle or len(needle.encode('utf8')) > 4096):
+                raise PermissionError('invalid search batch')
+            target = needle.encode('utf8').lower()
+            overlap = max(0, len(target) - 1)
+            matched = []
+            for index, candidate in enumerate(paths):
+                files.authorize()
+                fd = None
+                try:
+                    fd = files.open(candidate)
+                    if not stat.S_ISREG(os.fstat(fd).st_mode):
+                        continue
+                    tail = b''
+                    while True:
+                        files.authorize()
+                        data = os.read(fd, 262144)
+                        if not data:
+                            break
+                        data = tail + data.lower()
+                        if target in data:
+                            matched.append(index)
+                            break
+                        tail = data[-overlap:] if overlap else b''
+                except OSError:
+                    # Listing can race with deletion or permission changes.
+                    # Revoked credentials must still abort the entire batch.
+                    files.authorize()
+                finally:
+                    if fd is not None:
+                        files.release(fd)
+            files.authorize()
+            reply({'ok': True, 'result': {'matched': matched}})
+        elif op == 'list-many':
+            paths = request.get('paths')
+            if not isinstance(paths, list) or len(paths) > 64 or any(not isinstance(item, str) or len(item) > 8192 for item in paths):
+                raise PermissionError('invalid directory batch')
+            groups = []
+            for candidate in paths:
+                files.authorize()
+                try:
+                    groups.append({'entries': files.entries(candidate)})
+                except OSError:
+                    files.authorize()
+                    groups.append({'entries': None})
+                finally:
+                    # Each directory's open descriptor must be reclaimed before
+                    # processing the next path, otherwise root-wide scans grow FDs.
+                    while len(files.fds) > len(files.rootfds):
+                        files.release(files.fds[-1])
+            files.authorize()
+            reply({'ok': True, 'result': {'groups': groups}})
         elif op == 'list':
             entries = files.entries(path)
             files.authorize()
