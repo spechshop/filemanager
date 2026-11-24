@@ -1,4 +1,4 @@
-/* Copy/paste are UI operations; Ctrl+V remains a literal terminal control key. */
+/* Clipboard and selection actions shared by the desktop and mobile toolbars. */
 (function () {
     'use strict';
     const modal = document.getElementById('edit-code');
@@ -8,6 +8,7 @@
     const hint = document.getElementById('terminalClipboardHint');
     const text = document.getElementById('terminalClipboardText');
     const confirm = document.getElementById('terminalClipboardConfirm');
+    const desktopActions = document.getElementById('terminalDesktopActions');
     let messageTimer = null, pending = null;
     function active() {
         const id = document.querySelector('#tabsTerm .nav-link.active')?.closest('[data-terminal-id]')?.dataset.terminalId;
@@ -24,18 +25,21 @@
             button.setAttribute('aria-pressed', String(!!info?.selecting));
             button.textContent = info?.selecting ? 'Selecionando' : 'Selecionar';
         });
+        desktopActions.querySelectorAll('button').forEach(button => {
+            button.disabled = !info || (button.dataset.terminalAction === 'paste' && info.status !== 'connected');
+        });
     }
     function setSelecting(info, enabled) {
         if (!info) return;
         info.selecting = enabled; sync();
-        if (enabled) message('Arraste sobre o texto para selecionar. Use Copiar ou toque em Selecionando para voltar a rolar.');
+        if (enabled) message('Arraste sobre o texto e use Copiar. Para sair do modo de seleção, use Selecionando.');
     }
     function showDialog(kind, info, value) {
         pending = {kind, info};
         title.textContent = kind === 'copy' ? 'Copiar seleção' : 'Colar texto';
         hint.textContent = kind === 'copy'
-            ? 'Toque e segure o texto abaixo para usar Copiar no menu do celular.'
-            : 'Cole o texto abaixo usando o menu do celular. Ele só será enviado ao tocar em Colar no terminal.';
+            ? 'Copie o texto selecionado abaixo pelo teclado ou pelo menu do navegador.'
+            : 'Cole o texto abaixo pelo teclado ou pelo menu do navegador. Em seguida, use Colar no terminal.';
         text.readOnly = kind === 'copy'; text.value = value || '';
         confirm.hidden = kind === 'copy';
         if (!dialog.open) dialog.showModal();
@@ -47,8 +51,8 @@
     function connected(info) {
         return info && Object.values(terminals).includes(info) && info.status === 'connected';
     }
-    async function run(action) {
-        const info = active(); if (!info) return;
+    async function run(action, info = active(), {clearAfterCopy = false} = {}) {
+        if (!info) return;
         if (action === 'select') {setSelecting(info, !info.selecting); return;}
         if (action === 'all') {info.terminal.selectAll(); setSelecting(info, true); return;}
         if (action === 'clear-selection') {info.terminal.clearSelection(); setSelecting(info, false); return;}
@@ -60,6 +64,7 @@
             try {
                 if (!navigator.clipboard?.writeText) throw new Error('clipboard unavailable');
                 await navigator.clipboard.writeText(selection);
+                if (clearAfterCopy && info.terminal.getSelection() === selection) info.terminal.clearSelection();
                 setSelecting(info, false); message('Texto copiado.');
             } catch {showDialog('copy', info, selection);}
             return;
@@ -74,6 +79,14 @@
             } catch {if (connected(info)) showDialog('paste', info, '');}
         }
     }
+    desktopActions.addEventListener('mousedown', event => {
+        // Keep xterm focused when clicking a toolbar button with the mouse.
+        if (event.button === 0 && event.target.closest('button')) event.preventDefault();
+    });
+    desktopActions.addEventListener('click', event => {
+        const button = event.target.closest('button[data-terminal-action]');
+        if (button && !button.disabled) run(button.dataset.terminalAction);
+    });
     confirm.addEventListener('click', () => {
         const entry = pending;
         if (entry?.kind !== 'paste' || !connected(entry.info)) {message('A sessão não está conectada.'); return;}

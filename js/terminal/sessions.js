@@ -213,35 +213,17 @@ function createTerminalTab(options) {
         }
     });
 
-    // Ctrl+C inteligente (copia se houver seleção) e Ctrl+V com
-    // bracketed paste — roda ANTES do xterm processar a tecla,
-    // evitando que o browser/atalho nativo interfira na seleção.
     term.attachCustomKeyEventHandler((event) => {
-        if (event.type !== 'keydown') return true;
-        if (!event.ctrlKey || event.altKey || event.metaKey) return true;
-
+        if (event.type !== 'keydown' || event.altKey || event.ctrlKey === event.metaKey) return true;
+        const info = terminals[terminalId];
+        if (!info) return true;
         const key = event.key.toLowerCase();
-
-        if (key === 'c' && !event.shiftKey) {
-            const sel = term.getSelection();
-            if (sel) {
-                navigator.clipboard.writeText(sel).catch(() => {});
-                term.clearSelection();
-                event.preventDefault();
-                return false;
-            }
-            return true;
-        }
-
-        if (key === 'v' && !event.shiftKey) {
-            navigator.clipboard.readText().then((text) => {
-                if (text) term.paste(text);
-            }).catch(() => {});
-            event.preventDefault();
-            return false;
-        }
-
-        return true;
+        const copy = key === 'c' && (event.shiftKey || (event.ctrlKey && (info.selecting || term.hasSelection())));
+        const paste = key === 'v' && (event.shiftKey || event.ctrlKey);
+        if (!copy && !paste) return true;
+        event.preventDefault();
+        window.FMTerminalActions.run(copy ? 'copy' : 'paste', info, {clearAfterCopy: copy && !event.shiftKey});
+        return false;
     });
 
     // onData captura teclado + sequências de mouse geradas pelo xterm
