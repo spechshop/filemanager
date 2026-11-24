@@ -112,6 +112,37 @@
         momentumFrame = requestAnimationFrame(frame);
     }
     function consume(event) {event.preventDefault(); event.stopImmediatePropagation();}
+    let mouseSelection = null;
+    touchSurface.addEventListener('pointerdown', event => {
+        if (event.pointerType !== 'mouse' || event.button !== 0 || !event.target.closest('.xterm-screen')) return;
+        const id = activeId(), info = terminals[id];
+        if (!info?.selecting) return;
+        const anchor = selectionPoint(info, event.clientX, event.clientY);
+        if (!anchor) return;
+        // Cancel the compatibility mousedown so xterm does not report it to the PTY.
+        consume(event);
+        touchSurface.setPointerCapture?.(event.pointerId);
+        mouseSelection = {id, pointerId: event.pointerId, anchor};
+        info.terminal.focus();
+        selectRange(info, anchor, anchor);
+    }, {capture: true});
+    function updateMouseSelection(event) {
+        if (mouseSelection?.pointerId !== event.pointerId) return;
+        const {id, anchor} = mouseSelection;
+        const info = terminals[id];
+        if (activeId() !== id || !info?.selecting) return;
+        consume(event);
+        selectRange(info, anchor, selectionPoint(info, event.clientX, event.clientY));
+    }
+    touchSurface.addEventListener('pointermove', updateMouseSelection, {capture: true});
+    touchSurface.addEventListener('pointerup', event => {
+        updateMouseSelection(event);
+        if (mouseSelection?.pointerId === event.pointerId) mouseSelection = null;
+    }, {capture: true});
+    touchSurface.addEventListener('lostpointercapture', event => {
+        if (mouseSelection?.pointerId === event.pointerId) mouseSelection = null;
+    });
+    modal.addEventListener('hidden.bs.modal', () => {mouseSelection = null;});
     touchSurface.addEventListener('pointerdown', event => {
         if (event.pointerType !== 'touch' || modal.classList.contains('terminal-library-open')) return;
         const id = activeId(), info = terminals[id];

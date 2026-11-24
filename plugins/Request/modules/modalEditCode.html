@@ -418,7 +418,7 @@
                     </div>
                 </div>
 
-                <link rel="stylesheet" href="css/terminal.css?v=session-plus-20261123">
+                <link rel="stylesheet" href="css/terminal.css?v=desktop-clipboard-1">
                 <ul id="terminal-ctx-menu" role="menu" aria-label="Ações da sessão">
                     <li role="none"><button type="button" role="menuitem" data-action="rename">Renomear</button></li>
                     <li role="none"><button type="button" role="menuitem" data-action="duplicate">Abrir outra sessão</button></li>
@@ -429,6 +429,11 @@
                     <div id="terminalWorkspaceBar">
                         <button type="button" id="terminalLibraryToggle" aria-controls="terminalLibrary" aria-expanded="false">Sessões</button>
                         <span id="terminalToolbarCaption">Terminal deste servidor</span>
+                        <div id="terminalDesktopActions" role="group" aria-label="Seleção e área de transferência do terminal">
+                            <button type="button" data-terminal-action="select" aria-pressed="false" title="Ativar seleção por arraste">Selecionar</button>
+                            <button type="button" data-terminal-action="copy" title="Copiar seleção (Ctrl/⌘+Shift+C)" aria-keyshortcuts="Control+Shift+C Meta+Shift+C">Copiar</button>
+                            <button type="button" data-terminal-action="paste" title="Colar texto (Ctrl/⌘+Shift+V)" aria-keyshortcuts="Control+Shift+V Meta+Shift+V">Colar</button>
+                        </div>
                         <div id="terminalZoom" role="group" aria-label="Tamanho do texto do terminal">
                             <button type="button" data-terminal-zoom="-1" aria-label="Diminuir texto">−</button>
                             <button type="button" data-terminal-zoom="0" id="terminalZoomValue" title="Restaurar tamanho padrão">100%</button>
@@ -496,9 +501,9 @@
                     <div id="terminalStatusBar" role="status" aria-live="polite">Nenhuma sessão selecionada</div>
                 </div>
                 <script src="js/terminal/vendor/xterm-addon-fit.js"></script>
-                <script src="js/terminal/sessions.js?v=session-plus-20261123"></script>
-                <script src="js/terminal/mobile-actions.js?v=mobile-selection-1"></script>
-                <script src="js/terminal/workspace.js?v=session-plus-20261123"></script>
+                <script src="js/terminal/sessions.js?v=desktop-clipboard-1"></script>
+                <script src="js/terminal/mobile-actions.js?v=desktop-clipboard-1"></script>
+                <script src="js/terminal/workspace.js?v=desktop-clipboard-1"></script>
 
 
                 <script>

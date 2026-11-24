@@ -22,7 +22,7 @@ function fixture() {
     w.Terminal = class {
         constructor(options) {this.options = options;this.cols=100;this.rows=30;}
         loadAddon(addon) {this.addon=addon;} open() {} onResize() {} onData() {}
-        attachCustomKeyEventHandler() {} focus() {} clear() {} write() {} getSelection() {return this.selected || '';} selectAll() {this.selected='ALL';} clearSelection() {this.selected='';} select(col,row,length) {this.selection={col,row,length};this.selected='selected text';} scrollToTop() {} scrollToBottom() {} paste(value) {this.pasted=value;} dispose() {this.disposed=true;}
+        attachCustomKeyEventHandler(handler) {this.keyHandler=handler;} focus() {} clear() {} write() {} getSelection() {return this.selected || '';} hasSelection() {return !!this.selected;} selectAll() {this.selected='ALL';} clearSelection() {this.selected='';} select(col,row,length) {this.selection={col,row,length};this.selected='selected text';} scrollToTop() {} scrollToBottom() {} paste(value) {this.pasted=value;} dispose() {this.disposed=true;}
     };
     w.WebSocket = class {
         static OPEN=1;
@@ -137,7 +137,7 @@ function touch(w,target,type,touches,changedTouches=touches) {
 }
 function pointer(w,target,type,id,x,y,pointerType='touch') {
     const event=new w.Event(type,{bubbles:true,cancelable:true});
-    Object.assign(event,{pointerId:id,pointerType,clientX:x,clientY:y});target.dispatchEvent(event);return event;
+    Object.assign(event,{pointerId:id,pointerType,clientX:x,clientY:y,button:0});target.dispatchEvent(event);return event;
 }
 test('captured pinch changes active text size and never becomes a one-finger scroll or terminal input', async()=>{
     const f=fixture(),{w,d,sockets}=f;
@@ -225,6 +225,54 @@ test('long press selects a word without opening the keyboard or sending shell in
         pointer(w,w.document.getElementById('terms'),'pointerdown',1,22,5);await new Promise(r=>setTimeout(r,480));
         assert.equal(info.selecting,true);assert.equal(info.terminal.selection.col,0);assert.equal(info.terminal.selection.length,5);
         pointer(w,w.document.getElementById('terms'),'pointerup',1,22,5);assert.equal(info.socket.messages.length,0);
+    } finally {d.window.close();}
+});
+test('desktop toolbar selects locally and clipboard shortcuts never send interrupts while selecting', async () => {
+    const f = fixture(), {w, d} = f;
+    try {
+        const toolbar = w.document.getElementById('terminalDesktopActions');
+        const button = action => toolbar.querySelector(`[data-terminal-action="${action}"]`);
+        assert.equal(button('select').disabled, true);
+        w.createTerminalTab({id: 'one', name: 'Shell'}); await tick();
+        const info = f.info('one'), term = info.terminal;
+        info.socket.onopen();
+        info.socket.messages.length = 0;
+        const screen = w.document.createElement('div');
+        screen.className = 'xterm-screen';
+        screen.getBoundingClientRect = () => ({left: 0, top: 0, width: 1000, height: 600});
+        w.document.getElementById('one').append(screen);
+        term.buffer = {active: {viewportY: 30}};
+        let copied;
+        Object.defineProperty(w.navigator, 'clipboard', {value: {
+            writeText: async value => {copied = value;},
+            readText: async () => 'clipboard text',
+        }});
+        const key = (value, shiftKey = false) => {
+            const event = new w.KeyboardEvent('keydown', {key: value, ctrlKey: true, shiftKey, cancelable: true});
+            return {forward: term.keyHandler(event), prevented: event.defaultPrevented};
+        };
+        assert.deepEqual(key('c'), {forward: true, prevented: false});
+        assert.equal(pointer(w, screen, 'pointerdown', 1, 20, 40, 'mouse').defaultPrevented, false);
+        button('select').click();
+        assert.equal(button('select').getAttribute('aria-pressed'), 'true');
+        assert.deepEqual(key('c'), {forward: false, prevented: true});
+        assert.equal(pointer(w, screen, 'pointerdown', 1, 20, 40, 'mouse').defaultPrevented, true);
+        assert.equal(pointer(w, screen, 'pointerup', 1, 80, 60, 'mouse').defaultPrevented, true);
+        assert.deepEqual(JSON.parse(JSON.stringify(term.selection)), {col: 2, row: 32, length: 107});
+        button('copy').click();
+        await new Promise(setImmediate);
+        assert.equal(copied, 'selected text');
+        assert.equal(button('select').getAttribute('aria-pressed'), 'false');
+        term.clearSelection();
+        assert.deepEqual(key('C', true), {forward: false, prevented: true});
+        assert.deepEqual(key('V', true), {forward: false, prevented: true});
+        await new Promise(setImmediate);
+        assert.equal(term.pasted, 'clipboard text');
+        term.pasted = '';
+        button('paste').click();
+        await new Promise(setImmediate);
+        assert.equal(term.pasted, 'clipboard text');
+        assert.equal(info.socket.messages.length, 0);
     } finally {d.window.close();}
 });
 test('Ctrl+V sends control byte while Paste uses clipboard and preserves exact text without added Enter',async()=>{
