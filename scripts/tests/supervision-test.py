@@ -52,6 +52,12 @@ class Fixture:
         controller = (ROOT / 'filemanagerctl').read_text().replace(
             'BOOT_ID="$(cat /proc/sys/kernel/random/boot_id)"',
             'BOOT_ID="$(cat "$APP_DIR/boot-id")"')
+        # A test launched through the real FileManager PTY shares its cgroup.
+        # The fixture's fake systemd never owns that cgroup; don't accidentally
+        # schedule a real transient unit during simulated restart tests.
+        start = controller.index('inside_service_cgroup() {')
+        end = controller.index('\n}', start) + 2
+        controller = controller[:start] + 'inside_service_cgroup() { return 1; }' + controller[end:]
         (self.root / 'filemanagerctl').write_text(controller)
         (self.root / 'filemanagerctl').chmod(0o755)
         (self.root / 'scripts').mkdir(exist_ok=True)
@@ -671,6 +677,36 @@ class SystemdTests(unittest.TestCase):
         f.boot()
         f.ctl('__tick')
         self.assertEqual(len(f.starts()), 3)
+
+    def test_restart_requested_inside_own_service_is_delegated(self):
+        f = self.f
+        f.env['FM_UNIT_KIND'] = 'system'
+        (f.root / 'system.service').touch()
+        f.script('sudo', '[ "$1" = -n ] && shift\nexec "$@"\n')
+        f.ctl('enable')
+        original = f.pid()
+
+        # Simulate the inner service cgroup without running systemd-run for real.
+        controller = f.root / 'filemanagerctl'
+        source = controller.read_text()
+        assert 'inside_service_cgroup() { return 1; }' in source
+        controller.write_text(source.replace('inside_service_cgroup() { return 1; }',
+                                             'inside_service_cgroup() { return 0; }'))
+        f.script('systemd-run', 'printf "%s\n" "$@" > "$FM_FIXTURE/scheduled-restart"\n')
+        result = f.ctl('restart')
+        self.assertIn('Reinício agendado', result.stdout)
+        self.assertEqual(len(f.starts()), 1, 'Scheduling must not terminate the service inline')
+        self.assertTrue(alive(original))
+        args = (f.root / 'scheduled-restart').read_text().splitlines()
+        self.assertIn('--on-active=2s', args)
+        request = (f.state / 'restart-request').read_text().strip()
+
+        # The scheduled unit is outside the service and then performs restart.
+        controller.write_text(source)
+        f.ctl('__restart', request)
+        self.assertEqual(len(f.starts()), 2)
+        self.assertFalse(alive(original))
+        self.assertTrue(alive(f.pid()))
 
     def test_generated_system_and_user_units_pass_systemd_verification(self):
         if not shutil.which('systemd-analyze'):

@@ -5,7 +5,6 @@ namespace plugins\Request;
 use Swoole\Http\Request;
 use Swoole\Http\Response;
 use Swoole\Http\Server;
-use Swoole\Process;
 use Swoole\Timer;
 
 class fileManagerSystem
@@ -57,31 +56,25 @@ class fileManagerSystem
 
         try {
             $owner = securityPolicy::requestToken($request);
-            Timer::after(750, static function () use ($masterPid, $owner): void {
-                if (!securityPolicy::adminAllowed($owner)) return;
-                fileManagerRuntime::requestRestart();
-                $currentProcessId = getmypid();
-                $processIds = fileManagerRuntime::middlewareProcessIds();
-                if (!in_array($masterPid, $processIds, true)) {
-                    $processIds[] = $masterPid;
-                }
-                rsort($processIds, SORT_NUMERIC);
-
-                foreach ($processIds as $processId) {
-                    if ($processId !== $currentProcessId) {
-                        Process::kill($processId, SIGKILL);
+            Timer::after(750, static function () use ($server, $owner): void {
+                try {
+                    if (!securityPolicy::adminAllowed($owner)) return;
+                    // The native supervisor starts middleware.php again after it
+                    // exits. SIGKILL on manager/worker breaks graceful cleanup and
+                    // may leave the old listener or PTY in an inconsistent state.
+                    fileManagerRuntime::requestRestart();
+                    if ($server->shutdown() === false) {
+                        error_log('[filemanager] Graceful restart request was rejected by Swoole.');
                     }
+                } catch (\Throwable $exception) {
+                    error_log('[filemanager] Failed to request graceful restart: ' . $exception->getMessage());
                 }
-
-                // Este worker é encerrado por último, depois que os demais
-                // deixaram de manter a porta principal aberta.
-                Process::kill($currentProcessId, SIGKILL);
             });
 
             return self::respond($response, 202, [
                 'success' => true,
                 'instanceId' => getmypid(),
-                'message' => 'Reinício solicitado. Os terminais e serviços auxiliares permanecerão em execução.',
+                'message' => 'Reinício solicitado. A conexão pode ser interrompida enquanto o supervisor reinicia o serviço.',
             ]);
         } catch (\Throwable $exception) {
             return self::respond($response, 500, [

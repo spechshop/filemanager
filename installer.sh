@@ -17,6 +17,24 @@ export PATH
 # Não usamos "set -e": queremos sobreviver a falhas e seguir com fallbacks.
 set +e
 
+# Reinstalling from the FileManager's own PTY would kill the installer when
+# install-supervision stops the service. Hand off the ENTIRE installation to
+# an independent transient systemd unit before doing any mutable work.
+INSTALLER_ENTRY="$(readlink -f -- "${BASH_SOURCE[0]}" 2>/dev/null)"
+if [ -n "$INSTALLER_ENTRY" ] && [ -f "$(dirname "$INSTALLER_ENTRY")/scripts/install-detach.sh" ]; then
+    source "$(dirname "$INSTALLER_ENTRY")/scripts/install-detach.sh" || exit 1
+    INSTALLER_CGROUP="$(fm_installer_process_cgroup 2>/dev/null)"
+    if [ -n "$INSTALLER_CGROUP" ]; then
+        fm_installer_dispatch "$INSTALLER_ENTRY" "$INSTALLER_CGROUP" "$@"
+        INSTALLER_DISPATCH_RESULT=$?
+        case "$INSTALLER_DISPATCH_RESULT" in
+            0) exit 0 ;;
+            1) exit 1 ;;
+        esac
+    fi
+fi
+unset INSTALLER_ENTRY INSTALLER_CGROUP INSTALLER_DISPATCH_RESULT
+
 # An existing checkout can upgrade supervision without system packages,
 # token generation or application migrations, even when invoked from elsewhere.
 if [ "${1:-}" = --supervision-only ]; then
