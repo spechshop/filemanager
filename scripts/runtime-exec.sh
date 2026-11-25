@@ -253,10 +253,17 @@ fm_prepare_binary() (
 )
 
 fm_php_candidates() {
-    local root="$1" configured='' base candidate key
+    local root="$1" configured='' base candidate key account_home="${HOME:-}"
+    # Hosting panels can launch the watchdog with an empty HOME.
+    if [ -z "$account_home" ]; then
+        account_home=$(getent passwd "$EUID" 2>/dev/null | awk -F: 'NR == 1 { print $6 }')
+        if [ -z "$account_home" ] && [ -r /etc/passwd ]; then
+            account_home=$(awk -F: -v uid="$EUID" '$3 == uid { print $6; exit }' /etc/passwd)
+        fi
+    fi
     # Prefer the persistent runtime whenever it can execute in place. Known
     # noexec sources are deferred by fm_php without attempting execution.
-    printf '%s\n' "$root/pcg" "${HOME:-$root}/.local/bin/pcg"
+    printf '%s\n' "$root/pcg" "${account_home:-$root}/.local/bin/pcg"
     type -a -p pcg 2>/dev/null || :
     [ ! -r "$root/.runtime/supervision/php" ] || IFS= read -r configured < "$root/.runtime/supervision/php" || :
     # Reuse verified temporary copies before allocating another fallback.
