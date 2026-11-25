@@ -5,12 +5,6 @@ namespace plugins\Request;
 /** Administrative token operations share the CLI editor's atomic storage lock. */
 final class tokenManager
 {
-    private static function admin(array $record): bool
-    {
-        return empty($record['revoked']) && securityPolicy::expiration($record['expire'] ?? null) > time()
-            && ($record['admin'] ?? (!array_key_exists('allowedRoots', $record) && ($record['terminal'] ?? true) === true)) === true;
-    }
-
     private static function revision(array $record): string
     {
         return hash('sha256', json_encode($record, JSON_THROW_ON_ERROR));
@@ -48,7 +42,7 @@ final class tokenManager
         $secret = null;
         privateJson::update(securityPolicy::tokenFile(), static function (array $tokens) use ($actor, $input, $action, &$secret): array {
             // Recheck authorization under the same lock used by every mutation.
-            if (!isset($tokens[$actor]) || !self::admin($tokens[$actor])) throw new \DomainException('Permissão administrativa removida.');
+            if (!isset($tokens[$actor]) || !securityPolicy::activeAdminRecord($tokens[$actor])) throw new \DomainException('Permissão administrativa removida.');
             $key = null;
             if (!in_array($action, ['create', 'clean'], true)) {
                 foreach ($tokens as $candidate => $_) {
@@ -100,7 +94,7 @@ final class tokenManager
             } elseif ($action === 'reveal') {
                 $secret = (string) $key;
             }
-            if (!self::admin($tokens[$actor] ?? [])) throw new \InvalidArgumentException('O token atual deve manter acesso administrativo e validade futura.');
+            if (!securityPolicy::activeAdminRecord($tokens[$actor] ?? [])) throw new \InvalidArgumentException('O token atual deve manter acesso administrativo e validade futura.');
             return $tokens;
         });
         return ['success' => true, 'message' => $action === 'reveal' ? 'Chave disponível para cópia.' : 'Operação concluída.', 'secret' => $secret];

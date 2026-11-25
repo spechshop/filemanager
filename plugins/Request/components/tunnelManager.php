@@ -17,8 +17,8 @@ final class tunnelManager
 
     private static function ownerActive(string $owner): bool
     {
-        foreach (securityPolicy::tokens() as $key => $_) {
-            if (hash_equals($owner, hash('sha256', (string) $key))) return securityPolicy::adminAllowed((string) $key);
+        foreach (securityPolicy::tokens(requireReadable: true) as $key => $record) {
+            if (hash_equals($owner, hash('sha256', (string) $key))) return is_array($record) && securityPolicy::activeAdminRecord($record);
         }
         return false;
     }

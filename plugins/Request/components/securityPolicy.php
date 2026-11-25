@@ -67,15 +67,20 @@ final class securityPolicy
 
     public static function adminAllowed(string $token): bool
     {
-        $record = self::record($token);
-        return $record !== null && ($record['admin'] ?? (!array_key_exists('allowedRoots', $record) && ($record['terminal'] ?? true) === true)) === true;
+        return self::activeAdminRecord(self::tokenRecord($token));
     }
 
-    public static function tokens(): array
+    public static function activeAdminRecord(array $record): bool
+    {
+        return self::activeRecord($record) && ($record['admin'] ?? (!array_key_exists('allowedRoots', $record) && ($record['terminal'] ?? true) === true)) === true;
+    }
+
+    public static function tokens(bool $requireReadable = false): array
     {
         $file = self::tokenFile();
         $raw = @file_get_contents($file);
         $data = is_string($raw) ? json_decode($raw, true) : null;
+        if ($requireReadable && !is_array($data)) throw new \RuntimeException('Token store unavailable');
         return is_array($data) ? $data : [];
     }
 
@@ -91,11 +96,22 @@ final class securityPolicy
         return $expire > 9999999999 ? intdiv($expire, 1000) : $expire;
     }
 
+    private static function tokenRecord($token): array
+    {
+        if (!is_string($token) || $token === '' || strlen($token) > 256) return [];
+        $record = self::tokens()[$token] ?? null;
+        return is_array($record) ? $record : [];
+    }
+
+    private static function activeRecord(array $record): bool
+    {
+        return empty($record['revoked']) && self::expiration($record['expire'] ?? null) > time();
+    }
+
     public static function record($token): ?array
     {
-        if (!is_string($token) || $token === '' || strlen($token) > 256) return null;
-        $record = self::tokens()[$token] ?? null;
-        return is_array($record) && empty($record['revoked']) && self::expiration($record['expire'] ?? null) > time() ? $record : null;
+        $record = self::tokenRecord($token);
+        return self::activeRecord($record) ? $record : null;
     }
 
     public static function validToken($token): bool { return self::record($token) !== null; }
