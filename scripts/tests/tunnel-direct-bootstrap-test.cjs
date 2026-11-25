@@ -111,6 +111,37 @@ process.on('SIGTERM', () => process.exit(0)); setInterval(() => {}, 1000);
             if (remove) fs.rmSync(directory, {recursive: true, force: true});
         }};
 }
+test('preparation reports its private log on stdout before probing and preserves startup errors', async () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'fm-prep-log-'));
+    const script = path.join(ROOT, 'scripts/tunnel-direct-agent.sh');
+    // Pause the directory check so the test can inspect the log while the launcher is blocked.
+    const child = spawn('/bin/bash', ['-c', `fm_exec_dir() {
+        read -r input
+        printf 'fixture: directory unavailable\\n' >&2
+        return 1
+    }
+    source "$1"`, 'bash', script], {env: {...process.env, TMPDIR: directory}, stdio: ['pipe', 'pipe', 'ignore']});
+    let output = '';
+    child.stdout.on('data', chunk => { output += chunk; });
+    const closed = new Promise((resolve, reject) => { child.once('close', resolve); child.once('error', reject); });
+    try {
+        await until(() => output.includes('Verificando permissões'));
+        const log = output.match(/^Log de preparação: (.+)$/m)?.[1];
+        assert.equal(path.dirname(log), directory);
+        assert.equal(fs.statSync(log).mode & 0o777, 0o600);
+        assert.match(fs.readFileSync(log, 'utf8'), /Verificando permissões/);
+        child.stdin.end('continue\n');
+        assert.equal(await closed, 1);
+        for (const text of [output, fs.readFileSync(log, 'utf8')]) {
+            assert.match(text, /fixture: directory unavailable/);
+            assert.match(text, /Preparação encerrada com código 1/);
+        }
+    } finally {
+        child.stdin.end();
+        await closed;
+        fs.rmSync(directory, {recursive: true, force: true});
+    }
+});
 for (const oomEvidence of [false, true]) test(`SIGKILL restarts the self-deleting payload, OOM evidence=${oomEvidence}`, {timeout: 20000}, async () => {
     const f = fixture({installed: true, crashes: 1, oomEvidence});
     try {
