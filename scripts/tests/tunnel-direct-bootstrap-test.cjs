@@ -18,7 +18,7 @@ function fixture({installed = false, panelFails = false, tampered = false, incom
     const bin = path.join(directory, 'bin'); fs.mkdirSync(bin);
     if (offline) fs.writeFileSync(path.join(directory, 'offline'), 'offline');
     fs.writeFileSync(path.join(directory, 'memory.events'), 'oom_kill 17\n');
-    for (const name of new Set(['bash', 'mktemp', 'grep', 'sleep', 'rm', 'cat', 'uname', 'chmod', hashTool, 'tar', 'gzip', 'cp', 'id', 'df', 'awk', 'cut', 'rmdir', 'true', 'cksum'])) {
+    for (const name of new Set(['bash', 'mktemp', 'grep', 'sleep', 'rm', 'cat', 'uname', 'chmod', hashTool, 'tar', 'gzip', 'cp', 'id', 'df', 'awk', 'cut', 'rmdir', 'true', 'cksum', 'ls', 'stat'])) {
         fs.symlinkSync(execFileSync('which', [name], {encoding: 'utf8'}).trim(), path.join(bin, name));
     }
     if (installed) fs.symlinkSync(process.execPath, path.join(bin, 'node'));
@@ -88,7 +88,7 @@ process.on('SIGTERM', () => process.exit(0)); setInterval(() => {}, 1000);
     const testedSource = source.replace('memory_file=$(fm_memory_file)', 'memory_file="$TUNNEL_FIXTURE_DIR/memory.events"')
         .replace('unset fm_system_bin\nexport PATH', 'unset fm_system_bin\nPATH="$TUNNEL_FIXTURE_DIR/bin"\nexport PATH');
     const script = path.join(directory, 'bootstrap.sh'); fs.writeFileSync(script, testedSource);
-    const child = spawn('/bin/bash', [script], {env: {...process.env, PATH: bin, TMPDIR: directory, TUNNEL_FIXTURE_DIR: directory}, stdio: ['ignore', 'pipe', 'pipe']});
+    const child = spawn('/bin/bash', [script], {cwd: directory, env: {...process.env, PATH: bin, TMPDIR: directory, TUNNEL_FIXTURE_DIR: directory}, stdio: ['ignore', 'pipe', 'pipe']});
     let output = '', closed = false;
     child.stdout.on('data', chunk => {output += chunk;}); child.stderr.on('data', chunk => {output += chunk;});
     child.once('close', () => {closed = true;});

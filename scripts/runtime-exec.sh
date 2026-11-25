@@ -138,7 +138,7 @@ fm_available_bytes() {
 }
 
 fm_exec_dir() {
-    local installation="$1" required="${2:-0}" base dir available probe
+    local installation="$1" required="${2:-0}" preferred="${3:-}" base dir available probe
     local -A seen=()
     while IFS= read -r base; do
         [ -n "$base" ] && [ -z "${seen[$base]:-}" ] || continue
@@ -158,6 +158,10 @@ fm_exec_dir() {
             printf 'Não foi possível preparar as permissões da sonda ELF em %s.\n' "$base" >&2
             rm -f -- "$dir/true"; rmdir "$dir"; continue
         fi
+        if [ "$base" = "$preferred" ] && ! fm_private_file "$dir/true"; then
+            printf 'A pasta atual não é segura para armazenar o agente: %s.\n' "$base" >&2
+            rm -f -- "$dir/true"; rmdir "$dir"; continue
+        fi
         if ! "$dir/true" 2>/dev/null; then
             printf 'Execução ELF negada em %s (noexec, permissões ou política do host).\n' "$base" >&2
             rm -f -- "$dir/true"; rmdir "$dir"; continue
@@ -173,7 +177,12 @@ fm_exec_dir() {
             rmdir "$dir"; continue
         fi
         printf '%s\n' "$dir"; return 0
-    done < <(fm_candidate_dirs "$installation")
+    done < <(
+        if [ -z "${FILEMANAGER_EXEC_DIR:-}" ] && [ -n "$preferred" ] && [ -O "$preferred" ]; then
+            printf '%s\n' "$preferred"
+        fi
+        fm_candidate_dirs "$installation"
+    )
     printf '%s\n' 'Nenhum dos diretórios investigados permite preparar uma nova cópia executável. Confira os diagnósticos; runtimes existentes são pesquisados antes desta etapa.' >&2
     return 1
 }

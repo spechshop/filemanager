@@ -109,11 +109,16 @@ function file_get_contents($file, ...$args) {
         const data = JSON.parse(response.body); assert.equal(response.status, expected, JSON.stringify(data)); return data;
     };
     const state = async () => (await api()).tunnels[0];
+    const workingDirectory = path.join(directory, 'diretório do serviço');
+    fs.mkdirSync(workingDirectory, {mode: 0o700});
     const launch = async command => {
-        const child = spawn('/bin/bash', ['-o', 'pipefail', '-c', command], {env: {...process.env, PATH: bin, TMPDIR: directory}, stdio: ['ignore', 'pipe', 'pipe']});
+        const child = spawn('/bin/bash', ['-o', 'pipefail', '-c', command], {cwd: workingDirectory, env: {...process.env, PATH: bin, TMPDIR: directory}, stdio: ['ignore', 'pipe', 'pipe']});
         child.stdout.on('data', chunk => {agentOutput += chunk;}); child.stderr.on('data', chunk => {agentOutput += chunk;});
         const [code] = await once(child, 'close'); assert.equal(code, 0, agentOutput);
         logPath = agentOutput.match(/^Log: (.+)$/m)?.[1]; assert.ok(logPath, agentOutput);
+        const agentDirectory = path.dirname(logPath);
+        assert.equal(path.dirname(agentDirectory), fs.realpathSync(workingDirectory));
+        assert.equal(fs.statSync(agentDirectory).mode & 0o777, 0o700);
     };
     async function deniedSocket(secret, session) {
         const socket = new WebSocket(base.replace(/^http/, 'ws') + '/fileManagerTunnelDirect', {rejectUnauthorized: false,

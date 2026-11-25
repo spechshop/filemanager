@@ -254,10 +254,11 @@ fm_tunnel_main() {
 }
 fm_tunnel_launch() {
     umask 077
-    local launch_dir agent_pid _attempt shown=0 lines message
+    local work_dir launch_dir agent_pid _attempt shown=0 lines message
     printf '%s\n' 'Preparando o túnel direto nesta máquina...'
     printf '%s\n' 'Verificando permissões e espaço para a pasta de trabalho...'
-    launch_dir=$(fm_exec_dir "tunnel-${FM_SESSION:-remote}" 209715200) || {
+    work_dir=$(pwd -P) || return 1
+    launch_dir=$(fm_exec_dir "$work_dir" 209715200 "$work_dir") || {
         printf '%s\n' 'Não foi possível criar a pasta privada do túnel. Verifique TMPDIR e as permissões do usuário.' >&2
         return 1
     }
