@@ -252,14 +252,16 @@ fm_tunnel_main() {
         done
     done
 }
-fm_tunnel_start() {
+fm_tunnel_launch() {
     umask 077
     local launch_dir agent_pid _attempt shown=0 lines message
     printf '%s\n' 'Preparando o túnel direto nesta máquina...'
+    printf '%s\n' 'Verificando permissões e espaço para a pasta de trabalho...'
     launch_dir=$(fm_exec_dir "tunnel-${FM_SESSION:-remote}" 209715200) || {
         printf '%s\n' 'Não foi possível criar a pasta privada do túnel. Verifique TMPDIR e as permissões do usuário.' >&2
         return 1
     }
+    printf '%s\n' 'Pasta de trabalho pronta. Gravando o lançador...'
     if ! {
         printf '#!/usr/bin/env bash\n'
         fm_export_exec_helpers
@@ -286,5 +288,27 @@ fm_tunnel_start() {
         fi
     done
     printf '%s\n' 'O agente continua em segundo plano. Acompanhe o link e encerre a conexão na seção Túneis do File Manager.'
+}
+fm_tunnel_start() {
+    umask 077
+    local prep_log line code
+    if ! prep_log=$(mktemp "${TMPDIR:-/tmp}/filemanager-tunnel-preparo.XXXXXXXX"); then
+        printf '%s\n' 'Não foi possível criar o log de preparação. Os diagnósticos seguem neste terminal.'
+        fm_tunnel_launch 2>&1
+        return $?
+    fi
+    printf 'Log de preparação: %s\n' "$prep_log"
+    # Mirror startup diagnostics on stdout for terminals that hide stderr.
+    fm_tunnel_launch 2>&1 | while IFS= read -r line || [[ -n "$line" ]]; do
+        printf '%s\n' "$line" >> "$prep_log"
+        printf '%s\n' "$line"
+    done
+    code=${PIPESTATUS[0]}
+    if [ "$code" -ne 0 ]; then
+        line="Preparação encerrada com código $code. Consulte $prep_log"
+        printf '%s\n' "$line" >> "$prep_log"
+        printf '%s\n' "$line"
+    fi
+    return "$code"
 }
 fm_tunnel_start
