@@ -40,7 +40,7 @@ final class fileManagerTunnelAgent
             }
             $report = null;
             if ($method === 'POST') {
-                $report = json_decode($request->rawContent(), true, 16, JSON_THROW_ON_ERROR);
+                $report = json_decode($request->rawContent(), true, 16);
                 if (!is_array($report)) throw new \InvalidArgumentException('Invalid report');
             }
             $result = tunnelManager::agent($secret, $report);
@@ -53,11 +53,12 @@ final class fileManagerTunnelAgent
             $response->status(403);
         } catch (\UnexpectedValueException $error) {
             $response->status(409);
-        } catch (\InvalidArgumentException | \JsonException $error) {
+        } catch (\InvalidArgumentException $error) {
             $response->status(422);
-        } catch (\RuntimeException $error) {
+        } catch (\RuntimeException | \JsonException $error) {
             $response->status(503);
             $response->header('Retry-After', '5');
+            return $response->end(json_encode(['success' => false, 'message' => 'Painel temporariamente indisponível. Tente novamente em instantes.'], JSON_UNESCAPED_UNICODE));
         } catch (\Throwable $error) {
             $response->status(500);
         }

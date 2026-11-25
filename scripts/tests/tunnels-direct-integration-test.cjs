@@ -211,6 +211,36 @@ function file_get_contents($file, ...$args) {
             assert.equal((await state()).url, publicUrl);
             assert.match(fs.readFileSync(logPath, 'utf8'), /restabelecida/);
         }
+        if (secure) {
+            const agentHeaders = {Authorization: 'Bearer ' + created.command.match(/\/tunnel\/([a-f0-9]{64})/)[1],
+                'Content-Type': 'application/json'};
+            const registryPath = path.join(directory, 'tunnels/registry.json');
+            const session = JSON.parse(fs.readFileSync(registryPath))[created.id].session;
+            const report = () => request(base + '/fileManagerTunnelAgent', {method: 'POST', headers: agentHeaders},
+                JSON.stringify({session, status: 'starting', url: ''}));
+            for (const file of [path.join(directory, 'tokens.json'), registryPath]) {
+                const saved = fs.readFileSync(file);
+                const logOffset = fs.statSync(logPath).size;
+                fs.writeFileSync(file, '{');
+                try {
+                    const unavailable = await report();
+                    assert.equal(unavailable.status, 503);
+                    assert.ok(Number(unavailable.headers['retry-after']) > 0);
+                    await until(async () => {
+                        try { await request(publicUrl); return false; }
+                        catch (error) { return error.code === 'ECONNREFUSED'; }
+                    });
+                    await until(() => fs.readFileSync(logPath).subarray(logOffset).includes('HTTP 503'));
+                } finally { fs.writeFileSync(file, saved); }
+                await until(async () => {
+                    try { return (await request(publicUrl + '/after-storage-recovery')).body.toString() === 'REMOTE_SERVICE_CONTENT'; }
+                    catch { return false; }
+                });
+                assert.equal(JSON.parse(fs.readFileSync(registryPath))[created.id].session, session);
+            }
+            const malformed = await request(base + '/fileManagerTunnelAgent', {method: 'POST', headers: agentHeaders}, '{');
+            assert.equal(malformed.status, 422);
+        }
         await api({action: 'stop', id: created.id});
         await until(() => !fs.existsSync(path.join(path.dirname(logPath), 'agent.pid')));
         assert.deepEqual(fs.readdirSync(path.dirname(logPath)), ['agent.log'], 'Private runtime and credentials must be removed after shutdown');
