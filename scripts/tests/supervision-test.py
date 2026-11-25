@@ -234,6 +234,24 @@ exec /usr/bin/env "$@"
         self.assertNotIn('Consulte', result.stderr)
         self.assertFalse(f.starts())
 
+    def test_start_with_empty_home_reuses_account_pcg(self):
+        f = self.f
+        f.env['HOME'] = ''
+        f.script('getent', r'''[ "$1" = passwd ] && [ "$2" = "$(id -u)" ] || exit 2
+printf 'fixture:x:%s:%s::%s/home:/bin/bash\n' "$(id -u)" "$(id -g)" "$FM_FIXTURE"
+''')
+        runtime = f.root / 'home/.local/bin/pcg'
+        runtime.parent.mkdir(parents=True)
+        shutil.copy2(PHP, runtime)
+        untrusted = f.root / 'pcg'
+        untrusted.unlink()
+        shutil.copy2('/bin/true', untrusted)
+        untrusted.chmod(0o777)
+        f.ctl('start')
+        self.assertTrue(alive(f.pid()))
+        self.assertEqual(Path(f'/proc/{f.pid()}/exe').resolve(), runtime)
+        self.assertEqual(untrusted.stat().st_mode & 0o777, 0o777)
+
     def test_start_reports_php_fatal_inline(self):
         f = self.f
         (f.root / 'server.php').write_text("<?php fwrite(STDERR, 'Fatal error: missing application dependency\\n'); exit(42);")
@@ -633,6 +651,20 @@ class SystemdTests(unittest.TestCase):
         f.boot()
         f.ctl('__tick')
         self.assertEqual(len(f.starts()), 1)
+
+    def test_start_reports_silent_systemd_failure(self):
+        f = self.f
+        f.env.update(FM_UNIT_KIND='user', FM_FAIL_USER_START='1')
+        unit = f.root / 'home/.config/systemd/user/filemanager.service'
+        unit.parent.mkdir(parents=True)
+        unit.touch()
+        f.script('journalctl', 'echo "fixture: falha no serviço"')
+        result = f.ctl('start', check=False)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('Log de inicialização:', result.stdout)
+        self.assertIn('systemctl --user start filemanager.service falhou', result.stderr)
+        self.assertIn('fixture: falha no serviço', result.stderr)
+        self.assertFalse(f.starts())
 
     def test_failed_user_unit_is_disabled_before_cron_fallback(self):
         f = self.f

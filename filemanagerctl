@@ -663,14 +663,22 @@ start_server() {
         if ! systemctl is-active --quiet "$SERVICE" 2>/dev/null; then
             stop_managed_processes || return 1
         fi
-        run_systemctl start "$SERVICE" >/dev/null || return 1
+        if ! run_systemctl start "$SERVICE" >/dev/null; then
+            state_write startup-failure "systemctl start $SERVICE falhou."
+            show_start_failure
+            return 1
+        fi
     elif user_unit_matches && [ "$backend" != watchdog ] && [ "$backend" != background ]; then
         stop_watchdog || return 1
         state_write backend user || return 1
         if ! systemctl --user is-active --quiet "$SERVICE" 2>/dev/null; then
             stop_managed_processes || return 1
         fi
-        systemctl --user start "$SERVICE" >/dev/null || return 1
+        if ! systemctl --user start "$SERVICE" >/dev/null; then
+            state_write startup-failure "systemctl --user start $SERVICE falhou."
+            show_start_failure
+            return 1
+        fi
     else
         [ "$backend" = watchdog ] || state_write backend background || return 1
         # Adopt existing main processes during upgrades, cleaning stale bridges.
@@ -804,12 +812,16 @@ if [ "$(id -u)" = 0 ] && [ -d "$STATE_DIR" ]; then
             ;;
     esac
 fi
-prepare_state || exit 1
+if [ "$1" = start ]; then
+    log "Iniciando FileManager em $APP_DIR."
+    log "Log de inicialização: $START_LOG"
+fi
+prepare_state || { err "Não foi possível preparar o estado do supervisor em $STATE_DIR."; exit 1; }
 case "$1" in
     __log) log_stream; exit $? ;;
     __watchdog) watchdog; exit $? ;;
 esac
-lock_lifecycle || exit 1
+lock_lifecycle || { err "Não foi possível adquirir o lock do supervisor em $STATE_DIR."; exit 1; }
 # The controller may be launched from a PTY owned by this server.
 trap ':' HUP TERM
 case "$1" in
